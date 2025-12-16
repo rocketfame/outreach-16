@@ -12,7 +12,7 @@ export function NicheTag({ label, selected = false, className = "", ...props }: 
     <button
       type="button"
       className={`
-        rounded-full
+        rounded-xl
         px-4 py-2
         text-[0.85rem]
         font-medium
@@ -22,13 +22,12 @@ export function NicheTag({ label, selected = false, className = "", ...props }: 
         border border-transparent
         ${
           selected
-            ? "bg-gradient-to-r from-[#FF6B9D]/50 to-[#FF8E53]/60 text-white shadow-md shadow-[#FF6B9D]/20"
-            : "bg-gradient-to-r from-[#FF6B9D]/10 to-[#FF8E53]/10 text-[var(--foreground)]"
+            ? "bg-gradient-to-r from-[#FF6B9D]/30 to-[#FF8E53]/35 text-[var(--foreground)] shadow-sm shadow-[#FF6B9D]/10"
+            : "bg-gradient-to-r from-[#FF6B9D]/15 to-[#FF8E53]/15 text-[var(--foreground)]"
         }
-        hover:bg-gradient-to-r hover:from-[#FF6B9D]/30 hover:to-[#FF8E53]/30 hover:shadow-md hover:shadow-[#FF6B9D]/10 hover:text-[var(--foreground)]
+        hover:bg-gradient-to-r hover:from-[#FF6B9D]/20 hover:to-[#FF8E53]/20 hover:shadow-sm hover:shadow-[#FF6B9D]/5
         active:scale-[0.98]
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B9D]/60 focus-visible:ring-offset-2
-        ${selected ? "hover:text-white" : ""}
         ${className}
       `}
       {...props}
