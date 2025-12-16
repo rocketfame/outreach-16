@@ -10,11 +10,27 @@ const openai = new OpenAI({
 });
 
 export async function POST(req: Request) {
+  // Safe debug log for Tavily API key (only prefix, never full key)
+  console.log(
+    "TAVILY_API_KEY prefix in runtime:",
+    (process.env.TAVILY_API_KEY || "undefined").slice(0, 10)
+  );
+
   // #region agent log
   const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
   const logEntry = {location:'generate-topics/route.ts:12',message:'POST /api/generate-topics called',data:{hasApiKey:!!process.env.OPENAI_API_KEY,routeExists:true},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
   try { appendFileSync(logPath, JSON.stringify(logEntry) + '\n'); } catch (e) { console.error('Log write error:', e); }
   // #endregion
+
+  // Validate Tavily API key before proceeding
+  const tavilyApiKey = process.env.TAVILY_API_KEY;
+  if (!tavilyApiKey) {
+    console.error("TAVILY_API_KEY is missing in environment");
+    return new Response(
+      JSON.stringify({ error: "TAVILY_API_KEY is not configured" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   if (!process.env.OPENAI_API_KEY) {
     // #region agent log
@@ -56,13 +72,25 @@ export async function POST(req: Request) {
       try { appendFileSync(logPath, JSON.stringify(browsingStartLog) + '\n'); } catch {}
       // #endregion
 
-      browsingData = await browseForTopics({
-        niche: brief.niche || "",
-        platform: brief.platform || "",
-        contentPurpose: brief.contentPurpose || "",
-        anchorText: brief.anchorText || "",
-        anchorUrl: brief.anchorUrl || "",
-      });
+      try {
+        browsingData = await browseForTopics({
+          niche: brief.niche || "",
+          platform: brief.platform || "",
+          contentPurpose: brief.contentPurpose || "",
+          anchorText: brief.anchorText || "",
+          anchorUrl: brief.anchorUrl || "",
+        });
+      } catch (tavilyError) {
+        console.error("Topic generation error - Tavily browsing failed:", tavilyError);
+        // #region agent log
+        const tavilyErrorLog = {location:'generate-topics/route.ts:60',message:'Tavily browsing error',data:{error:(tavilyError as Error).message,errorName:(tavilyError as Error).name,errorStack:(tavilyError as Error).stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'tavily-error'};
+        try { appendFileSync(logPath, JSON.stringify(tavilyErrorLog) + '\n'); } catch {}
+        // #endregion
+        return new Response(
+          JSON.stringify({ error: "Failed to generate topics: Tavily search failed" }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
       // #region agent log
       const browsingCompleteLog = {location:'generate-topics/route.ts:52',message:'Browsing completed',data:{serpCount:browsingData.serpResults.length,officialCount:browsingData.officialResources.length,competitorCount:browsingData.competitorContent.length,dataCount:browsingData.recentData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'topic-browsing'};
@@ -196,10 +224,21 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     // #region agent log
-    const apiErrorLog = {location:'generate-topics/route.ts:65',message:'Topic generation error',data:{error:(err as Error).message,errorName:(err as Error).name},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const apiErrorLog = {location:'generate-topics/route.ts:65',message:'Topic generation error',data:{error:(err as Error).message,errorName:(err as Error).name,errorStack:(err as Error).stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     try { appendFileSync(logPath, JSON.stringify(apiErrorLog) + '\n'); } catch {}
     // #endregion
     console.error("Topic generation error", err);
+    
+    // Check if error is related to Tavily API key
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    if (errorMessage.includes("TAVILY_API_KEY") || errorMessage.includes("401") || errorMessage.includes("Incorrect API key")) {
+      console.error("Tavily API key error detected:", errorMessage);
+      return new Response(
+        JSON.stringify({ error: "Failed to generate topics: Tavily API configuration error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    
     return new Response(JSON.stringify({ error: "Failed to generate topics" }), { 
       status: 500,
       headers: { "Content-Type": "application/json" },
