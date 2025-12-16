@@ -25,18 +25,37 @@ type PromptPair = {
 };
 
 export async function POST(req: Request) {
+  // Safe debug log for OpenAI API key (only prefix, never full key)
+  console.log(
+    "OPENAI_API_KEY prefix in runtime:",
+    (process.env.OPENAI_API_KEY || "undefined").slice(0, 10)
+  );
+
   // #region agent log
   const logEntry = {location:'route.ts:23',message:'POST /api/generate called',data:{hasApiKey:!!process.env.OPENAI_API_KEY},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
   debugLog(logEntry);
   // #endregion
   
-  if (!process.env.OPENAI_API_KEY) {
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!openaiApiKey) {
     // #region agent log
     const errorLog = {location:'route.ts:28',message:'Missing API key',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(errorLog);
     // #endregion
     return Response.json(
       { error: "Missing OPENAI_API_KEY environment variable." },
+      { status: 500 },
+    );
+  }
+
+  // Critical validation: OpenAI key must start with "sk-" (not Tavily key "tvly-")
+  if (!openaiApiKey.startsWith("sk-")) {
+    const keyPrefix = openaiApiKey.slice(0, 10);
+    console.error(`OPENAI_API_KEY has invalid prefix: ${keyPrefix}. OpenAI keys must start with "sk-". This might be a Tavily key (tvly-) mistakenly set as OPENAI_API_KEY.`);
+    return Response.json(
+      { 
+        error: `Invalid OPENAI_API_KEY format. OpenAI keys must start with "sk-", but got prefix "${keyPrefix}". Please check your Vercel Environment Variables - you might have set TAVILY_API_KEY value as OPENAI_API_KEY.` 
+      },
       { status: 500 },
     );
   }

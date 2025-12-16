@@ -14,7 +14,11 @@ const openai = new OpenAI({
 });
 
 export async function POST(req: Request) {
-  // Safe debug log for Tavily API key (only prefix, never full key)
+  // Safe debug log for API keys (only prefix, never full key)
+  console.log(
+    "OPENAI_API_KEY prefix in runtime:",
+    (process.env.OPENAI_API_KEY || "undefined").slice(0, 10)
+  );
   console.log(
     "TAVILY_API_KEY prefix in runtime:",
     (process.env.TAVILY_API_KEY || "undefined").slice(0, 10)
@@ -24,6 +28,27 @@ export async function POST(req: Request) {
   const logEntry = {location:'generate-topics/route.ts:12',message:'POST /api/generate-topics called',data:{hasApiKey:!!process.env.OPENAI_API_KEY,routeExists:true},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
   debugLog(logEntry);
   // #endregion
+
+  // Validate OpenAI API key first
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!openaiApiKey) {
+    console.error("OPENAI_API_KEY is missing in environment");
+    return new Response(JSON.stringify({ error: "Missing OPENAI_API_KEY environment variable." }), {
+      status: 500,
+    });
+  }
+
+  // Critical validation: OpenAI key must start with "sk-" (not Tavily key "tvly-")
+  if (!openaiApiKey.startsWith("sk-")) {
+    const keyPrefix = openaiApiKey.slice(0, 10);
+    console.error(`OPENAI_API_KEY has invalid prefix: ${keyPrefix}. OpenAI keys must start with "sk-". This might be a Tavily key (tvly-) mistakenly set as OPENAI_API_KEY.`);
+    return new Response(
+      JSON.stringify({ 
+        error: `Invalid OPENAI_API_KEY format. OpenAI keys must start with "sk-", but got prefix "${keyPrefix}". Please check your Vercel Environment Variables - you might have set TAVILY_API_KEY value as OPENAI_API_KEY.` 
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   // Validate Tavily API key before proceeding
   const tavilyApiKey = process.env.TAVILY_API_KEY;
@@ -42,16 +67,6 @@ export async function POST(req: Request) {
       JSON.stringify({ error: "TAVILY_API_KEY is set to demo key. Please configure a real production key in Vercel." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    // #region agent log
-    const errorLog = {location:'generate-topics/route.ts:17',message:'Missing API key',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    debugLog(errorLog);
-    // #endregion
-    return new Response(JSON.stringify({ error: "Missing OPENAI_API_KEY environment variable." }), {
-      status: 500,
-    });
   }
 
   try {
