@@ -60,13 +60,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Additional validation: reject demo keys
+  // Warn if using demo key, but allow it to work
   if (tavilyApiKey.startsWith("tvly-dev")) {
-    console.error("TAVILY_API_KEY is set to demo key (tvly-dev). Please set a real production key in Vercel Environment Variables.");
-    return new Response(
-      JSON.stringify({ error: "TAVILY_API_KEY is set to demo key. Please configure a real production key in Vercel." }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    console.warn("Running with Tavily dev key (tvly-dev). Use a production key for real workloads.");
   }
 
   try {
