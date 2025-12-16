@@ -1,5 +1,9 @@
 import OpenAI from "openai";
-import { appendFileSync } from "fs";
+
+// Simple debug logger that works in both local and production (Vercel)
+const debugLog = (...args: any[]) => {
+  console.log("[generate-api-debug]", ...args);
+};
 
 type Brief = {
   niche: string;
@@ -22,15 +26,14 @@ type PromptPair = {
 
 export async function POST(req: Request) {
   // #region agent log
-  const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
   const logEntry = {location:'route.ts:23',message:'POST /api/generate called',data:{hasApiKey:!!process.env.OPENAI_API_KEY},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-  try { appendFileSync(logPath, JSON.stringify(logEntry) + '\n'); } catch {}
+  debugLog(logEntry);
   // #endregion
   
   if (!process.env.OPENAI_API_KEY) {
     // #region agent log
     const errorLog = {location:'route.ts:28',message:'Missing API key',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(errorLog) + '\n'); } catch {}
+    debugLog(errorLog);
     // #endregion
     return Response.json(
       { error: "Missing OPENAI_API_KEY environment variable." },
@@ -43,12 +46,12 @@ export async function POST(req: Request) {
     body = (await req.json()) as GenerateRequest;
     // #region agent log
     const bodyLog = {location:'route.ts:35',message:'Request body parsed',data:{type:body.type,hasBrief:!!body.brief,hasSelectedTopic:!!body.selectedTopic,hasOutline:!!body.outline},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(bodyLog) + '\n'); } catch {}
+    debugLog(bodyLog);
     // #endregion
   } catch (error) {
     // #region agent log
     const parseErrorLog = {location:'route.ts:37',message:'JSON parse error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(parseErrorLog) + '\n'); } catch {}
+    debugLog(parseErrorLog);
     // #endregion
     console.error("Invalid JSON payload", error);
     return Response.json({ error: "Invalid JSON payload." }, { status: 400 });
@@ -58,7 +61,7 @@ export async function POST(req: Request) {
   if (!type || !brief) {
     // #region agent log
     const validationErrorLog = {location:'route.ts:42',message:'Validation error - missing type or brief',data:{type,hasBrief:!!brief},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(validationErrorLog) + '\n'); } catch {}
+    debugLog(validationErrorLog);
     // #endregion
     return Response.json({ error: "Missing type or brief." }, { status: 400 });
   }
@@ -66,7 +69,7 @@ export async function POST(req: Request) {
   if (type === "outline" && !selectedTopic.trim()) {
     // #region agent log
     const outlineErrorLog = {location:'route.ts:45',message:'Validation error - missing selectedTopic for outline',data:{type,selectedTopic},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(outlineErrorLog) + '\n'); } catch {}
+    debugLog(outlineErrorLog);
     // #endregion
     return Response.json(
       { error: "selectedTopic is required for outline generation." },
@@ -77,7 +80,7 @@ export async function POST(req: Request) {
   if (type === "draft" && !outline.trim()) {
     // #region agent log
     const draftErrorLog = {location:'route.ts:51',message:'Validation error - missing outline for draft',data:{type,outlineLength:outline.length},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(draftErrorLog) + '\n'); } catch {}
+    debugLog(draftErrorLog);
     // #endregion
     return Response.json(
       { error: "outline is required for draft generation." },
@@ -88,7 +91,7 @@ export async function POST(req: Request) {
   const prompts = buildPrompts(type, brief, selectedTopic, outline);
   // #region agent log
   const promptsLog = {location:'route.ts:58',message:'Prompts built',data:{type,systemPromptLength:prompts.systemPrompt.length,userPromptLength:prompts.userPrompt.length},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-  try { appendFileSync(logPath, JSON.stringify(promptsLog) + '\n'); } catch {}
+  debugLog(promptsLog);
   // #endregion
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -96,7 +99,7 @@ export async function POST(req: Request) {
   try {
     // #region agent log
     const apiCallLog = {location:'route.ts:63',message:'Calling OpenAI API',data:{model:'gpt-5.1',type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(apiCallLog) + '\n'); } catch {}
+    debugLog(apiCallLog);
     // #endregion
     const completion = await client.chat.completions.create({
       model: "gpt-5.1",
@@ -110,13 +113,13 @@ export async function POST(req: Request) {
     const text = completion.choices[0]?.message?.content ?? "";
     // #region agent log
     const successLog = {location:'route.ts:72',message:'OpenAI API success',data:{textLength:text.length,hasText:!!text},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(successLog) + '\n'); } catch {}
+    debugLog(successLog);
     // #endregion
     return Response.json({ text });
   } catch (error) {
     // #region agent log
     const apiErrorLog = {location:'route.ts:75',message:'OpenAI API error',data:{error:(error as Error).message,errorName:(error as Error).name,errorStack:(error as Error).stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-    try { appendFileSync(logPath, JSON.stringify(apiErrorLog) + '\n'); } catch {}
+    debugLog(apiErrorLog);
     // #endregion
     console.error("OpenAI API error", error);
     

@@ -326,10 +326,9 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
     : "";
   
   // #region agent log
-  const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
   const log = {location:'articlePrompt.ts:247',message:'[article-prompt] Trust sources formatted for prompt',data:{trustSourcesCount:params.trustSourcesList.length,trustSourcesFormatted:trustSourcesFormatted.substring(0,500),hasTrustSources:params.trustSourcesList.length > 0,allSourcesFromTavily:true,fullSourcesList:params.trustSourcesList},timestamp:Date.now(),sessionId:'debug-session',runId:'article-prompt',hypothesisId:'trust-sources'};
-  try { require('fs').appendFileSync(logPath, JSON.stringify(log) + '\n'); } catch {}
   console.log(`[article-prompt] trustSourcesList is ${params.trustSourcesList.length > 0 ? 'non-empty' : 'empty'} (${params.trustSourcesList.length} sources from Tavily)`);
+  console.log("[article-prompt-debug]", log);
   // #endregion
   
   // Add explicit verification list with numbered sources for model to check against

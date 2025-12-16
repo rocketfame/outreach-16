@@ -1,6 +1,11 @@
 // lib/tavilyClient.ts
 // Tavily Search API client - Single source of truth for external search
 
+// Simple debug logger that works in both local and production (Vercel)
+const debugLog = (...args: any[]) => {
+  console.log("[tavily-debug]", ...args);
+};
+
 export interface TrustedSource {
   title: string;
   url: string;
@@ -27,9 +32,8 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
 
   try {
     // #region agent log
-    const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
     const queryLog = {location:'tavilyClient.ts:28',message:'[tavily-api] Starting search',data:{query,searchDepth:'advanced',maxResults:5},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
-    try { require('fs').appendFileSync(logPath, JSON.stringify(queryLog) + '\n'); } catch {}
+    debugLog(queryLog);
     // #endregion
 
     const requestBody = {
@@ -61,7 +65,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
 
     // #region agent log
     const resultsLog = {location:'tavilyClient.ts:60',message:'[tavily-api] Search completed',data:{query,resultsCount:(data.results || []).length,hasResults:(data.results || []).length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
-    try { require('fs').appendFileSync(logPath, JSON.stringify(resultsLog) + '\n'); } catch {}
+    debugLog(resultsLog);
     // #endregion
 
     // Map Tavily response to TrustedSource format
@@ -93,7 +97,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
 
     // #region agent log
     const finalLog = {location:'tavilyClient.ts:85',message:'[tavily-api] Sources mapped',data:{query,sourcesCount:sources.length,urls:sources.map(s => s.url)},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
-    try { require('fs').appendFileSync(logPath, JSON.stringify(finalLog) + '\n'); } catch {}
+    debugLog(finalLog);
     // #endregion
 
     return sources;

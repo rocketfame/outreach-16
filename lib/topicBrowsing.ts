@@ -2,10 +2,12 @@
 // Conditional browsing for topic generation - only when fresh data is needed
 // Uses Tavily Search API ONLY (no DuckDuckGo)
 
-import { appendFileSync } from "fs";
 import { searchReliableSources } from "@/lib/tavilyClient";
 
-const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
+// Simple debug logger that works in both local and production (Vercel)
+const debugLog = (...args: any[]) => {
+  console.log("[topic-browsing-debug]", ...args);
+};
 
 // Tavily Search - single source of truth for external search
 async function searchWithTavily(query: string, maxResults: number = 5): Promise<Array<{ title: string; url: string; snippet?: string }>> {
@@ -21,14 +23,14 @@ async function searchWithTavily(query: string, maxResults: number = 5): Promise<
 
     // #region agent log
     const log = {location:'topicBrowsing.ts:20',message:'Tavily search completed',data:{query,resultsCount:results.length},timestamp:Date.now(),sessionId:'debug-session',runId:'topic-browsing',hypothesisId:'topic-browsing'};
-    try { appendFileSync(logPath, JSON.stringify(log) + '\n'); } catch {}
+    debugLog(log);
     // #endregion
 
     return results;
   } catch (error) {
     // #region agent log
     const log = {location:'topicBrowsing.ts:28',message:'Tavily search error',data:{error:(error as Error).message,query},timestamp:Date.now(),sessionId:'debug-session',runId:'topic-browsing',hypothesisId:'topic-browsing'};
-    try { appendFileSync(logPath, JSON.stringify(log) + '\n'); } catch {}
+    debugLog(log);
     // #endregion
     console.error('[topic-browsing] Tavily search error:', error);
     return []; // Return empty array on error - no fallback
@@ -59,7 +61,7 @@ export function shouldUseBrowsing(params: TopicBrowsingParams): boolean {
   if (platform && platform.trim().length > 0) {
     // #region agent log
     const log = {location:'topicBrowsing.ts:70',message:'Browsing enabled - platform provided',data:{platform,niche,reason:'platform_provided'},timestamp:Date.now(),sessionId:'debug-session',runId:'topic-browsing',hypothesisId:'browsing-decision'};
-    try { appendFileSync(logPath, JSON.stringify(log) + '\n'); } catch {}
+    debugLog(log);
     // #endregion
     return true;
   }
@@ -75,7 +77,7 @@ export function shouldUseBrowsing(params: TopicBrowsingParams): boolean {
   
   // #region agent log
   const log = {location:'topicBrowsing.ts:85',message:'Browsing decision',data:{needsFreshData,platform,niche,reason:'niche_keywords'},timestamp:Date.now(),sessionId:'debug-session',runId:'topic-browsing',hypothesisId:'browsing-decision'};
-  try { appendFileSync(logPath, JSON.stringify(log) + '\n'); } catch {}
+  debugLog(log);
   // #endregion
   
   return needsFreshData;
@@ -102,7 +104,7 @@ export async function browseForTopics(params: TopicBrowsingParams): Promise<{
   
   // #region agent log
   const log = {location:'topicBrowsing.ts:100',message:'Starting topic browsing',data:{niche,platform},timestamp:Date.now(),sessionId:'debug-session',runId:'topic-browsing',hypothesisId:'topic-browsing'};
-  try { appendFileSync(logPath, JSON.stringify(log) + '\n'); } catch {}
+  debugLog(log);
   // #endregion
 
   // Generate search queries
@@ -167,7 +169,7 @@ export async function browseForTopics(params: TopicBrowsingParams): Promise<{
 
   // #region agent log
   const resultLog = {location:'topicBrowsing.ts:160',message:'Topic browsing completed',data:{serpCount:serpResults.length,officialCount:officialResources.length,competitorCount:competitorContent.length,dataCount:recentData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'topic-browsing',hypothesisId:'topic-browsing'};
-  try { appendFileSync(logPath, JSON.stringify(resultLog) + '\n'); } catch {}
+  debugLog(resultLog);
   // #endregion
 
   return {

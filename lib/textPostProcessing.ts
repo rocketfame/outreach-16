@@ -159,9 +159,8 @@ Important:
   });
 
   // #region agent log
-  const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
   const extractionLog = {location:'textPostProcessing.ts:120',message:'[light-human-edit] HTML tags extracted',data:{originalLength:text.length,htmlTagsCount:htmlElements.length,textWithPlaceholdersLength:textWithPlaceholders.length},timestamp:Date.now(),sessionId:'debug-session',runId:'light-human-edit',hypothesisId:'html-extraction'};
-  try { require('fs').appendFileSync(logPath, JSON.stringify(extractionLog) + '\n'); } catch {}
+  console.log("[text-post-processing-debug]", extractionLog);
   // #endregion
 
   // Create rewrite prompt
@@ -181,7 +180,7 @@ Important:
   try {
     // #region agent log
     const apiCallLog = {location:'textPostProcessing.ts:145',message:'[light-human-edit] Calling OpenAI API',data:{model:'gpt-5.1',temperature:0.6},timestamp:Date.now(),sessionId:'debug-session',runId:'light-human-edit',hypothesisId:'openai-call'};
-    try { require('fs').appendFileSync(logPath, JSON.stringify(apiCallLog) + '\n'); } catch {}
+    console.log("[text-post-processing-debug]", apiCallLog);
     // #endregion
 
     const completion = await openaiClient.chat.completions.create({
@@ -203,7 +202,7 @@ Important:
 
     // #region agent log
     const rewriteSuccessLog = {location:'textPostProcessing.ts:165',message:'[light-human-edit] OpenAI response received',data:{rewrittenLength:rewritten.length,placeholdersFound:htmlElements.length},timestamp:Date.now(),sessionId:'debug-session',runId:'light-human-edit',hypothesisId:'openai-response'};
-    try { require('fs').appendFileSync(logPath, JSON.stringify(rewriteSuccessLog) + '\n'); } catch {}
+    console.log("[text-post-processing-debug]", rewriteSuccessLog);
     // #endregion
 
     // Restore all HTML elements in reverse order to avoid conflicts
@@ -215,14 +214,14 @@ Important:
 
     // #region agent log
     const restorationLog = {location:'textPostProcessing.ts:175',message:'[light-human-edit] HTML tags restored',data:{finalLength:rewritten.length,restoredTagsCount:htmlElements.length},timestamp:Date.now(),sessionId:'debug-session',runId:'light-human-edit',hypothesisId:'html-restoration'};
-    try { require('fs').appendFileSync(logPath, JSON.stringify(restorationLog) + '\n'); } catch {}
+    console.log("[text-post-processing-debug]", restorationLog);
     // #endregion
 
     return rewritten;
   } catch (error) {
     // #region agent log
     const errorLog = {location:'textPostProcessing.ts:180',message:'[light-human-edit] Error during rewrite',data:{error:(error as Error).message,errorName:(error as Error).name},timestamp:Date.now(),sessionId:'debug-session',runId:'light-human-edit',hypothesisId:'error-handling'};
-    try { require('fs').appendFileSync(logPath, JSON.stringify(errorLog) + '\n'); } catch {}
+    console.log("[text-post-processing-debug]", errorLog);
     // #endregion
     console.error('[text-post-processing] Light human edit failed, returning original text:', error);
     return text; // Return original text if rewrite fails

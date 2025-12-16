@@ -3,7 +3,11 @@
 import OpenAI from "openai";
 import { buildArticlePrompt } from "@/lib/articlePrompt";
 import { cleanText, lightHumanEdit } from "@/lib/textPostProcessing";
-import { appendFileSync } from "fs";
+
+// Simple debug logger that works in both local and production (Vercel)
+const debugLog = (...args: any[]) => {
+  console.log("[articles-api-debug]", ...args);
+};
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -45,9 +49,8 @@ export interface ArticleResponse {
 
 export async function POST(req: Request) {
   // #region agent log
-  const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
   const logEntry = {location:'articles/route.ts:35',message:'POST /api/articles called',data:{hasApiKey:!!process.env.OPENAI_API_KEY},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-  try { appendFileSync(logPath, JSON.stringify(logEntry) + '\n'); } catch (e) { console.error('Log write error:', e); }
+  debugLog(logEntry);
   // #endregion
 
   if (!process.env.OPENAI_API_KEY) {
@@ -71,7 +74,7 @@ export async function POST(req: Request) {
 
     // #region agent log
     const bodyLog = {location:'articles/route.ts:48',message:'Request body parsed',data:{topicsCount:selectedTopics.length,hasBrief:!!brief,hasKeywords:keywordList.length>0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-    try { appendFileSync(logPath, JSON.stringify(bodyLog) + '\n'); } catch {}
+    debugLog(bodyLog);
     // #endregion
 
     if (!selectedTopics || selectedTopics.length === 0) {
@@ -102,7 +105,7 @@ export async function POST(req: Request) {
 
         // #region agent log
         const promptBuildLog = {location:'articles/route.ts:94',message:'Building article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
-        try { appendFileSync(logPath, JSON.stringify(promptBuildLog) + '\n'); } catch {}
+        debugLog(promptBuildLog);
         // #endregion
 
         // Build the article prompt
@@ -124,12 +127,12 @@ export async function POST(req: Request) {
         
         // #region agent log
         const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{trustSourcesCount:trustSourcesList.length,trustSources:trustSourcesList.slice(0,3),hasTrustSources:trustSourcesList.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
-        try { appendFileSync(logPath, JSON.stringify(trustSourcesLog) + '\n'); } catch {}
+        debugLog(trustSourcesLog);
         // #endregion
 
         // #region agent log
         const promptLog = {location:'articles/route.ts:75',message:'Article prompt built',data:{promptLength:prompt.length,topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-        try { appendFileSync(logPath, JSON.stringify(promptLog) + '\n'); } catch {}
+        debugLog(promptLog);
         // #endregion
 
         // Build system message
@@ -143,7 +146,7 @@ Language: US English.`;
         // Call OpenAI API with system + user messages
         // #region agent log
         const beforeApiLog = {location:'articles/route.ts:103',message:'About to call OpenAI API',data:{model:'gpt-5.1',hasSystemMessage:!!systemMessage,hasUserPrompt:!!prompt,promptLength:prompt.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-        try { appendFileSync(logPath, JSON.stringify(beforeApiLog) + '\n'); } catch {}
+        debugLog(beforeApiLog);
         // #endregion
 
         let completion;
@@ -170,7 +173,7 @@ Language: US English.`;
             // If response_format or reasoning_effort is not supported, try without them
             // #region agent log
             const formatErrorLog = {location:'articles/route.ts:125',message:'response_format or reasoning_effort not supported, trying without them',data:{error:(formatError as Error).message,errorCode:formatError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-            try { appendFileSync(logPath, JSON.stringify(formatErrorLog) + '\n'); } catch {}
+            debugLog(formatErrorLog);
             // #endregion
             try {
               // Try with reasoning_effort but without response_format
@@ -193,7 +196,7 @@ Language: US English.`;
               // If reasoning_effort is not supported, fall back to standard call
               // #region agent log
               const reasoningErrorLog = {location:'articles/route.ts:165',message:'reasoning_effort not supported, using standard mode',data:{error:(reasoningError as Error).message,errorCode:reasoningError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'thinking-mode'};
-              try { appendFileSync(logPath, JSON.stringify(reasoningErrorLog) + '\n'); } catch {}
+              debugLog(reasoningErrorLog);
               // #endregion
               completion = await openai.chat.completions.create({
                 model: "gpt-5.1",
@@ -214,7 +217,7 @@ Language: US English.`;
         } catch (apiError: any) {
           // #region agent log
           const apiErrorLog = {location:'articles/route.ts:150',message:'OpenAI API call failed',data:{error:(apiError as Error).message,errorName:(apiError as Error).name,errorStatus:apiError?.status,errorCode:apiError?.code,errorType:apiError?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-          try { appendFileSync(logPath, JSON.stringify(apiErrorLog) + '\n'); } catch {}
+          debugLog(apiErrorLog);
           // #endregion
           throw apiError;
         }
@@ -223,7 +226,7 @@ Language: US English.`;
 
         // #region agent log
         const apiLog = {location:'articles/route.ts:135',message:'OpenAI API success',data:{contentLength:content.length,topicTitle:topic.title,hasContent:!!content,contentPreview:content.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-        try { appendFileSync(logPath, JSON.stringify(apiLog) + '\n'); } catch {}
+        debugLog(apiLog);
         // #endregion
 
         // Parse JSON response
@@ -244,7 +247,7 @@ Language: US English.`;
         } catch (parseError) {
           // #region agent log
           const parseErrorLog = {location:'articles/route.ts:150',message:'JSON parse error',data:{error:(parseError as Error).message,errorName:(parseError as Error).name,contentLength:content.length,contentPreview:content.substring(0,500),jsonContentPreview:jsonContent ? jsonContent.substring(0,500) : 'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-          try { appendFileSync(logPath, JSON.stringify(parseErrorLog) + '\n'); } catch {}
+          debugLog(parseErrorLog);
           // #endregion
           console.error("JSON parse error:", parseError);
           console.error("Content that failed to parse:", content.substring(0, 500));
@@ -263,7 +266,7 @@ Language: US English.`;
 
         // #region agent log
         const cleaningLog = {location:'articles/route.ts:250',message:'Text cleaning applied',data:{titleTagLength:cleanedTitleTag.length,metaDescriptionLength:cleanedMetaDescription.length,articleBodyHtmlLength:cleanedArticleBodyHtml.length,originalLength:(parsedResponse.articleBodyHtml || content).length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'text-cleaning'};
-        try { appendFileSync(logPath, JSON.stringify(cleaningLog) + '\n'); } catch {}
+        debugLog(cleaningLog);
         // #endregion
 
         // Optional: Light human edit for natural variation
@@ -272,19 +275,19 @@ Language: US English.`;
           try {
             // #region agent log
             const editStartLog = {location:'articles/route.ts:255',message:'Starting light human edit',data:{topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
-            try { appendFileSync(logPath, JSON.stringify(editStartLog) + '\n'); } catch {}
+            debugLog(editStartLog);
             // #endregion
 
             cleanedArticleBodyHtml = await lightHumanEdit(cleanedArticleBodyHtml, openai, { preserveHtml: true });
 
             // #region agent log
             const editCompleteLog = {location:'articles/route.ts:260',message:'Light human edit completed',data:{topicTitle:topic.title,newLength:cleanedArticleBodyHtml.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
-            try { appendFileSync(logPath, JSON.stringify(editCompleteLog) + '\n'); } catch {}
+            debugLog(editCompleteLog);
             // #endregion
           } catch (editError) {
             // #region agent log
             const editErrorLog = {location:'articles/route.ts:265',message:'Light human edit failed, using cleaned text',data:{error:(editError as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
-            try { appendFileSync(logPath, JSON.stringify(editErrorLog) + '\n'); } catch {}
+            debugLog(editErrorLog);
             // #endregion
             console.error('[articles-api] Light human edit failed:', editError);
             // Continue with cleaned text if edit fails
@@ -304,7 +307,7 @@ Language: US English.`;
         const hasTrustSourceLinks = /<a\s+href=["'][^"']+["']>[^<]*(Social Blade|Tubular Labs|Think Media|VidIQ|YouTube|Hootsuite|Sprout Social)[^<]*<\/a>/gi.test(articleHtml);
         const trustSourceLinkCount = (articleHtml.match(/<a\s+href=["'][^"']+["']>/gi) || []).length;
         const responseLog = {location:'articles/route.ts:280',message:'Article response prepared',data:{topicTitle:topic.title,hasTitleTag:!!parsedResponse.titleTag,hasMetaDescription:!!parsedResponse.metaDescription,articleBodyHtmlLength:articleHtml.length,hasH1Prefix:/H1:\s*/gi.test(articleHtml),hasH2Prefix:/H2:\s*/gi.test(articleHtml),hasH3Prefix:/H3:\s*/gi.test(articleHtml),hasTrustSourceLinks,trustSourceLinkCount,totalLinksCount:trustSourceLinkCount,lightHumanEditEnabled:enableLightHumanEdit,preview:articleHtml.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'html-format'};
-        try { appendFileSync(logPath, JSON.stringify(responseLog) + '\n'); } catch {}
+        debugLog(responseLog);
         // #endregion
         
         generatedArticles.push(articleResponse);
@@ -316,7 +319,7 @@ Language: US English.`;
       } catch (error) {
         // #region agent log
         const topicErrorLog = {location:'articles/route.ts:175',message:'Error generating article for topic',data:{topicTitle:topic.title,error:(error as Error).message,errorName:(error as Error).name,errorStack:(error as Error).stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-        try { appendFileSync(logPath, JSON.stringify(topicErrorLog) + '\n'); } catch {}
+        debugLog(topicErrorLog);
         // #endregion
         console.error(`Error generating article for topic ${topic.title}:`, error);
         // Continue with other topics even if one fails
@@ -325,7 +328,7 @@ Language: US English.`;
 
     // #region agent log
     const successLog = {location:'articles/route.ts:140',message:'Articles generation completed',data:{articlesCount:generatedArticles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-    try { appendFileSync(logPath, JSON.stringify(successLog) + '\n'); } catch {}
+    debugLog(successLog);
     // #endregion
 
     return new Response(
@@ -335,7 +338,7 @@ Language: US English.`;
   } catch (err) {
     // #region agent log
     const errorLog = {location:'articles/route.ts:147',message:'Articles generation error',data:{error:(err as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-    try { appendFileSync(logPath, JSON.stringify(errorLog) + '\n'); } catch {}
+    debugLog(errorLog);
     // #endregion
     console.error("Article generation error", err);
     return new Response(
