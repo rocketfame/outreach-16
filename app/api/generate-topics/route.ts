@@ -35,6 +35,15 @@ export async function POST(req: Request) {
     );
   }
 
+  // Additional validation: reject demo keys
+  if (tavilyApiKey.startsWith("tvly-dev")) {
+    console.error("TAVILY_API_KEY is set to demo key (tvly-dev). Please set a real production key in Vercel Environment Variables.");
+    return new Response(
+      JSON.stringify({ error: "TAVILY_API_KEY is set to demo key. Please configure a real production key in Vercel." }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     // #region agent log
     const errorLog = {location:'generate-topics/route.ts:17',message:'Missing API key',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
