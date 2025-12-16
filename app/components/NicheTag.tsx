@@ -20,10 +20,10 @@ export function NicheTag({ label, selected = false, className = "", ...props }: 
         font-inherit
         ${
           selected
-            ? "bg-gradient-to-r from-[#FF4B9A]/15 via-[#FF7AC4]/15 to-[#FFC5E6]/15 border-[1.5px] border-[#FF6B9D] text-[#FF6B9D]"
-            : "bg-gradient-to-r from-[#FF4B9A]/5 via-[#FF7AC4]/5 to-[#FFC5E6]/5 border-[1.5px] border-[var(--border)] text-[var(--foreground)]"
+            ? "bg-gradient-to-r from-[#FF4B9A]/8 via-[#FF7AC4]/8 to-[#FFC5E6]/8 border-[1.5px] border-[#FF6B9D] text-[var(--foreground)]"
+            : "bg-gradient-to-r from-[#FF4B9A]/3 via-[#FF7AC4]/3 to-[#FFC5E6]/3 border-[1.5px] border-[var(--border)] text-[var(--foreground)]"
         }
-        hover:border-[#FF6B9D] hover:bg-gradient-to-r hover:from-[#FF4B9A]/10 hover:via-[#FF7AC4]/10 hover:to-[#FFC5E6]/10 hover:text-[#FF6B9D]
+        hover:border-[#FF6B9D] hover:bg-gradient-to-r hover:from-[#FF4B9A]/6 hover:via-[#FF7AC4]/6 hover:to-[#FFC5E6]/6 hover:text-[var(--foreground)]
         active:scale-[0.98]
         ${className}
       `}
