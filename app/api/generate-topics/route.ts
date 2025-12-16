@@ -10,6 +10,12 @@ const openai = new OpenAI({
 });
 
 export async function POST(req: Request) {
+  // Log Tavily API key prefix for debugging (without exposing full key)
+  console.log(
+    "TAVILY_API_KEY prefix in prod:",
+    (process.env.TAVILY_API_KEY || "undefined").slice(0, 10)
+  );
+
   // #region agent log
   const logPath = '/Users/serhiosider/Downloads/outreach-articles-app-main 2/.cursor/debug.log';
   const logEntry = {location:'generate-topics/route.ts:12',message:'POST /api/generate-topics called',data:{hasApiKey:!!process.env.OPENAI_API_KEY,routeExists:true},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
