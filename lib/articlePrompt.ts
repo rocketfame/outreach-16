@@ -144,10 +144,12 @@ CRITICAL RULES - READ CAREFULLY:
    - If [[TRUST_SOURCES_LIST]] contains no relevant sources for your specific topic,
      write the article WITHOUT any external sources and links.
 
-4. Number of sources
-   - Use about 1–3 external sources per article, only where they naturally
-     support a specific point: a stat, a definition, a documented trend, 
-     or a platform guideline.
+4. Number of sources - MANDATORY REQUIREMENT
+   - You MUST use EXACTLY 1-3 external sources per article. This is MANDATORY, not optional.
+   - You MUST integrate at least 1 external source, even if you need to find the most relevant one from [[TRUST_SOURCES_LIST]].
+   - If [[TRUST_SOURCES_LIST]] contains sources, you MUST use 1-3 of them. Do NOT skip external links.
+   - Never write an article without external trust sources when sources are available.
+   - Only if [[TRUST_SOURCES_LIST]] is completely empty (no sources provided), you may write without external links, but this should be rare.
    - Never stack long chains of citations. One strong source per point is enough.
 
 5. How to write in-text references - ORGANIC INTEGRATION REQUIRED
@@ -201,15 +203,19 @@ CRITICAL RULES - READ CAREFULLY:
      b) The anchor text is short (2-5 words) and natural
      c) The link flows naturally within the sentence
 
-7. If nothing is usable
-   - If [[TRUST_SOURCES_LIST]] is empty, or all results look irrelevant to your topic,
-     write the article WITHOUT any external sources and links.
-   - Focus on strong reasoning, examples from experience, and clear explanations.
-   - Explicitly DO NOT invent any sources in this case.
-   - It is BETTER to write an article with NO external links than to use irrelevant or invented sources.
+7. MANDATORY SOURCE USAGE
+   - If [[TRUST_SOURCES_LIST]] contains ANY sources, you MUST use at least 1-3 of them.
+   - You MUST find the most relevant sources from the list, even if they're not perfectly matched.
+   - Only if [[TRUST_SOURCES_LIST]] is completely empty (no sources at all), you may write without external links.
+   - CRITICAL: When sources are available, skipping external links is FORBIDDEN.
+   - If all sources seem slightly off-topic, choose the 1-3 most relevant ones and integrate them naturally.
+   - Focus on strong reasoning, examples from experience, and clear explanations, BUT always include 1-3 external trust sources when available.
 
-8. FINAL VALIDATION STEP
-   - Before finalizing your article, review every external link you included.
+8. MANDATORY VALIDATION - EXTERNAL LINKS REQUIRED
+   - Before finalizing your article, verify that you have included EXACTLY 1-3 external trust source links.
+   - If you have 0 external links and [[TRUST_SOURCES_LIST]] is not empty, you MUST add at least 1 link.
+   - If you have more than 3 external links, reduce to 3 by keeping only the most relevant ones.
+   - Each external link must be from [[TRUST_SOURCES_LIST]] and integrated naturally into the article body.
    - For each link, verify:
      a) "Does this EXACT URL exist in [[TRUST_SOURCES_LIST]]?"
      b) "Is the anchor text short (2-5 words) and natural, NOT a full URL?"
@@ -217,6 +223,7 @@ CRITICAL RULES - READ CAREFULLY:
    - If ANY link does not match an entry in [[TRUST_SOURCES_LIST]], REMOVE IT immediately.
    - If ANY link uses a full URL as anchor text, REPLACE it with a short natural phrase.
    - If you cannot verify a source, do not use it.
+   - CRITICAL: Final check - count your external links. You MUST have 1-3 links from [[TRUST_SOURCES_LIST]] (unless the list is completely empty).
 
 9. EXAMPLES OF CORRECT vs INCORRECT INTEGRATION
    

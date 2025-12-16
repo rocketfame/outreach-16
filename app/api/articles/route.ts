@@ -61,6 +61,14 @@ export async function POST(req: Request) {
     const body: ArticleRequest = await req.json();
     const { brief, selectedTopics, keywordList = [], trustSourcesList = [] } = body;
 
+    // Validate that trust sources are provided (mandatory for article generation)
+    if (!trustSourcesList || trustSourcesList.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Cannot generate articles without trust sources. Trust sources are mandatory (1-3 per article). Please ensure browsing/search is working correctly." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // #region agent log
     const bodyLog = {location:'articles/route.ts:48',message:'Request body parsed',data:{topicsCount:selectedTopics.length,hasBrief:!!brief,hasKeywords:keywordList.length>0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
     try { appendFileSync(logPath, JSON.stringify(bodyLog) + '\n'); } catch {}

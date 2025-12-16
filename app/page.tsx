@@ -559,8 +559,13 @@ export default function Home() {
       // Wait for all link finding requests to complete
       await Promise.all(linkPromises);
 
-      // Use ONLY Tavily-validated sources (empty array if none found, but still proceed)
+      // Use ONLY Tavily-validated sources
       const trustSourcesList = Array.from(allTrustSources);
+      
+      // Validate that we have trust sources before proceeding
+      if (trustSourcesList.length === 0) {
+        throw new Error("Cannot generate articles: No trust sources found via browsing. Please ensure Tavily API key is configured or check your search query.");
+      }
 
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:560',message:'Calling /api/articles with trust sources',data:{topicsCount:selectedTopicsData.length,trustSourcesCount:trustSourcesList.length,usingDynamic:allTrustSources.size > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
