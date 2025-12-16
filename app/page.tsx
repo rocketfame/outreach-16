@@ -3,6 +3,7 @@
 import { ChangeEvent, useState, useEffect, useRef } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
+import { NicheTag } from "./components/NicheTag";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle } from "./hooks/usePersistentAppState";
 
 type LoadingStep = "topics" | "outline" | "draft" | null;
@@ -993,14 +994,12 @@ export default function Home() {
                   "Multi-platform music promotion",
                   "Playlist & chart promotion"
                 ].map((preset) => (
-                  <button
+                  <NicheTag
                     key={preset}
-                    type="button"
-                    className="niche-preset-chip"
+                    label={preset}
+                    selected={brief.niche === preset}
                     onClick={() => updateBrief({ niche: preset })}
-                  >
-                    {preset}
-                  </button>
+                  />
                 ))}
               </div>
             </label>
@@ -1095,14 +1094,12 @@ export default function Home() {
                   "Tidal",
                   "Music industry"
                 ].map((preset) => (
-                  <button
+                  <NicheTag
                     key={preset}
-                    type="button"
-                    className="niche-preset-chip"
+                    label={preset}
+                    selected={brief.platform === preset}
                     onClick={() => updateBrief({ platform: preset })}
-                  >
-                    {preset}
-                  </button>
+                  />
                 ))}
               </div>
             </label>
