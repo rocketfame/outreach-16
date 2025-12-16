@@ -153,7 +153,7 @@ export default function Home() {
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:266',message:'generateTopics called',data:{briefNiche:brief.niche,briefLanguage:brief.language,briefPlatform:brief.platform,briefAnchorText:brief.anchorText,briefAnchorUrl:brief.anchorUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
     // #endregion
-    if (!brief.niche.trim() || !brief.language.trim()) {
+    if (!brief.niche.trim() || !(brief.language || "English").trim()) {
       alert("Please fill in at least the niche and language first.");
       return;
     }
@@ -1017,17 +1017,59 @@ export default function Home() {
 
             <label>
               <span>Language</span>
-                  <select
-                value={brief.language}
-                onChange={handleBriefChange("language")}
-                  >
-                    <option value="">Select a language</option>
-                    <option value="English">English</option>
-                    <option value="Ukrainian">Ukrainian</option>
-                    <option value="German">German</option>
-                  </select>
-                  <small>More languages will be added in the future</small>
-                </label>
+              <select
+                value={
+                  brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language)
+                    ? "Other (custom)"
+                    : (brief.language || "English")
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "Other (custom)") {
+                    // Show custom input field, keep current language value if it's custom
+                    const currentCustom = brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language)
+                      ? brief.language
+                      : "";
+                    updateBrief({ 
+                      language: currentCustom,
+                      customLanguage: currentCustom
+                    });
+                  } else {
+                    // Standard language selected - clear customLanguage
+                    updateBrief({ 
+                      language: value,
+                      customLanguage: undefined
+                    });
+                  }
+                }}
+              >
+                <option value="English">English</option>
+                <option value="German">German</option>
+                <option value="Spanish">Spanish</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="French">French</option>
+                <option value="Italian">Italian</option>
+                <option value="Polish">Polish</option>
+                <option value="Ukrainian">Ukrainian</option>
+                <option value="Other (custom)">Other (custom)</option>
+              </select>
+              {brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language) && (
+                <input
+                  type="text"
+                  value={brief.language}
+                  onChange={(e) => {
+                    const customValue = e.target.value;
+                    updateBrief({ 
+                      language: customValue, // Store custom value directly in language field
+                      customLanguage: customValue 
+                    });
+                  }}
+                  placeholder="Enter custom language"
+                  style={{ marginTop: "8px" }}
+                />
+              )}
+              <small>Select the language for article generation</small>
+            </label>
 
             <label>
               <span>Main platform focus</span>
@@ -1035,9 +1077,34 @@ export default function Home() {
                 type="text"
                 value={brief.platform || ""}
                 onChange={handleBriefChange("platform")}
-                placeholder="e.g. Multi platform, Spotify, YouTube, TikTok, Instagram, SoundCloud, Beatport, or any custom query"
+                placeholder="e.g. Multi-platform, Spotify, YouTube, TikTok, Instagram, SoundCloud, Beatport, or any custom query"
               />
-              <small>Enter the core platform or any custom query. This value will be used to search for relevant topics via Tavily browsing. Examples: "Spotify", "YouTube Shorts", "TikTok for musicians", "Multi platform", or leave empty for general topics.</small>
+              <small>Select a preset or enter a custom platform/query. This value will be used to search for relevant topics via Tavily browsing.</small>
+              
+              {/* Platform Preset Chips */}
+              <div className="niche-presets">
+                {[
+                  "Multi-platform",
+                  "Spotify",
+                  "YouTube",
+                  "TikTok",
+                  "Instagram",
+                  "SoundCloud",
+                  "Beatport",
+                  "Deezer",
+                  "Tidal",
+                  "Music industry"
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="niche-preset-chip"
+                    onClick={() => updateBrief({ platform: preset })}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
             </label>
 
             <label>
