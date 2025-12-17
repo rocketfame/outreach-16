@@ -18,6 +18,9 @@ export default function Home() {
   const generatedArticles = persistedState.articles;
   const mode = persistedState.mode;
   const lightHumanEditEnabled = persistedState.lightHumanEditEnabled;
+  const clientBrief = persistedState.clientBrief || "";
+  const originalArticle = persistedState.originalArticle || "";
+  const rewriteParams = persistedState.rewriteParams || {};
 
   // Local UI state (not persisted)
   const [expandedClusterNames, setExpandedClusterNames] = useState<Set<string>>(new Set());
@@ -50,6 +53,27 @@ export default function Home() {
       ...prev,
       topicClusters: data,
       topicOverview: data?.overview || null,
+    }));
+  };
+
+  const updateClientBrief = (brief: string) => {
+    setPersistedState(prev => ({
+      ...prev,
+      clientBrief: brief,
+    }));
+  };
+
+  const updateOriginalArticle = (article: string) => {
+    setPersistedState(prev => ({
+      ...prev,
+      originalArticle: article,
+    }));
+  };
+
+  const updateRewriteParams = (params: Partial<typeof rewriteParams>) => {
+    setPersistedState(prev => ({
+      ...prev,
+      rewriteParams: { ...prev.rewriteParams, ...params },
     }));
   };
 
@@ -119,7 +143,7 @@ export default function Home() {
     }
   };
 
-  const updateMode = (newMode: "discovery" | "direct") => {
+  const updateMode = (newMode: "discovery" | "direct" | "rewrite") => {
     setPersistedState(prev => ({
       ...prev,
       mode: newMode,
@@ -702,6 +726,272 @@ export default function Home() {
     await generateArticlesForTopics(selectedTopics, false);
   };
 
+  const generateArticleFromBrief = async () => {
+    if (clientBrief.length < 50) {
+      alert("Please provide a client brief with at least 50 characters.");
+      return;
+    }
+
+    setIsGeneratingArticles(true);
+    setGenerationStartTime(Date.now());
+    
+    // Create a temporary article entry
+    const tempArticleId = `direct-${Date.now()}`;
+    updateGeneratedArticles([
+      ...generatedArticles,
+      {
+        topicTitle: tempArticleId,
+        titleTag: "",
+        metaDescription: "",
+        fullArticleText: "",
+        status: "generating" as const,
+      }
+    ]);
+
+    try {
+      // Step 1: Find trust sources via Tavily based on brief
+      const queryParts = [
+        clientBrief.substring(0, 200), // First 200 chars as search query
+        brief.niche || "",
+        brief.platform || "",
+        "2024 2025",
+      ].filter(Boolean);
+      const searchQuery = queryParts.join(" ");
+
+      const linksResponse = await fetch("/api/find-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: searchQuery }),
+      });
+
+      if (!linksResponse.ok) {
+        const errorData = await linksResponse.json().catch(() => ({}));
+        throw new Error(`Failed to find trust sources: ${errorData.error || linksResponse.statusText}`);
+      }
+
+      const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
+      const trustSourcesList = linksData.trustSources.map(s => `${s.title}|${s.url}`);
+
+      if (trustSourcesList.length === 0) {
+        throw new Error("No trust sources found. Please ensure Tavily API key is configured.");
+      }
+
+      // Step 2: Generate article from brief
+      const response = await fetch("/api/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "directBrief",
+          brief: {
+            niche: brief.niche || "",
+            platform: brief.platform || "",
+            contentPurpose: brief.contentPurpose || "",
+            clientSite: brief.clientSite || "",
+            anchorText: brief.anchorText || "",
+            anchorUrl: brief.anchorUrl || "",
+            language: brief.language || "English",
+            wordCount: brief.wordCount || "1000",
+          },
+          clientBrief: clientBrief,
+          trustSourcesList: trustSourcesList,
+          lightHumanEdit: lightHumanEditEnabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error ?? "Failed to generate article from brief.");
+      }
+
+      const data = await response.json() as { articles: Array<{
+        topicTitle: string;
+        titleTag: string;
+        metaDescription: string;
+        fullArticleText: string;
+        articleBodyHtml?: string;
+      }> };
+
+      if (data.articles.length > 0) {
+        const newArticle = data.articles[0];
+        updateGeneratedArticles(
+          generatedArticles.map(a =>
+            a.topicTitle === tempArticleId
+              ? {
+                  ...newArticle,
+                  topicTitle: tempArticleId,
+                  status: "ready" as const,
+                }
+              : a
+          )
+        );
+
+        // Scroll to article
+        setTimeout(() => {
+          const articleElement = document.getElementById(`article-${tempArticleId}`);
+          if (articleElement) {
+            articleElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+
+        // Show notification
+        if (generationStartTime) {
+          const elapsedMs = Date.now() - generationStartTime;
+          const elapsedSeconds = Math.floor(elapsedMs / 1000);
+          const minutes = Math.floor(elapsedSeconds / 60);
+          const seconds = elapsedSeconds % 60;
+          const timeString = minutes > 0 
+            ? `${minutes} хв ${seconds} сек`
+            : `${seconds} сек`;
+          
+          setNotification({
+            message: "Article generated from brief",
+            time: timeString,
+            visible: true,
+          });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      const errorMessage = (error as Error).message || "Failed to generate article from brief. Please try again.";
+      alert(errorMessage);
+      
+      updateGeneratedArticles(
+        generatedArticles.map(a =>
+          a.topicTitle === tempArticleId
+            ? { ...a, status: "error" as const }
+            : a
+        )
+      );
+    } finally {
+      setIsGeneratingArticles(false);
+      if (generationStartTime) {
+        setGenerationStartTime(null);
+      }
+    }
+  };
+
+  const rewriteArticle = async () => {
+    if (originalArticle.length < 100) {
+      alert("Please provide an article with at least 100 characters.");
+      return;
+    }
+
+    setIsGeneratingArticles(true);
+    setGenerationStartTime(Date.now());
+    
+    // Create a temporary article entry
+    const tempArticleId = `rewrite-${Date.now()}`;
+    updateGeneratedArticles([
+      ...generatedArticles,
+      {
+        topicTitle: tempArticleId,
+        titleTag: "",
+        metaDescription: "",
+        fullArticleText: "",
+        status: "generating" as const,
+      }
+    ]);
+
+    try {
+      const response = await fetch("/api/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "rewrite",
+          originalArticle: originalArticle,
+          brief: {
+            niche: rewriteParams.niche || brief.niche || "",
+            platform: brief.platform || "",
+            contentPurpose: brief.contentPurpose || "",
+            clientSite: brief.clientSite || "",
+            anchorText: rewriteParams.anchorKeyword || brief.anchorText || "",
+            anchorUrl: brief.anchorUrl || "",
+            language: brief.language || "English",
+            wordCount: rewriteParams.targetWordCount?.toString() || brief.wordCount || "1000",
+          },
+          rewriteParams: {
+            niche: rewriteParams.niche,
+            brandName: rewriteParams.brandName,
+            anchorKeyword: rewriteParams.anchorKeyword,
+            targetWordCount: rewriteParams.targetWordCount,
+            style: rewriteParams.style,
+          },
+          lightHumanEdit: lightHumanEditEnabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error ?? "Failed to rewrite article.");
+      }
+
+      const data = await response.json() as { articles: Array<{
+        topicTitle: string;
+        titleTag: string;
+        metaDescription: string;
+        fullArticleText: string;
+        articleBodyHtml?: string;
+      }> };
+
+      if (data.articles.length > 0) {
+        const newArticle = data.articles[0];
+        updateGeneratedArticles(
+          generatedArticles.map(a =>
+            a.topicTitle === tempArticleId
+              ? {
+                  ...newArticle,
+                  topicTitle: tempArticleId,
+                  status: "ready" as const,
+                }
+              : a
+          )
+        );
+
+        // Scroll to article
+        setTimeout(() => {
+          const articleElement = document.getElementById(`article-${tempArticleId}`);
+          if (articleElement) {
+            articleElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+
+        // Show notification
+        if (generationStartTime) {
+          const elapsedMs = Date.now() - generationStartTime;
+          const elapsedSeconds = Math.floor(elapsedMs / 1000);
+          const minutes = Math.floor(elapsedSeconds / 60);
+          const seconds = elapsedSeconds % 60;
+          const timeString = minutes > 0 
+            ? `${minutes} хв ${seconds} сек`
+            : `${seconds} сек`;
+          
+          setNotification({
+            message: "Article rewritten successfully",
+            time: timeString,
+            visible: true,
+          });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      const errorMessage = (error as Error).message || "Failed to rewrite article. Please try again.";
+      alert(errorMessage);
+      
+      updateGeneratedArticles(
+        generatedArticles.map(a =>
+          a.topicTitle === tempArticleId
+            ? { ...a, status: "error" as const }
+            : a
+        )
+      );
+    } finally {
+      setIsGeneratingArticles(false);
+      if (generationStartTime) {
+        setGenerationStartTime(null);
+      }
+    }
+  };
+
   const toggleArticleEdit = (topicId: string) => {
     setEditingArticles(prev => {
       const next = new Set(prev);
@@ -962,12 +1252,30 @@ export default function Home() {
               </span>
               <span className="mode-tab-text">Direct Article Creation</span>
             </button>
+            <button
+              type="button"
+              className={`mode-tab ${mode === "rewrite" ? "active" : ""}`}
+              onClick={() => updateMode("rewrite")}
+            >
+              <span className="mode-tab-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M11.3333 2.66667L13.3333 4.66667" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M9.33333 4.66667L11.3333 6.66667" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2.66667 13.3333L6.66667 9.33333L10.6667 13.3333" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6.66667 9.33333L4.66667 7.33333L2.66667 9.33333" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2.66667 2.66667H6.66667V6.66667" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M13.3333 9.33333V13.3333H9.33333" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+              <span className="mode-tab-text">Rewrite Article</span>
+            </button>
           </div>
 
           {/* Main Card with Two Columns */}
           <div className="main-card">
           <div className="two-column-layout">
-            {/* Left Column: Project Basics */}
+            {/* Left Column: Project Basics (only for discovery mode) */}
+            {mode === "discovery" && (
             <div className="left-column">
               <h2 className="column-title">Project basics</h2>
               
@@ -1152,19 +1460,19 @@ export default function Home() {
                 </label>
               </div>
             </div>
+            )}
 
             {/* Right Column: Steps */}
             <div className="right-column">
-              {/* Step 1 - Topics */}
+              {/* Step 1 - Topics (only for discovery mode) */}
+              {mode === "discovery" && (
               <div className="step-card">
                 <div className="step-header">
                   <h3>Step 1 – Generate and approve topics</h3>
-                  {mode === "discovery" && (
-                    <p className="step-description">
-                      Tell the engine about your niche and link. It will research the landscape and return clusters of deep, non-generic topics with mini-briefs, so you can approve the best ones for article generation.
-                    </p>
-                  )}
-          </div>
+                  <p className="step-description">
+                    Tell the engine about your niche and link. It will research the landscape and return clusters of deep, non-generic topics with mini-briefs, so you can approve the best ones for article generation.
+                  </p>
+                </div>
           <button
             type="button"
                   className="btn-primary"
@@ -1390,16 +1698,16 @@ export default function Home() {
                   <p className="empty-state">Topic ideas will appear here after generation.</p>
                 )}
               </div>
+              )}
 
-              {/* Step 2 - Article Draft */}
+              {/* Step 2 - Article Draft (only for discovery mode) */}
+              {mode === "discovery" && (
               <div className={`step-card ${selectedTopicIds.length === 0 ? "step-card-inactive" : "step-card-active"}`}>
                 <div className="step-header">
                   <h3>Step 2 – Generate articles from selected topics</h3>
-                  {mode === "discovery" && (
-                    <p className="step-description">
-                      Choose any topics from Step 1 and turn them into fully written outreach or blog articles. The engine uses our internal templates and delivers clean, human-sounding content ready for editors.
-                    </p>
-                  )}
+                  <p className="step-description">
+                    Choose any topics from Step 1 and turn them into fully written outreach or blog articles. The engine uses our internal templates and delivers clean, human-sounding content ready for editors.
+                  </p>
                 </div>
 
                 <div className="step-content">
@@ -1454,6 +1762,176 @@ export default function Home() {
                   )}
                 </div>
               </div>
+              )}
+
+              {/* Direct Article Creation Mode - Single Step */}
+              {mode === "direct" && (
+              <div className="step-card step-card-active">
+                <div className="step-header">
+                  <h3>Step 1 – Generate article from brief</h3>
+                  <p className="step-description">
+                    Paste a detailed client brief or technical task (requirements, links, examples, tone, SEO details, etc.) and get a ready article. The system will analyze your brief, research trusted sources, and generate a complete article.
+                  </p>
+                </div>
+
+                <div className="step-content">
+                  <div className="form-fields">
+                    <label>
+                      <span>Client brief / technical task</span>
+                      <textarea
+                        value={clientBrief}
+                        onChange={(e) => updateClientBrief(e.target.value)}
+                        placeholder="Paste the detailed client brief here (topic, goals, target audience, tone, SEO requirements, links, examples, etc.)"
+                        rows={8}
+                        style={{ minHeight: "200px", resize: "vertical" }}
+                      />
+                      <small>
+                        {clientBrief.length} / 6000 characters
+                        {clientBrief.length < 50 && clientBrief.length > 0 && (
+                          <span style={{ color: "#f44336", marginLeft: "8px" }}>
+                            Minimum 50 characters required
+                          </span>
+                        )}
+                      </small>
+                    </label>
+                  </div>
+
+                  <div className="step-actions" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                    <div className="light-human-edit-toggle">
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={lightHumanEditEnabled}
+                          onChange={(e) => {
+                            setPersistedState(prev => ({
+                              ...prev,
+                              lightHumanEditEnabled: e.target.checked
+                            }));
+                          }}
+                        />
+                        <span className="checkbox-text">
+                          <strong>Light Human Edit</strong> (recommended)
+                          <span className="checkbox-hint">Improves text flow and naturalness</span>
+                        </span>
+                      </label>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={generateArticleFromBrief}
+                      disabled={isGeneratingArticles || clientBrief.length < 50}
+                    >
+                      {isGeneratingArticles ? "Generating…" : "Generate article from brief"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Rewrite Article Mode */}
+              {mode === "rewrite" && (
+              <div className="step-card step-card-active">
+                <div className="step-header">
+                  <h3>Step 1 – Rewrite article</h3>
+                  <p className="step-description">
+                    Paste an existing article and the AI will deeply analyze and rewrite it, improving structure, clarity, SEO, and overall quality while preserving the core meaning.
+                  </p>
+                </div>
+
+                <div className="step-content">
+                  <div className="form-fields">
+                    <label>
+                      <span>Original article</span>
+                      <textarea
+                        value={originalArticle}
+                        onChange={(e) => updateOriginalArticle(e.target.value)}
+                        placeholder="Paste the full article you want to rewrite or improve..."
+                        rows={10}
+                        style={{ minHeight: "250px", resize: "vertical" }}
+                      />
+                      <small>
+                        {originalArticle.length} characters
+                        {originalArticle.length < 100 && originalArticle.length > 0 && (
+                          <span style={{ color: "#f44336", marginLeft: "8px" }}>
+                            Minimum 100 characters required
+                          </span>
+                        )}
+                      </small>
+                    </label>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
+                      <label>
+                        <span>Niche or industry (optional)</span>
+                        <input
+                          type="text"
+                          value={rewriteParams.niche || ""}
+                          onChange={(e) => updateRewriteParams({ niche: e.target.value })}
+                          placeholder="e.g. Music promotion"
+                        />
+                      </label>
+
+                      <label>
+                        <span>Brand / company name (optional)</span>
+                        <input
+                          type="text"
+                          value={rewriteParams.brandName || ""}
+                          onChange={(e) => updateRewriteParams({ brandName: e.target.value })}
+                          placeholder="e.g. Universal Content Creator"
+                        />
+                      </label>
+
+                      <label>
+                        <span>Anchor / primary keyword (optional)</span>
+                        <input
+                          type="text"
+                          value={rewriteParams.anchorKeyword || ""}
+                          onChange={(e) => updateRewriteParams({ anchorKeyword: e.target.value })}
+                          placeholder="e.g. music promotion services"
+                        />
+                      </label>
+
+                      <label>
+                        <span>Target word count (optional)</span>
+                        <input
+                          type="number"
+                          value={rewriteParams.targetWordCount || ""}
+                          onChange={(e) => updateRewriteParams({ targetWordCount: e.target.value ? parseInt(e.target.value) : undefined })}
+                          placeholder="e.g. 1200"
+                          min="100"
+                        />
+                      </label>
+                    </div>
+
+                    <label style={{ marginTop: "1rem" }}>
+                      <span>Writing style (optional)</span>
+                      <select
+                        value={rewriteParams.style || ""}
+                        onChange={(e) => updateRewriteParams({ style: e.target.value || undefined })}
+                      >
+                        <option value="">Select style...</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="friendly-expert">Friendly Expert</option>
+                        <option value="journalistic">Journalistic</option>
+                        <option value="conversational">Conversational</option>
+                        <option value="professional">Professional</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="step-actions" style={{ display: "flex", justifyContent: "center" }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={rewriteArticle}
+                      disabled={isGeneratingArticles || originalArticle.length < 100}
+                    >
+                      {isGeneratingArticles ? "Rewriting…" : "Rewrite article"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              )}
 
               {/* Generated Articles Section */}
               {generatedArticles.length > 0 && (

@@ -51,8 +51,19 @@ export type AppPersistedState = {
   topicClusters: TopicResponse | null;
   selectedTopicIds: string[];
   articles: GeneratedArticle[];
-  mode: "discovery" | "direct";
+  mode: "discovery" | "direct" | "rewrite";
   lightHumanEditEnabled: boolean;
+  // New fields for Direct Article Creation
+  clientBrief?: string;
+  // New fields for Rewrite mode
+  originalArticle?: string;
+  rewriteParams?: {
+    niche?: string;
+    brandName?: string;
+    anchorKeyword?: string;
+    targetWordCount?: number;
+    style?: string;
+  };
 };
 
 const STORAGE_KEY = "ucca_state_v1";
@@ -74,6 +85,9 @@ const defaultState: AppPersistedState = {
   articles: [],
   mode: "discovery",
   lightHumanEditEnabled: true, // Default to enabled (recommended)
+  clientBrief: "",
+  originalArticle: "",
+  rewriteParams: {},
 };
 
 export function usePersistentAppState() {

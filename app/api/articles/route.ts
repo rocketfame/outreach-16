@@ -1,7 +1,7 @@
 // app/api/articles/route.ts
 
 import OpenAI from "openai";
-import { buildArticlePrompt } from "@/lib/articlePrompt";
+import { buildArticlePrompt, buildDirectBriefPrompt, buildRewritePrompt } from "@/lib/articlePrompt";
 import { cleanText, lightHumanEdit } from "@/lib/textPostProcessing";
 
 // Simple debug logger that works in both local and production (Vercel)
@@ -13,7 +13,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+export type GenerationMode = "topics" | "directBrief" | "rewrite";
+
 export interface ArticleRequest {
+  mode?: GenerationMode; // Defaults to "topics" for backward compatibility
   brief: {
     niche: string;
     platform?: string;
@@ -24,7 +27,7 @@ export interface ArticleRequest {
     language?: string;
     wordCount?: string;
   };
-  selectedTopics: Array<{
+  selectedTopics?: Array<{
     title: string;
     brief?: string;
     shortAngle?: string;
@@ -34,6 +37,17 @@ export interface ArticleRequest {
     evergreenNote?: string;
     competitionNote?: string;
   }>;
+  // For directBrief mode
+  clientBrief?: string;
+  // For rewrite mode
+  originalArticle?: string;
+  rewriteParams?: {
+    niche?: string;
+    brandName?: string;
+    anchorKeyword?: string;
+    targetWordCount?: number;
+    style?: string;
+  };
   keywordList?: string[];
   trustSourcesList?: string[];
   lightHumanEdit?: boolean; // Optional: enable light human edit post-processing
@@ -81,10 +95,44 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleRequest = await req.json();
-    const { brief, selectedTopics, keywordList = [], trustSourcesList = [] } = body;
+    const { 
+      mode = "topics", // Default to "topics" for backward compatibility
+      brief, 
+      selectedTopics = [], 
+      keywordList = [], 
+      trustSourcesList = [],
+      clientBrief,
+      originalArticle,
+      rewriteParams,
+    } = body;
 
-    // Validate that trust sources are provided (mandatory for article generation)
-    if (!trustSourcesList || trustSourcesList.length === 0) {
+    // Validate mode-specific requirements
+    if (mode === "directBrief") {
+      if (!clientBrief || clientBrief.trim().length < 50) {
+        return new Response(
+          JSON.stringify({ error: "Client brief is required and must be at least 50 characters." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    } else if (mode === "rewrite") {
+      if (!originalArticle || originalArticle.trim().length < 100) {
+        return new Response(
+          JSON.stringify({ error: "Original article is required and must be at least 100 characters." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // Mode "topics" - original flow
+      if (!selectedTopics || selectedTopics.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "No topics selected for article generation." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Validate that trust sources are provided (mandatory for article generation, except rewrite mode)
+    if (mode !== "rewrite" && (!trustSourcesList || trustSourcesList.length === 0)) {
       return new Response(
         JSON.stringify({ error: "Cannot generate articles without trust sources. Trust sources are mandatory (1-3 per article). Please ensure browsing/search is working correctly." }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -92,21 +140,183 @@ export async function POST(req: Request) {
     }
 
     // #region agent log
-    const bodyLog = {location:'articles/route.ts:48',message:'Request body parsed',data:{topicsCount:selectedTopics.length,hasBrief:!!brief,hasKeywords:keywordList.length>0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
+    const bodyLog = {location:'articles/route.ts:48',message:'Request body parsed',data:{mode,topicsCount:selectedTopics.length,hasBrief:!!brief,hasKeywords:keywordList.length>0,hasClientBrief:!!clientBrief,hasOriginalArticle:!!originalArticle},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
     debugLog(bodyLog);
     // #endregion
 
-    if (!selectedTopics || selectedTopics.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No topics selected for article generation." }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
     const generatedArticles: ArticleResponse[] = [];
 
-    // Generate article for each selected topic
-    for (const topic of selectedTopics) {
+    // Handle different modes
+    if (mode === "directBrief") {
+      // Direct Brief mode: Generate single article from client brief
+      try {
+        // Build prompt for direct brief mode
+        const prompt = buildDirectBriefPrompt({
+          clientBrief: clientBrief!,
+          niche: brief.niche || "",
+          platform: brief.platform || "multi-platform",
+          contentPurpose: brief.contentPurpose || "Guest post / outreach",
+          anchorText: brief.anchorText || "",
+          anchorUrl: brief.anchorUrl || brief.clientSite || "",
+          brandName: "PromosoundGroup",
+          keywordList: keywordList,
+          trustSourcesList: trustSourcesList,
+          language: brief.language || "English",
+          targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
+          wordCount: brief.wordCount || "1000",
+        });
+
+        const systemMessage = `You are an expert SEO Content Strategist and outreach content writer, native English speaker (US), with deep experience in social media, music marketing and creator economy. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
+
+Target audience: B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms.
+Brand to feature: PromosoundGroup
+Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
+Language: ${brief.language || "US English"}.`;
+
+        let completion;
+        try {
+          completion = await openai.chat.completions.create({
+            model: "gpt-5.1",
+            messages: [
+              { role: "system", content: systemMessage },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.7,
+            response_format: { type: "json_object" },
+          });
+        } catch (formatError: any) {
+          completion = await openai.chat.completions.create({
+            model: "gpt-5.1",
+            messages: [
+              { role: "system", content: systemMessage },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.7,
+          });
+        }
+
+        const content = completion.choices[0]?.message?.content ?? "";
+        let parsedResponse: { titleTag?: string; metaDescription?: string; articleBodyHtml?: string };
+        
+        try {
+          let jsonContent = content.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+          parsedResponse = JSON.parse(jsonContent);
+          if (!parsedResponse.titleTag || !parsedResponse.metaDescription || !parsedResponse.articleBodyHtml) {
+            throw new Error("Missing required fields in JSON response");
+          }
+        } catch (parseError) {
+          parsedResponse = {
+            titleTag: "Article",
+            metaDescription: "",
+            articleBodyHtml: content,
+          };
+        }
+
+        let cleanedTitleTag = cleanText(parsedResponse.titleTag || "Article");
+        let cleanedMetaDescription = cleanText(parsedResponse.metaDescription || "");
+        let cleanedArticleBodyHtml = cleanText(parsedResponse.articleBodyHtml || content);
+
+        if (body.lightHumanEdit) {
+          try {
+            cleanedArticleBodyHtml = await lightHumanEdit(cleanedArticleBodyHtml, openai, { preserveHtml: true });
+          } catch (editError) {
+            console.error('[articles-api] Light human edit failed:', editError);
+          }
+        }
+
+        generatedArticles.push({
+          topicTitle: "Direct Brief Article",
+          titleTag: cleanedTitleTag,
+          metaDescription: cleanedMetaDescription,
+          fullArticleText: cleanedArticleBodyHtml,
+          articleBodyHtml: cleanedArticleBodyHtml,
+        });
+      } catch (error) {
+        console.error("Error generating article from brief:", error);
+        throw error;
+      }
+    } else if (mode === "rewrite") {
+      // Rewrite mode: Deeply rewrite and improve existing article
+      try {
+        const prompt = buildRewritePrompt({
+          originalArticle: originalArticle!,
+          niche: rewriteParams?.niche || brief.niche || "",
+          brandName: rewriteParams?.brandName || "",
+          anchorKeyword: rewriteParams?.anchorKeyword || brief.anchorText || "",
+          targetWordCount: rewriteParams?.targetWordCount || parseInt(brief.wordCount || "1000"),
+          style: rewriteParams?.style || "neutral",
+          language: brief.language || "English",
+        });
+
+        const systemMessage = `You are an expert content editor and SEO specialist. Your task is to deeply analyze and rewrite articles, improving their structure, clarity, SEO optimization, and overall quality while preserving the core meaning and message.
+
+Language: ${brief.language || "US English"}.`;
+
+        let completion;
+        try {
+          completion = await openai.chat.completions.create({
+            model: "gpt-5.1",
+            messages: [
+              { role: "system", content: systemMessage },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.7,
+            response_format: { type: "json_object" },
+          });
+        } catch (formatError: any) {
+          completion = await openai.chat.completions.create({
+            model: "gpt-5.1",
+            messages: [
+              { role: "system", content: systemMessage },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.7,
+          });
+        }
+
+        const content = completion.choices[0]?.message?.content ?? "";
+        let parsedResponse: { titleTag?: string; metaDescription?: string; articleBodyHtml?: string };
+        
+        try {
+          let jsonContent = content.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+          parsedResponse = JSON.parse(jsonContent);
+          if (!parsedResponse.titleTag || !parsedResponse.metaDescription || !parsedResponse.articleBodyHtml) {
+            throw new Error("Missing required fields in JSON response");
+          }
+        } catch (parseError) {
+          parsedResponse = {
+            titleTag: "Rewritten Article",
+            metaDescription: "",
+            articleBodyHtml: content,
+          };
+        }
+
+        let cleanedTitleTag = cleanText(parsedResponse.titleTag || "Rewritten Article");
+        let cleanedMetaDescription = cleanText(parsedResponse.metaDescription || "");
+        let cleanedArticleBodyHtml = cleanText(parsedResponse.articleBodyHtml || content);
+
+        if (body.lightHumanEdit) {
+          try {
+            cleanedArticleBodyHtml = await lightHumanEdit(cleanedArticleBodyHtml, openai, { preserveHtml: true });
+          } catch (editError) {
+            console.error('[articles-api] Light human edit failed:', editError);
+          }
+        }
+
+        generatedArticles.push({
+          topicTitle: "Rewritten Article",
+          titleTag: cleanedTitleTag,
+          metaDescription: cleanedMetaDescription,
+          fullArticleText: cleanedArticleBodyHtml,
+          articleBodyHtml: cleanedArticleBodyHtml,
+        });
+      } catch (error) {
+        console.error("Error rewriting article:", error);
+        throw error;
+      }
+    } else {
+      // Original "topics" mode - Generate article for each selected topic
+      for (const topic of selectedTopics) {
       try {
         // Build comprehensive article brief from topic's deep brief fields
         const topicBriefParts = [
@@ -343,6 +553,7 @@ Language: US English.`;
         console.error(`Error generating article for topic ${topic.title}:`, error);
         // Continue with other topics even if one fails
       }
+    }
     }
 
     // #region agent log

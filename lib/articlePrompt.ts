@@ -340,3 +340,138 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
 
   return prompt;
 }
+
+// Direct Brief mode prompt builder
+export interface DirectBriefPromptParams {
+  clientBrief: string;
+  niche: string;
+  platform: string;
+  contentPurpose?: string;
+  anchorText: string;
+  anchorUrl: string;
+  brandName: string;
+  keywordList: string[];
+  trustSourcesList: string[];
+  language: string;
+  targetAudience: string;
+  wordCount: string;
+}
+
+export function buildDirectBriefPrompt(params: DirectBriefPromptParams): string {
+  const trustSourcesFormatted = params.trustSourcesList.length > 0 
+    ? params.trustSourcesList.join(", ")
+    : "";
+  
+  const sourcesVerificationBlock = params.trustSourcesList.length > 0
+    ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
+    : "\n\nVERIFICATION LIST: No external sources provided. Write the article WITHOUT any external links.\n";
+
+  return `You are an expert SEO Content Strategist and outreach content writer. Your task is to analyze a detailed client brief and create a fully written article that meets all requirements.
+
+CLIENT BRIEF:
+${params.clientBrief}
+
+CONTEXT:
+• Niche: ${params.niche}
+• Platform focus: ${params.platform}
+• Content purpose: ${params.contentPurpose || "Guest post / outreach"}
+• Target audience: ${params.targetAudience}
+• Language: ${params.language}
+• Target word count: ${params.wordCount} words
+• Brand to feature: ${params.brandName || "NONE"}
+• Anchor text (use EXACTLY): ${params.anchorText}
+• Anchor URL (use EXACTLY): ${params.anchorUrl}
+• Keywords: ${params.keywordList.join(", ")}
+
+TRUST SOURCES (use 1-3 of these):
+${trustSourcesFormatted}
+${sourcesVerificationBlock}
+
+REQUIREMENTS:
+1. Analyze the client brief thoroughly and extract all requirements (topic, goals, target audience, tone, SEO requirements, links, examples, etc.).
+2. Create a complete article that addresses all aspects mentioned in the brief.
+3. Use the same quality standards as the standard article generation:
+   - Human-written style (vary sentence length, avoid generic phrases, use concrete examples)
+   - Clear structure with H1/H2/H3 headings
+   - Natural integration of anchor text and brand (if provided)
+   - Use 1-3 external trust sources from the list above
+   - SEO-optimized title tag and meta description
+4. Follow all formatting rules from the standard article prompt (HTML tags, bold keywords, etc.).
+
+Output as JSON:
+{
+  "titleTag": "SEO title tag (max 60 characters)",
+  "metaDescription": "Meta description (150-160 characters)",
+  "articleBodyHtml": "<h1>Article title</h1>\\n\\n<p>Article content...</p>"
+}`;
+}
+
+// Rewrite mode prompt builder
+export interface RewritePromptParams {
+  originalArticle: string;
+  niche?: string;
+  brandName?: string;
+  anchorKeyword?: string;
+  targetWordCount: number;
+  style: string;
+  language: string;
+}
+
+export function buildRewritePrompt(params: RewritePromptParams): string {
+  const styleGuidance = {
+    "neutral": "Maintain a neutral, balanced tone throughout.",
+    "friendly-expert": "Write in a friendly, approachable expert voice that feels conversational yet authoritative.",
+    "journalistic": "Use a journalistic style with clear facts, quotes where appropriate, and objective reporting.",
+    "conversational": "Write in a conversational, casual tone as if speaking directly to the reader.",
+    "professional": "Maintain a formal, professional tone suitable for business contexts.",
+  }[params.style] || "Maintain the original style while improving clarity.";
+
+  return `You are an expert content editor and SEO specialist. Your task is to deeply analyze and rewrite an existing article, improving its structure, clarity, SEO optimization, and overall quality while preserving the core meaning and message.
+
+ORIGINAL ARTICLE:
+${params.originalArticle}
+
+REWRITE PARAMETERS:
+• Target word count: ${params.targetWordCount} words
+• Writing style: ${params.style}
+• Style guidance: ${styleGuidance}
+• Niche/industry: ${params.niche || "Not specified"}
+• Brand/company: ${params.brandName || "Not specified"}
+• Primary keyword/anchor: ${params.anchorKeyword || "Not specified"}
+• Language: ${params.language}
+
+REWRITE REQUIREMENTS:
+1. Deeply analyze the original article:
+   - Identify the core message and main points
+   - Assess structure, flow, and clarity
+   - Evaluate SEO optimization opportunities
+   - Check for redundancy, filler, or weak sections
+
+2. Improve the article while preserving core meaning:
+   - Restructure sections for better flow and readability
+   - Enhance clarity and remove ambiguity
+   - Improve SEO: optimize headings, integrate keywords naturally, strengthen meta tags
+   - Strengthen weak sections with concrete examples or data
+   - Remove redundancy and filler content
+   - Vary sentence structure and length for natural rhythm
+   - Ensure the article meets the target word count (aim for ${params.targetWordCount} words)
+
+3. Maintain quality standards:
+   - Use proper HTML structure (H1/H2/H3 headings)
+   - Bold important keywords and phrases
+   - Ensure natural, human-written style
+   - Keep any existing links if they're relevant
+   - If anchor keyword is provided, integrate it naturally 2-4 times
+
+4. Output format:
+   - Valid JSON with titleTag, metaDescription, and articleBodyHtml
+   - ArticleBodyHtml must use proper HTML tags (no Markdown)
+   - Ensure the rewritten article is significantly improved while keeping the original message
+
+Output as JSON:
+{
+  "titleTag": "Improved SEO title tag (max 60 characters)",
+  "metaDescription": "Improved meta description (150-160 characters)",
+  "articleBodyHtml": "<h1>Rewritten article title</h1>\\n\\n<p>Rewritten content...</p>"
+}`;
+}
