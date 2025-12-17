@@ -3,7 +3,7 @@
 import { ChangeEvent, useState, useEffect, useRef } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
-import { NicheTag } from "./components/NicheTag";
+import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle } from "./hooks/usePersistentAppState";
 
 type LoadingStep = "topics" | "outline" | "draft" | null;
@@ -994,7 +994,7 @@ export default function Home() {
                   "Multi-platform music promotion",
                   "Playlist & chart promotion"
                 ].map((preset) => (
-                  <NicheTag
+                  <TagPill
                     key={preset}
                     label={preset}
                     selected={brief.niche === preset}
@@ -1030,14 +1030,12 @@ export default function Home() {
                       ? brief.language
                       : "";
                     updateBrief({ 
-                      language: currentCustom,
-                      customLanguage: currentCustom
+                      language: currentCustom
                     });
                   } else {
-                    // Standard language selected - clear customLanguage
+                    // Standard language selected
                     updateBrief({ 
-                      language: value,
-                      customLanguage: undefined
+                      language: value
                     });
                   }
                 }}
@@ -1059,8 +1057,7 @@ export default function Home() {
                   onChange={(e) => {
                     const customValue = e.target.value;
                     updateBrief({ 
-                      language: customValue, // Store custom value directly in language field
-                      customLanguage: customValue 
+                      language: customValue // Store custom value directly in language field
                     });
                   }}
                   placeholder="Enter custom language"
@@ -1094,7 +1091,7 @@ export default function Home() {
                   "Tidal",
                   "Music industry"
                 ].map((preset) => (
-                  <NicheTag
+                  <TagPill
                     key={preset}
                     label={preset}
                     selected={brief.platform === preset}

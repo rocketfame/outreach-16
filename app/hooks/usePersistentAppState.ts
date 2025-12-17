@@ -11,7 +11,6 @@ export type Brief = {
   anchorText?: string;
   anchorUrl?: string;
   contentPurpose?: string;
-  customLanguage?: string; // For "Other (custom)" language option
 };
 
 export type Topic = {
@@ -62,13 +61,12 @@ const defaultState: AppPersistedState = {
   projectBasics: {
     niche: "",
     clientSite: "",
-    language: "English",
+    language: "",
     wordCount: "",
-    platform: "Multi-platform",
+    platform: "",
     anchorText: "",
     anchorUrl: "",
     contentPurpose: "",
-    customLanguage: undefined,
   },
   topicOverview: null,
   topicClusters: null,

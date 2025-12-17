@@ -1,36 +1,46 @@
 "use client";
 
 import React from "react";
+import clsx from "clsx";
 
-interface NicheTagProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface NicheTagProps {
   label: string;
   selected?: boolean;
+  onClick?: () => void;
+  className?: string;
 }
 
-export function NicheTag({ label, selected = false, className = "", ...props }: NicheTagProps) {
+export function NicheTag({ label, selected = false, onClick, className }: NicheTagProps) {
+  // Debug log (can be removed later)
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log('Rendering NicheTag', label, selected);
+  }
+
   return (
     <button
       type="button"
-      className={`
-        rounded-full
-        px-7 py-3.5
-        text-[0.875rem]
-        font-semibold
-        transition-all duration-150 ease-in-out
-        cursor-pointer
-        font-inherit
-        ${
-          selected
-            ? "bg-gradient-to-r from-[#FF6B9D]/60 to-[#FF8E53]/70 text-white shadow-md shadow-[#FF6B9D]/25"
-            : "bg-white border-2 border-[#FFB86A] text-[#F55A00] shadow-sm"
-        }
-        hover:bg-gradient-to-r hover:from-[#FF6B9D]/25 hover:to-[#FF8E53]/25 hover:border-[#FF6B9D]/30 hover:shadow-md hover:shadow-[#FF6B9D]/20 hover:-translate-y-[1px]
-        active:scale-[0.98]
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B9D]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFF7F3]
-        ${selected ? "hover:text-white hover:from-[#FF6B9D]/65 hover:to-[#FF8E53]/75" : "hover:text-[#F55A00]"}
-        ${className}
-      `}
-      {...props}
+      onClick={onClick}
+      className={clsx(
+        "inline-flex items-center justify-center rounded-full border transition-all duration-150",
+        "focus:outline-none focus:ring-2 focus:ring-[#FFB86A]/60 focus:ring-offset-1",
+        "active:scale-[0.98]",
+        // розміри для мобайлу / десктопу
+        "px-3.5 py-2 text-sm font-semibold",
+        "sm:px-7 sm:py-3.5 sm:text-base",
+        selected
+          ? [
+              "border-transparent",
+              "bg-gradient-to-r from-[#FF6900] to-[#F6339A]",
+              "text-white",
+            ]
+          : [
+              "bg-white",
+              "border-2 border-[#FFB86A]",
+              "text-[#F54900]",
+            ],
+        "hover:opacity-90",
+        className
+      )}
     >
       {label}
     </button>

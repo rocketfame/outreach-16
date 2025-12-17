@@ -262,28 +262,7 @@ body {
   margin-top: 0.75rem;
 }
 
-.niche-preset-chip {
-  background: #fff;
-  border: 1.5px solid var(--border);
-  border-radius: 20px;
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--foreground);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.niche-preset-chip:hover {
-  border-color: var(--primary);
-  background: rgba(255, 107, 157, 0.05);
-  color: var(--primary);
-}
-
-.niche-preset-chip:active {
-  transform: scale(0.98);
-}
+/* .niche-preset-chip styles removed - now using NicheTag component */
 
 /* Info Blocks */
 .info-block {
@@ -358,16 +337,7 @@ body {
   gap: 0.5rem;
 }
 
-.niche-tag {
-  display: inline-block;
-  background: rgba(255, 107, 157, 0.1);
-  color: var(--primary);
-  padding: 0.4rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  border: 1px solid rgba(255, 107, 157, 0.2);
-}
+/* .niche-tag styles removed - now using NicheTag component with Tailwind classes */
 
 /* Right Column */
 .right-column {
@@ -1973,12 +1943,7 @@ body {
   }
 
   .niche-presets {
-    gap: 0.4rem;
-  }
-
-  .niche-preset-chip {
-    font-size: 0.8rem;
-    padding: 0.45rem 0.85rem;
+    gap: 0.5rem;
   }
 
   /* Article View Modal - Mobile Improvements */
