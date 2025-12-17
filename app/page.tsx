@@ -1271,11 +1271,12 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Main Card with Two Columns */}
+          {/* Main Card */}
           <div className="main-card">
+          {/* Two-column layout only for discovery mode */}
+          {mode === "discovery" ? (
           <div className="two-column-layout">
-            {/* Left Column: Project Basics (only for discovery mode) */}
-            {mode === "discovery" && (
+            {/* Left Column: Project Basics */}
             <div className="left-column">
               <h2 className="column-title">Project basics</h2>
               
@@ -1460,7 +1461,6 @@ export default function Home() {
                 </label>
               </div>
             </div>
-            )}
 
             {/* Right Column: Steps */}
             <div className="right-column">
@@ -1764,178 +1764,187 @@ export default function Home() {
               </div>
               )}
 
-              {/* Direct Article Creation Mode - Single Step */}
-              {mode === "direct" && (
-              <div className="step-card step-card-active">
-                <div className="step-header">
-                  <h3>Step 1 – Generate article from brief</h3>
-                  <p className="step-description">
-                    Paste a detailed client brief or technical task (requirements, links, examples, tone, SEO details, etc.) and get a ready article. The system will analyze your brief, research trusted sources, and generate a complete article.
-                  </p>
-                </div>
+            </div>
+          </div>
+          ) : (
+          <div>
+          /* Single-column layout for direct and rewrite modes */
+          <>
+            {/* Direct Article Creation Mode - Single Step */}
+            {mode === "direct" && (
+            <div className="step-card step-card-active">
+              <div className="step-header">
+                <h3>Step 1 – Generate article from brief</h3>
+                <p className="step-description">
+                  Paste a detailed client brief or technical task (requirements, links, examples, tone, SEO details, etc.) and get a ready article. The system will analyze your brief, research trusted sources, and generate a complete article.
+                </p>
+              </div>
 
-                <div className="step-content">
-                  <div className="form-fields">
-                    <label>
-                      <span>Client brief / technical task</span>
-                      <textarea
-                        value={clientBrief}
-                        onChange={(e) => updateClientBrief(e.target.value)}
-                        placeholder="Paste the detailed client brief here (topic, goals, target audience, tone, SEO requirements, links, examples, etc.)"
-                        rows={8}
-                        style={{ minHeight: "200px", resize: "vertical" }}
-                      />
-                      <small>
-                        {clientBrief.length} / 6000 characters
-                        {clientBrief.length < 50 && clientBrief.length > 0 && (
-                          <span style={{ color: "#f44336", marginLeft: "8px" }}>
-                            Minimum 50 characters required
-                          </span>
-                        )}
-                      </small>
-                    </label>
-                  </div>
-
-                  <div className="step-actions" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                    <div className="light-human-edit-toggle">
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={lightHumanEditEnabled}
-                          onChange={(e) => {
-                            setPersistedState(prev => ({
-                              ...prev,
-                              lightHumanEditEnabled: e.target.checked
-                            }));
-                          }}
-                        />
-                        <span className="checkbox-text">
-                          <strong>Light Human Edit</strong> (recommended)
-                          <span className="checkbox-hint">Improves text flow and naturalness</span>
+              <div className="step-content">
+                <div className="form-fields">
+                  <label>
+                    <span>Client brief / technical task</span>
+                    <textarea
+                      value={clientBrief}
+                      onChange={(e) => updateClientBrief(e.target.value)}
+                      placeholder="Paste the detailed client brief here (topic, goals, target audience, tone, SEO requirements, links, examples, etc.)"
+                      rows={8}
+                      style={{ minHeight: "200px", resize: "vertical" }}
+                    />
+                    <small>
+                      {clientBrief.length} / 6000 characters
+                      {clientBrief.length < 50 && clientBrief.length > 0 && (
+                        <span style={{ color: "#f44336", marginLeft: "8px" }}>
+                          Minimum 50 characters required
                         </span>
-                      </label>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={generateArticleFromBrief}
-                      disabled={isGeneratingArticles || clientBrief.length < 50}
-                    >
-                      {isGeneratingArticles ? "Generating…" : "Generate article from brief"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              )}
-
-              {/* Rewrite Article Mode */}
-              {mode === "rewrite" && (
-              <div className="step-card step-card-active">
-                <div className="step-header">
-                  <h3>Step 1 – Rewrite article</h3>
-                  <p className="step-description">
-                    Paste an existing article and the AI will deeply analyze and rewrite it, improving structure, clarity, SEO, and overall quality while preserving the core meaning.
-                  </p>
+                      )}
+                    </small>
+                  </label>
                 </div>
 
-                <div className="step-content">
-                  <div className="form-fields">
-                    <label>
-                      <span>Original article</span>
-                      <textarea
-                        value={originalArticle}
-                        onChange={(e) => updateOriginalArticle(e.target.value)}
-                        placeholder="Paste the full article you want to rewrite or improve..."
-                        rows={10}
-                        style={{ minHeight: "250px", resize: "vertical" }}
+                <div className="step-actions" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", marginTop: "1.5rem" }}>
+                  <div className="light-human-edit-toggle">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={lightHumanEditEnabled}
+                        onChange={(e) => {
+                          setPersistedState(prev => ({
+                            ...prev,
+                            lightHumanEditEnabled: e.target.checked
+                          }));
+                        }}
                       />
-                      <small>
-                        {originalArticle.length} characters
-                        {originalArticle.length < 100 && originalArticle.length > 0 && (
-                          <span style={{ color: "#f44336", marginLeft: "8px" }}>
-                            Minimum 100 characters required
-                          </span>
-                        )}
-                      </small>
-                    </label>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
-                      <label>
-                        <span>Niche or industry (optional)</span>
-                        <input
-                          type="text"
-                          value={rewriteParams.niche || ""}
-                          onChange={(e) => updateRewriteParams({ niche: e.target.value })}
-                          placeholder="e.g. Music promotion"
-                        />
-                      </label>
-
-                      <label>
-                        <span>Brand / company name (optional)</span>
-                        <input
-                          type="text"
-                          value={rewriteParams.brandName || ""}
-                          onChange={(e) => updateRewriteParams({ brandName: e.target.value })}
-                          placeholder="e.g. Universal Content Creator"
-                        />
-                      </label>
-
-                      <label>
-                        <span>Anchor / primary keyword (optional)</span>
-                        <input
-                          type="text"
-                          value={rewriteParams.anchorKeyword || ""}
-                          onChange={(e) => updateRewriteParams({ anchorKeyword: e.target.value })}
-                          placeholder="e.g. music promotion services"
-                        />
-                      </label>
-
-                      <label>
-                        <span>Target word count (optional)</span>
-                        <input
-                          type="number"
-                          value={rewriteParams.targetWordCount || ""}
-                          onChange={(e) => updateRewriteParams({ targetWordCount: e.target.value ? parseInt(e.target.value) : undefined })}
-                          placeholder="e.g. 1200"
-                          min="100"
-                        />
-                      </label>
-                    </div>
-
-                    <label style={{ marginTop: "1rem" }}>
-                      <span>Writing style (optional)</span>
-                      <select
-                        value={rewriteParams.style || ""}
-                        onChange={(e) => updateRewriteParams({ style: e.target.value || undefined })}
-                      >
-                        <option value="">Select style...</option>
-                        <option value="neutral">Neutral</option>
-                        <option value="friendly-expert">Friendly Expert</option>
-                        <option value="journalistic">Journalistic</option>
-                        <option value="conversational">Conversational</option>
-                        <option value="professional">Professional</option>
-                      </select>
+                      <span className="checkbox-text">
+                        <strong>Light Human Edit</strong> (recommended)
+                        <span className="checkbox-hint">Improves text flow and naturalness</span>
+                      </span>
                     </label>
                   </div>
 
-                  <div className="step-actions" style={{ display: "flex", justifyContent: "center" }}>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={rewriteArticle}
-                      disabled={isGeneratingArticles || originalArticle.length < 100}
-                    >
-                      {isGeneratingArticles ? "Rewriting…" : "Rewrite article"}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={generateArticleFromBrief}
+                    disabled={isGeneratingArticles || clientBrief.length < 50}
+                  >
+                    {isGeneratingArticles ? "Generating…" : "Generate article from brief"}
+                  </button>
                 </div>
               </div>
-              )}
+            </div>
+            )}
 
-              {/* Generated Articles Section */}
-              {generatedArticles.length > 0 && (
-                <div className="generated-articles-section" ref={generatedArticlesSectionRef}>
+            {/* Rewrite Article Mode */}
+            {mode === "rewrite" && (
+            <div className="step-card step-card-active">
+              <div className="step-header">
+                <h3>Step 1 – Rewrite article</h3>
+                <p className="step-description">
+                  Paste an existing article and the AI will deeply analyze and rewrite it, improving structure, clarity, SEO, and overall quality while preserving the core meaning.
+                </p>
+              </div>
+
+              <div className="step-content">
+                <div className="form-fields">
+                  <label>
+                    <span>Original article</span>
+                    <textarea
+                      value={originalArticle}
+                      onChange={(e) => updateOriginalArticle(e.target.value)}
+                      placeholder="Paste the full article you want to rewrite or improve..."
+                      rows={10}
+                      style={{ minHeight: "250px", resize: "vertical" }}
+                    />
+                    <small>
+                      {originalArticle.length} characters
+                      {originalArticle.length < 100 && originalArticle.length > 0 && (
+                        <span style={{ color: "#f44336", marginLeft: "8px" }}>
+                          Minimum 100 characters required
+                        </span>
+                      )}
+                    </small>
+                  </label>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
+                    <label>
+                      <span>Niche or industry (optional)</span>
+                      <input
+                        type="text"
+                        value={rewriteParams.niche || ""}
+                        onChange={(e) => updateRewriteParams({ niche: e.target.value })}
+                        placeholder="e.g. Music promotion"
+                      />
+                    </label>
+
+                    <label>
+                      <span>Brand / company name (optional)</span>
+                      <input
+                        type="text"
+                        value={rewriteParams.brandName || ""}
+                        onChange={(e) => updateRewriteParams({ brandName: e.target.value })}
+                        placeholder="e.g. Universal Content Creator"
+                      />
+                    </label>
+
+                    <label>
+                      <span>Anchor / primary keyword (optional)</span>
+                      <input
+                        type="text"
+                        value={rewriteParams.anchorKeyword || ""}
+                        onChange={(e) => updateRewriteParams({ anchorKeyword: e.target.value })}
+                        placeholder="e.g. music promotion services"
+                      />
+                    </label>
+
+                    <label>
+                      <span>Target word count (optional)</span>
+                      <input
+                        type="number"
+                        value={rewriteParams.targetWordCount || ""}
+                        onChange={(e) => updateRewriteParams({ targetWordCount: e.target.value ? parseInt(e.target.value) : undefined })}
+                        placeholder="e.g. 1200"
+                        min="100"
+                      />
+                    </label>
+                  </div>
+
+                  <label style={{ marginTop: "1rem" }}>
+                    <span>Writing style (optional)</span>
+                    <select
+                      value={rewriteParams.style || ""}
+                      onChange={(e) => updateRewriteParams({ style: e.target.value || undefined })}
+                    >
+                      <option value="">Select style...</option>
+                      <option value="neutral">Neutral</option>
+                      <option value="friendly-expert">Friendly Expert</option>
+                      <option value="journalistic">Journalistic</option>
+                      <option value="conversational">Conversational</option>
+                      <option value="professional">Professional</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="step-actions" style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={rewriteArticle}
+                    disabled={isGeneratingArticles || originalArticle.length < 100}
+                  >
+                    {isGeneratingArticles ? "Rewriting…" : "Rewrite article"}
+                  </button>
+                </div>
+              </div>
+            </div>
+            )}
+          </div>
+          )}
+        </div>
+
+        {/* Generated Articles Section */}
+        {generatedArticles.length > 0 && (
+          <div className="generated-articles-section" ref={generatedArticlesSectionRef}>
                   <h3 className="section-title">Generated Articles</h3>
                   <div className="articles-list">
                     {generatedArticles.map((article) => {
@@ -2221,7 +2230,6 @@ export default function Home() {
                   </div>
                 </div>
               )}
-            </div>
           </div>
         </div>
 
