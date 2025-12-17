@@ -355,6 +355,7 @@ export interface DirectBriefPromptParams {
   language: string;
   targetAudience: string;
   wordCount: string;
+  writingStyle?: string;
 }
 
 export function buildDirectBriefPrompt(params: DirectBriefPromptParams): string {
@@ -382,6 +383,7 @@ CONTEXT:
 • Anchor text (use EXACTLY): ${params.anchorText}
 • Anchor URL (use EXACTLY): ${params.anchorUrl}
 • Keywords: ${params.keywordList.join(", ")}
+${params.writingStyle ? `• Writing style: ${params.writingStyle}` : ""}
 
 TRUST SOURCES (use 1-3 of these):
 ${trustSourcesFormatted}

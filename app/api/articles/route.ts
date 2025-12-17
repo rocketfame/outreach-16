@@ -39,6 +39,13 @@ export interface ArticleRequest {
   }>;
   // For directBrief mode
   clientBrief?: string;
+  articleSettings?: {
+    nicheOrIndustry?: string;
+    brandName?: string;
+    anchorKeyword?: string;
+    targetWordCount?: number;
+    writingStyle?: string;
+  };
   // For rewrite mode
   originalArticle?: string;
   rewriteParams?: {
@@ -102,6 +109,7 @@ export async function POST(req: Request) {
       keywordList = [], 
       trustSourcesList = [],
       clientBrief,
+      articleSettings,
       originalArticle,
       rewriteParams,
     } = body;
@@ -153,17 +161,18 @@ export async function POST(req: Request) {
         // Build prompt for direct brief mode
         const prompt = buildDirectBriefPrompt({
           clientBrief: clientBrief!,
-          niche: brief.niche || "",
+          niche: articleSettings?.nicheOrIndustry || brief.niche || "",
           platform: brief.platform || "multi-platform",
           contentPurpose: brief.contentPurpose || "Guest post / outreach",
-          anchorText: brief.anchorText || "",
+          anchorText: articleSettings?.anchorKeyword || brief.anchorText || "",
           anchorUrl: brief.anchorUrl || brief.clientSite || "",
-          brandName: "PromosoundGroup",
+          brandName: articleSettings?.brandName || "PromosoundGroup",
           keywordList: keywordList,
           trustSourcesList: trustSourcesList,
           language: brief.language || "English",
           targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
-          wordCount: brief.wordCount || "1000",
+          wordCount: articleSettings?.targetWordCount ? String(articleSettings.targetWordCount) : (brief.wordCount || "1000"),
+          writingStyle: articleSettings?.writingStyle,
         });
 
         const systemMessage = `You are an expert SEO Content Strategist and outreach content writer, native English speaker (US), with deep experience in social media, music marketing and creator economy. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
@@ -173,10 +182,13 @@ Brand to feature: PromosoundGroup
 Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
 Language: ${brief.language || "US English"}.`;
 
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:177',message:'[Bug1-FIX] About to call OpenAI with gpt-4-turbo in directBrief mode',data:{mode:'directBrief',modelName:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         let completion;
         try {
           completion = await openai.chat.completions.create({
-            model: "gpt-5.1",
+            model: "gpt-4-turbo",
             messages: [
               { role: "system", content: systemMessage },
               { role: "user", content: prompt },
@@ -184,9 +196,18 @@ Language: ${brief.language || "US English"}.`;
             temperature: 0.7,
             response_format: { type: "json_object" },
           });
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:186',message:'[Bug1-FIX] OpenAI call succeeded with gpt-4-turbo',data:{modelName:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
         } catch (formatError: any) {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:188',message:'[Bug1-FIX] OpenAI call failed, caught error',data:{modelName:'gpt-4-turbo',errorMessage:formatError?.message,errorCode:formatError?.code,errorType:formatError?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:189',message:'[Bug1-FIX] Retrying with gpt-4-turbo',data:{modelName:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
           completion = await openai.chat.completions.create({
-            model: "gpt-5.1",
+            model: "gpt-4-turbo",
             messages: [
               { role: "system", content: systemMessage },
               { role: "user", content: prompt },
@@ -252,10 +273,13 @@ Language: ${brief.language || "US English"}.`;
 
 Language: ${brief.language || "US English"}.`;
 
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:258',message:'[Bug1-FIX] About to call OpenAI with gpt-4-turbo in rewrite mode',data:{mode:'rewrite',modelName:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         let completion;
         try {
           completion = await openai.chat.completions.create({
-            model: "gpt-5.1",
+            model: "gpt-4-turbo",
             messages: [
               { role: "system", content: systemMessage },
               { role: "user", content: prompt },
@@ -263,9 +287,18 @@ Language: ${brief.language || "US English"}.`;
             temperature: 0.7,
             response_format: { type: "json_object" },
           });
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:267',message:'[Bug1-FIX] OpenAI call succeeded with gpt-4-turbo',data:{modelName:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
         } catch (formatError: any) {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:269',message:'[Bug1-FIX] OpenAI call failed, caught error',data:{modelName:'gpt-4-turbo',errorMessage:formatError?.message,errorCode:formatError?.code,errorType:formatError?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:270',message:'[Bug1-FIX] Retrying with gpt-4-turbo',data:{modelName:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
           completion = await openai.chat.completions.create({
-            model: "gpt-5.1",
+            model: "gpt-4-turbo",
             messages: [
               { role: "system", content: systemMessage },
               { role: "user", content: prompt },
@@ -374,7 +407,7 @@ Language: US English.`;
 
         // Call OpenAI API with system + user messages
         // #region agent log
-        const beforeApiLog = {location:'articles/route.ts:103',message:'About to call OpenAI API',data:{model:'gpt-5.1',hasSystemMessage:!!systemMessage,hasUserPrompt:!!prompt,promptLength:prompt.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
+        const beforeApiLog = {location:'articles/route.ts:103',message:'About to call OpenAI API',data:{model:'gpt-4-turbo',hasSystemMessage:!!systemMessage,hasUserPrompt:!!prompt,promptLength:prompt.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
         debugLog(beforeApiLog);
         // #endregion
 
@@ -383,7 +416,7 @@ Language: US English.`;
           // Try with response_format and reasoning_effort (Thinking mode) first
           try {
             completion = await openai.chat.completions.create({
-              model: "gpt-5.1",
+              model: "gpt-4-turbo",
               messages: [
                 {
                   role: "system",
@@ -407,7 +440,7 @@ Language: US English.`;
             try {
               // Try with reasoning_effort but without response_format
               completion = await openai.chat.completions.create({
-                model: "gpt-5.1",
+                model: "gpt-4-turbo",
                 messages: [
                   {
                     role: "system",
@@ -428,7 +461,7 @@ Language: US English.`;
               debugLog(reasoningErrorLog);
               // #endregion
               completion = await openai.chat.completions.create({
-                model: "gpt-5.1",
+                model: "gpt-4-turbo",
                 messages: [
                   {
                     role: "system",

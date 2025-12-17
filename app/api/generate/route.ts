@@ -117,11 +117,11 @@ export async function POST(req: Request) {
 
   try {
     // #region agent log
-    const apiCallLog = {location:'route.ts:63',message:'Calling OpenAI API',data:{model:'gpt-5.1',type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const apiCallLog = {location:'route.ts:63',message:'Calling OpenAI API',data:{model:'gpt-4-turbo',type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(apiCallLog);
     // #endregion
     const completion = await client.chat.completions.create({
-      model: "gpt-5.1",
+      model: "gpt-4-turbo",
       messages: [
         { role: "system", content: prompts.systemPrompt },
         { role: "user", content: prompts.userPrompt },

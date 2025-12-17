@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     // #endregion
 
     // #region agent log
-    const apiCallLog = {location:'generate-topics/route.ts:40',message:'Calling OpenAI API',data:{model:'gpt-5.1'},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const apiCallLog = {location:'generate-topics/route.ts:40',message:'Calling OpenAI API',data:{model:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(apiCallLog);
     // #endregion
 
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
     let completion;
     try {
       completion = await openai.chat.completions.create({
-        model: "gpt-5.1",
+        model: "gpt-4-turbo",
         messages: [
           {
             role: "system",
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
       debugLog(reasoningErrorLog);
       // #endregion
       completion = await openai.chat.completions.create({
-        model: "gpt-5.1",
+        model: "gpt-4-turbo",
         messages: [
           {
             role: "system",

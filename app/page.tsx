@@ -19,8 +19,17 @@ export default function Home() {
   const mode = persistedState.mode;
   const lightHumanEditEnabled = persistedState.lightHumanEditEnabled;
   const clientBrief = persistedState.clientBrief || "";
+  const directArticleSettings = persistedState.directArticleSettings || {};
   const originalArticle = persistedState.originalArticle || "";
   const rewriteParams = persistedState.rewriteParams || {};
+  
+  // #region agent log
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:26',message:'[Bug2-HypA] Mode value check in component render',data:{modeValue:mode,modeType:typeof mode,modeIsUndefined:mode === undefined,modeIsDiscovery:mode === 'discovery',modeIsDirect:mode === 'direct',modeIsRewrite:mode === 'rewrite'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug2-verification',hypothesisId:'A'})}).catch(()=>{});
+    }
+  }, [mode]);
+  // #endregion
 
   // Local UI state (not persisted)
   const [expandedClusterNames, setExpandedClusterNames] = useState<Set<string>>(new Set());
@@ -67,6 +76,13 @@ export default function Home() {
     setPersistedState(prev => ({
       ...prev,
       originalArticle: article,
+    }));
+  };
+
+  const updateDirectArticleSettings = (updates: Partial<typeof directArticleSettings>) => {
+    setPersistedState(prev => ({
+      ...prev,
+      directArticleSettings: { ...prev.directArticleSettings || {}, ...updates },
     }));
   };
 
@@ -793,6 +809,13 @@ export default function Home() {
             wordCount: brief.wordCount || "1000",
           },
           clientBrief: clientBrief,
+          articleSettings: {
+            nicheOrIndustry: directArticleSettings.nicheOrIndustry,
+            brandName: directArticleSettings.brandName,
+            anchorKeyword: directArticleSettings.anchorKeyword,
+            targetWordCount: directArticleSettings.targetWordCount,
+            writingStyle: directArticleSettings.writingStyle,
+          },
           trustSourcesList: trustSourcesList,
           lightHumanEdit: lightHumanEditEnabled,
         }),
@@ -1717,28 +1740,28 @@ export default function Home() {
                     </div>
                   ) : (
                     <>
-                      <div className="step-actions">
-                        {/* Light Human Edit Toggle */}
-                        <div className="light-human-edit-toggle">
-                          <label className="checkbox-label">
-                            <input
-                              type="checkbox"
-                              checked={lightHumanEditEnabled}
-                              onChange={(e) => {
-                                setPersistedState(prev => ({
-                                  ...prev,
-                                  lightHumanEditEnabled: e.target.checked
-                                }));
-                              }}
-                              disabled={isGeneratingArticles}
-                            />
-                            <span className="checkbox-text">
-                              <strong>Light Human Edit</strong> (recommended)
-                              <span className="checkbox-hint">Improves text flow and naturalness</span>
-                            </span>
-                          </label>
-                        </div>
+                      {/* Light Human Edit Toggle */}
+                      <div className="light-human-edit-toggle">
+                        <label className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={lightHumanEditEnabled}
+                            onChange={(e) => {
+                              setPersistedState(prev => ({
+                                ...prev,
+                                lightHumanEditEnabled: e.target.checked
+                              }));
+                            }}
+                            disabled={isGeneratingArticles}
+                          />
+                          <span className="checkbox-text">
+                            <strong>Light Human Edit</strong> (recommended)
+                            <span className="checkbox-hint">Improves text flow and naturalness</span>
+                          </span>
+                        </label>
+                      </div>
 
+                      <div className="step-actions">
                         <button
                           type="button"
                           className="btn-primary btn-generate-articles"
@@ -1767,21 +1790,21 @@ export default function Home() {
             </div>
           </div>
           ) : (
-          <div>
-          /* Single-column layout for direct and rewrite modes */
           <>
+            {/* Single-column layout for direct and rewrite modes */}
             {/* Direct Article Creation Mode - Single Step */}
             {mode === "direct" && (
-            <div className="step-card step-card-active">
-              <div className="step-header">
-                <h3>Step 1 – Generate article from brief</h3>
-                <p className="step-description">
-                  Paste a detailed client brief or technical task (requirements, links, examples, tone, SEO details, etc.) and get a ready article. The system will analyze your brief, research trusted sources, and generate a complete article.
-                </p>
-              </div>
+            <div className="two-column-layout">
+              {/* Step 1 – Generate article from brief */}
+              <div className="step-card step-card-active">
+                <div className="step-header">
+                  <h3>Step 1 – Generate article from brief</h3>
+                  <p className="step-description">
+                    Paste a detailed client brief or technical task (requirements, links, examples, tone, SEO details, etc.) and get a ready article. The system will analyze your brief, research trusted sources, and generate a complete article.
+                  </p>
+                </div>
 
-              <div className="step-content">
-                <div className="form-fields">
+                <div className="step-content">
                   <label>
                     <span>Client brief / technical task</span>
                     <textarea
@@ -1789,7 +1812,8 @@ export default function Home() {
                       onChange={(e) => updateClientBrief(e.target.value)}
                       placeholder="Paste the detailed client brief here (topic, goals, target audience, tone, SEO requirements, links, examples, etc.)"
                       rows={8}
-                      style={{ minHeight: "200px", resize: "vertical" }}
+                      style={{ minHeight: "220px", resize: "vertical" }}
+                      disabled={isGeneratingArticles}
                     />
                     <small>
                       {clientBrief.length} / 6000 characters
@@ -1800,9 +1824,7 @@ export default function Home() {
                       )}
                     </small>
                   </label>
-                </div>
 
-                <div className="step-actions" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem", marginTop: "1.5rem" }}>
                   <div className="light-human-edit-toggle">
                     <label className="checkbox-label">
                       <input
@@ -1814,6 +1836,7 @@ export default function Home() {
                             lightHumanEditEnabled: e.target.checked
                           }));
                         }}
+                        disabled={isGeneratingArticles}
                       />
                       <span className="checkbox-text">
                         <strong>Light Human Edit</strong> (recommended)
@@ -1822,14 +1845,96 @@ export default function Home() {
                     </label>
                   </div>
 
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={generateArticleFromBrief}
-                    disabled={isGeneratingArticles || clientBrief.length < 50}
-                  >
-                    {isGeneratingArticles ? "Generating…" : "Generate article from brief"}
-                  </button>
+                  <div className="step-actions">
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={generateArticleFromBrief}
+                      disabled={isGeneratingArticles || clientBrief.length < 50}
+                    >
+                      {isGeneratingArticles ? "Generating…" : "Generate article from brief"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 – Article context (optional) */}
+              <div className="step-card step-card-active">
+                <div className="step-header">
+                  <h3>Step 2 – Article context (optional)</h3>
+                  <p className="step-description">
+                    These fields help align the article with your niche, brand, SEO focus and target length.
+                  </p>
+                </div>
+
+                <div className="step-content">
+                  <div className="form-fields">
+                    <label>
+                      <span>Niche or industry (optional)</span>
+                      <input
+                        type="text"
+                        value={directArticleSettings.nicheOrIndustry || ""}
+                        onChange={(e) => updateDirectArticleSettings({ nicheOrIndustry: e.target.value || undefined })}
+                        placeholder="e.g. Music promotion"
+                        disabled={isGeneratingArticles}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Brand / company name (optional)</span>
+                      <input
+                        type="text"
+                        value={directArticleSettings.brandName || ""}
+                        onChange={(e) => updateDirectArticleSettings({ brandName: e.target.value || undefined })}
+                        placeholder="e.g. Universal Content Creator"
+                        disabled={isGeneratingArticles}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Anchor / primary keyword (optional)</span>
+                      <input
+                        type="text"
+                        value={directArticleSettings.anchorKeyword || ""}
+                        onChange={(e) => updateDirectArticleSettings({ anchorKeyword: e.target.value || undefined })}
+                        placeholder="e.g. music promotion services"
+                        disabled={isGeneratingArticles}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Target word count (optional)</span>
+                      <input
+                        type="number"
+                        value={directArticleSettings.targetWordCount || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateDirectArticleSettings({
+                            targetWordCount: val ? (isNaN(parseInt(val)) ? undefined : parseInt(val)) : undefined,
+                          });
+                        }}
+                        placeholder="e.g. 1200"
+                        min="100"
+                        disabled={isGeneratingArticles}
+                      />
+                    </label>
+
+                    <label>
+                      <span>Writing style (optional)</span>
+                      <select
+                        value={directArticleSettings.writingStyle || ""}
+                        onChange={(e) => updateDirectArticleSettings({ writingStyle: e.target.value || undefined })}
+                        disabled={isGeneratingArticles}
+                      >
+                        <option value="">Select style...</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="friendly-expert">Friendly Expert</option>
+                        <option value="journalistic">Journalistic</option>
+                        <option value="conversational">Conversational</option>
+                        <option value="professional">Professional</option>
+                      </select>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1837,16 +1942,17 @@ export default function Home() {
 
             {/* Rewrite Article Mode */}
             {mode === "rewrite" && (
-            <div className="step-card step-card-active">
-              <div className="step-header">
-                <h3>Step 1 – Rewrite article</h3>
-                <p className="step-description">
-                  Paste an existing article and the AI will deeply analyze and rewrite it, improving structure, clarity, SEO, and overall quality while preserving the core meaning.
-                </p>
-              </div>
+            <div className="two-column-layout">
+              {/* Step 1 – Rewrite article */}
+              <div className="step-card step-card-active">
+                <div className="step-header">
+                  <h3>Step 1 – Rewrite article</h3>
+                  <p className="step-description">
+                    Paste an existing article and the AI will deeply analyze and rewrite it, improving structure, clarity, SEO, and overall quality while preserving the core meaning.
+                  </p>
+                </div>
 
-              <div className="step-content">
-                <div className="form-fields">
+                <div className="step-content">
                   <label>
                     <span>Original article</span>
                     <textarea
@@ -1855,6 +1961,7 @@ export default function Home() {
                       placeholder="Paste the full article you want to rewrite or improve..."
                       rows={10}
                       style={{ minHeight: "250px", resize: "vertical" }}
+                      disabled={isGeneratingArticles}
                     />
                     <small>
                       {originalArticle.length} characters
@@ -1866,14 +1973,58 @@ export default function Home() {
                     </small>
                   </label>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
+                  <div className="light-human-edit-toggle">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={lightHumanEditEnabled}
+                        onChange={(e) => {
+                          setPersistedState(prev => ({
+                            ...prev,
+                            lightHumanEditEnabled: e.target.checked
+                          }));
+                        }}
+                        disabled={isGeneratingArticles}
+                      />
+                      <span className="checkbox-text">
+                        <strong>Light Human Edit</strong> (recommended)
+                        <span className="checkbox-hint">Improves text flow and naturalness</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="step-actions">
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={rewriteArticle}
+                      disabled={isGeneratingArticles || originalArticle.length < 100}
+                    >
+                      {isGeneratingArticles ? "Rewriting…" : "Rewrite article"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 – Article context (optional) */}
+              <div className="step-card step-card-active">
+                <div className="step-header">
+                  <h3>Step 2 – Article context (optional)</h3>
+                  <p className="step-description">
+                    These fields help align the article with your niche, brand, SEO focus and target length.
+                  </p>
+                </div>
+
+                <div className="step-content">
+                  <div className="form-fields">
                     <label>
                       <span>Niche or industry (optional)</span>
                       <input
                         type="text"
                         value={rewriteParams.niche || ""}
-                        onChange={(e) => updateRewriteParams({ niche: e.target.value })}
+                        onChange={(e) => updateRewriteParams({ niche: e.target.value || undefined })}
                         placeholder="e.g. Music promotion"
+                        disabled={isGeneratingArticles}
                       />
                     </label>
 
@@ -1882,8 +2033,9 @@ export default function Home() {
                       <input
                         type="text"
                         value={rewriteParams.brandName || ""}
-                        onChange={(e) => updateRewriteParams({ brandName: e.target.value })}
+                        onChange={(e) => updateRewriteParams({ brandName: e.target.value || undefined })}
                         placeholder="e.g. Universal Content Creator"
+                        disabled={isGeneratingArticles}
                       />
                     </label>
 
@@ -1892,8 +2044,9 @@ export default function Home() {
                       <input
                         type="text"
                         value={rewriteParams.anchorKeyword || ""}
-                        onChange={(e) => updateRewriteParams({ anchorKeyword: e.target.value })}
+                        onChange={(e) => updateRewriteParams({ anchorKeyword: e.target.value || undefined })}
                         placeholder="e.g. music promotion services"
+                        disabled={isGeneratingArticles}
                       />
                     </label>
 
@@ -1905,42 +2058,32 @@ export default function Home() {
                         onChange={(e) => updateRewriteParams({ targetWordCount: e.target.value ? parseInt(e.target.value) : undefined })}
                         placeholder="e.g. 1200"
                         min="100"
+                        disabled={isGeneratingArticles}
                       />
                     </label>
+
+                    <label>
+                      <span>Writing style (optional)</span>
+                      <select
+                        value={rewriteParams.style || ""}
+                        onChange={(e) => updateRewriteParams({ style: e.target.value || undefined })}
+                        disabled={isGeneratingArticles}
+                      >
+                        <option value="">Select style...</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="friendly-expert">Friendly Expert</option>
+                        <option value="journalistic">Journalistic</option>
+                        <option value="conversational">Conversational</option>
+                        <option value="professional">Professional</option>
+                      </select>
+                    </label>
                   </div>
-
-                  <label style={{ marginTop: "1rem" }}>
-                    <span>Writing style (optional)</span>
-                    <select
-                      value={rewriteParams.style || ""}
-                      onChange={(e) => updateRewriteParams({ style: e.target.value || undefined })}
-                    >
-                      <option value="">Select style...</option>
-                      <option value="neutral">Neutral</option>
-                      <option value="friendly-expert">Friendly Expert</option>
-                      <option value="journalistic">Journalistic</option>
-                      <option value="conversational">Conversational</option>
-                      <option value="professional">Professional</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div className="step-actions" style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={rewriteArticle}
-                    disabled={isGeneratingArticles || originalArticle.length < 100}
-                  >
-                    {isGeneratingArticles ? "Rewriting…" : "Rewrite article"}
-                  </button>
                 </div>
               </div>
             </div>
             )}
-          </div>
+          </>
           )}
-        </div>
 
         {/* Generated Articles Section */}
         {generatedArticles.length > 0 && (
@@ -2231,7 +2374,6 @@ export default function Home() {
                 </div>
               )}
           </div>
-        </div>
 
         {/* Reset Project Button */}
         <div style={{ textAlign: "center", marginTop: "2rem", paddingBottom: "2rem" }}>

@@ -55,6 +55,13 @@ export type AppPersistedState = {
   lightHumanEditEnabled: boolean;
   // New fields for Direct Article Creation
   clientBrief?: string;
+  directArticleSettings?: {
+    nicheOrIndustry?: string;
+    brandName?: string;
+    anchorKeyword?: string;
+    targetWordCount?: number;
+    writingStyle?: string;
+  };
   // New fields for Rewrite mode
   originalArticle?: string;
   rewriteParams?: {
@@ -86,6 +93,7 @@ const defaultState: AppPersistedState = {
   mode: "discovery",
   lightHumanEditEnabled: true, // Default to enabled (recommended)
   clientBrief: "",
+  directArticleSettings: {},
   originalArticle: "",
   rewriteParams: {},
 };
@@ -113,11 +121,30 @@ export function usePersistentAppState() {
           Array.isArray(parsed.articles) &&
           parsed.projectBasics
         ) {
-          // Ensure lightHumanEditEnabled exists, default to true if missing
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePersistentAppState.ts:115',message:'[Bug2-FIX] Loading persisted state from localStorage',data:{hasMode:!!parsed.mode,modeValue:parsed.mode,hasClientBrief:!!parsed.clientBrief,hasOriginalArticle:!!parsed.originalArticle,hasRewriteParams:!!parsed.rewriteParams},timestamp:Date.now(),sessionId:'debug-session',runId:'bug2-post-fix',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          // Merge parsed state with defaults to ensure all new fields have proper fallback values
           const validatedState: AppPersistedState = {
+            ...defaultState,
             ...parsed,
-            lightHumanEditEnabled: parsed.lightHumanEditEnabled !== undefined ? parsed.lightHumanEditEnabled : true,
+            // Ensure new fields have defaults if missing
+            mode: parsed.mode || defaultState.mode,
+            lightHumanEditEnabled: parsed.lightHumanEditEnabled !== undefined ? parsed.lightHumanEditEnabled : defaultState.lightHumanEditEnabled,
+            clientBrief: parsed.clientBrief ?? defaultState.clientBrief,
+            directArticleSettings: parsed.directArticleSettings || defaultState.directArticleSettings,
+            originalArticle: parsed.originalArticle ?? defaultState.originalArticle,
+            rewriteParams: parsed.rewriteParams || defaultState.rewriteParams,
+            // Preserve existing fields
+            projectBasics: parsed.projectBasics || defaultState.projectBasics,
+            topicOverview: parsed.topicOverview ?? defaultState.topicOverview,
+            topicClusters: parsed.topicClusters ?? defaultState.topicClusters,
+            selectedTopicIds: parsed.selectedTopicIds || defaultState.selectedTopicIds,
+            articles: parsed.articles || defaultState.articles,
           };
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePersistentAppState.ts:130',message:'[Bug2-FIX] Validated state after merge with defaults',data:{validatedMode:validatedState.mode,validatedClientBrief:validatedState.clientBrief,validatedOriginalArticle:validatedState.originalArticle,validatedRewriteParams:validatedState.rewriteParams},timestamp:Date.now(),sessionId:'debug-session',runId:'bug2-post-fix',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
           setState(validatedState);
         }
       }
