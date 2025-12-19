@@ -647,20 +647,27 @@ export default function Home() {
       // #endregion
 
       // Step 2: Generate articles with found trust sources
+      // Calculate targetWordCount from brief.wordCount
+      const calculatedTargetWordCount = brief.wordCount ? (() => {
+        const match = brief.wordCount.match(/^(\d+)(?:-(\d+))?$/);
+        return match ? parseInt(match[1]) : undefined;
+      })() : undefined;
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:659',message:'[HYP-A] Frontend: Preparing API request with wordCount',data:{briefWordCount:brief.wordCount,calculatedTargetWordCount,rawBriefWordCount:brief.wordCount},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        body: JSON.stringify({
           mode: "topics", // Explicitly set mode
           brief,
           selectedTopics: selectedTopicsData,
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesList: trustSourcesList,
           // Pass targetWordCount from UI (convert brief.wordCount string to number if needed)
-          targetWordCount: brief.wordCount ? (() => {
-            const match = brief.wordCount.match(/^(\d+)(?:-(\d+))?$/);
-            return match ? parseInt(match[1]) : undefined;
-          })() : undefined,
+          targetWordCount: calculatedTargetWordCount,
           lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
         }),
       });

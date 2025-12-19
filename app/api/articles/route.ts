@@ -269,6 +269,11 @@ Language: ${brief.language || "US English"}.`;
         let cleanedTitleTag = cleanText(parsedResponse.titleTag || "Article");
         let cleanedMetaDescription = cleanText(parsedResponse.metaDescription || "");
         let cleanedArticleBodyHtml = cleanText(parsedResponse.articleBodyHtml || content);
+        
+        // #region agent log
+        const directArticleWordCount = cleanedArticleBodyHtml.split(/\s+/).filter(w => w.length > 0).length;
+        fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:274',message:'[HYP-I] Backend: Final article word count (Direct Mode)',data:{articleWordCount:directArticleWordCount,articleLength:cleanedArticleBodyHtml.length},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
 
         if (body.lightHumanEdit) {
           try {
@@ -474,6 +479,10 @@ Language: ${language}.`;
           topicTitle: topic.title,
         });
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:476',message:'[HYP-B] Backend: Before calling buildArticlePrompt',data:{targetWordCount,targetFromUI:targetWordCount,briefWordCount:brief.wordCount,effectiveTargetWordCount,wordCountStr,wordCountMin,wordCountMax},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        
         const prompt = buildArticlePrompt({
           topicTitle: topic.title,
           topicBrief: topicBrief,
@@ -485,10 +494,15 @@ Language: ${language}.`;
           brandName: "PromosoundGroup",
           keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
           trustSourcesList: trustSourcesList,
-          language: brief.language || "English",
+          language: brief.language || "English (US)",
           targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
           wordCount: wordCountStr, // Use calculated range based on targetWordCount
+          clientSite: brief.clientSite || brief.anchorUrl || "", // For CLIENT_SITE_URL placeholder
         });
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:495',message:'[HYP-C] Backend: After calling buildArticlePrompt',data:{wordCountStr,wordCountPassedToPrompt:wordCountStr,promptLength:prompt.length,wordCountPlaceholderCount:(prompt.match(/\{TARGET_WORD_COUNT\}/g) || []).length,minWordCountPlaceholderCount:(prompt.match(/\{MIN_WORD_COUNT\}/g) || []).length,maxWordCountPlaceholderCount:(prompt.match(/\{MAX_WORD_COUNT\}/g) || []).length},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         
         // #region agent log
         const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{trustSourcesCount:trustSourcesList.length,trustSources:trustSourcesList.slice(0,3),hasTrustSources:trustSourcesList.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
@@ -513,6 +527,10 @@ Language: US English.`;
         const beforeApiLog = {location:'articles/route.ts:103',message:'About to call OpenAI API',data:{model:'gpt-4-turbo',hasSystemMessage:!!systemMessage,hasUserPrompt:!!prompt,promptLength:prompt.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
         debugLog(beforeApiLog);
         // #endregion
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:529',message:'[HYP-G] Backend: Before OpenAI API call',data:{promptLength:prompt.length,targetWordCountInPrompt:prompt.match(/\{TARGET_WORD_COUNT\}/)?.[0] || 'NOT_FOUND',minWordCountInPrompt:prompt.match(/\{MIN_WORD_COUNT\}/)?.[0] || 'NOT_FOUND',maxWordCountInPrompt:prompt.match(/\{MAX_WORD_COUNT\}/)?.[0] || 'NOT_FOUND',wordCountPlaceholderRemaining:(prompt.match(/\{[A-Z_]+\}/g) || []).length,wordCountStr},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
 
         let completion;
         try {
@@ -534,6 +552,10 @@ Language: US English.`;
               response_format: { type: "json_object" },
               reasoning_effort: "high", // Enable Thinking mode for better quality articles and links
             });
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:550',message:'[HYP-H] Backend: After OpenAI API call - response received',data:{responseLength:completion.choices[0]?.message?.content?.length || 0,hasContent:!!completion.choices[0]?.message?.content},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'H'})}).catch(()=>{});
+            // #endregion
           } catch (formatError: any) {
             // If response_format or reasoning_effort is not supported, try without them
             // #region agent log
@@ -632,6 +654,11 @@ Language: US English.`;
         // #region agent log
         const cleaningLog = {location:'articles/route.ts:250',message:'Text cleaning applied',data:{titleTagLength:cleanedTitleTag.length,metaDescriptionLength:cleanedMetaDescription.length,articleBodyHtmlLength:cleanedArticleBodyHtml.length,originalLength:(parsedResponse.articleBodyHtml || content).length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'text-cleaning'};
         debugLog(cleaningLog);
+        // #endregion
+        
+        // #region agent log
+        const topicArticleWordCount = cleanedArticleBodyHtml.split(/\s+/).filter(w => w.length > 0).length;
+        fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:660',message:'[HYP-I] Backend: Final article word count (Topic Discovery Mode)',data:{articleWordCount:topicArticleWordCount,articleLength:cleanedArticleBodyHtml.length,expectedMin:wordCountMin,expectedMax:wordCountMax,effectiveTargetWordCount,wordCountStr},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'I'})}).catch(()=>{});
         // #endregion
 
         // Optional: Light human edit for natural variation

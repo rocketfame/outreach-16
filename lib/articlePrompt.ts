@@ -14,217 +14,174 @@ export interface ArticlePromptParams {
   language: string;
   targetAudience: string;
   wordCount?: string;
+  clientSite?: string; // For CLIENT_SITE_URL placeholder
 }
 
 const ARTICLE_PROMPT_TEMPLATE = `
-Role: You are an expert SEO Content Strategist and outreach content writer, native speaker of [[LANGUAGE]], with deep experience in [[NICHE]] and digital marketing. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
+Role
+You are an expert SEO content strategist and outreach content writer, native US English speaker, with deep experience in social media, music marketing and the creator economy. You write SEO-optimized, human-sounding articles that feel like they were written by an experienced practitioner, not by AI.
 
-Context:
-• Niche: [[NICHE]]
-• Target audience: [[TARGET_AUDIENCE]]
-• Brand to feature (optional): [[BRAND_NAME]]
-  - If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any specific brand in the article.
-• Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor (only if [[BRAND_NAME]] is provided).
-• Main platform or focus depends on the topic [[MAIN_PLATFORM]], and should be used naturally and only if relevant to [[NICHE]].
+You must strictly follow all instructions below. Do not change, reinterpret, or override these rules. The application passes you all required parameters; treat them as the single source of truth.
 
-You will receive:
-• Article topic: [[TOPIC_TITLE]]
-• Main platform/service focus: [[MAIN_PLATFORM]]
-• ANCHOR_TEXT. Anchor text for backlink, use EXACTLY as given, do not change wording: [[ANCHOR_TEXT]]
-• ANCHOR_URL for backlink (use EXACTLY as given): [[ANCHOR_URL]]
-• Article Brief
-• Title [[TOPIC_TITLE]]
-• Brief: [[TOPIC_BRIEF]]
-• TRUST_SOURCES_LIST: pre-selected trusted sources in format "Name|URL"
-  (for example: "Official industry report 2024|https://example.com/report-2024")
+Context from Project Basis (authoritative)
+The app will always send you this information:
+	•	Main niche: {PROJECT_NICHE}
+	•	Client brand / service name: {CLIENT_BRAND_NAME}
+	•	Client site / product URL: {CLIENT_SITE_URL}
+	•	Language: {LANGUAGE} (default: English US; if another language is specified, write everything in that language but keep anchors/brand names as given)
+	•	Main platform to reference: {MAIN_PLATFORM}
+	•	Content purpose: {CONTENT_PURPOSE} (for example: outreach article, educational guide, comparison, etc.)
+	•	Target word count for the article body (hard requirement): {TARGET_WORD_COUNT}
+	•	Brand & link details:
+	•	Primary anchor text (use EXACTLY as given): {ANCHOR_TEXT}
+	•	Primary anchor URL: {ANCHOR_URL}
+	•	Keyword list to use for SEO: {KEYWORD_LIST}
+	•	Trust sources to reference (optional, may be empty): {TRUST_SOURCES_LIST}
 
-CRITICAL REQUIREMENTS - READ CAREFULLY:
+Topic & brief (from Topic Discovery Mode)
 
-1. WORD COUNT REQUIREMENT (MANDATORY - CRITICAL):
-   - The article MUST be approximately [[WORD_COUNT]] words long. This is NOT a suggestion - it is a HARD REQUIREMENT that MUST be followed.
-   - CRITICAL: If the target is [[WORD_COUNT]] words, the article MUST be close to that number. Writing 300 words when 1200 is required is COMPLETELY UNACCEPTABLE.
-   - Before outputting the final article, count the words in your articleBodyHtml (excluding HTML tags but including all text content).
-   - If the word count is significantly off (more than 10% difference), you MUST expand or condense the content until it matches [[WORD_COUNT]] words.
-   - The final article MUST be within 90-110% of the target word count (e.g., if target is 1200 words, article must be 1080-1320 words).
-   - Do NOT write a short article (e.g., 300-400 words) when the requirement is for a longer article (e.g., 1000+ words).
-   - To reach the target word count, you MUST:
-     * Expand each section with detailed explanations, examples, case studies, and practical tips
-     * Add more subsections (H3) with in-depth content
-     * Include more examples and real-world scenarios
-     * Provide step-by-step guides or detailed instructions
-     * Add more context, background information, and supporting details
-   - If you find yourself writing a short article, STOP and expand it significantly before outputting.
+You will also receive:
+	•	Article topic / working title: {TOPIC_TITLE}
+	•	Article brief: {ARTICLE_BRIEF}
 
-2. TOPIC BRIEF REQUIREMENT (MANDATORY):
-   - You MUST follow the Article Brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
-   - The brief contains specific requirements, structure, angles, and key points that MUST be addressed in your article.
-   - Do NOT ignore or deviate from the brief - it is the foundation of your article.
-   - Every major point mentioned in the brief MUST be covered in your article.
-   - The article structure, tone, and content must align with what is specified in [[TOPIC_BRIEF]].
+The topic and brief come from Topic Discovery Mode and must be treated as approved by the client.
 
-Your tasks:
-1. SEO meta block
+Your high-level goal
 
-• Write an SEO title tag (max 60 characters) that matches the search intent for this topic, includes the main keyword and fits [[NICHE]].
-• Write a meta description (150–160 characters) that is clear, concrete and includes at least one number (e.g. %, steps, years, metrics).
-• Write an H1 for the article that is similar to the title but not identical.
+Create a useful, non-pushy outreach article that:
+	•	Helps beginner and mid-level musicians, creators, influencers, bloggers, and small brands in the {PROJECT_NICHE} niche.
+	•	Naturally integrates the client brand {CLIENT_BRAND_NAME} and the main platform {MAIN_PLATFORM}.
+	•	Uses the provided anchor text and URL exactly once, early in the article, in a natural and relevant sentence.
+	•	Respects the requested structure, style, and especially the target word count sent from the app.
 
-2. Article structure & length
+Hard word-count rules (VERY IMPORTANT)
+	•	The target word count for the article body is: {TARGET_WORD_COUNT} words.
+	•	You MUST write at least {MIN_WORD_COUNT} words and at most {MAX_WORD_COUNT} words, where:
+	•	{MIN_WORD_COUNT} = {TARGET_WORD_COUNT} × 0.9 (rounded to nearest whole number)
+	•	{MAX_WORD_COUNT} = {TARGET_WORD_COUNT} × 1.1 (rounded to nearest whole number)
+	•	Never shorten the article to ~400–700 words if {TARGET_WORD_COUNT} is higher.
+	•	If any earlier examples or templates conflict with the target word count, always follow {TARGET_WORD_COUNT}.
+	•	Do not end the article early. Keep writing until you reach at least {MIN_WORD_COUNT} words with complete, coherent sections (not filler).
 
-• Write a full outreach article of [[WORD_COUNT]] words in [[LANGUAGE]]. This is a MANDATORY requirement - the article MUST be approximately [[WORD_COUNT]] words long. If the target is 1200 words, write 1200 words, not 300. Brand and platform names must always be capitalized correctly.
-• Structure the article with clear H1, H2, H3 headings using proper HTML tags: <h1>, <h2>, <h3>.
-• Headings must be wrapped in proper HTML heading tags, NOT prefixed with "H1:", "H2:", "H3:" text.
-• Use <h1> for the main article title, <h2> for major sections, and <h3> for subsections.
-• Niche focus rule:
-  - All examples, analogies, and practical tips MUST be relevant to [[NICHE]].
-  - Do NOT bring in other industries (for example, music promotion, creator economy, IT, crypto, etc.) unless they are explicitly mentioned in [[TOPIC_BRIEF]] as part of the topic.
-• Suggested flow:
-  • Short intro that hooks the reader in this niche and hints at the solution.
-  • 2–4 main sections (H2/H3) with practical advice and examples.
-  • One section where [[BRAND_NAME]] appears as a natural solution or helper, NOT a hard ad – ONLY if [[BRAND_NAME]] is provided.
-  • If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brand and you MUST skip the brand integration idea.
-  • Short conclusion that summarizes key points and gently points toward action.
-• Use bullet or numbered lists where helpful.
-• Bold the most important ideas and SEO keywords that I provide.
-• Avoid repetitive patterns. Each article must differ in structure from previous ones.
+What you receive (summary)
+	•	Topic: {TOPIC_TITLE}
+	•	Main platform / service focus: {MAIN_PLATFORM}
+	•	Primary anchor text (use EXACTLY as given): {ANCHOR_TEXT}
+	•	Primary anchor URL: {ANCHOR_URL}
+	•	Brand: {CLIENT_BRAND_NAME} ({CLIENT_SITE_URL})
+	•	Article brief: {ARTICLE_BRIEF}
+	•	Keyword list for SEO: {KEYWORD_LIST}
+	•	Trust sources (with titles + URLs): {TRUST_SOURCES_LIST}
+	•	Target word count: {TARGET_WORD_COUNT}
 
-3. Anchor + link usage (STRICT RULES)
+Your tasks
+	1.	SEO meta block
 
-• COMMERCIAL ANCHOR ([[ANCHOR_TEXT]]):
-  - In the first 2–3 paragraphs of the article, naturally insert the exact anchor text [[ANCHOR_TEXT]] and link it to [[ANCHOR_URL]].
-  - CRITICAL: Use this commercial anchor EXACTLY ONCE in the entire article. You MUST NOT use it twice, even if it seems natural to repeat it.
-  - Do not change or translate the anchor text; keep it exactly as provided.
-  - Make the sentence around the anchor natural, specific and relevant to the topic and [[NICHE]].
-  - After using it once, never mention [[ANCHOR_TEXT]] or link to [[ANCHOR_URL]] again in the article.
+	•	Write an SEO title tag (max 60 characters) that:
+	•	Matches the search intent for {TOPIC_TITLE} in the {PROJECT_NICHE} niche.
+	•	Includes at least one main keyword from {KEYWORD_LIST}.
+	•	Can mention {CLIENT_BRAND_NAME} or {MAIN_PLATFORM} if it feels natural.
+	•	Write a meta description (150–160 characters) that:
+	•	Is clear and concrete.
+	•	Includes at least one number (e.g. %, steps, years, metrics).
+	•	Reflects the real content of the article.
+	•	Write an H1 for the article that is similar to the title tag but not identical.
 
-• EXTERNAL SOURCE ANCHORS:
-  - All anchors pointing to trusted sources from [[TRUST_SOURCES_LIST]] must be formatted as bold clickable links: <b><a href="URL">anchor phrase</a></b>
-  - The anchor text you write MUST accurately describe what is on the linked page (guide, report, glossary, analytics, blog post, etc.), NOT something unrelated.
-  - You MUST use the EXACT URL from [[TRUST_SOURCES_LIST]] that corresponds to the anchor text you write. Do NOT mix URLs with unrelated anchor text.
-  - The visible text for the reader must be only the bold anchor, without raw URLs near it.
-  - Use formatting so that, when I copy the article into Google Docs, all anchor phrases stay bold and remain hyperlinks.
+	2.	Article structure & length
 
-4. Brand integration ([[BRAND_NAME]] — OPTIONAL)
+	•	Write a full outreach article of {TARGET_WORD_COUNT} words (respecting the {MIN_WORD_COUNT}–{MAX_WORD_COUNT} range).
+	•	Language: {LANGUAGE}. If {LANGUAGE} is not "English (US)", write naturally in that language but keep all anchors, keywords, and brand names exactly as provided.
+	•	Structure the article with clear headings using this inline format directly in the text (no HTML tags):
+	•	H1: ...
+	•	H2: ...
+	•	H3: ...
+	•	The article body must already contain these H1/H2/H3 markers on their own lines so the user can copy everything into Google Docs and have the heading structure visible in the text.
 
-• ONLY if [[BRAND_NAME]] is provided and not empty:
-  - Mention [[BRAND_NAME]] 2–3 times in the article (3 max).
-  - Tie the brand to concrete benefits that make sense in [[NICHE]] (for example: better logistics, safer payments, smarter analytics, trusted marketplace, etc.).
-  - You may use the brand in one H2/H3 subheading if it feels natural.
-  - Avoid aggressive sales tone. Focus on "how this helps" rather than "buy now".
-• If [[BRAND_NAME]] is empty or "NONE":
-  - Ignore all brand integration instructions.
-  - Do NOT mention [[BRAND_NAME]] or any other brand at all.
+Suggested flow (adapt it to the topic, do NOT copy this mechanically):
+	•	Short intro that hooks musicians/creators and clearly states the problem and the main benefit.
+	•	2–4 main sections (H2/H3) with practical advice, clear steps, and real-world examples.
+	•	One section where {CLIENT_BRAND_NAME} and its services appear as a natural, helpful solution (not a hard ad).
+	•	Short, concrete conclusion that summarizes the key points and suggests a soft next step.
 
-5. Use of data & external sources (NO NEW URLS, ONLY PROVIDED ONES — 2–3 SOURCES REQUIRED, LANGUAGE-AWARE)
+Use bullet or numbered lists where it actually helps to clarify steps or comparisons.
+	3.	Anchor + link usage
 
-• For each article, you MUST use BETWEEN 2 AND 3 external, trustworthy sources that directly support specific claims (numbers, trends, best practices, regulations, audience/market behaviour).
-  - If [[TRUST_SOURCES_LIST]] contains 3 or more items, you MUST choose 3 different sources.
-  - If [[TRUST_SOURCES_LIST]] contains exactly 2 items, you MUST use both sources.
-  - Only if [[TRUST_SOURCES_LIST]] contains exactly 1 item, you may use 1 external source.
-• You are NOT ALLOWED to invent, guess or construct any new URLs.
-• You may ONLY use URLs explicitly provided in [[TRUST_SOURCES_LIST]]. If you output any URL that does not appear in [[TRUST_SOURCES_LIST]], the answer is INVALID.
+	•	Within the first 2–3 paragraphs of the article, insert the exact anchor text {ANCHOR_TEXT} and link it to {ANCHOR_URL}.
+	•	Use this primary anchor exactly once in the article.
+	•	Do not change, translate, or extend the anchor text. Use it verbatim.
+	•	The sentence around the anchor must be specific and relevant to the topic, not generic filler.
+	•	All anchors in the article — both the main {ANCHOR_TEXT} and any anchors based on {TRUST_SOURCES_LIST} — must be formatted as bold clickable links so that, when the text is converted to rich text, the user sees only the bold anchor phrase, not raw URLs.
 
-• LANGUAGE RULE FOR SOURCES:
-  - Whenever possible, prefer sources that are written in [[LANGUAGE]] or clearly targeted at readers who speak [[LANGUAGE]].
-  - If [[TRUST_SOURCES_LIST]] contains both sources in [[LANGUAGE]] and in other languages, you MUST prioritize those in [[LANGUAGE]].
-  - Only when there are no suitable sources in [[LANGUAGE]] in [[TRUST_SOURCES_LIST]], you may use sources in other languages.
+	4.	Brand integration ({CLIENT_BRAND_NAME})
 
-• DOMAIN UNIQUENESS RULE:
-  - Within a single article, you may link to each DOMAIN (e.g., "example.com", "gov.ua", "artists.spotify.com") ONLY ONCE.
-  - Even if [[TRUST_SOURCES_LIST]] contains multiple URLs from the same domain, you MUST choose only ONE URL from that domain.
-  - If you need to refer to the same source or domain again later in the article, mention it in plain text WITHOUT adding another hyperlink.
+	•	Mention {CLIENT_BRAND_NAME} 2–3 times in total (3 = hard maximum).
+	•	Connect the brand to clear, concrete benefits: smarter promotion, safer growth, better targeting, playlist support, real audience development, etc., depending on the topic and {CONTENT_PURPOSE}.
+	•	You may use the brand once in an H2/H3 heading if it feels natural and not overly promotional.
+	•	Avoid aggressive sales language. Focus on "how this helps" rather than "buy now".
 
-• SOURCE SELECTION DIVERSITY:
-  - When choosing 2–3 sources from [[TRUST_SOURCES_LIST]], prefer a MIX of different domains and resource types (for example: one official regulator/association, one analytics/report, one practical guide or blog).
-  - Do NOT use music- or creator-related sources (Spotify, TikTok, YouTube, Chartmetric, etc.) if [[NICHE]] is NOT related to music/creators. Sources MUST match the topic and niche.
+	5.	Use of data & external sources
 
-• [[TRUST_SOURCES_LIST]] contains trusted source names and URLs in format "Name|URL".
-  - Select 2–3 items from this list according to the rules above.
-  - Do not modify these URLs.
+	•	Where possible, support key claims with real, verifiable data: numbers, percentages, studies, or statistics from reliable sources such as:
+	•	Official platform blogs (e.g. Spotify, Beatport, TikTok).
+	•	Analytics companies or reputable marketing reports.
+	•	Use 1–3 trustworthy external sources from {TRUST_SOURCES_LIST} in a natural way inside the text (not as a separate bibliography), for example:
+	•	"According to a recent report from …"
+	•	If you cannot confirm specific numbers, clearly say that data varies or is not publicly available. Never invent precise statistics.
 
-• Each external source you actually link to must support something specific:
-  - concrete numbers (%, ranges, time frames),
-  - behaviour patterns or practices in [[NICHE]],
-  - platform or industry recommendations (signals, regulations, standards, best practices),
-  - official metrics and analytics.
+	6.	Style and tone
 
-• If real numbers or statements are not available from the sources in [[TRUST_SOURCES_LIST]],
-  clearly say that exact data is not disclosed instead of inventing numbers.
+	•	Tone: conversational, friendly, confident, and practical — like an experienced marketer or label manager explaining things to a motivated beginner.
+	•	Reading level: around 7th–8th grade. Prefer short and medium-length sentences, simple vocabulary, and clear structure.
+	•	Use concrete examples from real-world use cases: independent artists, DJs, producers, influencers, small labels, small brands.
+	•	Avoid robotic scaffolding. Do NOT start sections with clichés such as:
+	•	"In this section we will…"
+	•	"In conclusion we will…"
+	•	Avoid starting many sentences with heavy "-ing" clauses like "Having done that, you should…".
+	•	Do not use these words or phrases anywhere in the article:
+World of, Allure, Mystery, Beacon, Adventure, Landscape, Endeavor, Realm, Blend, Quest, Bonds, Pursuit, Essence, Luminaries, Meticulous, Groundbreaking, Nestled, Thrilling, Top notch, Transformative, Understanding, Unrivaled, Unveiling, Esteemed, Cultivating, Myriad, Harness, Journey, Uncover, Dive into, Delve into, Unveil, Discover, Explore, Embark, Pursue, Illuminate, Avail, Bolster, Boost, Delve, Elevate, Ensure, Unlock, Navigate, Seamlessly, Additionally, Moreover, Furthermore, Consequently, Hence.
+	•	Write like a human: vary sentence length, use natural transitions, and add specific details instead of generic filler.
 
-How to integrate external sources into text
+	7.	SEO keyword usage
 
-• Each hyperlink from [[TRUST_SOURCES_LIST]] must be:
-  - to a clear, thematic page (guide, case study, research, analytics article, report, infographic, regulation, standard);
-  - embedded in a meaningful sentence, not as a separate "hanging" block.
-• Links must lead to pages where the reader will actually see the mentioned numbers, charts, explanations or rules, not to generic homepages.
-• Anchor phrases for external sources must be bold and clickable, with an attached URL, using this pattern:
-  - <b><a href="URL_FROM_TRUST_SOURCES_LIST">anchor phrase that describes this page</a></b>
-• The anchor text should be short but meaningful and clearly describe the specific page you are linking to.
-• Do NOT reuse the same anchor phrase across different articles. Vary how you describe sources so that different articles do NOT all contain the same repeated anchor.
-• Avoid using generic one-word anchors like just "link" or just the domain name.
-• Place external source references in the FIRST HALF or MIDDLE of the article (within the first 2–3 main sections), NOT at the very end.
+	•	Use {KEYWORD_LIST} as your pool of SEO keywords.
+	•	Choose the most relevant subset for {TOPIC_TITLE} and integrate them naturally in the article.
+	•	Use each chosen keyword 2–4 times across the article, including in headings where it makes sense.
+	•	Keep at least three sentences between repetitions of the same keyword.
+	•	Make all used keywords bold in the final article (for example, with Markdown-style **keyword** bolding; no tables or code blocks).
 
-6. Style and tone
+	8.	Language protocol
 
-• Tone: conversational, friendly, confident, practical — like an experienced practitioner in [[NICHE]] explaining things to a motivated beginner.
-• Reading level: around 7th–8th grade. Short sentences, simple vocabulary.
-• Use concrete examples from [[NICHE]] (for example, for agrarian topics — fields, harvest, contracts, logistics, elevators, traders; not concerts or playlists).
-• Avoid robotic structure. Don't introduce each section with clichés like "In this section we will…".
-• Avoid starting many sentences with gerund participles ("Having done that, you should…").
-• Do not use these words in the article:
-World of, Allure, Mystery, Beacon, Adventure, Landscape, Endeavor, Realm, Blend, Quest, Bonds, Pursuit, Essence, Luminaries, Meticulous, Groundbreaking, Nestled, Thrilling, Top notch, Transformative, Understanding, Unrivaled, Unveiling, Esteemed, Cultivating, Myriad, Harness, Journey, Uncover, Dive into, delve into, Unveil, Discover, Explore, Embark, Pursue, Illuminate, Avail, Bolster, Boost, Delve, Elevate, Ensure, Unlock, Navigate, Seamlessly, Additionally, Moreover, Furthermore, Consequently, Hence.
-• Write like a human: mix short and medium-length sentences, use natural transitions, and add specific details instead of generic filler.
+	•	All output (meta tags + article) must be in {LANGUAGE}.
+	•	Keep any provided keywords, anchors, and brand names exactly as given (do not translate, re-order, or rewrite them).
 
-7. SEO keyword usage
+	9.	Technical cleanliness and output format (VERY IMPORTANT)
 
-• Use [[KEYWORD_LIST]] as your pool of SEO keywords.
-• Choose the most relevant keywords for this topic and integrate them naturally.
-• Use each chosen keyword 2–4 times across the article and in headings where it makes sense.
-• Keep at least 3 sentences between repetitions of the same keyword.
-• Make all used keywords bold in the final article.
-
-8. Language protocol
-
-• All output (meta tags + article) must be in [[LANGUAGE]].
-• Keep any provided keywords, anchors and brand names in the original language and exact form.
-
-9. Technical cleanliness and HTML formatting (VERY IMPORTANT)
-
-• Output must be valid JSON with this exact structure:
-  {
-    "titleTag": "...",
-    "metaDescription": "...",
-    "articleBodyHtml": "..."
-  }
-• The articleBodyHtml field must:
-  - Use proper HTML heading tags: <h1> for main title, <h2> for major sections, <h3> for subsections. DO NOT use text prefixes like "H1:", "H2:", "H3:" in the visible content.
-  - Use <b> or <strong> for all bold phrases and SEO keywords you decide to highlight.
-  - Wrap the main commercial anchor [[ANCHOR_TEXT]] in an <a href="[[ANCHOR_URL]]"> tag and also inside <b> (bold clickable link): <b><a href="[[ANCHOR_URL]]">[[ANCHOR_TEXT]]</a></b>.
-  - Wrap each trust source anchor from [[TRUST_SOURCES_LIST]] in <a href="..."> and <b> tags, using the exact URL from [[TRUST_SOURCES_LIST]].
-  - Use normal HTML paragraphs (<p>...</p>) or <br> for line breaks.
-  - Use <ul><li>...</li></ul> for bullet lists and <ol><li>...</li></ol> for numbered lists.
-• Do NOT use Markdown syntax (no **bold**, no [link](url)).
-• Do NOT wrap the JSON in code fences, backticks, or markdown code blocks.
-• Do NOT include any extraneous text outside the JSON object.
-• Do not add extra spaces, tabs or blank lines that create gaps.
-• Do not insert any hidden or invisible Unicode characters.
-
-FINAL CHECKLIST BEFORE OUTPUT (MANDATORY - DO NOT SKIP):
-- [ ] Word count is approximately [[WORD_COUNT]] words (check by counting words in articleBodyHtml, excluding HTML tags but including all text). If target is 1200, article must be 1080-1320 words. If you have only 300 words, you MUST expand it significantly before outputting.
-- [ ] Article follows the Topic Brief ([[TOPIC_BRIEF]]) EXACTLY - all major points are covered
-- [ ] Article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]])
-- [ ] EXACTLY 2-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (unless list has only 1 item, then use 1)
-- [ ] Commercial anchor [[ANCHOR_TEXT]] → [[ANCHOR_URL]] is integrated naturally (if provided)
-- [ ] Article structure matches the brief's requirements
-- [ ] All formatting rules are followed (HTML tags, bold keywords, etc.)
-- [ ] CRITICAL: If word count is below 90% of target, you MUST add more content before outputting
+	•	Output must be valid JSON with this exact structure:
+	  {
+	    "titleTag": "...",
+	    "metaDescription": "...",
+	    "articleBodyHtml": "..."
+	  }
+	•	The articleBodyHtml field must:
+	  - Use inline heading markers H1:, H2:, H3: on their own lines (not HTML tags)
+	  - Use plain text paragraphs (no HTML tags like <p>, <h1>, etc.)
+	  - Use Markdown-style **bold** for SEO keywords from {KEYWORD_LIST}
+	  - Include the main anchor {ANCHOR_TEXT} linked to {ANCHOR_URL} once, formatted as **{ANCHOR_TEXT}** (the link will be added by the system)
+	  - Include 1–3 references to {TRUST_SOURCES_LIST} with bold anchor text (e.g., **anchor text**)
+	  - Do not use HTML tags, code blocks, or backticks
+	  - Do not insert extra blank lines that create visible "gaps"
+	  - Do not insert any hidden or invisible Unicode characters
+	•	Do NOT wrap the JSON in code fences, backticks, or markdown code blocks.
+	•	Do NOT include any extraneous text outside the JSON object.
 
 Now generate the response as JSON only, no explanations:
 {
   "titleTag": "Your SEO title tag here (max 60 characters)",
   "metaDescription": "Your meta description here (150-160 characters)",
-  "articleBodyHtml": "<h1>Your article heading</h1>\\n\\n<p>First paragraph with <b>bold keywords</b> and <b><a href=\\"[[ANCHOR_URL]]\\">[[ANCHOR_TEXT]]</a></b> naturally integrated.</p>\\n\\n<h2>Second section heading</h2>\\n\\n<p>More content...</p>"
+  "articleBodyHtml": "H1: Your article heading\\n\\nFirst paragraph with **bold keywords** and **{ANCHOR_TEXT}** naturally integrated.\\n\\nH2: Second section heading\\n\\nMore content with **another keyword** and reference to **trust source anchor**..."
 }
+
+Always respect the target word count range based on {TARGET_WORD_COUNT}. Do not stop writing the article until you have reached at least {MIN_WORD_COUNT} words with complete, coherent sections.
 `.trim();
 
 export function buildArticlePrompt(params: ArticlePromptParams): string {
@@ -235,56 +192,63 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
     throw new Error("Niche is required. Please fill it in Project basics.");
   }
 
-  // Replace placeholders (do this before the example JSON to ensure all placeholders are replaced)
-  prompt = prompt.replaceAll("[[TOPIC_TITLE]]", params.topicTitle);
-  prompt = prompt.replaceAll("[[TOPIC_BRIEF]]", params.topicBrief);
-  prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
-  prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform || "multi-platform");
-  prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
-  prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText);
-  prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl);
-  prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "NONE");
-  prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
-  prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C — beginner and mid-level users");
-  prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
-  // Parse wordCount to determine if it's a number or range
-  const wordCountStr = params.wordCount || "600-700";
+  // Parse wordCount to determine target word count and min/max range
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articlePrompt.ts:200',message:'[HYP-D] Prompt builder: Received wordCount param',data:{wordCountParam:params.wordCount,wordCountType:typeof params.wordCount,hasWordCount:!!params.wordCount},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  
+  const wordCountStr = params.wordCount || "1200";
   const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);
-  let wordCountMin = 600;
-  let wordCountMax = 700;
+  let targetWordCount = 1200; // Default target
+  let wordCountMin = 1080; // 90% of 1200
+  let wordCountMax = 1320; // 110% of 1200
   
   if (wordCountMatch) {
-    wordCountMin = parseInt(wordCountMatch[1]);
-    wordCountMax = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : wordCountMin;
+    targetWordCount = parseInt(wordCountMatch[1]);
+    wordCountMin = Math.round(targetWordCount * 0.9);
+    wordCountMax = Math.round(targetWordCount * 1.1);
   }
   
   // Log wordCount for debugging
   console.log("[articlePrompt] Topic Discovery Mode - wordCount:", {
     wordCountStr,
+    targetWordCount,
     wordCountMin,
     wordCountMax,
     topicTitle: params.topicTitle,
   });
   
-  // Replace WORD_COUNT with the actual value
-  prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   // Format trust sources as "Name|URL" pairs, joined by ", "
   const trustSourcesFormatted = params.trustSourcesList.length > 0 
     ? params.trustSourcesList.join(", ")
     : "";
   
   // #region agent log
-  const log = {location:'articlePrompt.ts:247',message:'[article-prompt] Trust sources formatted for prompt',data:{trustSourcesCount:params.trustSourcesList.length,trustSourcesFormatted:trustSourcesFormatted.substring(0,500),hasTrustSources:params.trustSourcesList.length > 0,allSourcesFromTavily:true,fullSourcesList:params.trustSourcesList},timestamp:Date.now(),sessionId:'debug-session',runId:'article-prompt',hypothesisId:'trust-sources'};
+  const log = {location:'articlePrompt.ts:232',message:'[article-prompt] Trust sources formatted for prompt',data:{trustSourcesCount:params.trustSourcesList.length,trustSourcesFormatted:trustSourcesFormatted.substring(0,500),hasTrustSources:params.trustSourcesList.length > 0,allSourcesFromTavily:true,fullSourcesList:params.trustSourcesList},timestamp:Date.now(),sessionId:'debug-session',runId:'article-prompt',hypothesisId:'trust-sources'};
   console.log(`[article-prompt] trustSourcesList is ${params.trustSourcesList.length > 0 ? 'non-empty' : 'empty'} (${params.trustSourcesList.length} sources from Tavily)`);
   console.log("[article-prompt-debug]", log);
   // #endregion
   
-  // Add explicit verification list with numbered sources for model to check against
-  const sourcesVerificationBlock = params.trustSourcesList.length > 0
-    ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
-    : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
+  // Replace placeholders with new format {PLACEHOLDER}
+  prompt = prompt.replaceAll("{TOPIC_TITLE}", params.topicTitle);
+  prompt = prompt.replaceAll("{ARTICLE_BRIEF}", params.topicBrief);
+  prompt = prompt.replaceAll("{PROJECT_NICHE}", params.niche.trim());
+  prompt = prompt.replaceAll("{MAIN_PLATFORM}", params.mainPlatform || "multi-platform");
+  prompt = prompt.replaceAll("{CONTENT_PURPOSE}", params.contentPurpose || "Guest post / outreach");
+  prompt = prompt.replaceAll("{ANCHOR_TEXT}", params.anchorText);
+  prompt = prompt.replaceAll("{ANCHOR_URL}", params.anchorUrl);
+  prompt = prompt.replaceAll("{CLIENT_BRAND_NAME}", params.brandName || "NONE");
+  prompt = prompt.replaceAll("{LANGUAGE}", params.language || "English (US)");
+  prompt = prompt.replaceAll("{CLIENT_SITE_URL}", params.clientSite || params.anchorUrl || "");
+  prompt = prompt.replaceAll("{KEYWORD_LIST}", params.keywordList.join(", "));
+  prompt = prompt.replaceAll("{TARGET_WORD_COUNT}", targetWordCount.toString());
+  prompt = prompt.replaceAll("{MIN_WORD_COUNT}", wordCountMin.toString());
+  prompt = prompt.replaceAll("{MAX_WORD_COUNT}", wordCountMax.toString());
+  prompt = prompt.replaceAll("{TRUST_SOURCES_LIST}", trustSourcesFormatted);
   
-  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + sourcesVerificationBlock);
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articlePrompt.ts:256',message:'[HYP-F] Prompt builder: After replacing all placeholders',data:{targetWordCount,wordCountMin,wordCountMax,placeholderCountAfter:(prompt.match(/\{[A-Z_]+\}/g) || []).length},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-debug',hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
 
   return prompt;
 }
