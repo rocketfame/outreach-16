@@ -137,15 +137,17 @@ export default function Home() {
     }));
   };
 
-  const updateGeneratedArticles = (articles: GeneratedArticle[]) => {
+  const updateGeneratedArticles = (articlesOrUpdater: GeneratedArticle[] | ((prev: GeneratedArticle[]) => GeneratedArticle[])) => {
     setPersistedState(prev => ({
       ...prev,
-      articles: articles,
+      articles: typeof articlesOrUpdater === 'function' 
+        ? articlesOrUpdater(prev.articles)
+        : articlesOrUpdater,
     }));
   };
 
   const removeArticle = (topicId: string) => {
-    updateGeneratedArticles(generatedArticles.filter(a => a.topicTitle !== topicId));
+    updateGeneratedArticles(prev => prev.filter(a => a.topicTitle !== topicId));
     // Also close view/edit if open
     if (viewingArticle === topicId) {
       setViewingArticle(null);
@@ -753,8 +755,8 @@ export default function Home() {
     
     // Create a temporary article entry
     const tempArticleId = `direct-${Date.now()}`;
-    updateGeneratedArticles([
-      ...generatedArticles,
+    updateGeneratedArticles(prev => [
+      ...prev,
       {
         topicTitle: tempArticleId,
         titleTag: "",
@@ -806,7 +808,7 @@ export default function Home() {
             anchorText: brief.anchorText || "",
             anchorUrl: brief.anchorUrl || "",
             language: brief.language || "English",
-            wordCount: brief.wordCount || "1000",
+            wordCount: directArticleSettings.targetWordCount?.toString() || brief.wordCount || "1000",
           },
           clientBrief: clientBrief,
           articleSettings: {
@@ -816,6 +818,7 @@ export default function Home() {
             targetWordCount: directArticleSettings.targetWordCount,
             writingStyle: directArticleSettings.writingStyle,
           },
+          keywordList: directArticleSettings.anchorKeyword ? [directArticleSettings.anchorKeyword] : [],
           trustSourcesList: trustSourcesList,
           lightHumanEdit: lightHumanEditEnabled,
         }),
@@ -836,17 +839,37 @@ export default function Home() {
 
       if (data.articles.length > 0) {
         const newArticle = data.articles[0];
-        updateGeneratedArticles(
-          generatedArticles.map(a =>
-            a.topicTitle === tempArticleId
-              ? {
-                  ...newArticle,
-                  topicTitle: tempArticleId,
-                  status: "ready" as const,
-                }
-              : a
-          )
-        );
+        // Update using functional form to get latest state
+        updateGeneratedArticles(prev => {
+          // Find the article with matching tempArticleId or the last "generating" article for direct mode
+          const articleIndex = prev.findIndex(a => 
+            a.topicTitle === tempArticleId || 
+            (a.status === "generating" && a.topicTitle.startsWith("direct-"))
+          );
+          
+          if (articleIndex !== -1) {
+            // Update existing article
+            return prev.map((a, idx) =>
+              idx === articleIndex
+                ? {
+                    ...newArticle,
+                    topicTitle: tempArticleId,
+                    status: "ready" as const,
+                  }
+                : a
+            );
+          } else {
+            // Add new article if not found (shouldn't happen, but just in case)
+            return [
+              ...prev,
+              {
+                ...newArticle,
+                topicTitle: tempArticleId,
+                status: "ready" as const,
+              }
+            ];
+          }
+        });
 
         // Scroll to article
         setTimeout(() => {
@@ -878,8 +901,8 @@ export default function Home() {
       const errorMessage = (error as Error).message || "Failed to generate article from brief. Please try again.";
       alert(errorMessage);
       
-      updateGeneratedArticles(
-        generatedArticles.map(a =>
+      updateGeneratedArticles(prev =>
+        prev.map(a =>
           a.topicTitle === tempArticleId
             ? { ...a, status: "error" as const }
             : a
@@ -904,8 +927,8 @@ export default function Home() {
     
     // Create a temporary article entry
     const tempArticleId = `rewrite-${Date.now()}`;
-    updateGeneratedArticles([
-      ...generatedArticles,
+    updateGeneratedArticles(prev => [
+      ...prev,
       {
         topicTitle: tempArticleId,
         titleTag: "",
@@ -933,6 +956,7 @@ export default function Home() {
             wordCount: rewriteParams.targetWordCount?.toString() || brief.wordCount || "1000",
           },
           rewriteParams: {
+            additionalBrief: rewriteParams.additionalBrief,
             niche: rewriteParams.niche,
             brandName: rewriteParams.brandName,
             anchorKeyword: rewriteParams.anchorKeyword,
@@ -958,17 +982,37 @@ export default function Home() {
 
       if (data.articles.length > 0) {
         const newArticle = data.articles[0];
-        updateGeneratedArticles(
-          generatedArticles.map(a =>
-            a.topicTitle === tempArticleId
-              ? {
-                  ...newArticle,
-                  topicTitle: tempArticleId,
-                  status: "ready" as const,
-                }
-              : a
-          )
-        );
+        // Update using functional form to get latest state
+        updateGeneratedArticles(prev => {
+          // Find the article with matching tempArticleId or the last "generating" article for rewrite mode
+          const articleIndex = prev.findIndex(a => 
+            a.topicTitle === tempArticleId || 
+            (a.status === "generating" && a.topicTitle.startsWith("rewrite-"))
+          );
+          
+          if (articleIndex !== -1) {
+            // Update existing article
+            return prev.map((a, idx) =>
+              idx === articleIndex
+                ? {
+                    ...newArticle,
+                    topicTitle: tempArticleId,
+                    status: "ready" as const,
+                  }
+                : a
+            );
+          } else {
+            // Add new article if not found (shouldn't happen, but just in case)
+            return [
+              ...prev,
+              {
+                ...newArticle,
+                topicTitle: tempArticleId,
+                status: "ready" as const,
+              }
+            ];
+          }
+        });
 
         // Scroll to article
         setTimeout(() => {
@@ -1000,8 +1044,8 @@ export default function Home() {
       const errorMessage = (error as Error).message || "Failed to rewrite article. Please try again.";
       alert(errorMessage);
       
-      updateGeneratedArticles(
-        generatedArticles.map(a =>
+      updateGeneratedArticles(prev =>
+        prev.map(a =>
           a.topicTitle === tempArticleId
             ? { ...a, status: "error" as const }
             : a
@@ -2018,6 +2062,19 @@ export default function Home() {
                 <div className="step-content">
                   <div className="form-fields">
                     <label>
+                      <span>Additional brief / notes (optional)</span>
+                      <textarea
+                        value={rewriteParams.additionalBrief || ""}
+                        onChange={(e) => updateRewriteParams({ additionalBrief: e.target.value || undefined })}
+                        placeholder="e.g. Keep the structure similar, make tone more conversational, avoid promising guaranteed results, highlight organic growth and transparency."
+                        rows={3}
+                        style={{ minHeight: "88px", resize: "vertical" }}
+                        disabled={isGeneratingArticles}
+                      />
+                      <small>Use this to add extra instructions for the rewrite: must-keep points, tone preferences, SEO notes, or things to avoid.</small>
+                    </label>
+
+                    <label>
                       <span>Niche or industry (optional)</span>
                       <input
                         type="text"
@@ -2055,8 +2112,13 @@ export default function Home() {
                       <input
                         type="number"
                         value={rewriteParams.targetWordCount || ""}
-                        onChange={(e) => updateRewriteParams({ targetWordCount: e.target.value ? parseInt(e.target.value) : undefined })}
-                        placeholder="e.g. 1200"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateRewriteParams({ 
+                            targetWordCount: val ? (isNaN(parseInt(val)) ? undefined : parseInt(val)) : undefined 
+                          });
+                        }}
+                        placeholder="e.g. 2000"
                         min="100"
                         disabled={isGeneratingArticles}
                       />
@@ -2088,7 +2150,13 @@ export default function Home() {
         {/* Generated Articles Section */}
         {generatedArticles.length > 0 && (
           <div className="generated-articles-section" ref={generatedArticlesSectionRef}>
-                  <h3 className="section-title">Generated Articles</h3>
+                  <h3 className="section-title">
+                    {mode === "rewrite" 
+                      ? "Rewritten Articles" 
+                      : mode === "direct"
+                      ? "Generated Articles"
+                      : "Generated Articles"}
+                  </h3>
                   <div className="articles-list">
                     {generatedArticles.map((article) => {
                       const topicId = article.topicTitle;
@@ -2101,7 +2169,8 @@ export default function Home() {
                       const articleSummary = getArticleSummary(article, topic);
                       const wordCount = getWordCount(articleText);
                       const formattedWordCount = formatWordCount(wordCount);
-                      const topicTitle = topic?.workingTitle || topicId;
+                      // For Direct and Rewrite modes, use titleTag if available, otherwise use topicId
+                      const topicTitle = topic?.workingTitle || (article.titleTag ? stripHtmlTags(article.titleTag) : topicId);
                       const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : null;
                       
                       return (
@@ -2226,14 +2295,17 @@ export default function Home() {
                                     </button>
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  className="btn-outline"
-                                  onClick={() => regenerateArticleForTopic(topicId)}
-                                  disabled={isGeneratingArticles}
-                                >
-                                  Regenerate
-                                </button>
+                                {/* Only show Regenerate button for Topic Discovery Mode */}
+                                {mode === "discovery" && topic && (
+                                  <button
+                                    type="button"
+                                    className="btn-outline"
+                                    onClick={() => regenerateArticleForTopic(topicId)}
+                                    disabled={isGeneratingArticles}
+                                  >
+                                    Regenerate
+                                  </button>
+                                )}
                               </div>
 
                               {/* View Modal */}

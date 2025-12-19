@@ -49,6 +49,7 @@ export interface ArticleRequest {
   // For rewrite mode
   originalArticle?: string;
   rewriteParams?: {
+    additionalBrief?: string;
     niche?: string;
     brandName?: string;
     anchorKeyword?: string;
@@ -259,12 +260,17 @@ Language: ${brief.language || "US English"}.`;
     } else if (mode === "rewrite") {
       // Rewrite mode: Deeply rewrite and improve existing article
       try {
+        // Use targetWordCount from rewriteParams, or from brief.wordCount, or default to 1000
+        const targetWordCount = rewriteParams?.targetWordCount 
+          || parseInt(brief.wordCount || "1000");
+        
         const prompt = buildRewritePrompt({
           originalArticle: originalArticle!,
+          additionalBrief: rewriteParams?.additionalBrief,
           niche: rewriteParams?.niche || brief.niche || "",
           brandName: rewriteParams?.brandName || "",
           anchorKeyword: rewriteParams?.anchorKeyword || brief.anchorText || "",
-          targetWordCount: rewriteParams?.targetWordCount || parseInt(brief.wordCount || "1000"),
+          targetWordCount: targetWordCount,
           style: rewriteParams?.style || "neutral",
           language: brief.language || "English",
         });
@@ -385,6 +391,7 @@ Language: ${brief.language || "US English"}.`;
           trustSourcesList: trustSourcesList,
           language: brief.language || "English",
           targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
+          wordCount: brief.wordCount || "600-700",
         });
         
         // #region agent log

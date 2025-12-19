@@ -65,6 +65,7 @@ export type AppPersistedState = {
   // New fields for Rewrite mode
   originalArticle?: string;
   rewriteParams?: {
+    additionalBrief?: string;
     niche?: string;
     brandName?: string;
     anchorKeyword?: string;

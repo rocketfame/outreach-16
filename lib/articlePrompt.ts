@@ -13,6 +13,7 @@ export interface ArticlePromptParams {
   trustSourcesList: string[];
   language: string;
   targetAudience: string;
+  wordCount?: string;
 }
 
 const ARTICLE_PROMPT_TEMPLATE = `
@@ -62,7 +63,7 @@ Structure:
 - Do NOT write things like "H1: …, H2: …" in the body.
 - Just write normal headings and paragraphs; hierarchy is conveyed by text, 
   not by labels.
-- Write a full outreach article of 600–700 words in [[LANGUAGE]]. Brand and platform names must always be capitalized correctly.
+- Write a full outreach article of [[WORD_COUNT]] words in [[LANGUAGE]]. Brand and platform names must always be capitalized correctly.
 - Structure the article with clear H1, H2, H3 headings using proper HTML tags: <h1>, <h2>, <h3>.
 - Use <h1> for the main article title, <h2> for major sections, and <h3> for subsections.
 - Suggested flow:
@@ -320,6 +321,7 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C — beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
+  prompt = prompt.replaceAll("[[WORD_COUNT]]", params.wordCount || "600-700");
   // Format trust sources as "Name|URL" pairs, joined by ", "
   const trustSourcesFormatted = params.trustSourcesList.length > 0 
     ? params.trustSourcesList.join(", ")
@@ -411,6 +413,7 @@ Output as JSON:
 // Rewrite mode prompt builder
 export interface RewritePromptParams {
   originalArticle: string;
+  additionalBrief?: string;
   niche?: string;
   brandName?: string;
   anchorKeyword?: string;
@@ -428,6 +431,10 @@ export function buildRewritePrompt(params: RewritePromptParams): string {
     "professional": "Maintain a formal, professional tone suitable for business contexts.",
   }[params.style] || "Maintain the original style while improving clarity.";
 
+  const additionalBriefInstruction = params.additionalBrief?.trim()
+    ? `\n\nADDITIONAL CLIENT BRIEF / NOTES FOR THIS REWRITE:\n${params.additionalBrief.trim()}`
+    : "";
+
   return `You are an expert content editor and SEO specialist. Your task is to deeply analyze and rewrite an existing article, improving its structure, clarity, SEO optimization, and overall quality while preserving the core meaning and message.
 
 ORIGINAL ARTICLE:
@@ -440,7 +447,7 @@ REWRITE PARAMETERS:
 • Niche/industry: ${params.niche || "Not specified"}
 • Brand/company: ${params.brandName || "Not specified"}
 • Primary keyword/anchor: ${params.anchorKeyword || "Not specified"}
-• Language: ${params.language}
+• Language: ${params.language}${additionalBriefInstruction}
 
 REWRITE REQUIREMENTS:
 1. Deeply analyze the original article:
@@ -456,7 +463,7 @@ REWRITE REQUIREMENTS:
    - Strengthen weak sections with concrete examples or data
    - Remove redundancy and filler content
    - Vary sentence structure and length for natural rhythm
-   - Ensure the article meets the target word count (aim for ${params.targetWordCount} words)
+   - Ensure the article meets the target word count (aim for ${params.targetWordCount} words). If the original article is shorter than ${params.targetWordCount} words, expand it with relevant content, examples, and detailed explanations while maintaining the core message. If the original is longer, adjust the rewritten version to approximately ${params.targetWordCount} words while preserving all key points.
 
 3. Maintain quality standards:
    - Use proper HTML structure (H1/H2/H3 headings)
