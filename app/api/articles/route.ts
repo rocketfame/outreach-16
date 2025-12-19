@@ -27,6 +27,8 @@ export interface ArticleRequest {
     language?: string;
     wordCount?: string;
   };
+  // For Topic Discovery Mode - explicit target word count from UI
+  targetWordCount?: number;
   selectedTopics?: Array<{
     title: string;
     brief?: string;
@@ -113,6 +115,7 @@ export async function POST(req: Request) {
       articleSettings,
       originalArticle,
       rewriteParams,
+      targetWordCount, // For Topic Discovery Mode - explicit target from UI
     } = body;
 
     // Validate mode-specific requirements
@@ -161,16 +164,32 @@ export async function POST(req: Request) {
       try {
         // Build prompt for direct brief mode
         // CRITICAL: Use ONLY data from articleSettings and clientBrief, NOT from brief (Topic Discovery Mode)
-        // For wordCount: use ONLY articleSettings.targetWordCount, default to "1000" if not provided
-        const wordCountForDirect = articleSettings?.targetWordCount 
-          ? String(articleSettings.targetWordCount) 
-          : "1000"; // Do NOT use brief.wordCount as fallback
+        
+        // Determine target word count for Direct Article Creation Mode
+        // Priority: 1) articleSettings.targetWordCount, 2) default
+        let effectiveTargetWordCount: number;
+        if (articleSettings?.targetWordCount && articleSettings.targetWordCount > 0) {
+          effectiveTargetWordCount = articleSettings.targetWordCount;
+        } else {
+          effectiveTargetWordCount = 1200; // Default if not provided
+        }
+        
+        // Calculate word count range (85-115% of target)
+        const wordCountMin = Math.round(effectiveTargetWordCount * 0.85);
+        const wordCountMax = Math.round(effectiveTargetWordCount * 1.15);
+        const wordCountStr = `${wordCountMin}-${wordCountMax}`;
         
         // Log wordCount for debugging
         console.log("[articles-api] Direct Brief Mode - wordCount:", {
-          articleSettingsTargetWordCount: articleSettings?.targetWordCount,
-          wordCountUsed: wordCountForDirect,
-          briefWordCount: brief.wordCount,
+          targetFromUI: articleSettings?.targetWordCount,
+          effectiveTargetWordCount,
+          wordCountMin,
+          wordCountMax,
+          wordCountUsed: wordCountStr,
+          hasNiche: !!articleSettings?.nicheOrIndustry,
+          hasBrand: !!articleSettings?.brandName,
+          hasAnchor: !!articleSettings?.anchorKeyword,
+          writingStyle: articleSettings?.writingStyle,
         });
         
         const prompt = buildDirectBriefPrompt({
@@ -185,7 +204,7 @@ export async function POST(req: Request) {
           trustSourcesList: trustSourcesList, // OK - comes from Direct mode
           language: brief.language || "English", // Language is OK as it's a global setting
           targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
-          wordCount: wordCountForDirect, // Use ONLY articleSettings.targetWordCount
+          wordCount: wordCountStr, // Use calculated range based on targetWordCount
           writingStyle: articleSettings?.writingStyle,
         });
 
@@ -274,11 +293,32 @@ Language: ${brief.language || "US English"}.`;
       // Rewrite mode: Deeply rewrite and improve existing article
       // CRITICAL: Use ONLY data from rewriteParams and originalArticle, NOT from brief (Topic Discovery Mode)
       try {
-        // Use targetWordCount from rewriteParams only, default to 1000 if not provided
-        const targetWordCount = rewriteParams?.targetWordCount || 1000;
+        // Determine target word count for Rewrite Mode
+        // Priority: 1) rewriteParams.targetWordCount, 2) default based on original article length or global default
+        let effectiveTargetWordCount: number;
+        if (rewriteParams?.targetWordCount && rewriteParams.targetWordCount > 0) {
+          effectiveTargetWordCount = rewriteParams.targetWordCount;
+        } else {
+          // Default: use original article length as baseline, or 1200 if original is very short
+          const originalLength = originalArticle!.length;
+          const estimatedWords = Math.round(originalLength / 5); // Rough estimate: 5 chars per word
+          effectiveTargetWordCount = estimatedWords > 200 ? estimatedWords : 1200;
+        }
         
         // Get language from rewriteParams or brief (brief.language is OK as it's a global setting)
         const language = brief.language || "English";
+        
+        // Log targetWordCount for debugging
+        console.log("[articles-api] Rewrite Mode - targetWordCount:", {
+          targetFromUI: rewriteParams?.targetWordCount,
+          originalLength: originalArticle!.length,
+          effectiveTargetWordCount,
+          hasRewriteBrief: !!rewriteParams?.additionalBrief,
+          hasNiche: !!rewriteParams?.niche,
+          hasBrand: !!rewriteParams?.brandName,
+          hasAnchor: !!rewriteParams?.anchorKeyword,
+          writingStyle: rewriteParams?.style,
+        });
         
         // For Rewrite Mode, use ONLY rewriteParams data, not brief data
         const prompt = buildRewritePrompt({
@@ -288,7 +328,7 @@ Language: ${brief.language || "US English"}.`;
           brandName: rewriteParams?.brandName || "",
           anchorKeyword: rewriteParams?.anchorKeyword || "", // Do NOT use brief.anchorText as fallback
           anchorUrl: rewriteParams?.anchorKeyword ? (brief.anchorUrl || brief.clientSite || "") : "", // Only use if anchorKeyword is provided
-          targetWordCount: targetWordCount,
+          targetWordCount: effectiveTargetWordCount,
           style: rewriteParams?.style || "neutral",
           language: language,
           keywordList: [], // Do NOT use keywordList from Topic Discovery Mode
@@ -400,12 +440,37 @@ Language: ${language}.`;
 
         // Build the article prompt
         // Note: buildArticlePrompt will throw an error if niche is missing
-        const wordCountForTopic = brief.wordCount || "600-700";
+        
+        // Determine target word count for Topic Discovery Mode
+        // Priority: 1) targetWordCount from UI, 2) brief.wordCount (legacy), 3) default
+        let effectiveTargetWordCount: number;
+        if (targetWordCount && targetWordCount > 0) {
+          effectiveTargetWordCount = targetWordCount;
+        } else if (brief.wordCount) {
+          // Parse brief.wordCount (can be "2000" or "600-700")
+          const wordCountMatch = brief.wordCount.match(/^(\d+)(?:-(\d+))?$/);
+          if (wordCountMatch) {
+            effectiveTargetWordCount = parseInt(wordCountMatch[1]);
+          } else {
+            effectiveTargetWordCount = 1200; // Default if parsing fails
+          }
+        } else {
+          effectiveTargetWordCount = 1200; // Default if nothing provided
+        }
+        
+        // Calculate word count range (85-115% of target)
+        const wordCountMin = Math.round(effectiveTargetWordCount * 0.85);
+        const wordCountMax = Math.round(effectiveTargetWordCount * 1.15);
+        const wordCountStr = `${wordCountMin}-${wordCountMax}`;
         
         // Log wordCount for debugging
         console.log("[articles-api] Topic Discovery Mode - wordCount:", {
+          targetFromUI: targetWordCount,
           briefWordCount: brief.wordCount,
-          wordCountUsed: wordCountForTopic,
+          effectiveTargetWordCount,
+          wordCountMin,
+          wordCountMax,
+          wordCountUsed: wordCountStr,
           topicTitle: topic.title,
         });
         
@@ -422,7 +487,7 @@ Language: ${language}.`;
           trustSourcesList: trustSourcesList,
           language: brief.language || "English",
           targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
-          wordCount: wordCountForTopic, // Use user-specified word count from Topic Discovery Mode or default
+          wordCount: wordCountStr, // Use calculated range based on targetWordCount
         });
         
         // #region agent log

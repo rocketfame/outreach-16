@@ -650,11 +650,17 @@ export default function Home() {
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+          body: JSON.stringify({
+          mode: "topics", // Explicitly set mode
           brief,
           selectedTopics: selectedTopicsData,
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesList: trustSourcesList,
+          // Pass targetWordCount from UI (convert brief.wordCount string to number if needed)
+          targetWordCount: brief.wordCount ? (() => {
+            const match = brief.wordCount.match(/^(\d+)(?:-(\d+))?$/);
+            return match ? parseInt(match[1]) : undefined;
+          })() : undefined,
           lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
         }),
       });
