@@ -58,6 +58,22 @@ Write the article so it feels clearly human-written, not AI-generated:
 - Include occasional rhetorical questions, personal observations, or brief asides that feel authentic.
 - Write as if you're explaining to a friend who understands the basics but needs practical guidance, not as if you're writing a corporate manual.
 
+CRITICAL REQUIREMENTS - READ CAREFULLY:
+
+1. WORD COUNT REQUIREMENT (MANDATORY):
+   - The article MUST be approximately [[WORD_COUNT]] words long. This is NOT a suggestion - it is a HARD REQUIREMENT.
+   - Before outputting the final article, count the words in your articleBodyHtml (excluding HTML tags).
+   - If the word count is significantly off (more than 10% difference), adjust the content until it matches [[WORD_COUNT]] words.
+   - The final article MUST be within 90-110% of the target word count (e.g., if target is 1000 words, article must be 900-1100 words).
+   - Do NOT write a short article (e.g., 300-400 words) when the requirement is for a longer article (e.g., 1000+ words).
+
+2. TOPIC BRIEF REQUIREMENT (MANDATORY):
+   - You MUST follow the Article Brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
+   - The brief contains specific requirements, structure, angles, and key points that MUST be addressed in your article.
+   - Do NOT ignore or deviate from the brief - it is the foundation of your article.
+   - Every major point mentioned in the brief MUST be covered in your article.
+   - The article structure, tone, and content must align with what is specified in [[TOPIC_BRIEF]].
+
 Structure:
 - Respect the structure implied by the topic brief (H1/H2/H3 etc.).
 - Do NOT write things like "H1: …, H2: …" in the body.
@@ -293,6 +309,15 @@ Technical requirements:
 - Do not add extra spaces, tabs or blank lines that create gaps.
 - Do not insert any hidden or invisible Unicode characters.
 
+FINAL CHECKLIST BEFORE OUTPUT:
+- [ ] Word count is approximately [[WORD_COUNT]] words (check by counting words in articleBodyHtml, excluding HTML tags)
+- [ ] Article follows the Topic Brief ([[TOPIC_BRIEF]]) EXACTLY - all major points are covered
+- [ ] Article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]])
+- [ ] EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (unless list is empty)
+- [ ] Commercial anchor [[ANCHOR_TEXT]] → [[ANCHOR_URL]] is integrated naturally (if provided)
+- [ ] Article structure matches the brief's requirements
+- [ ] All formatting rules are followed (HTML tags, bold keywords, etc.)
+
 Now generate the response as JSON only, no explanations:
 {
   "titleTag": "Your SEO title tag here (max 60 characters)",
@@ -321,7 +346,19 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C — beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
-  prompt = prompt.replaceAll("[[WORD_COUNT]]", params.wordCount || "600-700");
+  // Parse wordCount to determine if it's a number or range
+  const wordCountStr = params.wordCount || "600-700";
+  const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);
+  let wordCountMin = 600;
+  let wordCountMax = 700;
+  
+  if (wordCountMatch) {
+    wordCountMin = parseInt(wordCountMatch[1]);
+    wordCountMax = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : wordCountMin;
+  }
+  
+  // Replace WORD_COUNT with the actual value
+  prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   // Format trust sources as "Name|URL" pairs, joined by ", "
   const trustSourcesFormatted = params.trustSourcesList.length > 0 
     ? params.trustSourcesList.join(", ")
@@ -369,6 +406,17 @@ export function buildDirectBriefPrompt(params: DirectBriefPromptParams): string 
     ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
     : "\n\nVERIFICATION LIST: No external sources provided. Write the article WITHOUT any external links.\n";
 
+  // Parse wordCount to determine target
+  const wordCountStr = params.wordCount || "1000";
+  const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);
+  let wordCountMin = 1000;
+  let wordCountMax = 1000;
+  
+  if (wordCountMatch) {
+    wordCountMin = parseInt(wordCountMatch[1]);
+    wordCountMax = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : wordCountMin;
+  }
+
   return `You are an expert SEO Content Strategist and outreach content writer. Your task is to analyze a detailed client brief and create a fully written article that meets all requirements.
 
 CLIENT BRIEF:
@@ -380,7 +428,7 @@ CONTEXT:
 • Content purpose: ${params.contentPurpose || "Guest post / outreach"}
 • Target audience: ${params.targetAudience}
 • Language: ${params.language}
-• Target word count: ${params.wordCount} words
+• Target word count: ${params.wordCount} words (MANDATORY - the final article MUST be approximately ${wordCountMin} words)
 • Brand to feature: ${params.brandName || "NONE"}
 • Anchor text (use EXACTLY): ${params.anchorText}
 • Anchor URL (use EXACTLY): ${params.anchorUrl}
@@ -391,16 +439,48 @@ TRUST SOURCES (use 1-3 of these):
 ${trustSourcesFormatted}
 ${sourcesVerificationBlock}
 
+CRITICAL REQUIREMENTS - READ CAREFULLY:
+
+1. WORD COUNT REQUIREMENT (MANDATORY):
+   - The article MUST be approximately ${wordCountMin} words long. This is NOT a suggestion - it is a HARD REQUIREMENT.
+   - Before outputting the final article, count the words in your articleBodyHtml (excluding HTML tags).
+   - If the word count is significantly off (more than 10% difference), adjust the content until it matches ${wordCountMin} words.
+   - The final article MUST be between ${Math.floor(wordCountMin * 0.9)} and ${Math.ceil(wordCountMax * 1.1)} words.
+   - Do NOT write a short article (e.g., 300-400 words) when the requirement is for a longer article (e.g., 1000+ words).
+
+2. CLIENT BRIEF REQUIREMENT (MANDATORY):
+   - You MUST follow the Client Brief EXACTLY as provided above.
+   - The brief contains specific requirements, goals, target audience, tone, SEO requirements, links, examples, etc.
+   - Do NOT ignore or deviate from the brief - it is the foundation of your article.
+   - Every requirement mentioned in the brief MUST be addressed in your article.
+   - The article structure, tone, content, and all specifications must align with what is specified in the Client Brief.
+   - If the brief mentions specific topics, examples, or points, they MUST be included in your article.
+
+3. EXTERNAL SOURCES REQUIREMENT (MANDATORY):
+   - You MUST use EXACTLY 1-3 external trust sources from the TRUST SOURCES list above.
+   - This is MANDATORY, not optional (unless the TRUST SOURCES list is completely empty).
+   - Each source must be integrated naturally into the article body.
+   - Format links as: <b><a href="EXACT_URL">short natural anchor</a></b>
+   - Verify that each URL matches EXACTLY one entry in the TRUST SOURCES list.
+
 REQUIREMENTS:
-1. Analyze the client brief thoroughly and extract all requirements (topic, goals, target audience, tone, SEO requirements, links, examples, etc.).
-2. Create a complete article that addresses all aspects mentioned in the brief.
+1. Analyze the client brief thoroughly and extract ALL requirements (topic, goals, target audience, tone, SEO requirements, links, examples, etc.).
+2. Create a complete article that addresses ALL aspects mentioned in the brief.
 3. Use the same quality standards as the standard article generation:
    - Human-written style (vary sentence length, avoid generic phrases, use concrete examples)
    - Clear structure with H1/H2/H3 headings
    - Natural integration of anchor text and brand (if provided)
-   - Use 1-3 external trust sources from the list above
+   - Use 1-3 external trust sources from the list above (MANDATORY)
    - SEO-optimized title tag and meta description
 4. Follow all formatting rules from the standard article prompt (HTML tags, bold keywords, etc.).
+
+FINAL CHECKLIST BEFORE OUTPUT:
+- [ ] Word count is approximately ${wordCountMin} words (check by counting words in articleBodyHtml, excluding HTML tags)
+- [ ] Article follows the Client Brief EXACTLY - all requirements are addressed
+- [ ] EXACTLY 1-3 external trust source links from TRUST SOURCES are included (unless list is empty)
+- [ ] Commercial anchor ${params.anchorText} → ${params.anchorUrl} is integrated naturally (if provided)
+- [ ] Article structure, tone, and content match the brief's specifications
+- [ ] All formatting rules are followed (HTML tags, bold keywords, etc.)
 
 Output as JSON:
 {
