@@ -62,3 +62,4 @@ FIGMA_PERSONAL_ACCESS_TOKEN=figd_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - Переконайтеся, що у вас є доступ до Figma файлу
 - Перевірте правильність node-id або URL
 
+

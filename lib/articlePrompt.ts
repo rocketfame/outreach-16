@@ -441,7 +441,7 @@ ORIGINAL ARTICLE:
 ${params.originalArticle}
 
 REWRITE PARAMETERS:
-• Target word count: ${params.targetWordCount} words
+• Target word count: ${params.targetWordCount} words (MANDATORY - the final article MUST be approximately ${params.targetWordCount} words)
 • Writing style: ${params.style}
 • Style guidance: ${styleGuidance}
 • Niche/industry: ${params.niche || "Not specified"}
@@ -449,38 +449,85 @@ REWRITE PARAMETERS:
 • Primary keyword/anchor: ${params.anchorKeyword || "Not specified"}
 • Language: ${params.language}${additionalBriefInstruction}
 
-REWRITE REQUIREMENTS:
-1. Deeply analyze the original article:
+CRITICAL REQUIREMENTS - READ CAREFULLY:
+
+1. WORD COUNT REQUIREMENT (MANDATORY):
+   - The rewritten article MUST be approximately ${params.targetWordCount} words long.
+   - This is NOT a suggestion - it is a HARD REQUIREMENT.
+   - If the original article is shorter than ${params.targetWordCount} words:
+     * You MUST expand it significantly by adding relevant content, detailed explanations, examples, case studies, and additional sections.
+     * Add new paragraphs, expand existing points, provide more context, and include practical examples.
+     * The expansion must be meaningful and relevant - do not add fluff or filler.
+   - If the original article is longer than ${params.targetWordCount} words:
+     * You MUST condense it to approximately ${params.targetWordCount} words while preserving ALL key points and important information.
+     * Remove redundancy, combine similar points, and streamline explanations, but keep all essential content.
+   - Before outputting the final article, count the words in your articleBodyHtml (excluding HTML tags).
+   - If the word count is significantly off (more than 10% difference), adjust the content until it matches ${params.targetWordCount} words.
+   - The final article MUST be between ${Math.floor(params.targetWordCount * 0.9)} and ${Math.ceil(params.targetWordCount * 1.1)} words.
+
+2. PRESERVE ALL LINKS FROM ORIGINAL ARTICLE (MANDATORY):
+   - Extract ALL anchor links and external links from the original article.
+   - Identify every <a href="..."> tag in the original article and note:
+     * The exact anchor text used
+     * The exact URL
+     * The context where it appears
+   - You MUST preserve ALL these links in the rewritten article:
+     * Keep the same anchor text (or very similar if you need to adjust for flow)
+     * Keep the exact same URLs
+     * Integrate them naturally into the rewritten content in appropriate places
+   - Do NOT remove any links that were in the original article.
+   - Do NOT change URLs unless they are broken or clearly incorrect.
+   - If you need to move a link to a different section, ensure it still makes sense in context.
+   - Format all preserved links as: <b><a href="EXACT_URL">anchor text</a></b>
+
+3. PRESERVE COMMERCIAL ANCHORS (MANDATORY):
+   - If the original article contains commercial anchor links (e.g., branded links to services), you MUST preserve them.
+   - Keep the exact anchor text and URL.
+   - Maintain the same number of commercial anchor appearances as in the original (if it appeared once, keep it once; if multiple times, preserve all instances).
+   - Integrate commercial anchors naturally into the rewritten content.
+
+4. Deeply analyze the original article:
    - Identify the core message and main points
+   - Extract all links (both external and commercial anchors)
    - Assess structure, flow, and clarity
    - Evaluate SEO optimization opportunities
    - Check for redundancy, filler, or weak sections
 
-2. Improve the article while preserving core meaning:
+5. Improve the article while preserving core meaning:
    - Restructure sections for better flow and readability
    - Enhance clarity and remove ambiguity
    - Improve SEO: optimize headings, integrate keywords naturally, strengthen meta tags
    - Strengthen weak sections with concrete examples or data
    - Remove redundancy and filler content
    - Vary sentence structure and length for natural rhythm
-   - Ensure the article meets the target word count (aim for ${params.targetWordCount} words). If the original article is shorter than ${params.targetWordCount} words, expand it with relevant content, examples, and detailed explanations while maintaining the core message. If the original is longer, adjust the rewritten version to approximately ${params.targetWordCount} words while preserving all key points.
+   - Ensure ALL links from the original are preserved and integrated naturally
 
-3. Maintain quality standards:
+6. Maintain quality standards:
    - Use proper HTML structure (H1/H2/H3 headings)
    - Bold important keywords and phrases
    - Ensure natural, human-written style
-   - Keep any existing links if they're relevant
-   - If anchor keyword is provided, integrate it naturally 2-4 times
+   - Preserve all links from the original article (external sources and commercial anchors)
+   - If anchor keyword is provided, integrate it naturally 2-4 times (in addition to preserving existing anchors)
 
-4. Output format:
+7. Output format:
    - Valid JSON with titleTag, metaDescription, and articleBodyHtml
    - ArticleBodyHtml must use proper HTML tags (no Markdown)
    - Ensure the rewritten article is significantly improved while keeping the original message
+   - Ensure the word count is approximately ${params.targetWordCount} words
+   - Ensure ALL links from the original article are preserved
+
+FINAL CHECKLIST BEFORE OUTPUT:
+- [ ] Word count is approximately ${params.targetWordCount} words (between ${Math.floor(params.targetWordCount * 0.9)} and ${Math.ceil(params.targetWordCount * 1.1)})
+- [ ] ALL anchor links from the original article are preserved
+- [ ] ALL external links from the original article are preserved
+- [ ] All links use the exact same URLs as in the original
+- [ ] All links are integrated naturally into the rewritten content
+- [ ] Article structure is improved while preserving core message
 
 Output as JSON:
 {
   "titleTag": "Improved SEO title tag (max 60 characters)",
   "metaDescription": "Improved meta description (150-160 characters)",
-  "articleBodyHtml": "<h1>Rewritten article title</h1>\\n\\n<p>Rewritten content...</p>"
+  "articleBodyHtml": "<h1>Rewritten article title</h1>\\n\\n<p>Rewritten content with preserved links...</p>"
 }`;
 }
