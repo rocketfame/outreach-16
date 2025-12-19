@@ -50,7 +50,11 @@ export type AppPersistedState = {
   topicOverview: string | null;
   topicClusters: TopicResponse | null;
   selectedTopicIds: string[];
-  articles: GeneratedArticle[];
+  articles: GeneratedArticle[]; // Legacy - kept for backward compatibility, but should use mode-specific arrays
+  // Mode-specific article storage
+  discoveryArticles: GeneratedArticle[];
+  directArticles: GeneratedArticle[];
+  rewriteArticles: GeneratedArticle[];
   mode: "discovery" | "direct" | "rewrite";
   lightHumanEditEnabled: boolean;
   // New fields for Direct Article Creation
@@ -90,7 +94,10 @@ const defaultState: AppPersistedState = {
   topicOverview: null,
   topicClusters: null,
   selectedTopicIds: [],
-  articles: [],
+  articles: [], // Legacy - kept for backward compatibility
+  discoveryArticles: [],
+  directArticles: [],
+  rewriteArticles: [],
   mode: "discovery",
   lightHumanEditEnabled: true, // Default to enabled (recommended)
   clientBrief: "",
@@ -126,11 +133,19 @@ export function usePersistentAppState() {
           fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePersistentAppState.ts:115',message:'[Bug2-FIX] Loading persisted state from localStorage',data:{hasMode:!!parsed.mode,modeValue:parsed.mode,hasClientBrief:!!parsed.clientBrief,hasOriginalArticle:!!parsed.originalArticle,hasRewriteParams:!!parsed.rewriteParams},timestamp:Date.now(),sessionId:'debug-session',runId:'bug2-post-fix',hypothesisId:'A'})}).catch(()=>{});
           // #endregion
           // Merge parsed state with defaults to ensure all new fields have proper fallback values
+          // Migrate legacy articles to mode-specific arrays if needed
+          const legacyArticles = parsed.articles || [];
+          const currentMode = parsed.mode || defaultState.mode;
+          // If mode-specific arrays don't exist but legacy articles do, migrate them to current mode
+          const discoveryArticles = parsed.discoveryArticles || (currentMode === "discovery" ? legacyArticles : []);
+          const directArticles = parsed.directArticles || (currentMode === "direct" ? legacyArticles : []);
+          const rewriteArticles = parsed.rewriteArticles || (currentMode === "rewrite" ? legacyArticles : []);
+          
           const validatedState: AppPersistedState = {
             ...defaultState,
             ...parsed,
             // Ensure new fields have defaults if missing
-            mode: parsed.mode || defaultState.mode,
+            mode: currentMode,
             lightHumanEditEnabled: parsed.lightHumanEditEnabled !== undefined ? parsed.lightHumanEditEnabled : defaultState.lightHumanEditEnabled,
             clientBrief: parsed.clientBrief ?? defaultState.clientBrief,
             directArticleSettings: parsed.directArticleSettings || defaultState.directArticleSettings,
@@ -141,7 +156,11 @@ export function usePersistentAppState() {
             topicOverview: parsed.topicOverview ?? defaultState.topicOverview,
             topicClusters: parsed.topicClusters ?? defaultState.topicClusters,
             selectedTopicIds: parsed.selectedTopicIds || defaultState.selectedTopicIds,
-            articles: parsed.articles || defaultState.articles,
+            articles: parsed.articles || defaultState.articles, // Legacy - kept for backward compatibility
+            // Mode-specific article arrays
+            discoveryArticles: discoveryArticles,
+            directArticles: directArticles,
+            rewriteArticles: rewriteArticles,
           };
           // #region agent log
           fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePersistentAppState.ts:130',message:'[Bug2-FIX] Validated state after merge with defaults',data:{validatedMode:validatedState.mode,validatedClientBrief:validatedState.clientBrief,validatedOriginalArticle:validatedState.originalArticle,validatedRewriteParams:validatedState.rewriteParams},timestamp:Date.now(),sessionId:'debug-session',runId:'bug2-post-fix',hypothesisId:'B'})}).catch(()=>{});

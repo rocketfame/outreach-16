@@ -15,8 +15,13 @@ export default function Home() {
   const brief = persistedState.projectBasics;
   const topicsData = persistedState.topicClusters;
   const selectedTopicIds = persistedState.selectedTopicIds;
-  const generatedArticles = persistedState.articles;
   const mode = persistedState.mode;
+  // Get articles for current mode only
+  const generatedArticles = mode === "discovery" 
+    ? persistedState.discoveryArticles 
+    : mode === "direct" 
+    ? persistedState.directArticles 
+    : persistedState.rewriteArticles;
   const lightHumanEditEnabled = persistedState.lightHumanEditEnabled;
   const clientBrief = persistedState.clientBrief || "";
   const directArticleSettings = persistedState.directArticleSettings || {};
@@ -138,12 +143,39 @@ export default function Home() {
   };
 
   const updateGeneratedArticles = (articlesOrUpdater: GeneratedArticle[] | ((prev: GeneratedArticle[]) => GeneratedArticle[])) => {
-    setPersistedState(prev => ({
-      ...prev,
-      articles: typeof articlesOrUpdater === 'function' 
-        ? articlesOrUpdater(prev.articles)
-        : articlesOrUpdater,
-    }));
+    setPersistedState(prev => {
+      const currentMode = prev.mode;
+      const currentArticles = currentMode === "discovery" 
+        ? prev.discoveryArticles 
+        : currentMode === "direct" 
+        ? prev.directArticles 
+        : prev.rewriteArticles;
+      
+      const updatedArticles = typeof articlesOrUpdater === 'function' 
+        ? articlesOrUpdater(currentArticles) 
+        : articlesOrUpdater;
+      
+      // Update the appropriate mode-specific array
+      if (currentMode === "discovery") {
+        return {
+          ...prev,
+          discoveryArticles: updatedArticles,
+          articles: updatedArticles, // Legacy - keep for backward compatibility
+        };
+      } else if (currentMode === "direct") {
+        return {
+          ...prev,
+          directArticles: updatedArticles,
+          articles: updatedArticles, // Legacy - keep for backward compatibility
+        };
+      } else {
+        return {
+          ...prev,
+          rewriteArticles: updatedArticles,
+          articles: updatedArticles, // Legacy - keep for backward compatibility
+        };
+      }
+    });
   };
 
   const removeArticle = (topicId: string) => {
@@ -801,14 +833,14 @@ export default function Home() {
         body: JSON.stringify({
           mode: "directBrief",
           brief: {
-            niche: brief.niche || "",
-            platform: brief.platform || "",
-            contentPurpose: brief.contentPurpose || "",
-            clientSite: brief.clientSite || "",
-            anchorText: brief.anchorText || "",
-            anchorUrl: brief.anchorUrl || "",
-            language: brief.language || "English",
-            wordCount: directArticleSettings.targetWordCount?.toString() || brief.wordCount || "1000",
+            niche: "", // Do NOT send brief.niche - use only articleSettings
+            platform: "", // Do NOT send brief.platform - use only articleSettings
+            contentPurpose: "", // Do NOT send brief.contentPurpose
+            clientSite: brief.clientSite || "", // Keep for anchorUrl fallback only
+            anchorText: "", // Do NOT send brief.anchorText - use only articleSettings
+            anchorUrl: brief.anchorUrl || "", // Keep for anchorUrl if needed
+            language: brief.language || "English", // Language is OK as it's a global setting
+            wordCount: "", // Do NOT send brief.wordCount - use only articleSettings.targetWordCount
           },
           clientBrief: clientBrief,
           articleSettings: {
@@ -942,18 +974,19 @@ export default function Home() {
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+          body: JSON.stringify({
           mode: "rewrite",
           originalArticle: originalArticle,
+          // For Rewrite Mode, only send language from brief (global setting), everything else from rewriteParams
           brief: {
-            niche: rewriteParams.niche || brief.niche || "",
-            platform: brief.platform || "",
-            contentPurpose: brief.contentPurpose || "",
-            clientSite: brief.clientSite || "",
-            anchorText: rewriteParams.anchorKeyword || brief.anchorText || "",
-            anchorUrl: brief.anchorUrl || "",
-            language: brief.language || "English",
-            wordCount: rewriteParams.targetWordCount?.toString() || brief.wordCount || "1000",
+            niche: "", // Do NOT send brief.niche - use only rewriteParams
+            platform: "", // Do NOT send brief.platform - use only rewriteParams
+            contentPurpose: "", // Do NOT send brief.contentPurpose
+            clientSite: brief.clientSite || "", // Keep for anchorUrl fallback only
+            anchorText: "", // Do NOT send brief.anchorText - use only rewriteParams
+            anchorUrl: brief.anchorUrl || brief.clientSite || "", // Keep for anchorUrl if needed
+            language: brief.language || "English", // Language is OK as it's a global setting
+            wordCount: "", // Do NOT send brief.wordCount - use only rewriteParams
           },
           rewriteParams: {
             additionalBrief: rewriteParams.additionalBrief,
@@ -963,6 +996,8 @@ export default function Home() {
             targetWordCount: rewriteParams.targetWordCount,
             style: rewriteParams.style,
           },
+          keywordList: [], // Do NOT send keywordList from Topic Discovery Mode
+          trustSourcesList: [], // Do NOT send trustSourcesList from Topic Discovery Mode
           lightHumanEdit: lightHumanEditEnabled,
         }),
       });

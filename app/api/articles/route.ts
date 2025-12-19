@@ -160,19 +160,32 @@ export async function POST(req: Request) {
       // Direct Brief mode: Generate single article from client brief
       try {
         // Build prompt for direct brief mode
+        // CRITICAL: Use ONLY data from articleSettings and clientBrief, NOT from brief (Topic Discovery Mode)
+        // For wordCount: use ONLY articleSettings.targetWordCount, default to "1000" if not provided
+        const wordCountForDirect = articleSettings?.targetWordCount 
+          ? String(articleSettings.targetWordCount) 
+          : "1000"; // Do NOT use brief.wordCount as fallback
+        
+        // Log wordCount for debugging
+        console.log("[articles-api] Direct Brief Mode - wordCount:", {
+          articleSettingsTargetWordCount: articleSettings?.targetWordCount,
+          wordCountUsed: wordCountForDirect,
+          briefWordCount: brief.wordCount,
+        });
+        
         const prompt = buildDirectBriefPrompt({
           clientBrief: clientBrief!,
-          niche: articleSettings?.nicheOrIndustry || brief.niche || "",
-          platform: brief.platform || "multi-platform",
-          contentPurpose: brief.contentPurpose || "Guest post / outreach",
-          anchorText: articleSettings?.anchorKeyword || brief.anchorText || "",
-          anchorUrl: brief.anchorUrl || brief.clientSite || "",
+          niche: articleSettings?.nicheOrIndustry || "", // Do NOT use brief.niche as fallback
+          platform: articleSettings?.nicheOrIndustry || "multi-platform", // Use niche as platform hint
+          contentPurpose: "Guest post / outreach", // Default, not from brief
+          anchorText: articleSettings?.anchorKeyword || "", // Do NOT use brief.anchorText as fallback
+          anchorUrl: brief.anchorUrl || brief.clientSite || "", // Keep for anchorUrl if needed
           brandName: articleSettings?.brandName || "PromosoundGroup",
-          keywordList: keywordList,
-          trustSourcesList: trustSourcesList,
-          language: brief.language || "English",
+          keywordList: keywordList, // OK - comes from Direct mode
+          trustSourcesList: trustSourcesList, // OK - comes from Direct mode
+          language: brief.language || "English", // Language is OK as it's a global setting
           targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
-          wordCount: articleSettings?.targetWordCount ? String(articleSettings.targetWordCount) : (brief.wordCount || "1000"),
+          wordCount: wordCountForDirect, // Use ONLY articleSettings.targetWordCount
           writingStyle: articleSettings?.writingStyle,
         });
 
@@ -259,25 +272,34 @@ Language: ${brief.language || "US English"}.`;
       }
     } else if (mode === "rewrite") {
       // Rewrite mode: Deeply rewrite and improve existing article
+      // CRITICAL: Use ONLY data from rewriteParams and originalArticle, NOT from brief (Topic Discovery Mode)
       try {
-        // Use targetWordCount from rewriteParams, or from brief.wordCount, or default to 1000
-        const targetWordCount = rewriteParams?.targetWordCount 
-          || parseInt(brief.wordCount || "1000");
+        // Use targetWordCount from rewriteParams only, default to 1000 if not provided
+        const targetWordCount = rewriteParams?.targetWordCount || 1000;
         
+        // Get language from rewriteParams or brief (brief.language is OK as it's a global setting)
+        const language = brief.language || "English";
+        
+        // For Rewrite Mode, use ONLY rewriteParams data, not brief data
         const prompt = buildRewritePrompt({
           originalArticle: originalArticle!,
           additionalBrief: rewriteParams?.additionalBrief,
-          niche: rewriteParams?.niche || brief.niche || "",
+          niche: rewriteParams?.niche || "", // Do NOT use brief.niche as fallback
           brandName: rewriteParams?.brandName || "",
-          anchorKeyword: rewriteParams?.anchorKeyword || brief.anchorText || "",
+          anchorKeyword: rewriteParams?.anchorKeyword || "", // Do NOT use brief.anchorText as fallback
+          anchorUrl: rewriteParams?.anchorKeyword ? (brief.anchorUrl || brief.clientSite || "") : "", // Only use if anchorKeyword is provided
           targetWordCount: targetWordCount,
           style: rewriteParams?.style || "neutral",
-          language: brief.language || "English",
+          language: language,
+          keywordList: [], // Do NOT use keywordList from Topic Discovery Mode
+          trustSourcesList: [], // Do NOT use trustSourcesList from Topic Discovery Mode
+          platform: rewriteParams?.niche || "", // Use niche as platform hint if provided, otherwise empty
+          targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
         });
 
         const systemMessage = `You are an expert content editor and SEO specialist. Your task is to deeply analyze and rewrite articles, improving their structure, clarity, SEO optimization, and overall quality while preserving the core meaning and message.
 
-Language: ${brief.language || "US English"}.`;
+Language: ${language}.`;
 
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/9ac5a9d7-f4a2-449b-826b-f0ab7af8406a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:258',message:'[Bug1-FIX] About to call OpenAI with gpt-4-turbo in rewrite mode',data:{mode:'rewrite',modelName:'gpt-4-turbo'},timestamp:Date.now(),sessionId:'debug-session',runId:'bug1-post-fix',hypothesisId:'A'})}).catch(()=>{});
@@ -378,6 +400,15 @@ Language: ${brief.language || "US English"}.`;
 
         // Build the article prompt
         // Note: buildArticlePrompt will throw an error if niche is missing
+        const wordCountForTopic = brief.wordCount || "600-700";
+        
+        // Log wordCount for debugging
+        console.log("[articles-api] Topic Discovery Mode - wordCount:", {
+          briefWordCount: brief.wordCount,
+          wordCountUsed: wordCountForTopic,
+          topicTitle: topic.title,
+        });
+        
         const prompt = buildArticlePrompt({
           topicTitle: topic.title,
           topicBrief: topicBrief,
@@ -391,7 +422,7 @@ Language: ${brief.language || "US English"}.`;
           trustSourcesList: trustSourcesList,
           language: brief.language || "English",
           targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
-          wordCount: brief.wordCount || "600-700",
+          wordCount: wordCountForTopic, // Use user-specified word count from Topic Discovery Mode or default
         });
         
         // #region agent log
