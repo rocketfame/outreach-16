@@ -1461,7 +1461,7 @@ export default function Home() {
 
     setIsProcessingEdit(true);
     setEditingArticleId(articleId);
-    setEditingArticleStatus("Analyzing request and article...");
+    setEditingArticleStatus("Analyzing your edit request and article content...");
     setNotification({
       message: "Processing edit request...",
       time: new Date().toLocaleTimeString(),
@@ -1502,7 +1502,7 @@ export default function Home() {
 
       // If edit request mentions images, search for images with multiple specific queries
       if (needsImages) {
-        setEditingArticleStatus("Searching for relevant images...");
+        setEditingArticleStatus("Researching and finding relevant images from web...");
         try {
           // Extract specific items mentioned in the article (festivals, events, etc.)
           const articleText = currentHtml.replace(/<[^>]*>/g, ' '); // Strip HTML for text extraction
@@ -1560,7 +1560,7 @@ export default function Home() {
           };
           
           for (let i = 0; i < Math.min(searchQueries.length, 3); i++) {
-            setEditingArticleStatus(`Searching images (${i + 1}/${Math.min(searchQueries.length, 3)})...`);
+            setEditingArticleStatus(`Searching images for specific items (${i + 1}/${Math.min(searchQueries.length, 3)})...`);
             
             try {
               const imagesResponse = await fetch("/api/search-images", {
@@ -1636,7 +1636,7 @@ export default function Home() {
                             editRequest.toLowerCase().includes('source');
       
       if (needsMoreLinks) {
-        setEditingArticleStatus("Отримую додаткові джерела...");
+        setEditingArticleStatus("Fetching additional sources from web...");
         try {
           // Fetch trust sources for the article topic
           const linksResponse = await fetch("/api/find-links", {
@@ -1665,7 +1665,7 @@ export default function Home() {
         }
       }
 
-      setEditingArticleStatus("AI редактор обробляє ваш запит...");
+      setEditingArticleStatus("AI editor is processing your request...");
       const response = await fetch("/api/edit-article", {
         method: "POST",
         headers: {
@@ -1699,7 +1699,7 @@ export default function Home() {
         throw new Error(data.error || "Failed to edit article");
       }
 
-      setEditingArticleStatus("Applying edits to article...");
+      setEditingArticleStatus("Applying your edits to the article...");
       
       // If images are needed, check if we have images or need to handle placeholders
       let finalHtml = data.editedArticleHtml!;
@@ -1710,7 +1710,7 @@ export default function Home() {
         if (hasImagePlaceholders) {
           if (articleImages.has(articleId)) {
             // Replace placeholders with existing image
-            setEditingArticleStatus("Embedding images into article...");
+            setEditingArticleStatus("Embedding images into article content...");
             const imageData = articleImages.get(articleId);
             if (imageData) {
               const imageUrl = `data:image/png;base64,${imageData}`;
@@ -1718,7 +1718,7 @@ export default function Home() {
             }
           } else {
             // Image not generated yet - try to generate it automatically
-            setEditingArticleStatus("Генерую зображення для статті...");
+            setEditingArticleStatus("Generating article image...");
             try {
               // Start image generation (non-blocking)
               generateArticleImage(articleId).catch(err => {
@@ -3258,7 +3258,32 @@ export default function Home() {
                                           dangerouslySetInnerHTML={{ 
                                             __html: (() => {
                                               const htmlContent = article.articleBodyHtml || article.fullArticleText || articleText;
-                                              return htmlContent.replace(/H[1-3]:\s*/gi, '');
+                                              // Remove H1/H2/H3 prefixes
+                                              let processed = htmlContent.replace(/H[1-3]:\s*/gi, '');
+                                              // Add target="_blank" and rel="noopener noreferrer" to all links
+                                              processed = processed.replace(
+                                                /<a\s+([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
+                                                (match, before, href, after) => {
+                                                  const fullAttrs = before + after;
+                                                  const hasTarget = /target\s*=/i.test(fullAttrs);
+                                                  const hasRel = /rel\s*=/i.test(fullAttrs);
+                                                  
+                                                  if (!hasTarget && !hasRel) {
+                                                    // Add both target and rel
+                                                    return `<a ${before.trim()} href="${href}"${after.trim()} target="_blank" rel="noopener noreferrer">`;
+                                                  } else if (!hasTarget) {
+                                                    // Add target, preserve existing rel
+                                                    return match.replace(/(<a\s+[^>]*?)>/i, '$1 target="_blank">');
+                                                  } else if (!hasRel) {
+                                                    // Add rel, preserve existing target
+                                                    return match.replace(/(<a\s+[^>]*?)>/i, '$1 rel="noopener noreferrer">');
+                                                  } else {
+                                                    // Both exist, ensure target is _blank
+                                                    return match.replace(/target\s*=\s*["'][^"']*["']/gi, 'target="_blank"');
+                                                  }
+                                                }
+                                              );
+                                              return processed;
                                             })()
                                           }} 
                                         />

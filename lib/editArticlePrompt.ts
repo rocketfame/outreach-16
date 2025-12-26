@@ -149,7 +149,8 @@ CRITICAL EDITING RULES:
    - General link formatting:
      * Integrate links naturally within sentences
      * Use short anchor text (2-5 words maximum)
-     * Format as: <b><a href="EXACT_URL">short anchor</a></b>
+     * Format as: <b><a href="EXACT_URL" target="_blank" rel="noopener noreferrer">short anchor</a></b>
+     * ALL links MUST include target="_blank" rel="noopener noreferrer" to open in a new window
      * Never use full URLs as anchor text
    - Examples of CORRECT official festival links:
      * Tomorrowland: https://www.tomorrowland.com
@@ -164,13 +165,26 @@ CRITICAL EDITING RULES:
 5. IMAGE INTEGRATION (when requested) - WORK LIKE A PROFESSIONAL RESEARCHER:
    CRITICAL: When the edit request asks to "add images", "додати зображення", "вбудовувати зображення", or similar, you MUST work like a professional digger/researcher:
    
+   MANDATORY: USE IMAGES FROM [[TRUST_SOURCES_LIST]]:
+   - Images are provided in [[TRUST_SOURCES_LIST]] in format: "Image Title|Image URL|Source URL"
+   - You MUST use these images - they have been researched and verified
+   - DO NOT skip adding images if they are in [[TRUST_SOURCES_LIST]]
+   - If images are in the list, you MUST add them to the article
+   - Think critically: "Which image from the list matches this specific content?"
+   - Match each image to the relevant section of the article
+   
    PROFESSIONAL RESEARCH APPROACH:
    - Treat image research like a professional journalist or content researcher would
-   - Don't just grab the first image you see - research and verify
+   - Review ALL images in [[TRUST_SOURCES_LIST]] before selecting
+   - Don't just grab the first image you see - research and verify it matches the content
    - Think: "Is this image actually what the text describes? Is it from a credible source? Have I seen this source before?"
    - Take time to find the BEST images, not just any images
    - Quality and accuracy are more important than speed
    - Work methodically: research → verify → select → place
+   
+   IF NO IMAGES IN [[TRUST_SOURCES_LIST]]:
+   - If the edit request asks for images but [[TRUST_SOURCES_LIST]] contains no image URLs, you should note this in your response
+   - However, if images ARE in the list, you MUST use them
    
    QUALITY REQUIREMENTS:
    - ONLY use images that are RELEVANT and ACCURATE to the specific content they accompany
@@ -242,12 +256,20 @@ CRITICAL EDITING RULES:
    - This is MANDATORY - diversity of sources is more important than having many images
    - If you cannot find enough images from different sources, use fewer images but ensure each is from a unique domain
    
-   FALLBACK:
-   - If no relevant images are found in [[TRUST_SOURCES_LIST]] for a specific item, DO NOT add a generic or unrelated image
-   - Only add images that are clearly relevant to the specific content
+   CRITICAL REQUIREMENT - USE PROVIDED IMAGES:
+   - If [[TRUST_SOURCES_LIST]] contains image URLs (format: "Title|Image URL|Source URL"), you MUST use them
+   - These images have been researched and are relevant to the article
+   - DO NOT skip adding images if they are provided in the list
+   - Match each provided image to the appropriate section of the article
+   - If multiple images are provided, use multiple images - don't just use one
+   - This is MANDATORY - if images are in the list, you MUST add them
+   
+   FALLBACK (only if NO images in list):
+   - If no image URLs are provided in [[TRUST_SOURCES_LIST]] at all, you can note that images were not found
+   - However, if images ARE in [[TRUST_SOURCES_LIST]], you MUST use them - this is MANDATORY
    - DO NOT use placeholders like [IMAGE_URL_PLACEHOLDER] - use REAL image URLs from [[TRUST_SOURCES_LIST]]
    - DO NOT use data URIs or base64 encoded images - only use HTTP/HTTPS URLs
-   - If no image URLs are provided in [[TRUST_SOURCES_LIST]], you can mention that images were not found, but DO NOT add broken image tags
+   - DO NOT add broken image tags
    
    EXAMPLES OF CORRECT IMAGE USAGE:
    - Text: "Tomorrowland - July 24-26, 2026 - Boom, Belgium"
@@ -297,6 +319,7 @@ CRITICAL EDITING RULES:
    As a top-tier writer, before finalizing, conduct a comprehensive review:
      * ALL original content is preserved - no sections, paragraphs, or lists were removed
      * ALL previous edits (from [[EDIT_HISTORY]]) are preserved - check that images, links, and content from previous edits are still present
+     * IMAGES FROM TRUST_SOURCES_LIST: If [[TRUST_SOURCES_LIST]] contains image URLs, verify that you have used them - this is MANDATORY
      * IMAGE RELEVANCE: Each image accurately represents the specific content it accompanies
      * IMAGE UNIQUENESS: No duplicate image URLs used in the article
      * SOURCE DIVERSITY: Each image comes from a DIFFERENT source domain - no two images from the same domain
@@ -374,23 +397,36 @@ export function buildEditArticlePrompt(params: EditArticleParams): string {
   prompt = prompt.replaceAll("[[EDIT_REQUEST]]", params.editRequest);
   prompt = prompt.replaceAll("[[EDIT_HISTORY]]", editHistoryText);
 
-  // Format trust sources
-  const trustSourcesFormatted = params.trustSourcesList.length > 0 
-    ? params.trustSourcesList.join(", ")
-    : "No additional sources available. Use only sources that were already in the article or that you can verify from the current article content.";
-
   // Separate images from regular sources
   const imageSources = params.trustSourcesList.filter(s => s.includes('|') && s.split('|').length >= 3);
   const regularSources = params.trustSourcesList.filter(s => !s.includes('|') || s.split('|').length < 3);
+  
+  // Format trust sources - separate images and regular sources for clarity
+  let trustSourcesFormatted = '';
+  if (imageSources.length > 0) {
+    trustSourcesFormatted += `\n\nIMAGES AVAILABLE (MANDATORY TO USE):\n${imageSources.map((s, i) => {
+      const parts = s.split('|');
+      return `${i + 1}. Title: "${parts[0] || 'Image'}" | Image URL: ${parts[1] || ''} | Source: ${parts[2] || ''}`;
+    }).join('\n')}\n\n`;
+    trustSourcesFormatted += `CRITICAL: These ${imageSources.length} image(s) have been researched and are relevant to the article. You MUST use them in the article. Format: Use Image URL (second part) as src, Source URL (third part) for figcaption link.\n\n`;
+  }
+  
+  if (regularSources.length > 0) {
+    trustSourcesFormatted += `REGULAR SOURCES:\n${regularSources.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n`;
+  }
+  
+  if (params.trustSourcesList.length === 0) {
+    trustSourcesFormatted = "No additional sources available. Use only sources that were already in the article or that you can verify from the current article content.";
+  }
   
   // Add verification list for sources
   let sourcesVerificationBlock = '';
   
   if (imageSources.length > 0) {
-    sourcesVerificationBlock += `\n\nAVAILABLE IMAGES (for adding images to article):\n${imageSources.map((s, i) => {
+    sourcesVerificationBlock += `\n\n⚠️ MANDATORY: AVAILABLE IMAGES - YOU MUST USE THESE:\n${imageSources.map((s, i) => {
       const parts = s.split('|');
-      return `${i + 1}. Title: ${parts[0] || 'Image'}\n   Image URL: ${parts[1] || ''}\n   Source URL: ${parts[2] || ''}`;
-    }).join('\n\n')}\n\nCRITICAL IMAGE RULES:\n- Use the Image URL (second part) as the src attribute in <img> tags\n- Use the Source URL (third part) to link back to the original source\n- Always include a <figcaption> with a link to the source URL\n- DO NOT use placeholders - use REAL image URLs from the list above\n`;
+      return `${i + 1}. Title: "${parts[0] || 'Image'}"\n   Image URL: ${parts[1] || ''}\n   Source URL: ${parts[2] || ''}`;
+    }).join('\n\n')}\n\n🚨 CRITICAL IMAGE REQUIREMENTS:\n- You have ${imageSources.length} image(s) available above - you MUST use ALL of them\n- This is MANDATORY - if images are in the list, you MUST add them to the article\n- Use the Image URL (second part) as the src attribute in <img> tags\n- Use the Source URL (third part) to link back to the original source in <figcaption>\n- Always include a <figcaption> with a link to the source URL\n- Match each image to the relevant section of the article\n- DO NOT skip any images - if they are provided, you MUST use them\n- DO NOT use placeholders - use REAL image URLs from the list above\n- DO NOT use data URIs or base64 - only use the HTTP/HTTPS URLs provided\n`;
   }
   
   if (regularSources.length > 0) {

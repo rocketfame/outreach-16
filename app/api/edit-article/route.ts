@@ -90,11 +90,11 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5.2",
         messages: [
           {
             role: "system",
-            content: "You are an expert content editor specializing in music industry outreach articles. You refine articles based on specific editorial requests while maintaining professional quality and natural writing style.",
+            content: "You are a top-tier professional content writer and researcher (digger) for the music industry with 10+ years of experience. You work like the best in the industry: conducting thorough research, verifying facts, and ensuring accuracy like a professional journalist. You approach every task with rigor and attention to detail. You are currently editing an article based on specific editorial requests while maintaining professional quality and natural writing style. When images are provided in the trust sources list, you MUST use them - this is mandatory.",
           },
           {
             role: "user",

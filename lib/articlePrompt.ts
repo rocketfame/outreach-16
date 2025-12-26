@@ -79,7 +79,7 @@ REQUIREMENTS FOR LIST/DIRECTORY ARTICLES:
    - Use sources from [[TRUST_SOURCES_LIST]] to find official festival/event websites
    - Link each item to its official website when available in the sources
    - If sources contain festival directories or event listings, prioritize those
-   - Format links naturally: "Coachella Valley Music and Arts Festival (<b><a href="https://www.coachella.com">official website</a></b>) takes place in Indio, California..."
+   - Format links naturally: "Coachella Valley Music and Arts Festival (<b><a href="https://www.coachella.com" target="_blank" rel="noopener noreferrer">official website</a></b>) takes place in Indio, California..."
 
 5. BALANCING LIST CONTENT WITH CONTEXT:
    - Start with a brief intro explaining why this list matters
@@ -98,13 +98,13 @@ CORRECT HTML STRUCTURE:
 <h2>Major Festivals Confirmed for 2026</h2>
 <ol>
   <li><b>Ultra Music Festival</b> - March 22-24, 2026, Miami, Florida
-  <p>The flagship electronic music event returns to Bayfront Park with a lineup featuring top-tier DJs and producers. Known for its massive production and global audience, Ultra attracts over 165,000 attendees annually. Official website: <b><a href="https://ultramusicfestival.com">ultramusicfestival.com</a></b></p>
+  <p>The flagship electronic music event returns to Bayfront Park with a lineup featuring top-tier DJs and producers. Known for its massive production and global audience, Ultra attracts over 165,000 attendees annually. Official website: <b><a href="https://ultramusicfestival.com" target="_blank" rel="noopener noreferrer">ultramusicfestival.com</a></b></p>
   </li>
   <li><b>Tomorrowland</b> - July 19-21 & July 26-28, 2026, Boom, Belgium
-  <p>Europe's premier electronic music festival spans two weekends with immersive stage designs and a diverse lineup. The festival has become a pilgrimage for electronic music fans worldwide. Official website: <b><a href="https://www.tomorrowland.com">tomorrowland.com</a></b></p>
+  <p>Europe's premier electronic music festival spans two weekends with immersive stage designs and a diverse lineup. The festival has become a pilgrimage for electronic music fans worldwide. Official website: <b><a href="https://www.tomorrowland.com" target="_blank" rel="noopener noreferrer">tomorrowland.com</a></b></p>
   </li>
   <li><b>Electric Daisy Carnival (EDC)</b> - May 17-19, 2026, Las Vegas, Nevada
-  <p>EDC Las Vegas transforms the Las Vegas Motor Speedway into a massive electronic music playground with multiple stages, art installations, and carnival rides. Official website: <b><a href="https://lasvegas.electricdaisycarnival.com">electricdaisycarnival.com</a></b></p>
+  <p>EDC Las Vegas transforms the Las Vegas Motor Speedway into a massive electronic music playground with multiple stages, art installations, and carnival rides. Official website: <b><a href="https://lasvegas.electricdaisycarnival.com" target="_blank" rel="noopener noreferrer">electricdaisycarnival.com</a></b></p>
   </li>
 </ol>
 
@@ -112,7 +112,7 @@ CORRECT HTML STRUCTURE:
 <h3>European Circuit</h3>
 <ol>
   <li><b>Awakenings Festival</b> - June 29-30, 2026, Amsterdam, Netherlands
-  <p>Techno-focused festival featuring the genre's biggest names and emerging talent. Official website: <b><a href="https://www.awakenings.nl">awakenings.nl</a></b></p>
+  <p>Techno-focused festival featuring the genre's biggest names and emerging talent. Official website: <b><a href="https://www.awakenings.nl" target="_blank" rel="noopener noreferrer">awakenings.nl</a></b></p>
   </li>
 </ol>
 
@@ -302,14 +302,15 @@ CRITICAL RULES - READ CAREFULLY:
      • A short descriptive phrase (e.g., "recent analysis", "industry report", "platform guidelines")
      • A natural part of the sentence that describes the source without being verbose
    - Examples of CORRECT anchor text:
-     ✓ "A breakdown on <b><a href="https://routenote.com/blog/playlist-pitching">RouteNote</a></b> shows..."
-     ✓ "Research from <b><a href="https://blog.spotify.com/insights">Spotify's blog</a></b> indicates..."
-     ✓ "As <b><a href="https://creatoracademy.youtube.com/guide">YouTube Creator Academy</a></b> explains..."
+     ✓ "A breakdown on <b><a href="https://routenote.com/blog/playlist-pitching" target="_blank" rel="noopener noreferrer">RouteNote</a></b> shows..."
+     ✓ "Research from <b><a href="https://blog.spotify.com/insights" target="_blank" rel="noopener noreferrer">Spotify's blog</a></b> indicates..."
+     ✓ "As <b><a href="https://creatoracademy.youtube.com/guide" target="_blank" rel="noopener noreferrer">YouTube Creator Academy</a></b> explains..."
    - Examples of FORBIDDEN anchor text:
      ✗ "https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/" (full URL)
      ✗ "playlist pitching in 2026 what artists need to know" (too long, copied from title)
      ✗ "this article about playlist pitching" (too generic)
-   - Format as: <b><a href="EXACT_URL_FROM_TRUST_SOURCES_LIST">short natural anchor</a></b>
+   - Format as: <b><a href="EXACT_URL_FROM_TRUST_SOURCES_LIST" target="_blank" rel="noopener noreferrer">short natural anchor</a></b>
+   - ALL links MUST include target="_blank" rel="noopener noreferrer" to open in a new window.
    - The anchor text should read naturally when the link is removed (the sentence should still make sense).
    - Do NOT change, modify, or clean the URL; use it exactly as provided in [[TRUST_SOURCES_LIST]].
    - Before outputting any link, double-check that:
@@ -344,7 +345,7 @@ CRITICAL RULES - READ CAREFULLY:
    CORRECT (natural integration with short anchor):
    "Playlists remain important, but where the power sits has changed. Editorial placements are rare; 
    user-curated and niche algorithmic playlists are where most indie artists actually gain momentum. 
-   A breakdown on <b><a href="https://routenote.com/blog/playlist-pitching-in-2026">RouteNote</a></b> 
+   A breakdown on <b><a href="https://routenote.com/blog/playlist-pitching-in-2026" target="_blank" rel="noopener noreferrer">RouteNote</a></b> 
    shows how smaller, targeted lists often bring more engaged listeners than a single massive playlist."
    
    INCORRECT (full URL as anchor text - FORBIDDEN):
@@ -356,7 +357,7 @@ CRITICAL RULES - READ CAREFULLY:
    Editorial placements are rare."
    
    CORRECT (source integrated naturally):
-   "Research from <b><a href="https://blog.spotify.com/insights/2025-music-trends">Spotify's blog</a></b> 
+   "Research from <b><a href="https://blog.spotify.com/insights/2025-music-trends" target="_blank" rel="noopener noreferrer">Spotify's blog</a></b> 
    indicates that short-form content is gaining traction among independent artists."
    
    REMEMBER: The link should feel like a natural part of the sentence, not a citation or footnote.
@@ -396,8 +397,9 @@ Technical requirements:
 - The articleBodyHtml field must:
   - Use proper HTML heading tags: <h1> for main title, <h2> for major sections, <h3> for subsections. DO NOT use text prefixes like "H1:", "H2:", "H3:" in the visible content.
   - Use <b> or <strong> for all bold phrases and SEO keywords you decide to highlight.
-  - Wrap the main commercial anchor [[ANCHOR_TEXT]] in an <a href="[[ANCHOR_URL]]"> tag and also inside <b> (bold clickable link): <b><a href="[[ANCHOR_URL]]">[[ANCHOR_TEXT]]</a></b>.
-  - Wrap each trust source anchor from [[TRUST_SOURCES_LIST]] in <a href="..."> and <b> tags, using the exact URL from [[TRUST_SOURCES_LIST]].
+  - Wrap the main commercial anchor [[ANCHOR_TEXT]] in an <a href="[[ANCHOR_URL]]" target="_blank" rel="noopener noreferrer"> tag and also inside <b> (bold clickable link): <b><a href="[[ANCHOR_URL]]" target="_blank" rel="noopener noreferrer">[[ANCHOR_TEXT]]</a></b>.
+  - Wrap each trust source anchor from [[TRUST_SOURCES_LIST]] in <a href="..." target="_blank" rel="noopener noreferrer"> and <b> tags, using the exact URL from [[TRUST_SOURCES_LIST]].
+  - ALL links MUST include target="_blank" rel="noopener noreferrer" to open in a new window.
   - Use normal HTML paragraphs (<p>...</p>) or <br> for line breaks.
   - Use <ul><li>...</li></ul> for bullet lists and <ol><li>...</li></ol> for numbered lists.
 - Do NOT use Markdown syntax (no **bold**, no [link](url)).
