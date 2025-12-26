@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
           },
         ],
         temperature: 0.7,
-        max_tokens: 4000,
+        max_tokens: 8000, // Increased to allow full article editing without truncation
       }),
     });
 

@@ -31,10 +31,13 @@ Editorial Request:
 
 CRITICAL EDITING RULES:
 
-1. PRESERVE ARTICLE STRUCTURE:
+1. PRESERVE ARTICLE STRUCTURE AND CONTENT:
    - Maintain the existing HTML structure (H1, H2, H3, paragraphs, lists)
    - Keep the same heading hierarchy
    - Preserve existing anchor links and formatting
+   - CRITICAL: Do NOT remove, delete, or truncate ANY existing sections, paragraphs, or content
+   - If adding new content (images, links, text), add it WITHOUT removing existing content
+   - The entire original article must remain intact - only ADD or MODIFY as requested, never DELETE
    - Do NOT restructure the entire article unless explicitly requested
 
 2. FOCUS ON THE REQUEST:
@@ -98,33 +101,45 @@ CRITICAL EDITING RULES:
    - DO NOT use data URIs or base64 encoded images - only use HTTP/HTTPS URLs
    - If no image URLs are provided in [[TRUST_SOURCES_LIST]], you can mention that images were not found, but DO NOT add broken image tags
 
-6. CONTENT ADDITIONS:
+6. CONTENT ADDITIONS AND PRESERVATION:
    - When adding new content, make it feel like it was always part of the article
    - Match the existing writing style and tone
    - Integrate seamlessly with surrounding paragraphs
-   - Maintain word count balance (don't drastically change article length unless requested)
+   - CRITICAL: PRESERVE ALL EXISTING CONTENT - do NOT remove or truncate any sections, paragraphs, or lists
+   - If the edit request asks to add images or links, add them WITHOUT removing existing content
+   - Word count is NOT a constraint during editing - focus on completing the edit request while keeping ALL original content
+   - If the article becomes longer after editing, that's acceptable - the edit request takes priority over word count limits
 
 7. PRESERVE EXISTING ELEMENTS:
    - Keep all existing anchor links (commercial and trust sources)
    - Maintain existing bold formatting for keywords
    - Preserve article metadata structure
    - Keep the same HTML tag structure
+   - CRITICAL: Do NOT remove any sections, headings, paragraphs, or list items from the original article
+   - When adding new content (images, links, text), add it WITHOUT removing or truncating existing content
+   - The entire original article must be returned - every section, every paragraph, every list item must remain
 
 8. OUTPUT FORMAT:
-   - Return ONLY the edited article HTML
-   - Use proper HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <b>, <a>
+   - Return ONLY the complete edited article HTML - the ENTIRE article, not a truncated version
+   - Use proper HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <b>, <a>, <figure>, <img>, <figcaption>
    - Do NOT include JSON wrapper or explanations
    - Do NOT include markdown syntax
    - Output should be valid HTML that can be directly inserted
+   - CRITICAL: The output must contain ALL sections from the original article - if the original had sections for "North America", "Europe", "Asia", etc., ALL of them must be in the output
+   - Do NOT stop mid-sentence or mid-section - return the complete article
+   - Word count limits do NOT apply - return the full article regardless of length
 
 9. VALIDATION:
    - Before finalizing, verify:
+     * ALL original content is preserved - no sections, paragraphs, or lists were removed
      * For festival/event links: ensure they point to official websites (check domain matches festival name)
      * For other links: verify they exist in [[TRUST_SOURCES_LIST]] or are clearly official sources
      * Ensure all HTML tags are properly closed
      * Check that the edit request has been fully addressed
      * Confirm the article still reads naturally and professionally
+     * The article length may increase after editing - this is acceptable and expected
    - If you cannot find official festival websites, DO NOT add incorrect links from blogs or articles
+   - CRITICAL: The edited article must contain ALL content from the original article PLUS any new additions requested
 
 EXAMPLES OF EDIT REQUESTS:
 
