@@ -1428,9 +1428,9 @@ export default function Home() {
       if (needsImages && articleImages.has(articleId)) {
         setEditingArticleStatus("Вбудовую зображення в статтю...");
         const imageData = articleImages.get(articleId);
-        if (imageData && imageData.imageBase64) {
+        if (imageData) {
           // Replace [IMAGE_URL_PLACEHOLDER] with actual base64 image data
-          const imageUrl = `data:image/png;base64,${imageData.imageBase64}`;
+          const imageUrl = `data:image/png;base64,${imageData}`;
           finalHtml = finalHtml.replace(/\[IMAGE_URL_PLACEHOLDER\]/gi, imageUrl);
         }
       }
