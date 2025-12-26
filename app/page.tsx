@@ -70,8 +70,6 @@ export default function Home() {
     visible: boolean;
   } | null>(null);
   const generatedArticlesSectionRef = useRef<HTMLDivElement>(null);
-  const prevCompletedArticlesRef = useRef<Set<string>>(new Set());
-  const prevCompletedImagesRef = useRef<Set<string>>(new Set());
   const prevThemeRef = useRef<string>(theme);
   const prevModeRef = useRef<string>(mode);
   
@@ -326,8 +324,6 @@ export default function Home() {
           visible: true,
         });
         setGenerationStartTime(null);
-        // Play success sound after topic generation
-        playSuccessSound();
       }
     } catch (error) {
       // #region agent log
@@ -1716,53 +1712,6 @@ export default function Home() {
     };
   }, [generatedArticles]);
 
-  // Play success sound when article or image is generated
-  // Note: We also call playSuccessSound() directly after generation for immediate feedback
-  // This useEffect serves as a backup to catch any missed completions
-  // IMPORTANT: This effect only triggers on changes to generatedArticles or articleImages.
-  // Theme and mode changes do NOT modify these arrays, so no sound will play when switching themes or modes.
-  // We also explicitly check that we're not in the middle of a theme or mode change to prevent any accidental sounds.
-  useEffect(() => {
-    // Skip sound if theme just changed (to prevent sound on theme switch)
-    if (prevThemeRef.current !== theme) {
-      prevThemeRef.current = theme;
-      return; // Don't play sound when theme changes
-    }
-    
-    // Skip sound if mode just changed (to prevent sound on mode switch)
-    if (prevModeRef.current !== mode) {
-      prevModeRef.current = mode;
-      return; // Don't play sound when mode changes
-    }
-    
-    // Check for newly completed articles
-    const completedArticles = generatedArticles.filter(a => a.status === "ready");
-    const completedImages = Array.from(articleImages.keys());
-
-    // Check for new completions
-    completedArticles.forEach(article => {
-      if (!prevCompletedArticlesRef.current.has(article.topicTitle)) {
-        // Only play sound if it wasn't already played directly after generation
-        // The direct calls in generate functions will handle most cases
-        setTimeout(() => {
-          playSuccessSound();
-        }, 100); // Small delay to avoid double sound if called directly
-        prevCompletedArticlesRef.current.add(article.topicTitle);
-      }
-    });
-
-    completedImages.forEach(imageId => {
-      if (!prevCompletedImagesRef.current.has(imageId)) {
-        // Image sounds are already handled in generateArticleImage
-        // This is just a backup
-        prevCompletedImagesRef.current.add(imageId);
-      }
-    });
-
-    // Update refs with current state
-    prevCompletedArticlesRef.current = new Set(completedArticles.map(a => a.topicTitle));
-    prevCompletedImagesRef.current = new Set(completedImages);
-  }, [generatedArticles, articleImages]);
   
   // Update theme ref when theme changes (separate effect to avoid triggering sound effect)
   useEffect(() => {

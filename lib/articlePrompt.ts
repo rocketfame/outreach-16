@@ -37,6 +37,104 @@ You will receive:
   Each item has at least: title, url, and a short snippet.
   All sources come from Tavily search API - use only these URLs, do not invent new ones.
 
+--------------------------------
+TOPIC-FOCUSED CONTENT REQUIREMENTS (CRITICAL)
+--------------------------------
+
+TOPIC IS THE PRIMARY FOCUS - NOT GENERAL ADVICE:
+- The article topic ([[TOPIC_TITLE]]) and brief ([[TOPIC_BRIEF]]) define EXACTLY what the article must cover.
+- You MUST prioritize the specific topic requirements over generic advice or tips.
+- If the topic asks for a list, directory, or specific information, you MUST provide that exact content.
+- Do NOT replace topic-specific content with general recommendations for artists.
+
+IDENTIFYING LIST/DIRECTORY TOPICS:
+If the topic title or brief contains keywords like:
+- "list", "directory", "top [X]", "best [X]", "festivals", "events", "venues", "platforms", "tools"
+- "2026", "2025", specific year references
+- "complete guide to [specific items]"
+- "all [items] you need to know"
+Then the article MUST include a concrete, numbered/list-based structure with specific items.
+
+REQUIREMENTS FOR LIST/DIRECTORY ARTICLES:
+1. CONCRETE ITEMS REQUIRED:
+   - Each item must have a specific name/title (e.g., festival name, platform name, tool name)
+   - Include dates when relevant (e.g., "June 15-17, 2026" for festivals)
+   - Include locations when relevant (e.g., "Amsterdam, Netherlands" or "Miami, Florida")
+   - Include official website links when available from [[TRUST_SOURCES_LIST]]
+   - Include short descriptions (2-3 sentences) for each item explaining what it is and why it matters
+
+2. STRUCTURE FOR LIST ARTICLES:
+   - Use numbered lists (<ol>) or bullet lists with clear headings for each item
+   - Format: "1. [Item Name] - [Date/Location] - [Short description with link to official site if available]"
+   - Group related items into sections if the list is long (e.g., "European Festivals", "North American Festivals")
+   - Each item should be substantial enough to stand alone (not just a name)
+
+3. WHAT TO AVOID IN LIST ARTICLES:
+   - Do NOT replace the list with general advice like "how to choose festivals" or "tips for artists"
+   - Do NOT write generic recommendations instead of specific items
+   - Do NOT focus on "what artists should do" when the topic asks for "which festivals exist"
+   - The list IS the content - not a side note or example
+
+4. INTEGRATING SOURCES IN LIST ARTICLES:
+   - Use sources from [[TRUST_SOURCES_LIST]] to find official festival/event websites
+   - Link each item to its official website when available in the sources
+   - If sources contain festival directories or event listings, prioritize those
+   - Format links naturally: "Coachella Valley Music and Arts Festival (<b><a href="https://www.coachella.com">official website</a></b>) takes place in Indio, California..."
+
+5. BALANCING LIST CONTENT WITH CONTEXT:
+   - Start with a brief intro explaining why this list matters
+   - Provide the complete list as the main content
+   - Add context sections (H2/H3) that explain criteria, trends, or background
+   - Include practical notes (e.g., "tickets go on sale in March") but keep the list as the primary focus
+   - The anchor link [[ANCHOR_TEXT]] can appear in a context section, not within the list itself
+
+EXAMPLE OF CORRECT LIST ARTICLE STRUCTURE:
+If topic is "Top Electronic Music Festivals Announced for 2026":
+
+CORRECT HTML STRUCTURE:
+<h1>Top Electronic Music Festivals Announced for 2026</h1>
+<p>Intro paragraph explaining why this list matters for artists planning their 2026 calendar...</p>
+
+<h2>Major Festivals Confirmed for 2026</h2>
+<ol>
+  <li><b>Ultra Music Festival</b> - March 22-24, 2026, Miami, Florida
+  <p>The flagship electronic music event returns to Bayfront Park with a lineup featuring top-tier DJs and producers. Known for its massive production and global audience, Ultra attracts over 165,000 attendees annually. Official website: <b><a href="https://ultramusicfestival.com">ultramusicfestival.com</a></b></p>
+  </li>
+  <li><b>Tomorrowland</b> - July 19-21 & July 26-28, 2026, Boom, Belgium
+  <p>Europe's premier electronic music festival spans two weekends with immersive stage designs and a diverse lineup. The festival has become a pilgrimage for electronic music fans worldwide. Official website: <b><a href="https://www.tomorrowland.com">tomorrowland.com</a></b></p>
+  </li>
+  <li><b>Electric Daisy Carnival (EDC)</b> - May 17-19, 2026, Las Vegas, Nevada
+  <p>EDC Las Vegas transforms the Las Vegas Motor Speedway into a massive electronic music playground with multiple stages, art installations, and carnival rides. Official website: <b><a href="https://lasvegas.electricdaisycarnival.com">electricdaisycarnival.com</a></b></p>
+  </li>
+</ol>
+
+<h2>Regional Highlights</h2>
+<h3>European Circuit</h3>
+<ol>
+  <li><b>Awakenings Festival</b> - June 29-30, 2026, Amsterdam, Netherlands
+  <p>Techno-focused festival featuring the genre's biggest names and emerging talent. Official website: <b><a href="https://www.awakenings.nl">awakenings.nl</a></b></p>
+  </li>
+</ol>
+
+<h2>What Makes These Festivals Stand Out</h2>
+<p>Context section explaining trends, production quality, audience reach. This is where the anchor link [[ANCHOR_TEXT]] can naturally appear if relevant.</p>
+
+<p>Conclusion summarizing the key festivals and their significance.</p>
+
+EXAMPLE OF INCORRECT APPROACH (DO NOT DO THIS):
+- Generic advice about "how to choose festivals" without listing specific festivals
+- Tips for artists on "what to do at festivals" instead of listing festivals
+- General recommendations like "look for festivals with good production" without naming actual festivals
+- Watered-down content that avoids the actual list
+- Focusing on "what artists should do" when the topic asks for "which festivals exist"
+
+CRITICAL RULE:
+When the topic explicitly asks for a list, directory, or specific items (festivals, events, platforms, tools, etc.):
+- The list MUST be the primary content (60-70% of the article)
+- Each item MUST be specific, named, and include relevant details (dates, locations, links)
+- General advice can supplement but NEVER replace the list
+- If you cannot find specific items from sources, use the most relevant information available but still structure it as a concrete list, not vague recommendations
+
 Audience:
 - Independent artists, small labels, managers, and digital creators.
 - They understand basic music/marketing terms but are not deep data nerds.
@@ -66,12 +164,27 @@ Structure:
 - Write a full outreach article in [[LANGUAGE]]. The target word count is [[WORD_COUNT]] words (acceptable range: ±20 words from the target). Brand and platform names must always be capitalized correctly.
 - Structure the article with clear H1, H2, H3 headings using proper HTML tags: <h1>, <h2>, <h3>.
 - Use <h1> for the main article title, <h2> for major sections, and <h3> for subsections.
-- Suggested flow:
-  • Short intro that hooks the reader and hints at the solution.
-  • 2–4 main sections (H2/H3) with practical advice and examples.
-  • One section where [[BRAND_NAME]] appears as a natural solution or helper, NOT a hard ad – ONLY if [[BRAND_NAME]] is provided.
-  • If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brand and you MUST skip the brand integration idea.
-  • Short conclusion that summarizes key points and gently points toward action.
+
+STRUCTURE FOR LIST/DIRECTORY TOPICS (when topic asks for specific items like festivals, events, platforms):
+- Short intro that explains the significance of the list.
+- Main content: Complete numbered or bulleted list with specific items (names, dates, locations, links, descriptions).
+- Each list item should be substantial (2-3 sentences minimum) with concrete details.
+- Group related items into H2/H3 sections if the list is long.
+- Context sections (H2/H3) that explain trends, criteria, or background - anchor link can appear here.
+- Short conclusion that summarizes the key items.
+
+STRUCTURE FOR ADVICE/GUIDE TOPICS (when topic asks for tips, strategies, how-to):
+- Short intro that hooks the reader and hints at the solution.
+- 2–4 main sections (H2/H3) with practical advice and examples.
+- One section where [[BRAND_NAME]] appears as a natural solution or helper, NOT a hard ad – ONLY if [[BRAND_NAME]] is provided.
+- If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brand and you MUST skip the brand integration idea.
+- Short conclusion that summarizes key points and gently points toward action.
+
+CRITICAL: Determine the topic type FIRST:
+- If [[TOPIC_TITLE]] or [[TOPIC_BRIEF]] contains words like "list", "top [X]", "festivals", "events", "directory", "all [items]" → Use LIST/DIRECTORY structure.
+- If [[TOPIC_TITLE]] or [[TOPIC_BRIEF]] asks for "how to", "tips", "strategies", "guide" → Use ADVICE/GUIDE structure.
+- The topic requirements ALWAYS take priority over generic advice patterns.
+
 - Use bullet or numbered lists where helpful.
 - Bold the most important ideas and SEO keywords that I provide.
 - Avoid repetitive patterns. Each article must differ in structure from previous ones.
