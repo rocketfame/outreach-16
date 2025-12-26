@@ -59,12 +59,15 @@ CRITICAL EDITING RULES:
    - Never use full URLs as anchor text
    - Verify each URL exists in [[TRUST_SOURCES_LIST]] before using
 
-5. IMAGE SUGGESTIONS (when requested):
-   - Provide specific image descriptions that match the article content
-   - Suggest relevant image types (e.g., "festival stage photo", "artist performing", "music production studio")
-   - Include potential sources or search terms for finding images
-   - Format image suggestions as: <img src="[description]" alt="[alt text]" /> with clear descriptions
-   - Note: You cannot generate actual images, but you can suggest what images would work well
+5. IMAGE INTEGRATION (when requested):
+   - If the request mentions "add images", "додати зображення", "вбудовувати зображення", or similar, you MUST add HTML `<img>` tags directly into the article content.
+   - Use the following format: `<img src="[IMAGE_URL_PLACEHOLDER]" alt="[IMAGE_DESCRIPTION]" style="max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0;">`
+   - Place images naturally within the content, near relevant text sections.
+   - For each image, provide a descriptive `alt` attribute that explains what the image shows.
+   - If the article mentions specific items (e.g., festivals, events, platforms), add images for each major item mentioned.
+   - Images should be placed after relevant paragraphs or list items, not at the very beginning or end.
+   - Use `[IMAGE_URL_PLACEHOLDER]` as the src - this will be replaced with actual image URLs later.
+   - Provide clear, descriptive alt text that helps readers understand the image content.
 
 6. CONTENT ADDITIONS:
    - When adding new content, make it feel like it was always part of the article

@@ -62,6 +62,7 @@ export default function Home() {
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
   const [editRequest, setEditRequest] = useState<string>("");
   const [isProcessingEdit, setIsProcessingEdit] = useState(false);
+  const [editingArticleStatus, setEditingArticleStatus] = useState<string | null>(null);
   const [loadingStep, setLoadingStep] = useState<LoadingStep>(null);
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
   const [isGeneratingArticles, setIsGeneratingArticles] = useState(false);
@@ -1317,6 +1318,8 @@ export default function Home() {
     }
 
     setIsProcessingEdit(true);
+    setEditingArticleId(articleId);
+    setEditingArticleStatus("Аналізую запит та статтю...");
     setNotification({
       message: "Обробка запиту на редагування...",
       time: new Date().toLocaleTimeString(),
@@ -1348,6 +1351,13 @@ export default function Home() {
         }
       }
 
+      // Check if edit request mentions images
+      const needsImages = editRequest.toLowerCase().includes('зображен') || 
+                         editRequest.toLowerCase().includes('image') ||
+                         editRequest.toLowerCase().includes('фото') ||
+                         editRequest.toLowerCase().includes('photo') ||
+                         editRequest.toLowerCase().includes('картинк');
+
       // If edit request mentions adding links, try to fetch new trust sources
       const needsMoreLinks = editRequest.toLowerCase().includes('посилан') || 
                             editRequest.toLowerCase().includes('link') ||
@@ -1355,6 +1365,7 @@ export default function Home() {
                             editRequest.toLowerCase().includes('source');
       
       if (needsMoreLinks) {
+        setEditingArticleStatus("Отримую додаткові джерела...");
         try {
           // Fetch trust sources for the article topic
           const linksResponse = await fetch("/api/find-links", {
@@ -1383,6 +1394,7 @@ export default function Home() {
         }
       }
 
+      setEditingArticleStatus("AI редактор обробляє ваш запит...");
       const response = await fetch("/api/edit-article", {
         method: "POST",
         headers: {
@@ -1409,30 +1421,49 @@ export default function Home() {
         throw new Error(data.error || "Failed to edit article");
       }
 
+      setEditingArticleStatus("Застосовую правки до статті...");
+      
+      // If images are needed and article has images, replace placeholders with actual image URLs
+      let finalHtml = data.editedArticleHtml!;
+      if (needsImages && articleImages.has(articleId)) {
+        setEditingArticleStatus("Вбудовую зображення в статтю...");
+        const imageData = articleImages.get(articleId);
+        if (imageData && imageData.imageBase64) {
+          // Replace [IMAGE_URL_PLACEHOLDER] with actual base64 image data
+          const imageUrl = `data:image/png;base64,${imageData.imageBase64}`;
+          finalHtml = finalHtml.replace(/\[IMAGE_URL_PLACEHOLDER\]/gi, imageUrl);
+        }
+      }
+
       // Update the article with edited content
       updateGeneratedArticles(prev =>
         prev.map(a =>
           a.topicTitle === articleId
             ? {
                 ...a,
-                articleBodyHtml: data.editedArticleHtml!,
-                fullArticleText: data.editedArticleHtml!, // Also update fullArticleText for compatibility
+                articleBodyHtml: finalHtml,
+                fullArticleText: finalHtml, // Also update fullArticleText for compatibility
               }
             : a
         )
       );
 
+      setEditingArticleStatus(null);
       setNotification({
         message: "Статтю успішно відредаговано",
         time: new Date().toLocaleTimeString(),
         visible: true,
       });
 
-      // Clear edit request and close edit mode
+      // Play success sound after editing
+      playSuccessSound();
+
+      // Clear edit request but keep modal open to show updated article
       setEditRequest("");
       setEditingArticleId(null);
     } catch (error) {
       console.error("[editArticleWithAI] Error:", error);
+      setEditingArticleStatus(null);
       setNotification({
         message: error instanceof Error ? error.message : "Помилка при редагуванні статті",
         time: new Date().toLocaleTimeString(),
@@ -1440,6 +1471,7 @@ export default function Home() {
       });
     } finally {
       setIsProcessingEdit(false);
+      setEditingArticleId(null);
     }
   };
 
@@ -2836,6 +2868,7 @@ export default function Home() {
                                             setViewingArticle(null);
                                             setEditRequest("");
                                             setEditingArticleId(null);
+                                            setEditingArticleStatus(null);
                                           }}
                                         >
                                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -2889,6 +2922,22 @@ export default function Home() {
                                               rows={4}
                                               disabled={isProcessingEdit}
                                             />
+                                            
+                                            {/* Status indicator when editing */}
+                                            {isProcessingEdit && editingArticleId === topicId && editingArticleStatus && (
+                                              <div className="article-edit-status">
+                                                <div className="article-edit-status-indicator">
+                                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" strokeDashoffset="32">
+                                                      <animate attributeName="stroke-dasharray" dur="2s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
+                                                      <animate attributeName="stroke-dashoffset" dur="2s" values="0;-16;-32;-32" repeatCount="indefinite"/>
+                                                    </circle>
+                                                  </svg>
+                                                  <span className="article-edit-status-text">{editingArticleStatus}</span>
+                                                </div>
+                                              </div>
+                                            )}
+
                                             <div className="article-edit-actions">
                                               <button
                                                 type="button"
@@ -2896,7 +2945,7 @@ export default function Home() {
                                                 onClick={() => editArticleWithAI(topicId)}
                                                 disabled={isProcessingEdit || !editRequest.trim()}
                                               >
-                                                {isProcessingEdit ? (
+                                                {isProcessingEdit && editingArticleId === topicId ? (
                                                   <>
                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
                                                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" strokeDashoffset="32">
@@ -2916,13 +2965,14 @@ export default function Home() {
                                                   </>
                                                 )}
                                               </button>
-                                              {editRequest && (
+                                              {editRequest && !isProcessingEdit && (
                                                 <button
                                                   type="button"
                                                   className="btn-outline"
                                                   onClick={() => {
                                                     setEditRequest("");
                                                     setEditingArticleId(null);
+                                                    setEditingArticleStatus(null);
                                                   }}
                                                   disabled={isProcessingEdit}
                                                 >
