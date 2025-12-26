@@ -72,8 +72,10 @@ CRITICAL: COMPREHENSIVE ANALYSIS AND INTELLIGENT EXECUTION
      * Verify matches by checking names, titles, URLs - exact correspondence is required
    - When working with images:
      * Match image title/description to the EXACT item mentioned in text
-     * If you cannot find an exact match, skip it - never use a wrong match
+     * If you cannot find an exact match, skip it silently - never use a wrong match
+     * NEVER add text notes or messages about missing images - just skip them
      * Ensure source diversity - different domains for different images
+     * The article must contain ONLY actual content - no technical notes or explanations
    - When working with links:
      * Match links to the correct items/sections
      * Use official sources when requested
@@ -104,6 +106,9 @@ TECHNICAL REQUIREMENTS:
    - Distribute evenly: one image per item if user requests "for each" or "evenly"
    - Source diversity: don't use multiple images from the same domain
    - Format: <figure><img src="..." alt="..." /><figcaption>Image source: <a href="..." target="_blank" rel="noopener noreferrer">...</a></figcaption></figure>
+   - 🚨 CRITICAL: If an image is not available for an item, simply skip it - DO NOT add any text notes, messages, or explanations
+   - 🚨 CRITICAL: NEVER add text like "Photo note:", "verified image was not included", "image not found", or any similar messages
+   - 🚨 CRITICAL: The article must contain ONLY actual content - if you can't add an image, just leave the item without an image, silently
 
 2. LINK HANDLING (when links are requested):
    - Use sources from [[TRUST_SOURCES_LIST]] when available
@@ -126,6 +131,10 @@ TECHNICAL REQUIREMENTS:
    - Add new content as requested
    - Use proper HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <b>, <a>, <figure>, <img>, <figcaption>
    - No JSON wrapper, no explanations, just the HTML
+   - 🚨 CRITICAL: NEVER add notes, messages, or explanations in the article content
+   - 🚨 CRITICAL: If an image is not available, simply skip it - DO NOT add text like "Photo note: image not found" or "verified image was not included"
+   - 🚨 CRITICAL: The article must contain ONLY actual content - no technical messages, no notes, no explanations
+   - If you cannot add an image for an item, just leave it without an image - do not add any text about it
 
 WORKFLOW (follow systematically):
 
@@ -196,7 +205,7 @@ export function buildEditArticlePrompt(params: EditArticleParams): string {
   let sourcesGuidance = "";
   
   if (imageSources.length > 0) {
-    sourcesGuidance += `\n\nIMAGES AVAILABLE:\n- You have ${imageSources.length} image(s) found via Tavily browsing\n- These are real images from the web (social media, official sites, news, etc.)\n- CRITICAL: Match images EXACTLY to items mentioned in text (e.g., "Tomorrowland" image for "Tomorrowland" text)\n- CRITICAL: Add images to ALL relevant sections of the article, not just one section\n- Distribute evenly if user requested "for each" or "evenly"\n- Validate URLs before using (must be http:// or https://)\n- Ensure source diversity (don't use multiple images from same domain)\n- If you cannot find an exact match, DO NOT use a wrong image - skip it\n`;
+    sourcesGuidance += `\n\nIMAGES AVAILABLE:\n- You have ${imageSources.length} image(s) found via Tavily browsing\n- These are real images from the web (social media, official sites, news, etc.)\n- CRITICAL: Match images EXACTLY to items mentioned in text (e.g., "Tomorrowland" image for "Tomorrowland" text)\n- CRITICAL: Add images to ALL relevant sections of the article, not just one section\n- Distribute evenly if user requested "for each" or "evenly"\n- Validate URLs before using (must be http:// or https://)\n- Ensure source diversity (don't use multiple images from same domain)\n- If you cannot find an exact match, DO NOT use a wrong image - skip it silently (no text notes or messages)\n- 🚨 CRITICAL: NEVER add text notes or messages in the article about missing images - just skip them\n`;
   }
   
   if (regularSources.length > 0) {

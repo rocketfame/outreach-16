@@ -1521,90 +1521,49 @@ export default function Home() {
                                 editRequestLower.includes('official site') ||
                                 editRequestLower.includes('official website');
 
-      // If edit request mentions images, search for images with multiple specific queries
+      // If edit request mentions images, use intelligent image search algorithm
       if (needsImages) {
-        setEditingArticleStatus("Researching and finding relevant images from web...");
+        setEditingArticleStatus("Analyzing article and generating intelligent image search queries...");
         try {
-          // Extract specific items mentioned in the article (festivals, events, etc.)
-          const articleText = currentHtml.replace(/<[^>]*>/g, ' '); // Strip HTML for text extraction
+          // Import intelligent image search algorithm
+          const { 
+            extractEntitiesFromArticle, 
+            analyzeUserRequest, 
+            generateSearchQueries 
+          } = await import('../lib/imageSearchAlgorithm');
           
-          // Extract festival/event names from the article HTML more accurately
-          // Look for patterns in list items with links (festival names are usually in <b><a> tags)
-          const festivalPatterns = [
-            /<li[^>]*>\s*<b><a[^>]*>([^<]+)<\/a><\/b>/gi, // List items with bold linked names (most common)
-            /<li[^>]*>\s*<b>([^<]+)<\/b>/gi, // List items with bold names
-            /<b><a[^>]*href=["'][^"']*["'][^>]*>([^<]+)<\/a><\/b>/gi, // Bold links anywhere (festival names)
-          ];
+          // Build search context
+          const searchContext = {
+            userRequest: editRequest,
+            articleTitle: articleTitle,
+            articleHtml: currentHtml,
+            niche: brief.niche || '',
+            language: brief.language || 'English',
+          };
           
-          const extractedItems: string[] = [];
-          const seenItems = new Set<string>();
+          // Analyze user request to understand intent
+          const intent = analyzeUserRequest(editRequest);
+          console.log(`[editArticleWithAI] Search intent:`, intent);
           
-          festivalPatterns.forEach(pattern => {
-            let match;
-            while ((match = pattern.exec(currentHtml)) !== null) {
-              const item = match[1].trim();
-              // Filter out generic headings and keep specific festival/event names
-              if (item.length > 3 && item.length < 80 && 
-                  !item.toLowerCase().includes('introduction') &&
-                  !item.toLowerCase().includes('conclusion') &&
-                  !item.toLowerCase().includes('overview') &&
-                  !item.toLowerCase().includes('how this') &&
-                  !item.toLowerCase().includes('quick planning') &&
-                  !item.toLowerCase().includes('closing thought') &&
-                  !item.toLowerCase().includes('what "loud"') &&
-                  !seenItems.has(item.toLowerCase())) {
-                extractedItems.push(item);
-                seenItems.add(item.toLowerCase());
-              }
-            }
-          });
+          // Extract entities from article (items, topics, concepts, etc.)
+          const entities = extractEntitiesFromArticle(currentHtml, articleTitle);
+          console.log(`[editArticleWithAI] Extracted ${entities.length} entities:`, entities.map(e => `${e.name} (${e.type}, priority: ${e.priority})`));
           
-          console.log(`[editArticleWithAI] Extracted ${extractedItems.length} festival/event names:`, extractedItems);
+          // Generate intelligent search queries based on context and intent
+          const searchQueriesWithPriority = generateSearchQueries(searchContext, intent, entities);
+          console.log(`[editArticleWithAI] Generated ${searchQueriesWithPriority.length} intelligent search queries`);
           
-          // Create specific search queries for EACH festival/event
-          const searchQueries: string[] = [];
+          // Convert to simple array, prioritizing high-priority queries
+          const searchQueries = searchQueriesWithPriority.map(sq => sq.query);
           
-          // Add main article query
-          searchQueries.push(`${articleTitle} ${brief.niche || ""}`.trim());
-          
-          // Add specific queries for EACH extracted item with enhanced search strategies
-          extractedItems.forEach(item => {
-            // Base queries
-            const baseQueries = [
-              `${item} festival official photo`,
-              `${item} music festival`,
-              `${item} event photo`,
-            ];
-            
-            // If user wants social media sources, add Instagram/Facebook specific queries
-            if (wantsSocialMedia) {
-              baseQueries.push(
-                `${item} instagram`,
-                `${item} facebook`,
-                `${item} social media`,
-                `${item} instagram photo`,
-                `${item} facebook photo`
-              );
-            }
-            
-            // If user wants official sites, prioritize official sources
-            if (wantsOfficialSites) {
-              baseQueries.push(
-                `${item} official website photo`,
-                `${item} official site image`,
-                `${item} official photo`
-              );
-            }
-            
-            // Add all queries
-            baseQueries.forEach(query => {
-              if (query.length > 10 && !searchQueries.includes(query)) {
-                searchQueries.push(query);
-              }
-            });
-          });
-          
-          console.log(`[editArticleWithAI] Created ${searchQueries.length} search queries for images`);
+          // Determine max queries based on search depth
+          const maxQueriesByDepth = {
+            shallow: 15,
+            medium: 30,
+            deep: 50,
+          };
+          const maxQueries = Math.min(searchQueries.length, maxQueriesByDepth[intent.searchDepth]);
+          console.log(`[editArticleWithAI] Will search ${maxQueries} queries (search depth: ${intent.searchDepth})`);
           
           // Search for images with each query and collect unique results
           const allImages: Array<{ url: string; sourceUrl: string; title?: string }> = [];
@@ -1621,13 +1580,18 @@ export default function Home() {
             }
           };
           
-          // Search for images with more queries (up to 10 to get images for multiple festivals)
-          const maxQueries = Math.min(searchQueries.length, 10);
+          // Track which entities have images found (for fallback search)
+          const entitiesWithImages = new Map<string, boolean>();
+          entities.forEach(entity => {
+            entitiesWithImages.set(entity.name, false);
+          });
+          
           for (let i = 0; i < maxQueries; i++) {
-            setEditingArticleStatus(`Searching images for festivals (${i + 1}/${maxQueries})...`);
+            const queryInfo = searchQueriesWithPriority[i];
+            setEditingArticleStatus(`Searching images (${i + 1}/${maxQueries}): ${queryInfo.query.substring(0, 50)}...`);
             
             try {
-              console.log(`[editArticleWithAI] Searching images via Tavily API for query: "${searchQueries[i]}"`);
+              console.log(`[editArticleWithAI] Searching images via Tavily API for query: "${searchQueries[i]}" (priority: ${queryInfo.priority}, type: ${queryInfo.searchType})`);
               const imagesResponse = await fetch("/api/search-images", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1640,6 +1604,10 @@ export default function Home() {
                 const imagesData = await imagesResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
                 console.log(`[editArticleWithAI] Tavily API returned ${imagesData.images?.length || 0} images for query: "${searchQueries[i]}"`);
                 if (imagesData.images && imagesData.images.length > 0) {
+                  // Track which entity this query was for
+                  if (queryInfo.entity) {
+                    entitiesWithImages.set(queryInfo.entity.name, true);
+                  }
                   // Add only unique images from unique sources with URL validation
                   imagesData.images.forEach(image => {
                     if (!image.url || !image.url.startsWith('http')) {
@@ -1692,6 +1660,111 @@ export default function Home() {
               console.warn(`[editArticleWithAI] Failed to fetch images for query "${searchQueries[i]}":`, error);
               // Continue with next query
             }
+          }
+          
+          // Fallback: If some entities don't have images, try more general queries
+          // Prioritize high-priority entities first
+          const entitiesWithoutImages = entities
+            .filter(entity => !entitiesWithImages.get(entity.name))
+            .sort((a, b) => b.priority - a.priority); // Sort by priority
+            
+          if (entitiesWithoutImages.length > 0 && intent.searchDepth !== 'shallow') {
+            const maxFallback = intent.searchDepth === 'deep' ? 20 : 10;
+            console.log(`[editArticleWithAI] ${entitiesWithoutImages.length} entities without images, trying fallback queries for top ${maxFallback}...`);
+            
+            for (const entity of entitiesWithoutImages.slice(0, maxFallback)) {
+              setEditingArticleStatus(`Searching fallback images for ${entity.name}...`);
+              
+              // Generate fallback queries based on entity type and context
+              const fallbackQueries: string[] = [
+                entity.name, // Just the name
+              ];
+              
+              // Add type-specific fallback queries
+              if (entity.type === 'event') {
+                fallbackQueries.push(
+                  `${entity.name} event`,
+                  `${entity.name} festival`,
+                );
+              } else if (entity.type === 'person') {
+                fallbackQueries.push(
+                  `${entity.name} artist`,
+                  `${entity.name} musician`,
+                );
+              } else if (entity.type === 'place') {
+                fallbackQueries.push(
+                  `${entity.name} location`,
+                  `${entity.name} venue`,
+                );
+              }
+              
+              // Add niche-specific query
+              if (brief.niche) {
+                fallbackQueries.push(`${entity.name} ${brief.niche}`);
+              }
+              
+              // Add general photo/image queries
+              fallbackQueries.push(
+                `${entity.name} photo`,
+                `${entity.name} image`,
+              );
+              
+              for (const fallbackQuery of fallbackQueries) {
+                try {
+                  const fallbackResponse = await fetch("/api/search-images", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query: fallbackQuery }),
+                  });
+                  
+                  if (fallbackResponse.ok) {
+                    const fallbackData = await fallbackResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
+                    if (fallbackData.images && fallbackData.images.length > 0) {
+                      // Add images from fallback search
+                      let foundImage = false;
+                      fallbackData.images.forEach(image => {
+                        if (!image.url || !image.url.startsWith('http')) return;
+                        
+                        try {
+                          new URL(image.url);
+                        } catch {
+                          return;
+                        }
+                        
+                        const normalizedUrl = image.url.split('?')[0].split('#')[0];
+                        const imageUrl = image.url;
+                        const sourceDomain = getDomain(image.sourceUrl || image.url);
+                        
+                        if (!seenUrls.has(imageUrl) && !seenUrls.has(normalizedUrl)) {
+                          if (!sourceDomain || !seenSourceDomains.has(sourceDomain)) {
+                            allImages.push(image);
+                            seenUrls.add(imageUrl);
+                            seenUrls.add(normalizedUrl);
+                            if (sourceDomain) {
+                              seenSourceDomains.add(sourceDomain);
+                            }
+                            foundImage = true;
+                          }
+                        }
+                      });
+                      
+                      if (foundImage) {
+                        entitiesWithImages.set(entity.name, true);
+                        console.log(`[editArticleWithAI] Found fallback image for ${entity.name}`);
+                        break; // Found at least one image for this entity
+                      }
+                    }
+                  }
+                  
+                  await new Promise(resolve => setTimeout(resolve, 300)); // Small delay
+                } catch (error) {
+                  console.warn(`[editArticleWithAI] Fallback search failed for "${fallbackQuery}":`, error);
+                }
+              }
+            }
+            
+            const entitiesWithImagesCount = Array.from(entitiesWithImages.values()).filter(v => v).length;
+            console.log(`[editArticleWithAI] After fallback: ${entitiesWithImagesCount} entities have images out of ${entities.length} total`);
           }
           
           if (allImages.length > 0) {
