@@ -95,6 +95,15 @@ Previous Edit History:
 Current Editorial Request:
 [[EDIT_REQUEST]]
 
+CRITICAL: UNDERSTANDING USER INTENT:
+- Read the edit request CAREFULLY and understand EXACTLY what the user wants
+- If the user asks to search social media (Instagram, Facebook), you MUST prioritize images from social media sources
+- If the user asks for official sources, you MUST prioritize images from official websites
+- If the user asks for images for multiple items (festivals, events, etc.), you MUST add images for AS MANY as possible, not just one
+- The user's specific instructions take priority over generic rules
+- If the user mentions specific sources (Instagram, Facebook, official sites), follow those instructions precisely
+- DO NOT ignore user's specific requests - they know what they want
+
 CRITICAL EDITING RULES:
 
 1. PRESERVE ARTICLE STRUCTURE AND CONTENT:
@@ -112,9 +121,14 @@ CRITICAL EDITING RULES:
    - Do NOT restructure the entire article unless explicitly requested
    - If you see similar content from previous edits, it means the user wanted it - keep it
 
-2. FOCUS ON THE REQUEST AND UNDERSTAND CONTEXT:
+2. FOCUS ON THE REQUEST AND UNDERSTAND CONTEXT - CRITICAL USER INTENT RECOGNITION:
    - Address ONLY what is requested in [[EDIT_REQUEST]]
    - Do NOT make unrelated changes
+   - CRITICAL: Read the edit request WORD BY WORD and understand the user's EXACT intent
+   - If the user says "search Instagram" or "look on Facebook" or "check social media", you MUST prioritize images from those sources
+   - If the user says "official sites" or "official websites", you MUST prioritize images from official sources
+   - If the user says "for each festival" or "for all festivals", you MUST add images for MULTIPLE festivals, not just one
+   - The user's specific words and instructions are MORE IMPORTANT than generic rules
    - CRITICAL: Review [[EDIT_HISTORY]] to understand what was already changed
    - If the current request is similar to a previous one (e.g., "add links" when links were already added), interpret it as "add MORE links" not "replace links"
    - Understand user intent: if they ask for something that was already done, they likely want MORE of it, not a replacement
@@ -122,6 +136,7 @@ CRITICAL EDITING RULES:
    - If the request is to "add specific information", integrate it seamlessly without removing previous additions
    - If the request is to "find and add images", add new images while keeping any images from previous edits
    - If the request mentions something that already exists in the article (from previous edits), enhance it or add more, don't remove it
+   - DO NOT ignore specific instructions from the user - they know what they want
 
 3. MAINTAIN QUALITY STANDARDS:
    - Keep the human-written, natural style
@@ -172,6 +187,9 @@ CRITICAL EDITING RULES:
    - If images are in the list, you MUST add them to the article
    - Think critically: "Which image from the list matches this specific content?"
    - Match each image to the relevant section of the article
+   - CRITICAL: If the user asked for social media sources (Instagram, Facebook), prioritize images from those sources in the list
+   - CRITICAL: If the user asked for official sites, prioritize images from official websites in the list
+   - The user's specific request about source types (social media, official sites) takes priority
    
    PROFESSIONAL RESEARCH APPROACH:
    - Treat image research like a professional journalist or content researcher would
@@ -201,12 +219,16 @@ CRITICAL EDITING RULES:
    - Use the Source URL (third part after second |) to create a link to the original source
    - IMPORTANT: The src attribute MUST be a valid HTTP/HTTPS URL starting with http:// or https://
    
-   IMAGE PLACEMENT AND MATCHING:
+   IMAGE PLACEMENT AND MATCHING - CRITICAL REQUIREMENTS:
    - Place images IMMEDIATELY after the paragraph or list item that mentions the specific item
    - Match each image to its corresponding content: if text mentions "Ultra Music Festival", place an Ultra Music Festival image right after that mention
    - DO NOT place a generic image when a specific one is needed
    - DO NOT reuse the same image for different items - each item should have its own relevant image
-   - If multiple items are mentioned in a list, add a relevant image for EACH major item, placed right after its description
+   - If multiple items are mentioned in a list (e.g., multiple festivals), you MUST add a relevant image for EACH major item, placed right after its description
+   - CRITICAL: When the edit request asks to add images for festivals/events, you MUST add images for AS MANY festivals/events as possible from the list, not just one
+   - If the article lists 10 festivals, try to add images for at least 5-7 of them, matching each image to its specific festival
+   - Each festival/event in the list should ideally have its own unique image from a unique source domain
+   - Work through the list systematically: for each festival mentioned, find a matching image from [[TRUST_SOURCES_LIST]] and add it
    
    IMAGE FORMATTING:
    - Format images with proper HTML structure - EXAMPLE:

@@ -1493,12 +1493,33 @@ export default function Home() {
         }
       }
 
-      // Check if edit request mentions images
-      const needsImages = editRequest.toLowerCase().includes('зображен') || 
-                         editRequest.toLowerCase().includes('image') ||
-                         editRequest.toLowerCase().includes('фото') ||
-                         editRequest.toLowerCase().includes('photo') ||
-                         editRequest.toLowerCase().includes('картинк');
+      // Enhanced request understanding - detect various ways user might ask for images
+      const editRequestLower = editRequest.toLowerCase();
+      const needsImages = editRequestLower.includes('зображен') || 
+                         editRequestLower.includes('image') ||
+                         editRequestLower.includes('фото') ||
+                         editRequestLower.includes('photo') ||
+                         editRequestLower.includes('картинк') ||
+                         editRequestLower.includes('picture') ||
+                         editRequestLower.includes('visual') ||
+                         editRequestLower.includes('візуал') ||
+                         editRequestLower.includes('додай зображення') ||
+                         editRequestLower.includes('add image') ||
+                         editRequestLower.includes('find image') ||
+                         editRequestLower.includes('знайди зображення');
+      
+      // Detect if user wants to search social media or official sites
+      const wantsSocialMedia = editRequestLower.includes('instagram') ||
+                              editRequestLower.includes('facebook') ||
+                              editRequestLower.includes('соціальн') ||
+                              editRequestLower.includes('social') ||
+                              editRequestLower.includes('соцмереж');
+      
+      const wantsOfficialSites = editRequestLower.includes('офіційн') ||
+                                editRequestLower.includes('official') ||
+                                editRequestLower.includes('офіційний сайт') ||
+                                editRequestLower.includes('official site') ||
+                                editRequestLower.includes('official website');
 
       // If edit request mentions images, search for images with multiple specific queries
       if (needsImages) {
@@ -1507,42 +1528,83 @@ export default function Home() {
           // Extract specific items mentioned in the article (festivals, events, etc.)
           const articleText = currentHtml.replace(/<[^>]*>/g, ' '); // Strip HTML for text extraction
           
-          // Try to extract festival/event names from the article
-          // Look for patterns like "Festival Name", "Event Name", or list items
+          // Extract festival/event names from the article HTML more accurately
+          // Look for patterns in list items with links (festival names are usually in <b><a> tags)
           const festivalPatterns = [
-            /<li[^>]*><b>([^<]+)<\/b>/gi, // List items with bold names
-            /<h2[^>]*>([^<]+)<\/h2>/gi, // H2 headings (often section names)
-            /<h3[^>]*>([^<]+)<\/h3>/gi, // H3 headings
+            /<li[^>]*>\s*<b><a[^>]*>([^<]+)<\/a><\/b>/gi, // List items with bold linked names (most common)
+            /<li[^>]*>\s*<b>([^<]+)<\/b>/gi, // List items with bold names
+            /<b><a[^>]*href=["'][^"']*["'][^>]*>([^<]+)<\/a><\/b>/gi, // Bold links anywhere (festival names)
           ];
           
           const extractedItems: string[] = [];
+          const seenItems = new Set<string>();
+          
           festivalPatterns.forEach(pattern => {
             let match;
-            while ((match = pattern.exec(articleText)) !== null) {
+            while ((match = pattern.exec(currentHtml)) !== null) {
               const item = match[1].trim();
-              // Filter out generic headings and keep specific names
-              if (item.length > 5 && item.length < 100 && 
+              // Filter out generic headings and keep specific festival/event names
+              if (item.length > 3 && item.length < 80 && 
                   !item.toLowerCase().includes('introduction') &&
                   !item.toLowerCase().includes('conclusion') &&
-                  !item.toLowerCase().includes('overview')) {
+                  !item.toLowerCase().includes('overview') &&
+                  !item.toLowerCase().includes('how this') &&
+                  !item.toLowerCase().includes('quick planning') &&
+                  !item.toLowerCase().includes('closing thought') &&
+                  !item.toLowerCase().includes('what "loud"') &&
+                  !seenItems.has(item.toLowerCase())) {
                 extractedItems.push(item);
+                seenItems.add(item.toLowerCase());
               }
             }
           });
           
-          // Create multiple specific search queries for better image relevance
+          console.log(`[editArticleWithAI] Extracted ${extractedItems.length} festival/event names:`, extractedItems);
+          
+          // Create specific search queries for EACH festival/event
           const searchQueries: string[] = [];
           
           // Add main article query
           searchQueries.push(`${articleTitle} ${brief.niche || ""}`.trim());
           
-          // Add specific queries for each extracted item (limit to 5 most relevant)
-          extractedItems.slice(0, 5).forEach(item => {
-            const query = `${item} ${brief.niche || ""} official photo`.trim();
-            if (query.length > 10) {
-              searchQueries.push(query);
+          // Add specific queries for EACH extracted item with enhanced search strategies
+          extractedItems.forEach(item => {
+            // Base queries
+            const baseQueries = [
+              `${item} festival official photo`,
+              `${item} music festival`,
+              `${item} event photo`,
+            ];
+            
+            // If user wants social media sources, add Instagram/Facebook specific queries
+            if (wantsSocialMedia) {
+              baseQueries.push(
+                `${item} instagram`,
+                `${item} facebook`,
+                `${item} social media`,
+                `${item} instagram photo`,
+                `${item} facebook photo`
+              );
             }
+            
+            // If user wants official sites, prioritize official sources
+            if (wantsOfficialSites) {
+              baseQueries.push(
+                `${item} official website photo`,
+                `${item} official site image`,
+                `${item} official photo`
+              );
+            }
+            
+            // Add all queries
+            baseQueries.forEach(query => {
+              if (query.length > 10 && !searchQueries.includes(query)) {
+                searchQueries.push(query);
+              }
+            });
           });
+          
+          console.log(`[editArticleWithAI] Created ${searchQueries.length} search queries for images`);
           
           // Search for images with each query and collect unique results
           const allImages: Array<{ url: string; sourceUrl: string; title?: string }> = [];
@@ -1559,8 +1621,10 @@ export default function Home() {
             }
           };
           
-          for (let i = 0; i < Math.min(searchQueries.length, 3); i++) {
-            setEditingArticleStatus(`Searching images for specific items (${i + 1}/${Math.min(searchQueries.length, 3)})...`);
+          // Search for images with more queries (up to 10 to get images for multiple festivals)
+          const maxQueries = Math.min(searchQueries.length, 10);
+          for (let i = 0; i < maxQueries; i++) {
+            setEditingArticleStatus(`Searching images for festivals (${i + 1}/${maxQueries})...`);
             
             try {
               const imagesResponse = await fetch("/api/search-images", {
@@ -1604,7 +1668,7 @@ export default function Home() {
               }
               
               // Small delay between requests to avoid rate limiting
-              if (i < Math.min(searchQueries.length, 3) - 1) {
+              if (i < maxQueries - 1) {
                 await new Promise(resolve => setTimeout(resolve, 500));
               }
             } catch (error) {
