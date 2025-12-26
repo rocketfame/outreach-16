@@ -1417,6 +1417,13 @@ export default function Home() {
 
       const data = await response.json() as { success: boolean; editedArticleHtml?: string; error?: string };
 
+      console.log("[editArticleWithAI] Response received:", {
+        success: data.success,
+        hasEditedHtml: !!data.editedArticleHtml,
+        editedHtmlLength: data.editedArticleHtml?.length || 0,
+        error: data.error,
+      });
+
       if (!data.success || !data.editedArticleHtml) {
         throw new Error(data.error || "Failed to edit article");
       }
@@ -1435,18 +1442,39 @@ export default function Home() {
         }
       }
 
+      console.log("[editArticleWithAI] Updating article:", {
+        articleId,
+        finalHtmlLength: finalHtml.length,
+        currentArticleBodyHtml: article.articleBodyHtml?.length || 0,
+      });
+
       // Update the article with edited content
-      updateGeneratedArticles(prev =>
-        prev.map(a =>
+      updateGeneratedArticles(prev => {
+        const updated = prev.map(a =>
           a.topicTitle === articleId
             ? {
                 ...a,
                 articleBodyHtml: finalHtml,
                 fullArticleText: finalHtml, // Also update fullArticleText for compatibility
+                editedText: finalHtml, // Also update editedText for getArticleText compatibility
               }
             : a
-        )
-      );
+        );
+        console.log("[editArticleWithAI] Article updated:", {
+          found: updated.find(a => a.topicTitle === articleId),
+          newBodyHtmlLength: updated.find(a => a.topicTitle === articleId)?.articleBodyHtml?.length || 0,
+        });
+        return updated;
+      });
+
+      // Force re-render by updating viewingArticle state
+      const currentViewing = viewingArticle;
+      if (currentViewing === articleId) {
+        setViewingArticle(null);
+        setTimeout(() => {
+          setViewingArticle(articleId);
+        }, 100);
+      }
 
       setEditingArticleStatus(null);
       setNotification({

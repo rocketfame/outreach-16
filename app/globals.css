@@ -502,6 +502,11 @@ body {
   transition: background-color 0.3s ease;
 }
 
+[data-theme="dark"] .info-block {
+  border: 1.5px solid rgba(255, 107, 157, 0.3);
+  box-shadow: 0 0 0 1px rgba(255, 107, 157, 0.1);
+}
+
 .info-block h3 {
   font-size: 1.1rem;
   font-weight: 600;

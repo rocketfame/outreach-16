@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-5.2",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -107,14 +107,25 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
+    console.log("[edit-article] OpenAI response:", {
+      hasChoices: !!data.choices,
+      choicesLength: data.choices?.length || 0,
+      hasMessage: !!data.choices?.[0]?.message,
+      hasContent: !!data.choices?.[0]?.message?.content,
+      contentLength: data.choices?.[0]?.message?.content?.length || 0,
+    });
+
     const editedHtml = data.choices?.[0]?.message?.content?.trim();
 
     if (!editedHtml) {
+      console.error("[edit-article] No content in response:", JSON.stringify(data, null, 2));
       return NextResponse.json(
         { success: false, error: "No content returned from OpenAI" },
         { status: 500 }
       );
     }
+
+    console.log("[edit-article] Received HTML length:", editedHtml.length);
 
     // Clean up the response (remove any markdown code fences if present)
     let cleanedHtml = editedHtml;
@@ -123,6 +134,8 @@ export async function POST(req: NextRequest) {
     } else if (cleanedHtml.startsWith("```")) {
       cleanedHtml = cleanedHtml.replace(/^```\s*/, "").replace(/\s*```$/, "");
     }
+
+    console.log("[edit-article] Cleaned HTML length:", cleanedHtml.trim().length);
 
     return NextResponse.json({
       success: true,
