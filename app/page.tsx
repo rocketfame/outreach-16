@@ -381,18 +381,152 @@ export default function Home() {
   // getEvergreenRating removed - now using evergreenScore directly from API
 
   const regenerateArticleForTopic = async (topicId: string) => {
+    // Check if article was edited
+    const existingArticle = generatedArticles.find(a => a.topicTitle === topicId);
+    if (existingArticle?.editedText || existingArticle?.articleBodyHtml) {
+      const confirmed = confirm("This article has been edited. Regenerating will replace your edits. Continue?");
+      if (!confirmed) return;
+    }
+
+    // Handle Direct Article Creation mode
+    if (mode === "direct") {
+      // Check if this is a direct article (starts with "direct-")
+      if (!topicId.startsWith("direct-")) {
+        console.error("[regenerateArticleForTopic] Invalid topicId for direct mode:", topicId);
+        return;
+      }
+
+      // Get the article topic from the existing article
+      const article = generatedArticles.find(a => a.topicTitle === topicId);
+      if (!article) {
+        console.error("[regenerateArticleForTopic] Article not found:", topicId);
+        return;
+      }
+
+      const articleTopic = article.titleTag || directArticleTopic || "";
+      if (!articleTopic) {
+        console.error("[regenerateArticleForTopic] No article topic found");
+        return;
+      }
+
+      // Mark as generating
+      setIsGeneratingArticles(true);
+      updateGeneratedArticles(
+        generatedArticles.map(a =>
+          a.topicTitle === topicId
+            ? { ...a, status: "generating" as const }
+            : a
+        )
+      );
+
+      try {
+        // Step 1: Find trust sources via Tavily
+        const queryParts = [
+          articleTopic,
+          brief.niche || "",
+          brief.platform || "",
+          "2024 2025",
+        ].filter(Boolean);
+        const searchQuery = queryParts.join(" ");
+
+        const linksResponse = await fetch("/api/find-links", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: searchQuery }),
+        });
+
+        if (!linksResponse.ok) {
+          const errorData = await linksResponse.json().catch(() => ({}));
+          throw new Error(`Tavily search failed: ${errorData.error || linksResponse.statusText}`);
+        }
+
+        const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
+        const trustSourcesList = linksData.trustSources && linksData.trustSources.length > 0
+          ? linksData.trustSources.map(source => `${source.title}|${source.url}`)
+          : [];
+
+        if (trustSourcesList.length === 0) {
+          throw new Error("Cannot regenerate article: No trust sources found via browsing.");
+        }
+
+        // Step 2: Regenerate article
+        const response = await fetch("/api/articles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            brief,
+            selectedTopics: [{
+              title: articleTopic,
+              brief: articleTopic,
+              shortAngle: articleTopic,
+              primaryKeyword: articleTopic.split(" ")[0] || articleTopic,
+            }],
+            keywordList: [articleTopic],
+            trustSourcesList: trustSourcesList,
+            lightHumanEdit: lightHumanEditEnabled,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error ?? "Failed to regenerate article.");
+        }
+
+        const data = await response.json() as { articles: Array<{
+          topicTitle: string;
+          titleTag: string;
+          metaDescription: string;
+          fullArticleText: string;
+        }> };
+
+        if (data.articles.length > 0) {
+          const newArticle = data.articles[0];
+          updateGeneratedArticles(
+            generatedArticles.map(a =>
+              a.topicTitle === topicId
+                ? {
+                    ...newArticle,
+                    topicTitle: topicId,
+                    titleTag: articleTopic, // Preserve original topic
+                    status: "ready" as const,
+                  }
+                : a
+            )
+          );
+
+          setNotification({
+            message: "Статтю успішно регенеровано",
+            time: new Date().toLocaleTimeString(),
+            visible: true,
+          });
+          playSuccessSound();
+        }
+      } catch (error) {
+        console.error("[regenerateArticleForTopic] Error:", error);
+        setNotification({
+          message: error instanceof Error ? error.message : "Помилка при регенерації статті",
+          time: new Date().toLocaleTimeString(),
+          visible: true,
+        });
+        updateGeneratedArticles(
+          generatedArticles.map(a =>
+            a.topicTitle === topicId
+              ? { ...a, status: "error" as const }
+              : a
+          )
+        );
+      } finally {
+        setIsGeneratingArticles(false);
+      }
+      return;
+    }
+
+    // Handle Topic Discovery mode
     if (!topicsData) return;
     
     const topic = topicsData.topics.find(t => t.id === topicId);
     
     if (!topic) return;
-
-    // Check if article was edited
-    const existingArticle = generatedArticles.find(a => a.topicTitle === topicId);
-    if (existingArticle?.editedText) {
-      const confirmed = confirm("This article has been edited. Regenerating will replace your edits. Continue?");
-      if (!confirmed) return;
-    }
 
     // Mark as generating
     setIsGeneratingArticles(true);
