@@ -2859,6 +2859,8 @@ body {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2880,6 +2882,11 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   cursor: default;
   overflow: hidden;
+  border: 1px solid rgba(255, 107, 157, 0.3);
+}
+
+[data-theme="dark"] .article-view-content {
+  border-color: rgba(255, 107, 157, 0.4);
 }
 
 .article-view-header {
