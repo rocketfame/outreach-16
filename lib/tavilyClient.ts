@@ -199,3 +199,86 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
     throw error;
   }
 }
+
+export interface ImageSource {
+  url: string;
+  sourceUrl: string; // URL of the page where image was found
+  title?: string;
+}
+
+/**
+ * Search for images using Tavily API
+ * @param query - Search query string (e.g., "Tomorrowland festival 2026")
+ * @returns Array of image URLs with source information
+ */
+export async function searchImages(query: string): Promise<ImageSource[]> {
+  const apiKey = getTavilyApiKey();
+  console.log(`[tavily-images] query=${query}`);
+
+  try {
+    const requestBody = {
+      api_key: apiKey,
+      query,
+      search_depth: "advanced",
+      include_answers: false,
+      include_images: true, // Enable image search
+      include_raw_content: false,
+      max_results: 10,
+    };
+
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      const errorMsg = `[tavily-images] error=${response.status} ${response.statusText}: ${errorText}`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    const images: ImageSource[] = [];
+
+    // Tavily returns images in the response
+    if (data.images && Array.isArray(data.images)) {
+      data.images.forEach((img: any) => {
+        if (img.url && img.url.startsWith('http')) {
+          images.push({
+            url: img.url,
+            sourceUrl: img.source_url || data.results?.[0]?.url || '',
+            title: img.title || data.results?.[0]?.title,
+          });
+        }
+      });
+    }
+
+    // Also check results for images
+    if (data.results && Array.isArray(data.results)) {
+      data.results.forEach((result: any) => {
+        if (result.images && Array.isArray(result.images)) {
+          result.images.forEach((imgUrl: string) => {
+            if (imgUrl && imgUrl.startsWith('http') && !images.some(i => i.url === imgUrl)) {
+              images.push({
+                url: imgUrl,
+                sourceUrl: result.url || '',
+                title: result.title,
+              });
+            }
+          });
+        }
+      });
+    }
+
+    console.log(`[tavily-images] Found ${images.length} images`);
+    return images.slice(0, 10); // Limit to 10 images
+  } catch (error) {
+    const errorMsg = `[tavily-images] error=${error instanceof Error ? error.message : String(error)}`;
+    console.error(errorMsg);
+    throw error;
+  }
+}

@@ -1358,6 +1358,36 @@ export default function Home() {
                          editRequest.toLowerCase().includes('photo') ||
                          editRequest.toLowerCase().includes('картинк');
 
+      // If edit request mentions images, search for images
+      if (needsImages) {
+        setEditingArticleStatus("Шукаю зображення в інтернеті...");
+        try {
+          // Search for images related to the article topic
+          const imagesResponse = await fetch("/api/search-images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: `${articleTitle} ${brief.niche || ""}`.trim(),
+            }),
+          });
+
+          if (imagesResponse.ok) {
+            const imagesData = await imagesResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
+            if (imagesData.images && imagesData.images.length > 0) {
+              // Add image URLs to trust sources list in format "Image Title|Image URL|Source URL"
+              imagesData.images.forEach(image => {
+                const formatted = `${image.title || "Image"}|${image.url}|${image.sourceUrl}`;
+                trustSourcesList.push(formatted);
+              });
+              console.log(`[editArticleWithAI] Found ${imagesData.images.length} images for article`);
+            }
+          }
+        } catch (error) {
+          console.warn("[editArticleWithAI] Failed to fetch images:", error);
+          // Continue without images - editor can work without them
+        }
+      }
+
       // If edit request mentions adding links, try to fetch new trust sources
       const needsMoreLinks = editRequest.toLowerCase().includes('посилан') || 
                             editRequest.toLowerCase().includes('link') ||
@@ -1430,15 +1460,50 @@ export default function Home() {
 
       setEditingArticleStatus("Застосовую правки до статті...");
       
-      // If images are needed and article has images, replace placeholders with actual image URLs
+      // If images are needed, check if we have images or need to handle placeholders
       let finalHtml = data.editedArticleHtml!;
-      if (needsImages && articleImages.has(articleId)) {
-        setEditingArticleStatus("Вбудовую зображення в статтю...");
-        const imageData = articleImages.get(articleId);
-        if (imageData) {
-          // Replace [IMAGE_URL_PLACEHOLDER] with actual base64 image data
-          const imageUrl = `data:image/png;base64,${imageData}`;
-          finalHtml = finalHtml.replace(/\[IMAGE_URL_PLACEHOLDER\]/gi, imageUrl);
+      if (needsImages) {
+        // Check if HTML contains image placeholders
+        const hasImagePlaceholders = /\[IMAGE_URL_PLACEHOLDER\]/gi.test(finalHtml);
+        
+        if (hasImagePlaceholders) {
+          if (articleImages.has(articleId)) {
+            // Replace placeholders with existing image
+            setEditingArticleStatus("Вбудовую зображення в статтю...");
+            const imageData = articleImages.get(articleId);
+            if (imageData) {
+              const imageUrl = `data:image/png;base64,${imageData}`;
+              finalHtml = finalHtml.replace(/\[IMAGE_URL_PLACEHOLDER\]/gi, imageUrl);
+            }
+          } else {
+            // Image not generated yet - try to generate it automatically
+            setEditingArticleStatus("Генерую зображення для статті...");
+            try {
+              // Start image generation (non-blocking)
+              generateArticleImage(articleId).catch(err => {
+                console.error("[editArticleWithAI] Image generation error:", err);
+              });
+              
+              // For now, remove placeholders to avoid broken images
+              // The image will be generated in background and user can regenerate article later
+              console.log("[editArticleWithAI] Image not available yet, removing placeholders. Image generation started in background.");
+              finalHtml = finalHtml.replace(/<img[^>]*src=["']\[IMAGE_URL_PLACEHOLDER\][^>]*\/?>/gi, '');
+              // Also remove any remaining placeholders in src attributes
+              finalHtml = finalHtml.replace(/\[IMAGE_URL_PLACEHOLDER\]/gi, '');
+              
+              // Show notification that image generation was started
+              setNotification({
+                message: "Зображення генерується в фоновому режимі. Після завершення ви можете повторно застосувати редагування.",
+                time: new Date().toLocaleTimeString(),
+                visible: true,
+              });
+            } catch (imageError) {
+              console.error("[editArticleWithAI] Failed to start image generation:", imageError);
+              // Remove image placeholders if generation failed
+              finalHtml = finalHtml.replace(/<img[^>]*src=["']\[IMAGE_URL_PLACEHOLDER\][^>]*\/?>/gi, '');
+              finalHtml = finalHtml.replace(/\[IMAGE_URL_PLACEHOLDER\]/gi, '');
+            }
+          }
         }
       }
 
