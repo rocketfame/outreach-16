@@ -1883,20 +1883,10 @@ body {
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
-  border: 2px solid rgba(255, 107, 157, 0.4);
-  box-shadow: 
-    0 0 10px rgba(255, 107, 157, 0.3),
-    0 0 20px rgba(255, 107, 157, 0.2),
-    inset 0 0 10px rgba(255, 107, 157, 0.1);
 }
 
 [data-theme="dark"] .article-summary-box {
   background: rgba(255, 107, 157, 0.08);
-  border-color: rgba(255, 107, 157, 0.5);
-  box-shadow: 
-    0 0 15px rgba(255, 107, 157, 0.4),
-    0 0 30px rgba(255, 107, 157, 0.3),
-    inset 0 0 15px rgba(255, 107, 157, 0.15);
 }
 
 .article-summary-box p {
