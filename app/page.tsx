@@ -1627,6 +1627,7 @@ export default function Home() {
             setEditingArticleStatus(`Searching images for festivals (${i + 1}/${maxQueries})...`);
             
             try {
+              console.log(`[editArticleWithAI] Searching images via Tavily API for query: "${searchQueries[i]}"`);
               const imagesResponse = await fetch("/api/search-images", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1637,6 +1638,7 @@ export default function Home() {
 
               if (imagesResponse.ok) {
                 const imagesData = await imagesResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
+                console.log(`[editArticleWithAI] Tavily API returned ${imagesData.images?.length || 0} images for query: "${searchQueries[i]}"`);
                 if (imagesData.images && imagesData.images.length > 0) {
                   // Add only unique images from unique sources
                   imagesData.images.forEach(image => {

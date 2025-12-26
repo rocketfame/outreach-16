@@ -180,16 +180,26 @@ CRITICAL EDITING RULES:
 5. IMAGE INTEGRATION (when requested) - WORK LIKE A PROFESSIONAL RESEARCHER:
    CRITICAL: When the edit request asks to "add images", "додати зображення", "вбудовувати зображення", or similar, you MUST work like a professional digger/researcher:
    
+   ⚠️ CRITICAL: IMAGES ARE FOUND VIA TAVILY BROWSING/SEARCH:
+   - All images in [[TRUST_SOURCES_LIST]] have been found through Tavily API browsing/search
+   - Tavily searches the web, including social media (Instagram, Facebook), official websites, news sites, and other sources
+   - These are REAL images from the internet, found through professional web browsing
+   - Tavily searches across multiple sources: social media platforms, official sites, news media, blogs, etc.
+   - When the user asks to search social media or official sites, Tavily has already browsed those sources
+   - The images provided are the result of Tavily's web browsing - they are real, verified images from the internet
+   
    MANDATORY: USE IMAGES FROM [[TRUST_SOURCES_LIST]]:
    - Images are provided in [[TRUST_SOURCES_LIST]] in format: "Image Title|Image URL|Source URL"
-   - You MUST use these images - they have been researched and verified
+   - These images were found through Tavily browsing/search of the web
+   - You MUST use these images - they have been researched and verified through Tavily
    - DO NOT skip adding images if they are in [[TRUST_SOURCES_LIST]]
    - If images are in the list, you MUST add them to the article
    - Think critically: "Which image from the list matches this specific content?"
    - Match each image to the relevant section of the article
-   - CRITICAL: If the user asked for social media sources (Instagram, Facebook), prioritize images from those sources in the list
-   - CRITICAL: If the user asked for official sites, prioritize images from official websites in the list
+   - CRITICAL: If the user asked for social media sources (Instagram, Facebook), prioritize images from those sources in the list (Tavily has already searched those platforms)
+   - CRITICAL: If the user asked for official sites, prioritize images from official websites in the list (Tavily has already searched those sites)
    - The user's specific request about source types (social media, official sites) takes priority
+   - Remember: Tavily has already done the browsing - you just need to use the images it found
    
    PROFESSIONAL RESEARCH APPROACH:
    - Treat image research like a professional journalist or content researcher would
@@ -445,10 +455,10 @@ export function buildEditArticlePrompt(params: EditArticleParams): string {
   let sourcesVerificationBlock = '';
   
   if (imageSources.length > 0) {
-    sourcesVerificationBlock += `\n\n⚠️ MANDATORY: AVAILABLE IMAGES - YOU MUST USE THESE:\n${imageSources.map((s, i) => {
+    sourcesVerificationBlock += `\n\n⚠️ MANDATORY: AVAILABLE IMAGES FOUND VIA TAVILY BROWSING - YOU MUST USE THESE:\n\n🌐 CRITICAL: These images were found through Tavily API web browsing/search. Tavily searched the internet, including:\n- Social media platforms (Instagram, Facebook, Twitter, etc.)\n- Official websites and event pages\n- News sites and media outlets\n- Blogs and other web sources\nThese are REAL images from the web, found through professional browsing.\n\n${imageSources.map((s, i) => {
       const parts = s.split('|');
       return `${i + 1}. Title: "${parts[0] || 'Image'}"\n   Image URL: ${parts[1] || ''}\n   Source URL: ${parts[2] || ''}`;
-    }).join('\n\n')}\n\n🚨 CRITICAL IMAGE REQUIREMENTS:\n- You have ${imageSources.length} image(s) available above - you MUST use ALL of them\n- This is MANDATORY - if images are in the list, you MUST add them to the article\n- Use the Image URL (second part) as the src attribute in <img> tags\n- Use the Source URL (third part) to link back to the original source in <figcaption>\n- Always include a <figcaption> with a link to the source URL\n- Match each image to the relevant section of the article\n- DO NOT skip any images - if they are provided, you MUST use them\n- DO NOT use placeholders - use REAL image URLs from the list above\n- DO NOT use data URIs or base64 - only use the HTTP/HTTPS URLs provided\n`;
+    }).join('\n\n')}\n\n🚨 CRITICAL IMAGE REQUIREMENTS:\n- You have ${imageSources.length} image(s) found via Tavily browsing - you MUST use ALL of them\n- These images were found through Tavily's web browsing/search - they are real images from the internet\n- Tavily has already browsed social media, official sites, and other sources - use the images it found\n- This is MANDATORY - if images are in the list, you MUST add them to the article\n- Use the Image URL (second part) as the src attribute in <img> tags\n- Use the Source URL (third part) to link back to the original source in <figcaption>\n- Always include a <figcaption> with a link to the source URL\n- Match each image to the relevant section of the article\n- DO NOT skip any images - if they are provided, you MUST use them\n- DO NOT use placeholders - use REAL image URLs from the list above (found by Tavily)\n- DO NOT use data URIs or base64 - only use the HTTP/HTTPS URLs provided by Tavily\n- Remember: Tavily has already done the browsing - you just need to use the images it found\n`;
   }
   
   if (regularSources.length > 0) {
