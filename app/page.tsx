@@ -619,6 +619,41 @@ export default function Home() {
       }))
     ]);
 
+    // Auto-scroll to the first generating article loader
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        // Find the first generating article card
+        const articleCards = document.querySelectorAll(`[data-article-id]`) as NodeListOf<HTMLElement>;
+        let targetElement: HTMLElement | null = null;
+        
+        // Find the first generating article card (from top to bottom)
+        for (const card of articleCards) {
+          const articleIdAttr = card.getAttribute('data-article-id');
+          if (articleIdAttr && topicIds.includes(articleIdAttr)) {
+            // Check if this article has a loader visible
+            const loader = card.querySelector('.article-generating-local');
+            if (loader) {
+              targetElement = card;
+              break;
+            }
+          }
+        }
+        
+        // If we found a generating article card, scroll to it; otherwise fall back to section
+        if (targetElement) {
+          targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center'
+          });
+        } else if (generatedArticlesSectionRef.current) {
+          generatedArticlesSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 300); // Delay to ensure DOM is fully updated
+    });
+
     try {
       // Get full topic data from topicsData with deep brief
       const selectedTopicsData = topics.map(topic => ({
@@ -909,31 +944,33 @@ export default function Home() {
     // Use requestAnimationFrame to ensure DOM is updated
     requestAnimationFrame(() => {
       setTimeout(() => {
-        // Find the first generating article card
-        const articleCards = document.querySelectorAll('[data-article-id]');
-        let targetElement: HTMLElement | null = null;
+        // Find the article card with this articleId
+        const articleCard = document.querySelector(`[data-article-id="${articleId}"]`) as HTMLElement;
         
-        for (const card of articleCards) {
-          const articleIdAttr = card.getAttribute('data-article-id');
-          if (articleIdAttr === articleId) {
-            targetElement = card as HTMLElement;
-            break;
+        if (articleCard) {
+          // Check if article loader is visible
+          const articleLoader = articleCard.querySelector('.article-generating-local');
+          if (articleLoader) {
+            // Scroll to the article card, positioning the loader in view
+            articleCard.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center'
+            });
+          } else {
+            // If loader not found yet, scroll to card anyway
+            articleCard.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center'
+            });
           }
-        }
-        
-        // If we found the article card, scroll to it; otherwise fall back to section
-        if (targetElement) {
-          targetElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center'
-          });
         } else if (generatedArticlesSectionRef.current) {
+          // Fallback to articles section
           generatedArticlesSectionRef.current.scrollIntoView({ 
             behavior: 'smooth', 
             block: 'start' 
           });
         }
-      }, 300); // Increased delay to ensure DOM is fully updated
+      }, 300); // Delay to ensure DOM is fully updated
     });
 
     try {
@@ -1323,6 +1360,38 @@ export default function Home() {
         next.set(topicId, 0);
       }
       return next;
+    });
+
+    // Auto-scroll to the image loader
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        // Find the article card with this topicId
+        const articleCard = document.querySelector(`[data-article-id="${topicId}"]`) as HTMLElement;
+        
+        if (articleCard) {
+          // Check if image loader is visible
+          const imageLoader = articleCard.querySelector('.image-generating-local');
+          if (imageLoader) {
+            // Scroll to the article card, positioning the loader in view
+            articleCard.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center'
+            });
+          } else {
+            // If loader not found yet, scroll to card anyway
+            articleCard.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center'
+            });
+          }
+        } else if (generatedArticlesSectionRef.current) {
+          // Fallback to articles section
+          generatedArticlesSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 300); // Delay to ensure DOM is fully updated
     });
 
     try {
