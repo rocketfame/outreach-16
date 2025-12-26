@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
-import { getOpenAiApiKey } from "@/lib/config";
+import { getOpenAIApiKey } from "@/lib/config";
 
 export interface EditArticleRequest {
   articleHtml: string;
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = getOpenAiApiKey();
+    const apiKey = getOpenAIApiKey();
     if (!apiKey) {
       return NextResponse.json(
         { success: false, error: "OpenAI API key is not configured" },
