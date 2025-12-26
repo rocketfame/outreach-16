@@ -3308,7 +3308,7 @@ export default function Home() {
                                                         <animate attributeName="stroke-dashoffset" dur="2s" values="0;-16;-32;-32" repeatCount="indefinite"/>
                                                       </circle>
                                                     </svg>
-                                                    <span>Обробка...</span>
+                                                    <span>Processing...</span>
                                                   </>
                                                 ) : (
                                                   <>
@@ -3316,7 +3316,7 @@ export default function Home() {
                                                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                                     </svg>
-                                                    <span>Застосувати правки</span>
+                                                    <span>Apply Edits</span>
                                                   </>
                                                 )}
                                               </button>
@@ -3336,7 +3336,7 @@ export default function Home() {
                                               )}
                                             </div>
                                             <p className="article-edit-hint">
-                                              AI редактор допоможе впровадити ваші правки професійно, зберігаючи структуру та стиль статті.
+                                              AI editor will help you implement your changes professionally, preserving the structure and style of the article.
                                             </p>
                                           </div>
                                         </section>
