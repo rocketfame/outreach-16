@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     const images = await searchImages(query);
 
     console.log(`[search-images-api] Found ${images.length} images`);
+    console.log(`[search-images-api] Image URLs:`, images.map(img => img.url));
 
     return NextResponse.json({
       images: images.map(img => ({

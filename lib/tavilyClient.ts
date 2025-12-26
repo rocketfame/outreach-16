@@ -242,16 +242,30 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
     }
 
     const data = await response.json();
+    console.log(`[tavily-images] Response structure:`, {
+      hasImages: !!data.images,
+      imagesType: Array.isArray(data.images) ? 'array' : typeof data.images,
+      imagesLength: Array.isArray(data.images) ? data.images.length : 0,
+      hasResults: !!data.results,
+      resultsLength: Array.isArray(data.results) ? data.results.length : 0,
+      sampleResult: data.results?.[0] ? {
+        hasImages: !!data.results[0].images,
+        imagesType: Array.isArray(data.results[0].images) ? 'array' : typeof data.results[0].images,
+      } : null,
+    });
+    
     const images: ImageSource[] = [];
 
-    // Tavily returns images in the response
+    // Tavily returns images in the response - check top-level images array
     if (data.images && Array.isArray(data.images)) {
-      data.images.forEach((img: any) => {
-        if (img.url && img.url.startsWith('http')) {
+      console.log(`[tavily-images] Processing ${data.images.length} images from data.images`);
+      data.images.forEach((img: any, index: number) => {
+        const imgUrl = typeof img === 'string' ? img : (img.url || img);
+        if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
           images.push({
-            url: img.url,
-            sourceUrl: img.source_url || data.results?.[0]?.url || '',
-            title: img.title || data.results?.[0]?.title,
+            url: imgUrl,
+            sourceUrl: (typeof img === 'object' && img.source_url) || data.results?.[0]?.url || '',
+            title: (typeof img === 'object' && img.title) || data.results?.[0]?.title || `Image ${index + 1}`,
           });
         }
       });
@@ -259,14 +273,17 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
 
     // Also check results for images
     if (data.results && Array.isArray(data.results)) {
-      data.results.forEach((result: any) => {
+      console.log(`[tavily-images] Processing ${data.results.length} results`);
+      data.results.forEach((result: any, resultIndex: number) => {
         if (result.images && Array.isArray(result.images)) {
-          result.images.forEach((imgUrl: string) => {
-            if (imgUrl && imgUrl.startsWith('http') && !images.some(i => i.url === imgUrl)) {
+          console.log(`[tavily-images] Result ${resultIndex} has ${result.images.length} images`);
+          result.images.forEach((imgUrl: string | any) => {
+            const url = typeof imgUrl === 'string' ? imgUrl : (imgUrl.url || imgUrl);
+            if (url && typeof url === 'string' && url.startsWith('http') && !images.some(i => i.url === url)) {
               images.push({
-                url: imgUrl,
+                url: url,
                 sourceUrl: result.url || '',
-                title: result.title,
+                title: result.title || `Image from ${result.url}`,
               });
             }
           });
@@ -274,7 +291,7 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
       });
     }
 
-    console.log(`[tavily-images] Found ${images.length} images`);
+    console.log(`[tavily-images] Found ${images.length} total images:`, images.map(i => i.url));
     return images.slice(0, 10); // Limit to 10 images
   } catch (error) {
     const errorMsg = `[tavily-images] error=${error instanceof Error ? error.message : String(error)}`;

@@ -81,19 +81,21 @@ CRITICAL EDITING RULES:
    CRITICAL: When the edit request asks to "add images", "додати зображення", "вбудовувати зображення", or similar, you MUST:
    - Find REAL images from the internet using the image URLs provided in [[TRUST_SOURCES_LIST]]
    - Image sources in the list are formatted as: "Image Title|Image URL|Source URL"
-   - Use the Image URL (second part) as the src attribute in <img> tags
-   - Use the Source URL (third part) to create a link to the original source
-   - Format images with proper HTML structure:
+   - Use the Image URL (second part after first |) as the src attribute in <img> tags
+   - Use the Source URL (third part after second |) to create a link to the original source
+   - Format images with proper HTML structure - EXAMPLE:
      <figure style="margin: 1.5rem 0;">
-       <img src="REAL_IMAGE_URL_FROM_LIST" alt="Descriptive alt text" style="max-width: 100%; height: auto; border-radius: 8px; display: block;" />
+       <img src="https://example.com/image.jpg" alt="Descriptive alt text about the image" style="max-width: 100%; height: auto; border-radius: 8px; display: block;" />
        <figcaption style="font-size: 0.85rem; color: #666; margin-top: 0.5rem; text-align: center;">
-         Image source: <a href="SOURCE_URL_FROM_LIST" target="_blank" rel="noopener noreferrer">Source Name</a>
+         Image source: <a href="https://example.com/source-page" target="_blank" rel="noopener noreferrer">Source Name</a>
        </figcaption>
      </figure>
+   - IMPORTANT: The src attribute MUST be a valid HTTP/HTTPS URL starting with http:// or https://
    - Place images naturally within the content, near relevant text sections (after paragraphs or list items)
    - For each image, provide a descriptive alt attribute that explains what the image shows
    - If the article mentions specific items (e.g., festivals, events, platforms), add images for each major item mentioned
    - DO NOT use placeholders like [IMAGE_URL_PLACEHOLDER] - use REAL image URLs from [[TRUST_SOURCES_LIST]]
+   - DO NOT use data URIs or base64 encoded images - only use HTTP/HTTPS URLs
    - If no image URLs are provided in [[TRUST_SOURCES_LIST]], you can mention that images were not found, but DO NOT add broken image tags
 
 6. CONTENT ADDITIONS:
