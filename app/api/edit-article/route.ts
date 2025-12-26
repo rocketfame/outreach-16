@@ -71,6 +71,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[edit-article] Building prompt with:", {
+      articleHtmlLength: articleHtml.length,
+      articleTitle,
+      editRequest: editRequest.trim(),
+      niche: niche.trim(),
+      language: language || "English",
+      trustSourcesListLength: trustSourcesList.length,
+      editHistoryLength: editHistory.length,
+    });
+
     // Build the edit prompt
     const prompt = buildEditArticlePrompt({
       currentArticleHtml: articleHtml,
@@ -81,6 +91,8 @@ export async function POST(req: NextRequest) {
       trustSourcesList: trustSourcesList || [],
       editHistory: editHistory || [],
     });
+
+    console.log("[edit-article] Prompt built, length:", prompt.length);
 
     // Call OpenAI API
     const response = await fetch("https://api.openai.com/v1/chat/completions", {

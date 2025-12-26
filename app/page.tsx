@@ -1666,6 +1666,19 @@ export default function Home() {
       }
 
       setEditingArticleStatus("AI editor is processing your request...");
+      
+      // Get edit history from article
+      const editHistory = article.editHistory || [];
+      
+      console.log("[editArticleWithAI] Sending request to API:", {
+        articleId,
+        articleTitle,
+        editRequest: editRequest.trim(),
+        editHistoryLength: editHistory.length,
+        trustSourcesListLength: trustSourcesList.length,
+        currentHtmlLength: currentHtml.length,
+      });
+      
       const response = await fetch("/api/edit-article", {
         method: "POST",
         headers: {
@@ -1678,12 +1691,28 @@ export default function Home() {
           niche: brief.niche || "",
           language: brief.language || "English",
           trustSourcesList: trustSourcesList,
+          editHistory: editHistory, // Pass edit history to API
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to edit article");
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          const text = await response.text().catch(() => "");
+          if (text) {
+            errorMessage = text.substring(0, 200); // Limit error message length
+          }
+        }
+        console.error("[editArticleWithAI] API error response:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage,
+        });
+        throw new Error(errorMessage);
       }
 
       const data = await response.json() as { success: boolean; editedArticleHtml?: string; error?: string };
@@ -1693,10 +1722,18 @@ export default function Home() {
         hasEditedHtml: !!data.editedArticleHtml,
         editedHtmlLength: data.editedArticleHtml?.length || 0,
         error: data.error,
+        responseStatus: response.status,
       });
 
-      if (!data.success || !data.editedArticleHtml) {
-        throw new Error(data.error || "Failed to edit article");
+      if (!data.success) {
+        const errorMsg = data.error || "Failed to edit article";
+        console.error("[editArticleWithAI] API returned error:", errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      if (!data.editedArticleHtml) {
+        console.error("[editArticleWithAI] No edited HTML in response:", data);
+        throw new Error("No edited content returned from API");
       }
 
       setEditingArticleStatus("Applying your edits to the article...");
