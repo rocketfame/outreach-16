@@ -2108,7 +2108,7 @@ export default function Home() {
                           e.preventDefault();
                           generateDirectArticle();
                         }}
-                        disabled={isGeneratingArticles || !directArticleTopic?.trim() || !brief?.niche?.trim() || !briefWithDefaults?.language?.trim()}
+                        disabled={isGeneratingArticles || !directArticleTopic?.trim() || !brief?.niche?.trim() || !(brief?.language || "English")?.trim()}
                         title={
                           isGeneratingArticles 
                             ? "Generating article..." 
@@ -2116,7 +2116,7 @@ export default function Home() {
                             ? "Please enter article topic"
                             : !brief?.niche?.trim()
                             ? "Please fill in Main niche or theme in Project Basis"
-                            : !brief?.language?.trim()
+                            : !(brief?.language || "English")?.trim()
                             ? "Please select Language in Project Basis"
                             : "Generate article"
                         }
