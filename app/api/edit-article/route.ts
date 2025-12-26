@@ -4,6 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { getOpenAIApiKey } from "@/lib/config";
 
+export interface EditHistoryEntry {
+  timestamp: string;
+  editRequest: string;
+  summary: string;
+}
+
 export interface EditArticleRequest {
   articleHtml: string;
   articleTitle: string;
@@ -11,6 +17,7 @@ export interface EditArticleRequest {
   niche: string;
   language: string;
   trustSourcesList: string[];
+  editHistory?: EditHistoryEntry[];
 }
 
 export interface EditArticleResponse {
@@ -30,6 +37,7 @@ export async function POST(req: NextRequest) {
       niche,
       language,
       trustSourcesList = [],
+      editHistory = [],
     } = body;
 
     // Validation
@@ -70,6 +78,7 @@ export async function POST(req: NextRequest) {
       niche: niche.trim(),
       language: language || "English",
       trustSourcesList: trustSourcesList || [],
+      editHistory: editHistory || [],
     });
 
     // Call OpenAI API

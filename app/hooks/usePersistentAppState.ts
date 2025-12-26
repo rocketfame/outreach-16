@@ -35,6 +35,12 @@ export type TopicResponse = {
   topics: Topic[];
 };
 
+export type EditHistoryEntry = {
+  timestamp: string;
+  editRequest: string;
+  summary: string; // Brief summary of what was changed
+};
+
 export type GeneratedArticle = {
   topicTitle: string;
   titleTag: string;
@@ -42,6 +48,7 @@ export type GeneratedArticle = {
   fullArticleText: string;
   articleBodyHtml?: string;
   editedText?: string;
+  editHistory?: EditHistoryEntry[]; // History of edits made to this article
   status: "ready" | "generating" | "error";
 };
 

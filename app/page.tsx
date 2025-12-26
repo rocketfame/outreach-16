@@ -1647,21 +1647,42 @@ export default function Home() {
         currentArticleBodyHtml: article.articleBodyHtml?.length || 0,
       });
 
-      // Update the article with edited content
+      // Update the article with edited content and add to edit history
       updateGeneratedArticles(prev => {
-        const updated = prev.map(a =>
-          a.topicTitle === articleId
-            ? {
-                ...a,
-                articleBodyHtml: finalHtml,
-                fullArticleText: finalHtml, // Also update fullArticleText for compatibility
-                editedText: finalHtml, // Also update editedText for getArticleText compatibility
-              }
-            : a
-        );
+        const updated = prev.map(a => {
+          if (a.topicTitle === articleId) {
+            const previousHtml = a.articleBodyHtml || a.fullArticleText || "";
+            const editHistory = a.editHistory || [];
+            
+            // Create summary of what was changed
+            const summary = (() => {
+              if (needsImages) return "Додано зображення";
+              if (needsMoreLinks) return "Додано посилання";
+              if (editRequest.toLowerCase().includes('анкор') || editRequest.toLowerCase().includes('anchor')) return "Додано анкори/посилання";
+              return "Оновлено контент";
+            })();
+
+            return {
+              ...a,
+              articleBodyHtml: finalHtml,
+              fullArticleText: finalHtml, // Also update fullArticleText for compatibility
+              editedText: finalHtml, // Also update editedText for getArticleText compatibility
+              editHistory: [
+                ...editHistory,
+                {
+                  timestamp: new Date().toISOString(),
+                  editRequest: editRequest.trim(),
+                  summary: summary,
+                }
+              ],
+            };
+          }
+          return a;
+        });
         console.log("[editArticleWithAI] Article updated:", {
           found: updated.find(a => a.topicTitle === articleId),
           newBodyHtmlLength: updated.find(a => a.topicTitle === articleId)?.articleBodyHtml?.length || 0,
+          editHistoryLength: updated.find(a => a.topicTitle === articleId)?.editHistory?.length || 0,
         });
         return updated;
       });

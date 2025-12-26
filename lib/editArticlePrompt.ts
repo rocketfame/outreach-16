@@ -1,5 +1,11 @@
 // lib/editArticlePrompt.ts
 
+export interface EditHistoryEntry {
+  timestamp: string;
+  editRequest: string;
+  summary: string;
+}
+
 export interface EditArticleParams {
   currentArticleHtml: string;
   articleTitle: string;
@@ -7,6 +13,7 @@ export interface EditArticleParams {
   niche: string;
   language: string;
   trustSourcesList: string[];
+  editHistory?: EditHistoryEntry[];
 }
 
 const EDIT_ARTICLE_PROMPT_TEMPLATE = `
@@ -19,6 +26,15 @@ You are a professional editor who refines and improves existing articles based o
 - Professional article structure
 - Natural, human-written style
 - Link integration and source citation
+- Content versioning and preserving previous edits
+- Understanding user intent and maintaining consistency across multiple editing sessions
+
+Your expertise includes:
+- Recognizing when content has been previously edited and preserving those changes
+- Understanding that articles evolve through multiple editing sessions
+- Maintaining article coherence and flow even after multiple edits
+- Balancing new requests with existing content without creating contradictions
+- Professional content editing with attention to detail and user requirements
 
 Context:
 • Niche: [[NICHE]]
@@ -26,7 +42,10 @@ Context:
 • Language: [[LANGUAGE]]
 • Current Article: [[CURRENT_ARTICLE_HTML]]
 
-Editorial Request:
+Previous Edit History:
+[[EDIT_HISTORY]]
+
+Current Editorial Request:
 [[EDIT_REQUEST]]
 
 CRITICAL EDITING RULES:
@@ -36,16 +55,26 @@ CRITICAL EDITING RULES:
    - Keep the same heading hierarchy
    - Preserve existing anchor links and formatting
    - CRITICAL: Do NOT remove, delete, or truncate ANY existing sections, paragraphs, or content
+   - CRITICAL: Review [[EDIT_HISTORY]] carefully - ALL previous edits are already in the current article and MUST be preserved
+   - If previous edits added images, those images MUST remain in the article
+   - If previous edits added links, those links MUST remain in the article
+   - If previous edits added content, that content MUST remain in the article
    - If adding new content (images, links, text), add it WITHOUT removing existing content
-   - The entire original article must remain intact - only ADD or MODIFY as requested, never DELETE
+   - The entire original article PLUS all previous edits must remain intact - only ADD or MODIFY as requested, never DELETE
+   - Think of editing as an incremental process: each edit builds upon previous ones
    - Do NOT restructure the entire article unless explicitly requested
+   - If you see similar content from previous edits, it means the user wanted it - keep it
 
-2. FOCUS ON THE REQUEST:
+2. FOCUS ON THE REQUEST AND UNDERSTAND CONTEXT:
    - Address ONLY what is requested in [[EDIT_REQUEST]]
    - Do NOT make unrelated changes
+   - CRITICAL: Review [[EDIT_HISTORY]] to understand what was already changed
+   - If the current request is similar to a previous one (e.g., "add links" when links were already added), interpret it as "add MORE links" not "replace links"
+   - Understand user intent: if they ask for something that was already done, they likely want MORE of it, not a replacement
    - If the request is to "add more links", add them naturally without removing existing ones
-   - If the request is to "add specific information", integrate it seamlessly
-   - If the request is to "find and add images", provide image suggestions with descriptions and potential sources
+   - If the request is to "add specific information", integrate it seamlessly without removing previous additions
+   - If the request is to "find and add images", add new images while keeping any images from previous edits
+   - If the request mentions something that already exists in the article (from previous edits), enhance it or add more, don't remove it
 
 3. MAINTAIN QUALITY STANDARDS:
    - Keep the human-written, natural style
@@ -129,17 +158,24 @@ CRITICAL EDITING RULES:
    - Do NOT stop mid-sentence or mid-section - return the complete article
    - Word count limits do NOT apply - return the full article regardless of length
 
-9. VALIDATION:
+9. VALIDATION AND QUALITY CHECK:
    - Before finalizing, verify:
      * ALL original content is preserved - no sections, paragraphs, or lists were removed
+     * ALL previous edits (from [[EDIT_HISTORY]]) are preserved - check that images, links, and content from previous edits are still present
      * For festival/event links: ensure they point to official websites (check domain matches festival name)
      * For other links: verify they exist in [[TRUST_SOURCES_LIST]] or are clearly official sources
      * Ensure all HTML tags are properly closed
      * Check that the edit request has been fully addressed
      * Confirm the article still reads naturally and professionally
      * The article length may increase after editing - this is acceptable and expected
+     * No contradictions between new content and previous edits
+     * Article maintains logical flow despite multiple edits
    - If you cannot find official festival websites, DO NOT add incorrect links from blogs or articles
-   - CRITICAL: The edited article must contain ALL content from the original article PLUS any new additions requested
+   - CRITICAL: The edited article must contain:
+     * ALL content from the original article
+     * ALL content from ALL previous edits (shown in [[EDIT_HISTORY]])
+     * PLUS any new additions from the current edit request
+   - Think of the article as a cumulative document where each edit adds to what came before
 
 EXAMPLES OF EDIT REQUESTS:
 
@@ -174,12 +210,24 @@ Now, based on the editorial request above, edit the article and return ONLY the 
 export function buildEditArticlePrompt(params: EditArticleParams): string {
   let prompt = EDIT_ARTICLE_PROMPT_TEMPLATE;
 
+  // Format edit history
+  let editHistoryText = "No previous edits.";
+  if (params.editHistory && params.editHistory.length > 0) {
+    editHistoryText = `This article has been edited ${params.editHistory.length} time(s) previously:\n\n`;
+    params.editHistory.forEach((entry, index) => {
+      const date = new Date(entry.timestamp).toLocaleString();
+      editHistoryText += `${index + 1}. [${date}] ${entry.summary}\n   Request: "${entry.editRequest}"\n\n`;
+    });
+    editHistoryText += `\nCRITICAL: All changes from the above edits are already present in the current article. You must PRESERVE all of them while applying the new edit request.`;
+  }
+
   // Replace placeholders
   prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
   prompt = prompt.replaceAll("[[ARTICLE_TITLE]]", params.articleTitle);
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[CURRENT_ARTICLE_HTML]]", params.currentArticleHtml);
   prompt = prompt.replaceAll("[[EDIT_REQUEST]]", params.editRequest);
+  prompt = prompt.replaceAll("[[EDIT_HISTORY]]", editHistoryText);
 
   // Format trust sources
   const trustSourcesFormatted = params.trustSourcesList.length > 0 
