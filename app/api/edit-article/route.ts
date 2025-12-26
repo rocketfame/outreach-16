@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { getOpenAIApiKey } from "@/lib/config";
+import { cleanText } from "@/lib/textPostProcessing";
 
 export interface EditHistoryEntry {
   timestamp: string;
@@ -143,6 +144,9 @@ export async function POST(req: NextRequest) {
     } else if (cleanedHtml.startsWith("```")) {
       cleanedHtml = cleanedHtml.replace(/^```\s*/, "").replace(/\s*```$/, "");
     }
+
+    // Apply text cleaning to remove em-dash, smart quotes, and other AI indicators
+    cleanedHtml = cleanText(cleanedHtml);
 
     console.log("[edit-article] Cleaned HTML length:", cleanedHtml.trim().length);
 

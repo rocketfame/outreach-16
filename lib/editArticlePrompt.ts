@@ -78,8 +78,13 @@ CRITICAL EDITING RULES:
 
 3. MAINTAIN QUALITY STANDARDS:
    - Keep the human-written, natural style
-   - Avoid AI-generated patterns (no em-dashes, smart quotes, ellipsis characters)
-   - Use standard ASCII punctuation only
+   - ABSOLUTELY FORBIDDEN: NEVER use em-dash (—) or en-dash (–). These are strong AI indicators.
+     Instead, ALWAYS use commas, periods, or regular hyphens (-) for natural flow.
+     Example: Instead of "word—word" use "word, word" or "word - word".
+   - ABSOLUTELY FORBIDDEN: NEVER use smart quotes (" " or ' '). Use standard straight quotes (" and ') ONLY.
+   - ABSOLUTELY FORBIDDEN: NEVER use ellipsis character (…). Use three dots (...) instead.
+   - REQUIRED: Use ONLY standard ASCII punctuation: commas, periods, hyphens (-), colons, semicolons.
+   - Before outputting, scan your text for em-dash (—) and replace ALL instances with commas or regular hyphens.
    - Maintain consistent tone and voice
    - Preserve existing SEO keywords and formatting
 

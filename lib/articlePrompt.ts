@@ -406,15 +406,17 @@ Technical requirements:
 - Do not add extra spaces, tabs or blank lines that create gaps.
 - Do not insert any hidden or invisible Unicode characters.
 
-CRITICAL: Character formatting rules (humanization):
-- NEVER use em-dash (—) or en-dash (–). These are strong AI indicators.
-  Instead, use commas, periods, or regular hyphens (-) for natural flow.
-- NEVER use smart quotes (" " or ' '). Use standard straight quotes (" and ').
-- NEVER use ellipsis character (…). Use three dots (...) instead.
-- NEVER use zero-width spaces, joiners, or any invisible Unicode characters.
-- Use only standard ASCII punctuation: commas, periods, hyphens, colons, semicolons.
-- Example: Instead of "word—word" use "word, word" or "word - word".
-- This makes text look more human-written and less AI-generated.
+CRITICAL: Character formatting rules (humanization) - MANDATORY, NO EXCEPTIONS:
+- ABSOLUTELY FORBIDDEN: NEVER use em-dash (—) or en-dash (–). These are strong AI indicators and will make the article look AI-generated.
+  Instead, ALWAYS use commas, periods, or regular hyphens (-) for natural flow.
+  Example: Instead of "word—word" use "word, word" or "word - word".
+  Example: Instead of "If your mission—bigger rigs—you" use "If your mission, bigger rigs, you" or "If your mission - bigger rigs - you".
+- ABSOLUTELY FORBIDDEN: NEVER use smart quotes (" " or ' '). Use standard straight quotes (" and ') ONLY.
+- ABSOLUTELY FORBIDDEN: NEVER use ellipsis character (…). Use three dots (...) instead.
+- ABSOLUTELY FORBIDDEN: NEVER use zero-width spaces, joiners, or any invisible Unicode characters.
+- REQUIRED: Use ONLY standard ASCII punctuation: commas, periods, hyphens (-), colons, semicolons.
+- This is CRITICAL for making text look human-written and NOT AI-generated.
+- Before outputting, scan your text for em-dash (—) and replace ALL instances with commas or regular hyphens.
 
 Now generate the response as JSON only, no explanations:
 {

@@ -1193,8 +1193,9 @@ export default function Home() {
       updateDirectArticleTopic("");
       
       // Show notification with elapsed time
-      if (generationStartTime) {
-        const elapsedMs = Date.now() - generationStartTime;
+      const startTime = generationStartTime;
+      if (startTime) {
+        const elapsedMs = Date.now() - startTime;
         const elapsedSeconds = Math.floor(elapsedMs / 1000);
         const minutes = Math.floor(elapsedSeconds / 60);
         const seconds = elapsedSeconds % 60;
@@ -1208,9 +1209,16 @@ export default function Home() {
           visible: true,
         });
         setGenerationStartTime(null);
-        // Play success sound after article generation
-        playSuccessSound();
+      } else {
+        setNotification({
+          message: "Статтю згенеровано успішно",
+          time: new Date().toLocaleTimeString(),
+          visible: true,
+        });
       }
+      
+      // Play success sound after article generation (always, regardless of timing)
+      playSuccessSound();
     } catch (error) {
       console.error(error);
       const errorMessage = (error as Error).message || "Не вдалося згенерувати статтю. Спробуйте ще раз.";
