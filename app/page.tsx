@@ -1500,29 +1500,98 @@ export default function Home() {
                          editRequest.toLowerCase().includes('photo') ||
                          editRequest.toLowerCase().includes('картинк');
 
-      // If edit request mentions images, search for images
+      // If edit request mentions images, search for images with multiple specific queries
       if (needsImages) {
-        setEditingArticleStatus("Шукаю зображення в інтернеті...");
+        setEditingArticleStatus("Шукаю релевантні зображення в інтернеті...");
         try {
-          // Search for images related to the article topic
-          const imagesResponse = await fetch("/api/search-images", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              query: `${articleTitle} ${brief.niche || ""}`.trim(),
-            }),
-          });
-
-          if (imagesResponse.ok) {
-            const imagesData = await imagesResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
-            if (imagesData.images && imagesData.images.length > 0) {
-              // Add image URLs to trust sources list in format "Image Title|Image URL|Source URL"
-              imagesData.images.forEach(image => {
-                const formatted = `${image.title || "Image"}|${image.url}|${image.sourceUrl}`;
-                trustSourcesList.push(formatted);
-              });
-              console.log(`[editArticleWithAI] Found ${imagesData.images.length} images for article`);
+          // Extract specific items mentioned in the article (festivals, events, etc.)
+          const articleText = currentHtml.replace(/<[^>]*>/g, ' '); // Strip HTML for text extraction
+          
+          // Try to extract festival/event names from the article
+          // Look for patterns like "Festival Name", "Event Name", or list items
+          const festivalPatterns = [
+            /<li[^>]*><b>([^<]+)<\/b>/gi, // List items with bold names
+            /<h2[^>]*>([^<]+)<\/h2>/gi, // H2 headings (often section names)
+            /<h3[^>]*>([^<]+)<\/h3>/gi, // H3 headings
+          ];
+          
+          const extractedItems: string[] = [];
+          festivalPatterns.forEach(pattern => {
+            let match;
+            while ((match = pattern.exec(articleText)) !== null) {
+              const item = match[1].trim();
+              // Filter out generic headings and keep specific names
+              if (item.length > 5 && item.length < 100 && 
+                  !item.toLowerCase().includes('introduction') &&
+                  !item.toLowerCase().includes('conclusion') &&
+                  !item.toLowerCase().includes('overview')) {
+                extractedItems.push(item);
+              }
             }
+          });
+          
+          // Create multiple specific search queries for better image relevance
+          const searchQueries: string[] = [];
+          
+          // Add main article query
+          searchQueries.push(`${articleTitle} ${brief.niche || ""}`.trim());
+          
+          // Add specific queries for each extracted item (limit to 5 most relevant)
+          extractedItems.slice(0, 5).forEach(item => {
+            const query = `${item} ${brief.niche || ""} official photo`.trim();
+            if (query.length > 10) {
+              searchQueries.push(query);
+            }
+          });
+          
+          // Search for images with each query and collect unique results
+          const allImages: Array<{ url: string; sourceUrl: string; title?: string }> = [];
+          const seenUrls = new Set<string>();
+          
+          for (let i = 0; i < Math.min(searchQueries.length, 3); i++) {
+            setEditingArticleStatus(`Шукаю зображення (${i + 1}/${Math.min(searchQueries.length, 3)})...`);
+            
+            try {
+              const imagesResponse = await fetch("/api/search-images", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  query: searchQueries[i],
+                }),
+              });
+
+              if (imagesResponse.ok) {
+                const imagesData = await imagesResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
+                if (imagesData.images && imagesData.images.length > 0) {
+                  // Add only unique images
+                  imagesData.images.forEach(image => {
+                    if (!seenUrls.has(image.url) && image.url.startsWith('http')) {
+                      allImages.push(image);
+                      seenUrls.add(image.url);
+                    }
+                  });
+                }
+              }
+              
+              // Small delay between requests to avoid rate limiting
+              if (i < Math.min(searchQueries.length, 3) - 1) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+            } catch (error) {
+              console.warn(`[editArticleWithAI] Failed to fetch images for query "${searchQueries[i]}":`, error);
+              // Continue with next query
+            }
+          }
+          
+          if (allImages.length > 0) {
+            // Add image URLs to trust sources list in format "Image Title|Image URL|Source URL"
+            allImages.forEach(image => {
+              const formatted = `${image.title || "Image"}|${image.url}|${image.sourceUrl}`;
+              trustSourcesList.push(formatted);
+            });
+            console.log(`[editArticleWithAI] Found ${allImages.length} unique images from ${searchQueries.length} queries`);
+          } else {
+            console.warn("[editArticleWithAI] No images found for any query");
           }
         } catch (error) {
           console.warn("[editArticleWithAI] Failed to fetch images:", error);
