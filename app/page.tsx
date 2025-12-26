@@ -1640,15 +1640,29 @@ export default function Home() {
                 const imagesData = await imagesResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
                 console.log(`[editArticleWithAI] Tavily API returned ${imagesData.images?.length || 0} images for query: "${searchQueries[i]}"`);
                 if (imagesData.images && imagesData.images.length > 0) {
-                  // Add only unique images from unique sources
+                  // Add only unique images from unique sources with URL validation
                   imagesData.images.forEach(image => {
-                    if (!image.url || !image.url.startsWith('http')) return;
+                    if (!image.url || !image.url.startsWith('http')) {
+                      console.log(`[editArticleWithAI] Skipping invalid image URL: ${image.url}`);
+                      return;
+                    }
+                    
+                    // Validate URL format
+                    try {
+                      new URL(image.url);
+                    } catch {
+                      console.log(`[editArticleWithAI] Skipping invalid URL format: ${image.url}`);
+                      return;
+                    }
+                    
+                    // Normalize URL (remove query params that might cause duplicates)
+                    const normalizedUrl = image.url.split('?')[0].split('#')[0];
                     
                     const imageUrl = image.url;
                     const sourceDomain = getDomain(image.sourceUrl || image.url);
                     
-                    // Skip if we've already seen this exact image URL
-                    if (seenUrls.has(imageUrl)) {
+                    // Skip if we've already seen this exact image URL (check both original and normalized)
+                    if (seenUrls.has(imageUrl) || seenUrls.has(normalizedUrl)) {
                       console.log(`[editArticleWithAI] Skipping duplicate image URL: ${imageUrl}`);
                       return;
                     }
@@ -1662,6 +1676,7 @@ export default function Home() {
                     // Add the image
                     allImages.push(image);
                     seenUrls.add(imageUrl);
+                    seenUrls.add(normalizedUrl); // Also track normalized URL
                     if (sourceDomain) {
                       seenSourceDomains.add(sourceDomain);
                     }
@@ -1680,14 +1695,50 @@ export default function Home() {
           }
           
           if (allImages.length > 0) {
-            // Add image URLs to trust sources list in format "Image Title|Image URL|Source URL"
-            allImages.forEach(image => {
+            // Validate and filter images - remove invalid URLs
+            const validImages = allImages.filter(image => {
+              if (!image.url || !image.url.startsWith('http')) {
+                console.log(`[editArticleWithAI] Filtering out invalid image URL: ${image.url}`);
+                return false;
+              }
+              
+              // Check if URL looks like a valid image URL
+              try {
+                const url = new URL(image.url);
+                const pathname = url.pathname.toLowerCase();
+                const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
+                const hasImageExtension = validExtensions.some(ext => pathname.endsWith(ext));
+                const isImageHost = url.hostname.includes('img') || 
+                                   url.hostname.includes('image') || 
+                                   url.hostname.includes('photo') ||
+                                   url.hostname.includes('cdn') ||
+                                   url.hostname.includes('media') ||
+                                   url.hostname.includes('static') ||
+                                   url.hostname.includes('wp-content') ||
+                                   url.hostname.includes('cloudfront') ||
+                                   url.hostname.includes('amazonaws');
+                
+                // Accept if it has image extension OR is from known image hosting domain
+                if (!hasImageExtension && !isImageHost) {
+                  console.log(`[editArticleWithAI] Filtering out non-image URL: ${image.url}`);
+                  return false;
+                }
+                
+                return true;
+              } catch {
+                console.log(`[editArticleWithAI] Filtering out invalid URL format: ${image.url}`);
+                return false;
+              }
+            });
+            
+            // Add valid image URLs to trust sources list in format "Image Title|Image URL|Source URL"
+            validImages.forEach(image => {
               const formatted = `${image.title || "Image"}|${image.url}|${image.sourceUrl}`;
               trustSourcesList.push(formatted);
             });
-            console.log(`[editArticleWithAI] Found ${allImages.length} unique images from ${searchQueries.length} queries`);
+            console.log(`[editArticleWithAI] Tavily browsing completed: Found ${validImages.length} valid images (filtered ${allImages.length - validImages.length} invalid) from ${searchQueries.length} queries via Tavily API`);
           } else {
-            console.warn("[editArticleWithAI] No images found for any query");
+            console.warn("[editArticleWithAI] Tavily API returned no images for any query");
           }
         } catch (error) {
           console.warn("[editArticleWithAI] Failed to fetch images:", error);
