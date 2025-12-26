@@ -1442,7 +1442,7 @@ export default function Home() {
   const editArticleWithAI = async (articleId: string) => {
     if (!editRequest.trim()) {
       setNotification({
-        message: "Будь ласка, введіть запит на редагування статті",
+        message: "Please enter an edit request",
         time: new Date().toLocaleTimeString(),
         visible: true,
       });
@@ -1452,7 +1452,7 @@ export default function Home() {
     const article = generatedArticles.find(a => a.topicTitle === articleId);
     if (!article) {
       setNotification({
-        message: "Статтю не знайдено",
+        message: "Article not found",
         time: new Date().toLocaleTimeString(),
         visible: true,
       });
@@ -1461,9 +1461,9 @@ export default function Home() {
 
     setIsProcessingEdit(true);
     setEditingArticleId(articleId);
-    setEditingArticleStatus("Аналізую запит та статтю...");
+    setEditingArticleStatus("Analyzing request and article...");
     setNotification({
-      message: "Обробка запиту на редагування...",
+      message: "Processing edit request...",
       time: new Date().toLocaleTimeString(),
       visible: true,
     });
@@ -1502,7 +1502,7 @@ export default function Home() {
 
       // If edit request mentions images, search for images with multiple specific queries
       if (needsImages) {
-        setEditingArticleStatus("Шукаю релевантні зображення в інтернеті...");
+        setEditingArticleStatus("Searching for relevant images...");
         try {
           // Extract specific items mentioned in the article (festivals, events, etc.)
           const articleText = currentHtml.replace(/<[^>]*>/g, ' '); // Strip HTML for text extraction
@@ -1546,10 +1546,21 @@ export default function Home() {
           
           // Search for images with each query and collect unique results
           const allImages: Array<{ url: string; sourceUrl: string; title?: string }> = [];
-          const seenUrls = new Set<string>();
+          const seenUrls = new Set<string>(); // Track unique image URLs
+          const seenSourceDomains = new Set<string>(); // Track unique source domains to ensure diversity
+          
+          // Helper function to extract domain from URL
+          const getDomain = (url: string): string => {
+            try {
+              const urlObj = new URL(url);
+              return urlObj.hostname.replace(/^www\./, ''); // Remove www. prefix
+            } catch {
+              return '';
+            }
+          };
           
           for (let i = 0; i < Math.min(searchQueries.length, 3); i++) {
-            setEditingArticleStatus(`Шукаю зображення (${i + 1}/${Math.min(searchQueries.length, 3)})...`);
+            setEditingArticleStatus(`Searching images (${i + 1}/${Math.min(searchQueries.length, 3)})...`);
             
             try {
               const imagesResponse = await fetch("/api/search-images", {
@@ -1563,11 +1574,30 @@ export default function Home() {
               if (imagesResponse.ok) {
                 const imagesData = await imagesResponse.json() as { images: Array<{ url: string; sourceUrl: string; title?: string }> };
                 if (imagesData.images && imagesData.images.length > 0) {
-                  // Add only unique images
+                  // Add only unique images from unique sources
                   imagesData.images.forEach(image => {
-                    if (!seenUrls.has(image.url) && image.url.startsWith('http')) {
-                      allImages.push(image);
-                      seenUrls.add(image.url);
+                    if (!image.url || !image.url.startsWith('http')) return;
+                    
+                    const imageUrl = image.url;
+                    const sourceDomain = getDomain(image.sourceUrl || image.url);
+                    
+                    // Skip if we've already seen this exact image URL
+                    if (seenUrls.has(imageUrl)) {
+                      console.log(`[editArticleWithAI] Skipping duplicate image URL: ${imageUrl}`);
+                      return;
+                    }
+                    
+                    // Skip if we've already used an image from this source domain (ensure diversity)
+                    if (sourceDomain && seenSourceDomains.has(sourceDomain)) {
+                      console.log(`[editArticleWithAI] Skipping image from duplicate source domain: ${sourceDomain}`);
+                      return;
+                    }
+                    
+                    // Add the image
+                    allImages.push(image);
+                    seenUrls.add(imageUrl);
+                    if (sourceDomain) {
+                      seenSourceDomains.add(sourceDomain);
                     }
                   });
                 }
@@ -1669,7 +1699,7 @@ export default function Home() {
         throw new Error(data.error || "Failed to edit article");
       }
 
-      setEditingArticleStatus("Застосовую правки до статті...");
+      setEditingArticleStatus("Applying edits to article...");
       
       // If images are needed, check if we have images or need to handle placeholders
       let finalHtml = data.editedArticleHtml!;
@@ -1680,7 +1710,7 @@ export default function Home() {
         if (hasImagePlaceholders) {
           if (articleImages.has(articleId)) {
             // Replace placeholders with existing image
-            setEditingArticleStatus("Вбудовую зображення в статтю...");
+            setEditingArticleStatus("Embedding images into article...");
             const imageData = articleImages.get(articleId);
             if (imageData) {
               const imageUrl = `data:image/png;base64,${imageData}`;
@@ -1774,11 +1804,11 @@ export default function Home() {
       }
 
       setEditingArticleStatus(null);
-      setNotification({
-        message: "Статтю успішно відредаговано",
-        time: new Date().toLocaleTimeString(),
-        visible: true,
-      });
+        setNotification({
+          message: "Article successfully edited",
+          time: new Date().toLocaleTimeString(),
+          visible: true,
+        });
 
       // Play success sound after editing
       playSuccessSound();
@@ -3241,7 +3271,7 @@ export default function Home() {
                                           <div className="article-edit-request">
                                             <textarea
                                               className="article-edit-textarea"
-                                              placeholder="Введіть ваш запит на редагування статті. Наприклад: 'Додати більше посилань на джерела', 'Додати конкретні приклади фестивалів з датами', 'Знайти та додати зображення для статті'..."
+                                              placeholder="Enter your edit request. For example: 'Add more links to sources', 'Add specific examples of festivals with dates', 'Find and add images for the article'..."
                                               value={editRequest}
                                               onChange={(e) => setEditRequest(e.target.value)}
                                               rows={4}
@@ -3301,7 +3331,7 @@ export default function Home() {
                                                   }}
                                                   disabled={isProcessingEdit}
                                                 >
-                                                  <span>Скасувати</span>
+                                                  <span>Cancel</span>
                                                 </button>
                                               )}
                                             </div>
