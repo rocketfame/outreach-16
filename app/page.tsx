@@ -59,6 +59,9 @@ export default function Home() {
   const [draft, setDraft] = useState("");
   const [editingArticles, setEditingArticles] = useState<Set<string>>(new Set());
   const [viewingArticle, setViewingArticle] = useState<string | null>(null);
+  const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
+  const [editRequest, setEditRequest] = useState<string>("");
+  const [isProcessingEdit, setIsProcessingEdit] = useState(false);
   const [loadingStep, setLoadingStep] = useState<LoadingStep>(null);
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
   const [isGeneratingArticles, setIsGeneratingArticles] = useState(false);
@@ -194,6 +197,8 @@ export default function Home() {
     // Also close view/edit if open
     if (viewingArticle === topicId) {
       setViewingArticle(null);
+      setEditRequest("");
+      setEditingArticleId(null);
     }
     if (editingArticles.has(topicId)) {
       setEditingArticles(prev => {
@@ -1290,6 +1295,154 @@ export default function Home() {
     return sentences.slice(0, 3).join(". ") + (sentences.length > 3 ? "..." : "");
   };
 
+  // Edit article with AI
+  const editArticleWithAI = async (articleId: string) => {
+    if (!editRequest.trim()) {
+      setNotification({
+        message: "Будь ласка, введіть запит на редагування статті",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      return;
+    }
+
+    const article = generatedArticles.find(a => a.topicTitle === articleId);
+    if (!article) {
+      setNotification({
+        message: "Статтю не знайдено",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      return;
+    }
+
+    setIsProcessingEdit(true);
+    setNotification({
+      message: "Обробка запиту на редагування...",
+      time: new Date().toLocaleTimeString(),
+      visible: true,
+    });
+
+    try {
+      const currentHtml = article.articleBodyHtml || article.fullArticleText || "";
+      const articleTitle = article.titleTag || directArticleTopic || "Article";
+
+      // Extract existing links from article HTML to preserve them
+      // Also try to fetch new trust sources if the edit request asks for more links
+      const trustSourcesList: string[] = [];
+      
+      // Extract existing URLs from the article to preserve them
+      const urlRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi;
+      const existingUrls = new Map<string, string>(); // URL -> anchor text
+      let match;
+      while ((match = urlRegex.exec(currentHtml)) !== null) {
+        const url = match[1];
+        const anchorText = match[2] || "";
+        // Only include external URLs (not anchor links or promosoundgroup links)
+        if ((url.startsWith('http://') || url.startsWith('https://')) && 
+            !url.includes('promosoundgroup.net')) {
+          existingUrls.set(url, anchorText);
+          // Add to trust sources list in format "Title|URL"
+          const title = anchorText.trim() || new URL(url).hostname;
+          trustSourcesList.push(`${title}|${url}`);
+        }
+      }
+
+      // If edit request mentions adding links, try to fetch new trust sources
+      const needsMoreLinks = editRequest.toLowerCase().includes('посилан') || 
+                            editRequest.toLowerCase().includes('link') ||
+                            editRequest.toLowerCase().includes('джерел') ||
+                            editRequest.toLowerCase().includes('source');
+      
+      if (needsMoreLinks) {
+        try {
+          // Fetch trust sources for the article topic
+          const linksResponse = await fetch("/api/find-links", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topicTitle: articleTitle,
+              topicBrief: articleTitle,
+              niche: brief.niche || "",
+              platform: brief.platform || "multi-platform",
+            }),
+          });
+
+          if (linksResponse.ok) {
+            const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
+            if (linksData.trustSources && linksData.trustSources.length > 0) {
+              linksData.trustSources.forEach(source => {
+                const formatted = `${source.title}|${source.url}`;
+                trustSourcesList.push(formatted);
+              });
+            }
+          }
+        } catch (error) {
+          console.warn("[editArticleWithAI] Failed to fetch trust sources:", error);
+          // Continue without new sources - editor can work with existing links
+        }
+      }
+
+      const response = await fetch("/api/edit-article", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          articleHtml: currentHtml,
+          articleTitle: articleTitle,
+          editRequest: editRequest.trim(),
+          niche: brief.niche || "",
+          language: brief.language || "English",
+          trustSourcesList: trustSourcesList,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to edit article");
+      }
+
+      const data = await response.json() as { success: boolean; editedArticleHtml?: string; error?: string };
+
+      if (!data.success || !data.editedArticleHtml) {
+        throw new Error(data.error || "Failed to edit article");
+      }
+
+      // Update the article with edited content
+      updateGeneratedArticles(prev =>
+        prev.map(a =>
+          a.topicTitle === articleId
+            ? {
+                ...a,
+                articleBodyHtml: data.editedArticleHtml!,
+                fullArticleText: data.editedArticleHtml!, // Also update fullArticleText for compatibility
+              }
+            : a
+        )
+      );
+
+      setNotification({
+        message: "Статтю успішно відредаговано",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+
+      // Clear edit request and close edit mode
+      setEditRequest("");
+      setEditingArticleId(null);
+    } catch (error) {
+      console.error("[editArticleWithAI] Error:", error);
+      setNotification({
+        message: error instanceof Error ? error.message : "Помилка при редагуванні статті",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+    } finally {
+      setIsProcessingEdit(false);
+    }
+  };
+
   // Play success sound function (reusable)
   const playSuccessSound = () => {
     try {
@@ -1744,6 +1897,8 @@ export default function Home() {
       const target = event.target as HTMLElement;
       if (target.classList.contains("article-view-modal")) {
         setViewingArticle(null);
+        setEditRequest("");
+        setEditingArticleId(null);
       }
     };
 
@@ -2677,7 +2832,11 @@ export default function Home() {
                                         <button
                                           type="button"
                                           className="close-modal-btn"
-                                          onClick={() => setViewingArticle(null)}
+                                          onClick={() => {
+                                            setViewingArticle(null);
+                                            setEditRequest("");
+                                            setEditingArticleId(null);
+                                          }}
                                         >
                                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2716,6 +2875,67 @@ export default function Home() {
                                           }} 
                                         />
                                       </section>
+
+                                      {/* Edit Article Section - Only for Direct Article Creation mode */}
+                                      {mode === "direct" && (
+                                        <section className="article-meta-section article-edit-section">
+                                          <p className="article-meta-label">Edit Article with AI</p>
+                                          <div className="article-edit-request">
+                                            <textarea
+                                              className="article-edit-textarea"
+                                              placeholder="Введіть ваш запит на редагування статті. Наприклад: 'Додати більше посилань на джерела', 'Додати конкретні приклади фестивалів з датами', 'Знайти та додати зображення для статті'..."
+                                              value={editRequest}
+                                              onChange={(e) => setEditRequest(e.target.value)}
+                                              rows={4}
+                                              disabled={isProcessingEdit}
+                                            />
+                                            <div className="article-edit-actions">
+                                              <button
+                                                type="button"
+                                                className="btn-primary"
+                                                onClick={() => editArticleWithAI(topicId)}
+                                                disabled={isProcessingEdit || !editRequest.trim()}
+                                              >
+                                                {isProcessingEdit ? (
+                                                  <>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" strokeDashoffset="32">
+                                                        <animate attributeName="stroke-dasharray" dur="2s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
+                                                        <animate attributeName="stroke-dashoffset" dur="2s" values="0;-16;-32;-32" repeatCount="indefinite"/>
+                                                      </circle>
+                                                    </svg>
+                                                    <span>Обробка...</span>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                    </svg>
+                                                    <span>Застосувати правки</span>
+                                                  </>
+                                                )}
+                                              </button>
+                                              {editRequest && (
+                                                <button
+                                                  type="button"
+                                                  className="btn-outline"
+                                                  onClick={() => {
+                                                    setEditRequest("");
+                                                    setEditingArticleId(null);
+                                                  }}
+                                                  disabled={isProcessingEdit}
+                                                >
+                                                  <span>Скасувати</span>
+                                                </button>
+                                              )}
+                                            </div>
+                                            <p className="article-edit-hint">
+                                              AI редактор допоможе впровадити ваші правки професійно, зберігаючи структуру та стиль статті.
+                                            </p>
+                                          </div>
+                                        </section>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
