@@ -1,0 +1,2989 @@
+"use client";
+
+import { ChangeEvent, useState, useEffect, useRef } from "react";
+import LoadingOverlay from "./components/LoadingOverlay";
+import Notification from "./components/Notification";
+import { TagPill } from "./components/TagPill";
+import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle } from "./hooks/usePersistentAppState";
+
+type LoadingStep = "topics" | "outline" | "draft" | null;
+
+export default function Home() {
+  const [persistedState, setPersistedState, resetPersistedState, isHydrated] = usePersistentAppState();
+  
+  // Extract state from persisted state
+  const mode = persistedState.mode;
+  const topicsData = persistedState.topicClusters;
+  const selectedTopicIds = persistedState.selectedTopicIds;
+  const lightHumanEditEnabled = persistedState.lightHumanEditEnabled;
+  const directArticleTopic = persistedState.directArticleTopic || "";
+  const theme = persistedState.theme || "light";
+  
+  // Get the correct brief based on current mode with proper fallback
+  const defaultBrief: Brief = {
+    niche: "",
+    clientSite: "",
+    language: "",
+    wordCount: "",
+    platform: "",
+    anchorText: "",
+    anchorUrl: "",
+    contentPurpose: "",
+  };
+  
+  const brief = mode === "discovery" 
+    ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
+    : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
+  
+  // Ensure language has a default value if empty (for backward compatibility)
+  // This is used for button disabled state and validation
+  const briefWithDefaults = {
+    ...brief,
+    language: brief.language || "English",
+  };
+  
+  
+  // Get articles based on current mode - they are stored separately
+  const generatedArticles = mode === "discovery" 
+    ? (persistedState.discoveryArticles || persistedState.articles || []) // Fallback to legacy articles
+    : (persistedState.directArticles || []);
+  
+  // Article images are stored in component state only (not persisted)
+  // This avoids localStorage quota issues since base64 images are large
+  // Images can be regenerated if needed
+  const [articleImages, setArticleImages] = useState<Map<string, string>>(new Map());
+
+  // Local UI state (not persisted)
+  const [expandedClusterNames, setExpandedClusterNames] = useState<Set<string>>(new Set());
+  const [outline, setOutline] = useState("");
+  const [draft, setDraft] = useState("");
+  const [editingArticles, setEditingArticles] = useState<Set<string>>(new Set());
+  const [viewingArticle, setViewingArticle] = useState<string | null>(null);
+  const [loadingStep, setLoadingStep] = useState<LoadingStep>(null);
+  const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
+  const [isGeneratingArticles, setIsGeneratingArticles] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    time: string;
+    visible: boolean;
+  } | null>(null);
+  const generatedArticlesSectionRef = useRef<HTMLDivElement>(null);
+  const prevCompletedArticlesRef = useRef<Set<string>>(new Set());
+  const prevCompletedImagesRef = useRef<Set<string>>(new Set());
+  const prevThemeRef = useRef<string>(theme);
+  const prevModeRef = useRef<string>(mode);
+  
+  // Article image generation state (initialized from persisted state above)
+  const [isGeneratingImage, setIsGeneratingImage] = useState<Set<string>>(new Set()); // topicIds being generated
+  const [viewingImage, setViewingImage] = useState<string | null>(null); // topicId of image being viewed in modal
+  const [imageLoaderMessages, setImageLoaderMessages] = useState<Map<string, number>>(new Map()); // topicId -> message index
+  const [articleLoaderMessages, setArticleLoaderMessages] = useState<Map<string, number>>(new Map()); // topicId -> message index
+  const [imageLoaderStartTimes, setImageLoaderStartTimes] = useState<Map<string, number>>(new Map()); // topicId -> start timestamp
+  const [articleLoaderStartTimes, setArticleLoaderStartTimes] = useState<Map<string, number>>(new Map()); // topicId -> start timestamp
+  const [imageLoaderElapsed, setImageLoaderElapsed] = useState<Map<string, number>>(new Map()); // topicId -> elapsed seconds
+  const [articleLoaderElapsed, setArticleLoaderElapsed] = useState<Map<string, number>>(new Map()); // topicId -> elapsed seconds
+
+  // Helper functions to update persisted state
+  const updateBrief = (updates: Partial<Brief>) => {
+    setPersistedState(prev => {
+      // Update the correct brief based on current mode
+      if (prev.mode === "discovery") {
+        return {
+          ...prev,
+          discoveryProjectBasics: { ...(prev.discoveryProjectBasics || prev.projectBasics || defaultBrief), ...updates },
+          projectBasics: { ...(prev.discoveryProjectBasics || prev.projectBasics || defaultBrief), ...updates }, // Keep for backward compatibility
+        };
+      } else {
+        return {
+          ...prev,
+          directProjectBasics: { ...(prev.directProjectBasics || prev.projectBasics || defaultBrief), ...updates },
+        };
+      }
+    });
+  };
+
+  const updateTopicsData = (data: TopicResponse | null) => {
+    setPersistedState(prev => ({
+      ...prev,
+      topicClusters: data,
+      topicOverview: data?.overview || null,
+    }));
+  };
+
+  const removeCluster = (clusterName: string) => {
+    if (!topicsData) return;
+    
+    // Get all topic IDs in this cluster
+    const clusterTopicIds = topicsData.topics
+      .filter(t => t.clusterName === clusterName)
+      .map(t => t.id);
+    
+    // Remove topics from this cluster
+    const updatedTopics = topicsData.topics.filter(t => t.clusterName !== clusterName);
+    
+    // Remove selected topic IDs if they belong to this cluster
+    const updatedSelectedIds = selectedTopicIds.filter(id => !clusterTopicIds.includes(id));
+    
+    // Update topics data
+    if (updatedTopics.length === 0) {
+      // If no topics left, clear everything
+      updateTopicsData(null);
+      updateSelectedTopicIds([]);
+    } else {
+      updateTopicsData({
+        ...topicsData,
+        topics: updatedTopics,
+      });
+      updateSelectedTopicIds(updatedSelectedIds);
+    }
+    
+    // Close expanded state if this cluster was expanded
+    if (expandedClusterNames.has(clusterName)) {
+      setExpandedClusterNames(prev => {
+        const next = new Set(prev);
+        next.delete(clusterName);
+        return next;
+      });
+    }
+  };
+
+  const updateSelectedTopicIds = (ids: string[]) => {
+    setPersistedState(prev => ({
+      ...prev,
+      selectedTopicIds: ids,
+    }));
+  };
+
+  const updateGeneratedArticles = (articles: GeneratedArticle[] | ((prev: GeneratedArticle[]) => GeneratedArticle[])) => {
+    setPersistedState(prev => {
+      // Get current articles based on mode
+      const currentArticles = prev.mode === "discovery" 
+        ? (prev.discoveryArticles || prev.articles || [])
+        : (prev.directArticles || []);
+      
+      // Apply update (either direct array or function)
+      const updatedArticles = typeof articles === 'function' 
+        ? articles(currentArticles)
+        : articles;
+      
+      // Use prev.mode to get the current mode at the time of update
+      if (prev.mode === "discovery") {
+        return {
+          ...prev,
+          discoveryArticles: updatedArticles,
+          articles: updatedArticles, // Keep for backward compatibility
+        };
+      } else {
+        return {
+          ...prev,
+          directArticles: updatedArticles,
+        };
+      }
+    });
+  };
+
+  const updateDirectArticleTopic = (topic: string) => {
+    setPersistedState(prev => ({
+      ...prev,
+      directArticleTopic: topic,
+    }));
+  };
+
+  const removeArticle = (topicId: string) => {
+    updateGeneratedArticles(prev => prev.filter(a => a.topicTitle !== topicId));
+    // Also close view/edit if open
+    if (viewingArticle === topicId) {
+      setViewingArticle(null);
+    }
+    if (editingArticles.has(topicId)) {
+      setEditingArticles(prev => {
+        const next = new Set(prev);
+        next.delete(topicId);
+        return next;
+      });
+    }
+  };
+
+  const updateMode = (newMode: "discovery" | "direct") => {
+    setPersistedState(prev => ({
+      ...prev,
+      mode: newMode,
+    }));
+  };
+
+  const updateTheme = (newTheme: "light" | "dark") => {
+    setPersistedState(prev => ({
+      ...prev,
+      theme: newTheme,
+    }));
+  };
+
+  // Apply theme class to document
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  }, [theme]);
+
+  const handleBriefChange =
+    (field: keyof Brief) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      updateBrief({ [field]: event.target.value });
+    };
+
+  // Old parsing function removed - now using JSON API response
+
+  const requestGeneration = async (payload: Record<string, unknown>) => {
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error ?? "Failed to generate content.");
+    }
+
+    const data = (await response.json()) as { text?: string };
+    return data.text ?? "";
+  };
+
+  const generateTopics = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:266',message:'generateTopics called',data:{briefNiche:brief.niche,briefLanguage:brief.language,briefPlatform:brief.platform,briefAnchorText:brief.anchorText,briefAnchorUrl:brief.anchorUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
+    // #endregion
+    // Validate Project Basis fields with detailed error messages
+    const missingFields: string[] = [];
+    if (!brief.niche.trim()) {
+      missingFields.push("Main niche or theme");
+    }
+    if (!(brief.language || "English").trim()) {
+      missingFields.push("Language");
+    }
+
+    if (missingFields.length > 0) {
+      const fieldsList = missingFields.join(", ");
+      setNotification({
+        message: `Будь ласка, заповніть обов'язкові поля в Project Basis: ${fieldsList}`,
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 6000);
+      return;
+    }
+
+    setLoadingStep("topics");
+    setIsGeneratingTopics(true);
+    setGenerationStartTime(Date.now());
+    try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:277',message:'About to call /api/generate-topics',data:{endpoint:'/api/generate-topics',briefFields:Object.keys(brief)},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
+      // #endregion
+      const response = await fetch("/api/generate-topics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief }),
+      });
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:284',message:'Response received from /api/generate-topics',data:{status:response.status,statusText:response.statusText,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
+      // #endregion
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error ?? "Failed to generate topics.");
+      }
+
+      const data = (await response.json()) as { overview: string; topics: Topic[] };
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:293',message:'generateTopics success',data:{overviewLength:data.overview?.length || 0,topicsCount:data.topics?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
+      // #endregion
+      
+      // Store the structured response
+      updateTopicsData(data);
+      
+      // Reset selections
+      updateSelectedTopicIds([]);
+      setExpandedClusterNames(new Set());
+      
+      // Show notification with elapsed time
+      if (generationStartTime) {
+        const elapsedMs = Date.now() - generationStartTime;
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        const minutes = Math.floor(elapsedSeconds / 60);
+        const seconds = elapsedSeconds % 60;
+        const timeString = minutes > 0 
+          ? `${minutes} хв ${seconds} сек`
+          : `${seconds} сек`;
+        
+        setNotification({
+          message: "Ми шукали теми для статтей",
+          time: timeString,
+          visible: true,
+        });
+        setGenerationStartTime(null);
+        // Play success sound after topic generation
+        playSuccessSound();
+      }
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:303',message:'generateTopics error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
+      // #endregion
+      console.error(error);
+      const errorMessage = (error as Error).message || "Не вдалося згенерувати теми. Спробуйте ще раз.";
+      setNotification({
+        message: errorMessage,
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 6000);
+    } finally {
+      setLoadingStep(null);
+      setIsGeneratingTopics(false);
+      if (generationStartTime) {
+        setGenerationStartTime(null);
+      }
+    }
+  };
+
+  // generateOutline and generateDraft removed - now using article generation flow
+
+  const toggleTopicSelection = (topicId: string) => {
+    updateSelectedTopicIds(
+      selectedTopicIds.includes(topicId)
+        ? selectedTopicIds.filter(id => id !== topicId)
+        : [...selectedTopicIds, topicId]
+    );
+  };
+
+  const toggleClusterExpansion = (clusterName: string) => {
+    setExpandedClusterNames(prev => {
+      const next = new Set(prev);
+      if (next.has(clusterName)) {
+        next.delete(clusterName);
+      } else {
+        next.add(clusterName);
+      }
+      return next;
+    });
+  };
+
+  const clearSelections = () => {
+    updateSelectedTopicIds([]);
+  };
+
+  // getEvergreenRating removed - now using evergreenScore directly from API
+
+  const regenerateArticleForTopic = async (topicId: string) => {
+    if (!topicsData) return;
+    
+    const topic = topicsData.topics.find(t => t.id === topicId);
+    
+    if (!topic) return;
+
+    // Check if article was edited
+    const existingArticle = generatedArticles.find(a => a.topicTitle === topicId);
+    if (existingArticle?.editedText) {
+      const confirmed = confirm("This article has been edited. Regenerating will replace your edits. Continue?");
+      if (!confirmed) return;
+    }
+
+    // Mark as generating
+    setIsGeneratingArticles(true);
+    updateGeneratedArticles(
+      generatedArticles.map(a =>
+        a.topicTitle === topicId
+          ? { ...a, status: "generating" as const }
+          : a
+      )
+    );
+
+    try {
+      const selectedTopicsData = [{
+        title: topic.workingTitle,
+        brief: [
+          topic.shortAngle || "",
+          topic.whyNonGeneric || "",
+          topic.howAnchorFits || "",
+          topic.evergreenNote || "",
+          topic.competitionNote || "",
+        ].filter(Boolean).join("\n\n"),
+        shortAngle: topic.shortAngle || "",
+        primaryKeyword: topic.primaryKeyword || "",
+        // Include all deep brief fields for article generation
+        whyNonGeneric: topic.whyNonGeneric || "",
+        howAnchorFits: topic.howAnchorFits || "",
+        evergreenNote: topic.evergreenNote || "",
+        competitionNote: topic.competitionNote || "",
+      }];
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:300',message:'[regenerate] Starting Tavily search for trust sources',data:{topicTitle:topic.workingTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
+      // #endregion
+
+      // MANDATORY: Find trust sources via Tavily before generating article
+      const allTrustSources = new Set<string>();
+      
+      try {
+        // Build comprehensive search query from topic and brief for better Tavily results
+        // Include year for recent data (2024-2025)
+        const queryParts = [
+          topic.workingTitle,
+          brief.niche || "",
+          brief.platform || "",
+          topic.primaryKeyword || "",
+          "2024 2025", // Ensure recent data
+        ].filter(Boolean);
+        const searchQuery = queryParts.join(" ");
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:320',message:'[regenerate] Calling /api/find-links',data:{topicTitle:topic.workingTitle,query:searchQuery},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
+        // #endregion
+
+        const linksResponse = await fetch("/api/find-links", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: searchQuery }),
+        });
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:330',message:'[regenerate] find-links response received',data:{topicTitle:topic.workingTitle,ok:linksResponse.ok,status:linksResponse.status},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
+        // #endregion
+
+        if (linksResponse.ok) {
+          const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
+          if (linksData.trustSources && linksData.trustSources.length > 0) {
+            // Convert TrustedSource[] to "Name|URL" format
+            linksData.trustSources.forEach(source => {
+              const formattedSource = `${source.title}|${source.url}`;
+              allTrustSources.add(formattedSource);
+            });
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:340',message:'[regenerate] Links found via Tavily',data:{topicTitle:topic.workingTitle,linksCount:linksData.trustSources.length},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
+            // #endregion
+          } else {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:345',message:'[regenerate] Tavily returned empty results',data:{topicTitle:topic.workingTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
+            // #endregion
+          }
+        } else {
+          const errorData = await linksResponse.json().catch(() => ({}));
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:350',message:'[regenerate] Tavily search failed',data:{topicTitle:topic.workingTitle,error:errorData.error || linksResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
+          // #endregion
+          throw new Error(`Tavily search failed: ${errorData.error || linksResponse.statusText}`);
+        }
+      } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:355',message:'[regenerate] Tavily search error, cannot proceed',data:{topicTitle:topic.workingTitle,error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
+        // #endregion
+        throw new Error(`Cannot regenerate article: Tavily search failed. ${(error as Error).message}`);
+      }
+
+      // Use only Tavily-validated sources (empty array if none found, but still proceed)
+      const trustSourcesList = Array.from(allTrustSources);
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:365',message:'[regenerate] Calling /api/articles with Tavily sources',data:{topicTitle:topic.workingTitle,trustSourcesCount:trustSourcesList.length},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'articles-flow'})}).catch(()=>{});
+      // #endregion
+
+      const response = await fetch("/api/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief,
+          selectedTopics: selectedTopicsData,
+          keywordList: topic.primaryKeyword ? [topic.primaryKeyword] : [],
+          trustSourcesList: trustSourcesList, // Only Tavily-validated sources
+          lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error ?? "Failed to regenerate article.");
+      }
+
+      const data = await response.json() as { articles: Array<{
+        topicTitle: string;
+        titleTag: string;
+        metaDescription: string;
+        fullArticleText: string;
+      }> };
+
+      if (data.articles.length > 0) {
+        const newArticle = data.articles[0];
+        updateGeneratedArticles(
+          generatedArticles.map(a =>
+            a.topicTitle === topicId
+              ? {
+                  ...newArticle,
+                  topicTitle: topicId,
+                  status: "ready" as const,
+                }
+              : a
+          )
+        );
+        // Play success sound after article regeneration
+        playSuccessSound();
+      }
+    } catch (error) {
+      console.error(error);
+      const errorMessage = (error as Error).message || "Не вдалося регенерувати статтю. Спробуйте ще раз.";
+      setNotification({
+        message: errorMessage,
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 6000);
+      
+      updateGeneratedArticles(
+        generatedArticles.map(a =>
+          a.topicTitle === topicId
+            ? { ...a, status: "error" as const }
+            : a
+        )
+      );
+    } finally {
+      setIsGeneratingArticles(false);
+    }
+  };
+
+  const handleQuickGenerate = async (topic: Topic) => {
+    if (!topicsData) {
+      setNotification({
+        message: "Будь ласка, спочатку згенеруйте теми в Step 1",
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 5000);
+      return;
+    }
+
+    // Check if article already exists and is generating
+    const existingArticle = generatedArticles.find(a => a.topicTitle === topic.id);
+    if (existingArticle && existingArticle.status === "generating") {
+      return; // Already generating
+    }
+
+    // Use the same logic as generateArticlesForSelected but for a single topic
+    await generateArticlesForTopics([topic], true);
+  };
+
+  const generateArticlesForTopics = async (topics: Topic[], autoOpenModal = false) => {
+    // Only allow generation in discovery mode
+    if (mode !== "discovery") {
+      console.warn("generateArticlesForTopics called outside discovery mode, ignoring");
+      return;
+    }
+
+    if (!topicsData) {
+      setNotification({
+        message: "Будь ласка, спочатку згенеруйте теми в Step 1",
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 5000);
+      return;
+    }
+
+    if (topics.length === 0) {
+      setNotification({
+        message: "Будь ласка, оберіть принаймні одну тему для генерації статті",
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 5000);
+      return;
+    }
+
+    setLoadingStep("draft");
+    setIsGeneratingArticles(true);
+    setGenerationStartTime(Date.now());
+    
+    // Mark all topics as generating
+    const topicIds = topics.map(t => t.id);
+    updateGeneratedArticles([
+      ...generatedArticles.filter(a => !topicIds.includes(a.topicTitle)),
+      ...topics.map(topic => ({
+        topicTitle: topic.id,
+        titleTag: "",
+        metaDescription: "",
+        fullArticleText: "",
+        status: "generating" as const,
+      }))
+    ]);
+
+    try {
+      // Get full topic data from topicsData with deep brief
+      const selectedTopicsData = topics.map(topic => ({
+        title: topic.workingTitle,
+        brief: [
+          topic.shortAngle || "",
+          topic.whyNonGeneric || "",
+          topic.howAnchorFits || "",
+          topic.evergreenNote || "",
+          topic.competitionNote || "",
+        ].filter(Boolean).join("\n\n"),
+        shortAngle: topic.shortAngle || "",
+        primaryKeyword: topic.primaryKeyword || "",
+        // Include all deep brief fields for article generation
+        whyNonGeneric: topic.whyNonGeneric || "",
+        howAnchorFits: topic.howAnchorFits || "",
+        evergreenNote: topic.evergreenNote || "",
+        competitionNote: topic.competitionNote || "",
+      }));
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:470',message:'Starting article generation with dynamic link finding',data:{topicsCount:selectedTopicsData.length,briefFields:Object.keys(brief)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
+      // #endregion
+
+      // Step 1: MANDATORY - Find trust sources via Tavily for each topic
+      // We'll collect unique sources from all topics
+      const allTrustSources = new Set<string>();
+      
+      // Find links for each topic (in parallel for better performance)
+      const linkPromises = selectedTopicsData.map(async (topic) => {
+        try {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:520',message:'[generate] Calling /api/find-links for topic',data:{topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
+          // #endregion
+
+          // Build comprehensive search query from topic and brief for better Tavily results
+          // Include year for recent data (2024-2025)
+          const queryParts = [
+            topic.title,
+            brief.niche || "",
+            brief.platform || "",
+            topic.primaryKeyword || "",
+            "2024 2025", // Ensure recent data
+          ].filter(Boolean);
+          const searchQuery = queryParts.join(" ");
+
+          const linksResponse = await fetch("/api/find-links", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: searchQuery }),
+          });
+
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:535',message:'[generate] find-links response received',data:{topicTitle:topic.title,query:searchQuery,ok:linksResponse.ok,status:linksResponse.status,statusText:linksResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-response'})}).catch(()=>{});
+          // #endregion
+
+          if (linksResponse.ok) {
+            const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
+            if (linksData.trustSources && linksData.trustSources.length > 0) {
+              // Convert TrustedSource[] to "Name|URL" format for compatibility with article prompt
+              linksData.trustSources.forEach(source => {
+                const formattedSource = `${source.title}|${source.url}`;
+                allTrustSources.add(formattedSource);
+              });
+              
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:540',message:'[generate] Links found for topic via Tavily',data:{topicTitle:topic.title,linksCount:linksData.trustSources.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
+              // #endregion
+            } else {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:545',message:'[generate] Tavily returned empty results for topic',data:{topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
+              // #endregion
+            }
+          } else {
+            // Handle error response - Tavily search failed
+            const errorData = await linksResponse.json().catch(() => ({}));
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:550',message:'[generate] Tavily search failed for topic',data:{topicTitle:topic.title,error:errorData.error || linksResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
+            // #endregion
+            throw new Error(`Tavily search failed for topic "${topic.title}": ${errorData.error || linksResponse.statusText}`);
+          }
+        } catch (error) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:555',message:'[generate] Tavily search error for topic',data:{topicTitle:topic.title,error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
+          // #endregion
+          throw error; // Re-throw to stop generation if Tavily fails
+        }
+      });
+
+      // Wait for all link finding requests to complete
+      await Promise.all(linkPromises);
+
+      // Use ONLY Tavily-validated sources
+      const trustSourcesList = Array.from(allTrustSources);
+      
+      // Validate that we have trust sources before proceeding
+      if (trustSourcesList.length === 0) {
+        throw new Error("Cannot generate articles: No trust sources found via browsing. Please ensure Tavily API key is configured or check your search query.");
+      }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:560',message:'Calling /api/articles with trust sources',data:{topicsCount:selectedTopicsData.length,trustSourcesCount:trustSourcesList.length,usingDynamic:allTrustSources.size > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
+      // #endregion
+
+      // Step 2: Generate articles with found trust sources
+      const response = await fetch("/api/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief,
+          selectedTopics: selectedTopicsData,
+          keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
+          trustSourcesList: trustSourcesList,
+          lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error ?? "Failed to generate articles.");
+      }
+
+      const data = await response.json() as { articles: Array<{
+        topicTitle: string;
+        titleTag: string;
+        metaDescription: string;
+        fullArticleText: string;
+      }> };
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:495',message:'Articles received',data:{articlesCount:data.articles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
+      // #endregion
+
+      // Update generated articles with results
+      updateGeneratedArticles([
+        ...generatedArticles.filter(a => !topicIds.includes(a.topicTitle)),
+        ...data.articles.map((article, index) => ({
+          ...article,
+          topicTitle: topics[index]?.id || article.topicTitle,
+          status: "ready" as const,
+        }))
+      ]);
+      
+      // Clear selected topics after successful generation to make Step 2 inactive
+      updateSelectedTopicIds([]);
+      
+      // Show notification with elapsed time
+      if (generationStartTime) {
+        const elapsedMs = Date.now() - generationStartTime;
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        const minutes = Math.floor(elapsedSeconds / 60);
+        const seconds = elapsedSeconds % 60;
+        const timeString = minutes > 0 
+          ? `${minutes} хв ${seconds} сек`
+          : `${seconds} сек`;
+        
+        setNotification({
+          message: "Ми генерували і створювали найкращу статтю",
+          time: timeString,
+          visible: true,
+        });
+        setGenerationStartTime(null);
+        // Play success sound after article generation
+        playSuccessSound();
+      }
+      
+      // Auto-scroll to the first article that is currently generating (from top to bottom)
+      setTimeout(() => {
+        // Find the first article card that is in "generating" status
+        let targetElement: HTMLElement | null = null;
+        
+        // Get all article cards in the order they appear in the DOM (top to bottom)
+        const allArticleCards = document.querySelectorAll(`[data-article-id]`) as NodeListOf<HTMLElement>;
+        
+        // Find the first one that is generating
+        for (const card of allArticleCards) {
+          const articleId = card.getAttribute('data-article-id');
+          if (articleId) {
+            // Check if this article is in generating status
+            const article = generatedArticles.find(a => a.topicTitle === articleId);
+            if (article && article.status === "generating") {
+              targetElement = card;
+              break; // Found the first generating article from top
+            }
+          }
+        }
+        
+        // If we found a generating article card, scroll to it; otherwise fall back to section
+        if (targetElement) {
+          targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' // Center the article in view for better UX
+          });
+        } else if (generatedArticlesSectionRef.current) {
+          // Fallback: scroll to section if article card not found yet
+          generatedArticlesSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 500); // Increased delay to ensure DOM is fully updated
+    } catch (error) {
+      console.error(error);
+      const errorMessage = (error as Error).message || "Не вдалося згенерувати статті. Спробуйте ще раз.";
+      setNotification({
+        message: errorMessage,
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 6000);
+      
+      // Mark failed articles
+      updateGeneratedArticles(
+        generatedArticles.map(a =>
+          topicIds.includes(a.topicTitle) && a.status === "generating"
+            ? { ...a, status: "error" as const }
+            : a
+        )
+      );
+    } finally {
+      setLoadingStep(null);
+      setIsGeneratingArticles(false);
+      if (generationStartTime) {
+        setGenerationStartTime(null);
+      }
+    }
+  };
+
+  // Generate article for DirectArticleCreation mode
+  const generateDirectArticle = async () => {
+    // Only allow generation in direct mode
+    if (mode !== "direct") {
+      return;
+    }
+
+    // Validate article topic
+    if (!directArticleTopic || !directArticleTopic.trim()) {
+      setNotification({
+        message: "Будь ласка, введіть тему статті в полі 'Article Topic'",
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 5000);
+      return;
+    }
+
+    // Validate Project Basis fields with detailed error messages
+    const missingFields: string[] = [];
+    if (!brief || !brief.niche || !brief.niche.trim()) {
+      missingFields.push("Main niche or theme");
+    }
+    const languageValue = brief?.language || "English";
+    if (!languageValue || !languageValue.trim()) {
+      missingFields.push("Language");
+    }
+
+    if (missingFields.length > 0) {
+      const fieldsList = missingFields.join(", ");
+      setNotification({
+        message: `Будь ласка, заповніть обов'язкові поля в Project Basis: ${fieldsList}`,
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 6000);
+      return;
+    }
+    setLoadingStep("draft");
+    setIsGeneratingArticles(true);
+    setGenerationStartTime(Date.now());
+    
+    // Create a unique ID for this direct article
+    const articleId = `direct-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Mark as generating - use functional update to ensure we get the latest state
+    // Set titleTag immediately from directArticleTopic for Direct Article Creation mode
+    updateGeneratedArticles(prev => [
+      ...prev,
+      {
+        topicTitle: articleId,
+        titleTag: directArticleTopic, // Set title immediately from topic
+        metaDescription: "",
+        fullArticleText: "",
+        status: "generating" as const,
+      }
+    ]);
+
+    // Auto-scroll to the loader immediately after marking as generating
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        // Find the first generating article card
+        const articleCards = document.querySelectorAll('[data-article-id]');
+        let targetElement: HTMLElement | null = null;
+        
+        for (const card of articleCards) {
+          const articleIdAttr = card.getAttribute('data-article-id');
+          if (articleIdAttr === articleId) {
+            targetElement = card as HTMLElement;
+            break;
+          }
+        }
+        
+        // If we found the article card, scroll to it; otherwise fall back to section
+        if (targetElement) {
+          targetElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center'
+          });
+        } else if (generatedArticlesSectionRef.current) {
+          generatedArticlesSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 300); // Increased delay to ensure DOM is fully updated
+    });
+
+    try {
+      // Step 1: Find trust sources via Tavily for the topic
+      const queryParts = [
+        directArticleTopic,
+        brief.niche || "",
+        brief.platform || "",
+        "2024 2025", // Ensure recent data
+      ].filter(Boolean);
+      const searchQuery = queryParts.join(" ");
+
+      const linksResponse = await fetch("/api/find-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: searchQuery }),
+      });
+
+      if (!linksResponse.ok) {
+        const errorData = await linksResponse.json().catch(() => ({}));
+        throw new Error(`Tavily search failed: ${errorData.error || linksResponse.statusText}`);
+      }
+
+      const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
+      const trustSourcesList = linksData.trustSources && linksData.trustSources.length > 0
+        ? linksData.trustSources.map(source => `${source.title}|${source.url}`)
+        : [];
+
+      if (trustSourcesList.length === 0) {
+        throw new Error("Cannot generate article: No trust sources found via browsing. Please ensure Tavily API key is configured or try a different topic.");
+      }
+
+      // Step 2: Generate article with found trust sources
+      const response = await fetch("/api/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief,
+          selectedTopics: [{
+            title: directArticleTopic,
+            brief: directArticleTopic,
+            shortAngle: directArticleTopic,
+            primaryKeyword: directArticleTopic.split(" ")[0] || directArticleTopic,
+          }],
+          keywordList: [directArticleTopic],
+          trustSourcesList: trustSourcesList,
+          lightHumanEdit: lightHumanEditEnabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error ?? "Failed to generate article.");
+      }
+
+      const data = await response.json() as { articles: Array<{
+        topicTitle: string;
+        titleTag: string;
+        metaDescription: string;
+        fullArticleText: string;
+      }> };
+
+      // Validate response data
+      if (!data.articles || !Array.isArray(data.articles) || data.articles.length === 0) {
+        throw new Error("Invalid response from server: articles array is empty or missing");
+      }
+
+      // Update generated article with result
+      // Preserve titleTag from the generating state if API didn't return one
+      const existingArticle = generatedArticles.find(a => a.topicTitle === articleId);
+      const preservedTitleTag = existingArticle?.titleTag || data.articles[0]?.titleTag || directArticleTopic;
+      
+      updateGeneratedArticles(prev => [
+        ...prev.filter(a => a.topicTitle !== articleId),
+        {
+          ...data.articles[0],
+          topicTitle: articleId,
+          titleTag: preservedTitleTag, // Preserve titleTag from directArticleTopic
+          status: "ready" as const,
+        }
+      ]);
+      
+      // Clear topic input
+      updateDirectArticleTopic("");
+      
+      // Show notification with elapsed time
+      if (generationStartTime) {
+        const elapsedMs = Date.now() - generationStartTime;
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        const minutes = Math.floor(elapsedSeconds / 60);
+        const seconds = elapsedSeconds % 60;
+        const timeString = minutes > 0 
+          ? `${minutes} хв ${seconds} сек`
+          : `${seconds} сек`;
+        
+        setNotification({
+          message: "Статтю згенеровано успішно",
+          time: timeString,
+          visible: true,
+        });
+        setGenerationStartTime(null);
+        // Play success sound after article generation
+        playSuccessSound();
+      }
+    } catch (error) {
+      console.error(error);
+      const errorMessage = (error as Error).message || "Не вдалося згенерувати статтю. Спробуйте ще раз.";
+      setNotification({
+        message: errorMessage,
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 6000);
+      
+      // Mark as error
+      updateGeneratedArticles(prev => prev.map(a =>
+        a.topicTitle === articleId
+          ? { ...a, status: "error" as const }
+          : a
+      ));
+    } finally {
+      setLoadingStep(null);
+      setIsGeneratingArticles(false);
+      if (generationStartTime) {
+        setGenerationStartTime(null);
+      }
+    }
+  };
+
+  const generateArticlesForSelected = async () => {
+    if (selectedTopicIds.length === 0) {
+      setNotification({
+        message: "Будь ласка, оберіть принаймні одну тему для генерації статті",
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 5000);
+      return;
+    }
+
+    if (!topicsData) {
+      setNotification({
+        message: "Будь ласка, спочатку згенеруйте теми в Step 1",
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 5000);
+      return;
+    }
+
+    const selectedTopics = topicsData.topics.filter(t => selectedTopicIds.includes(t.id));
+    
+    // Scroll to articles section after a short delay to allow UI to update
+    setTimeout(() => {
+      if (generatedArticlesSectionRef.current) {
+        generatedArticlesSectionRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }
+    }, 100);
+    
+    await generateArticlesForTopics(selectedTopics, false);
+  };
+
+  const toggleArticleEdit = (topicId: string) => {
+    setEditingArticles(prev => {
+      const next = new Set(prev);
+      if (next.has(topicId)) {
+        next.delete(topicId);
+      } else {
+        next.add(topicId);
+      }
+      return next;
+    });
+  };
+
+  const downloadArticle = (topicId: string, content: string, format: "txt" | "html" | "pdf" = "txt") => {
+    const article = generatedArticles.find(a => a.topicTitle === topicId);
+    const topic = mode === "discovery" ? topicsData?.topics.find(t => t.id === topicId) : undefined;
+    const title = article?.titleTag 
+      ? stripHtmlTags(article.titleTag)
+      : (mode === "direct" 
+          ? topicId.replace(/^direct-\d+-/, "")
+          : (topic?.workingTitle || topicId));
+    
+    let blob: Blob;
+    let filename: string;
+    let mimeType: string;
+
+    if (format === "html") {
+      // For HTML, preserve the HTML tags and wrap in a proper HTML document
+      const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    h1, h2, h3 { margin: 1.5rem 0 0.75rem 0; font-weight: 600; }
+    p { margin: 0.75rem 0; }
+    a { color: #0066cc; text-decoration: underline; font-weight: 600; }
+    b, strong { font-weight: 600; }
+  </style>
+</head>
+<body>
+  ${content}
+</body>
+</html>`;
+      blob = new Blob([htmlContent], { type: "text/html" });
+      filename = `${title.replace(/[^a-z0-9]/gi, "_")}.html`;
+      mimeType = "text/html";
+    } else if (format === "pdf") {
+      // For PDF, create HTML content and use browser's print to PDF
+      const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    @media print {
+      body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+      h1, h2, h3 { margin: 1.5rem 0 0.75rem 0; font-weight: 600; page-break-after: avoid; }
+      p { margin: 0.75rem 0; }
+      a { color: #0066cc; text-decoration: underline; font-weight: 600; }
+      b, strong { font-weight: 600; }
+    }
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    h1, h2, h3 { margin: 1.5rem 0 0.75rem 0; font-weight: 600; }
+    p { margin: 0.75rem 0; }
+    a { color: #0066cc; text-decoration: underline; font-weight: 600; }
+    b, strong { font-weight: 600; }
+  </style>
+</head>
+<body>
+  ${content}
+</body>
+</html>`;
+      
+      // Open print dialog for PDF
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      return; // Exit early for PDF
+    } else {
+      // For plain text, strip HTML tags but preserve structure
+      const plainText = content
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/H[1-3]:\s*/gi, '') // Remove H1:/H2:/H3: prefixes
+        .replace(/\n\s*\n\s*\n/g, '\n\n'); // Normalize line breaks
+      blob = new Blob([plainText], { type: "text/plain" });
+      filename = `${title.replace(/[^a-z0-9]/gi, "_")}.txt`;
+      mimeType = "text/plain";
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const getArticleText = (article: GeneratedArticle): string => {
+    return article.editedText || article.articleBodyHtml || article.fullArticleText;
+  };
+
+  const stripHtmlTags = (html: string): string => {
+    return html.replace(/<[^>]*>/g, '').replace(/H[1-3]:\s*/gi, '').trim();
+  };
+
+  const getWordCount = (text: string): number => {
+    const plainText = stripHtmlTags(text);
+    return plainText.split(/\s+/).filter(word => word.length > 0).length;
+  };
+
+  const formatWordCount = (count: number): string => {
+    return count.toLocaleString('en-US');
+  };
+
+  const getArticleTitle = (article: GeneratedArticle, topic?: Topic): string => {
+    // Get title from article or topic, strip HTML tags
+    // For DirectArticleCreation mode, use titleTag (which is set from directArticleTopic during generation)
+    let title = article.titleTag || topic?.workingTitle || "";
+    
+    // For direct mode, if no titleTag, use directArticleTopic as fallback
+    if (mode === "direct" && !title) {
+      // Fallback to directArticleTopic if available
+      title = directArticleTopic || "";
+    }
+    
+    const cleaned = stripHtmlTags(title);
+    // Ensure we always return a non-empty string for image generation
+    const result = cleaned || "Article";
+    return result;
+  };
+
+  const getArticleSummary = (article: GeneratedArticle, topic?: Topic): string => {
+    // Prefer topic's shortAngle, otherwise use first 1-2 sentences from article
+    if (topic?.shortAngle) {
+      return topic.shortAngle;
+    }
+    const text = getArticleText(article);
+    const plainText = stripHtmlTags(text);
+    const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    return sentences.slice(0, 2).join(". ").trim() + (sentences.length > 2 ? "." : "");
+  };
+
+  const getArticlePreview = (article: GeneratedArticle): string => {
+    const text = getArticleText(article);
+    // Strip HTML tags for preview - plain text only
+    const plainText = stripHtmlTags(text);
+    const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    return sentences.slice(0, 3).join(". ") + (sentences.length > 3 ? "..." : "");
+  };
+
+  // Play success sound function (reusable)
+  const playSuccessSound = () => {
+    try {
+      // Create a pleasant, soft success sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Use lower octave for softer sound (C4, E4, G4 instead of C5, E5, G5)
+      const frequencies = [261.63, 329.63, 392.00]; // C4, E4, G4 - more mellow
+      const duration = 0.6; // Longer duration for smoother fade
+      
+      frequencies.forEach((freq, index) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Use sine wave for the softest sound
+        oscillator.type = 'sine';
+        oscillator.frequency.value = freq;
+
+        // Very soft volume with smooth envelope
+        const startTime = audioContext.currentTime + index * 0.08;
+        const attackTime = 0.05; // Slow attack
+        const sustainTime = 0.2;
+        const releaseTime = 0.35; // Long, smooth release
+        
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.08, startTime + attackTime); // Very quiet (0.08 instead of 0.15)
+        gainNode.gain.setValueAtTime(0.08, startTime + attackTime + sustainTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + attackTime + sustainTime + releaseTime);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + attackTime + sustainTime + releaseTime);
+      });
+    } catch (error) {
+      // Silently fail if audio is not supported or user hasn't interacted
+      console.debug("Audio playback not available:", error);
+    }
+  };
+
+  // Generate hero image for an article
+  const generateArticleImage = async (topicId: string) => {
+    const article = generatedArticles.find(a => a.topicTitle === topicId);
+    
+    if (!article) {
+      console.error("[generateArticleImage] Article not found", { topicId, generatedArticles: generatedArticles.map(a => a.topicTitle) });
+      return;
+    }
+    
+    // For discovery mode, we need topicsData
+    // For direct mode, we can work without it
+    const topic = mode === "discovery" ? topicsData?.topics.find(t => t.id === topicId) : undefined;
+    
+    if (mode === "discovery" && !topic) {
+      console.error("[generateArticleImage] Topic not found in discovery mode", { topicId, mode });
+      return;
+    }
+
+    setIsGeneratingImage(prev => new Set(prev).add(topicId));
+    setImageLoaderMessages(prev => {
+      const next = new Map(prev);
+      if (!next.has(topicId)) {
+        next.set(topicId, 0);
+      }
+      return next;
+    });
+
+    try {
+      // Collect data for image generation
+      // CRITICAL: Use the correct brief based on current mode - NO fallback to projectBasics to avoid mixing modes
+      const currentMode = persistedState.mode; // Get mode directly from persistedState to ensure accuracy
+      const currentBrief = currentMode === "discovery" 
+        ? (persistedState.discoveryProjectBasics || defaultBrief)
+        : (persistedState.directProjectBasics || defaultBrief);
+      
+      const articleTitle = getArticleTitle(article, topic);
+      const niche = currentBrief.niche || "";
+      const mainPlatform = currentBrief.platform || "Multi-platform";
+      const contentPurpose = currentBrief.contentPurpose || "Guest post / outreach";
+      // Extract brand name from clientSite if available, otherwise use default
+      const brandName = currentBrief.clientSite 
+        ? currentBrief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "") || "PromosoundGroup"
+        : "PromosoundGroup";
+
+      console.log("[generateArticleImage] Data collected", { 
+        mode: currentMode,
+        articleTitle, 
+        niche, 
+        mainPlatform, 
+        contentPurpose, 
+        brandName,
+        articleTitleTag: article.titleTag,
+        articleTopicTitle: article.topicTitle,
+        directArticleTopic,
+        discoveryProjectBasics: persistedState.discoveryProjectBasics,
+        directProjectBasics: persistedState.directProjectBasics,
+        currentBrief: {
+          niche: currentBrief.niche,
+          platform: currentBrief.platform,
+          contentPurpose: currentBrief.contentPurpose,
+          clientSite: currentBrief.clientSite
+        },
+        article: {
+          titleTag: article.titleTag,
+          topicTitle: article.topicTitle,
+          status: article.status
+        }
+      });
+
+      // Validate all required fields before sending request
+      if (!articleTitle || !niche || !mainPlatform || !contentPurpose || !brandName) {
+        const errorMsg = `Missing required fields for image generation: articleTitle=${!!articleTitle}, niche=${!!niche}, mainPlatform=${!!mainPlatform}, contentPurpose=${!!contentPurpose}, brandName=${!!brandName}`;
+        console.error("[generateArticleImage]", errorMsg, {
+          articleTitle,
+          niche,
+          mainPlatform,
+          contentPurpose,
+          brandName,
+          currentBrief,
+          mode
+        });
+        throw new Error(errorMsg);
+      }
+
+      const response = await fetch("/api/article-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleTitle,
+          niche,
+          mainPlatform,
+          contentPurpose,
+          brandName,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to generate image");
+      }
+
+      const data = await response.json() as { success: boolean; imageBase64?: string; error?: string };
+
+      if (data.success && data.imageBase64) {
+        setArticleImages(prev => {
+          const next = new Map(prev);
+          next.set(topicId, data.imageBase64!);
+          // Note: Not persisting to localStorage to avoid quota issues
+          // Images are stored in component state only and can be regenerated
+          return next;
+        });
+        // Play success sound after image generation (including regeneration)
+        playSuccessSound();
+      } else {
+        throw new Error(data.error || "Image generation failed");
+      }
+    } catch (error) {
+      console.error("Image generation error:", error);
+      const errorMessage = (error as Error).message || "Не вдалося згенерувати зображення. Спробуйте ще раз.";
+      setNotification({
+        message: errorMessage,
+        time: "",
+        visible: true,
+      });
+      setTimeout(() => setNotification(prev => prev ? { ...prev, visible: false } : null), 6000);
+    } finally {
+      setIsGeneratingImage(prev => {
+        const next = new Set(prev);
+        next.delete(topicId);
+        return next;
+      });
+    }
+  };
+
+  // Helper to create slug from title
+  const createSlug = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .substring(0, 50);
+  };
+
+  const copyDraft = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:124',message:'copyDraft called',data:{hasDraft:!!draft,draftLength:draft.length},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
+    // #endregion
+    if (!draft) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(draft);
+      setCopyStatus("copied");
+      setTimeout(() => setCopyStatus("idle"), 2000);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:131',message:'copyDraft success',data:{status:'copied'},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
+      // #endregion
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:134',message:'copyDraft error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
+      // #endregion
+      console.error(error);
+      alert("Copy failed. Please copy the draft manually.");
+    }
+  };
+
+  const isLoading = (step: Exclude<LoadingStep, null>) =>
+    loadingStep === step;
+
+  // Close image preview modal on Escape key
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && viewingImage) {
+        setViewingImage(null);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [viewingImage]);
+
+  // Track start times for image loaders
+  useEffect(() => {
+    setImageLoaderStartTimes(prev => {
+      const next = new Map(prev);
+      isGeneratingImage.forEach(topicId => {
+        if (!next.has(topicId)) {
+          next.set(topicId, Date.now());
+        }
+      });
+      // Remove finished loaders
+      prev.forEach((_, topicId) => {
+        if (!isGeneratingImage.has(topicId)) {
+          next.delete(topicId);
+        }
+      });
+      return next;
+    });
+  }, [isGeneratingImage]);
+
+  // Update elapsed time for image loaders every second
+  useEffect(() => {
+    if (imageLoaderStartTimes.size === 0) return;
+
+    const timerInterval = setInterval(() => {
+      setImageLoaderElapsed(prev => {
+        const next = new Map(prev);
+        imageLoaderStartTimes.forEach((startTime, topicId) => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          next.set(topicId, elapsed);
+        });
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [imageLoaderStartTimes]);
+
+  // Rotate image loader messages asynchronously for each loader
+  useEffect(() => {
+    if (isGeneratingImage.size === 0) return;
+
+    const intervals: Map<string, NodeJS.Timeout> = new Map();
+    const timeouts: Map<string, NodeJS.Timeout> = new Map();
+
+    // Create independent interval for each generating image
+    isGeneratingImage.forEach(topicId => {
+      // Random initial delay (0-2000ms) to desynchronize loaders
+      const initialDelay = Math.random() * 2000;
+      
+      const timeout = setTimeout(() => {
+        // First update after initial delay
+        setImageLoaderMessages(prev => {
+          const next = new Map(prev);
+          const currentIndex = next.get(topicId) || 0;
+          next.set(topicId, (currentIndex + 1) % 7);
+          return next;
+        });
+
+        // Then set up regular interval for this specific loader
+        const interval = setInterval(() => {
+          setImageLoaderMessages(prev => {
+            const next = new Map(prev);
+            const currentIndex = next.get(topicId) || 0;
+            next.set(topicId, (currentIndex + 1) % 7); // 7 messages in imageMessages array
+            return next;
+          });
+        }, 3500); // Rotate every 3.5 seconds
+
+        intervals.set(topicId, interval);
+      }, initialDelay);
+
+      timeouts.set(topicId, timeout);
+    });
+
+    return () => {
+      // Clean up all intervals and timeouts
+      intervals.forEach(interval => clearInterval(interval));
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [isGeneratingImage]);
+
+  // Track start times for article loaders
+  useEffect(() => {
+    const generatingArticles = generatedArticles.filter(a => a.status === "generating");
+    const generatingTopicIds = new Set(generatingArticles.map(a => a.topicTitle));
+    
+    setArticleLoaderStartTimes(prev => {
+      const next = new Map(prev);
+      generatingTopicIds.forEach(topicId => {
+        if (!next.has(topicId)) {
+          next.set(topicId, Date.now());
+        }
+      });
+      // Remove finished loaders
+      prev.forEach((_, topicId) => {
+        if (!generatingTopicIds.has(topicId)) {
+          next.delete(topicId);
+        }
+      });
+      return next;
+    });
+  }, [generatedArticles]);
+
+  // Update elapsed time for article loaders every second
+  useEffect(() => {
+    if (articleLoaderStartTimes.size === 0) return;
+
+    const timerInterval = setInterval(() => {
+      setArticleLoaderElapsed(prev => {
+        const next = new Map(prev);
+        articleLoaderStartTimes.forEach((startTime, topicId) => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          next.set(topicId, elapsed);
+        });
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [articleLoaderStartTimes]);
+
+  // Rotate article loader messages asynchronously for each loader
+  useEffect(() => {
+    const generatingArticles = generatedArticles.filter(a => a.status === "generating");
+    if (generatingArticles.length === 0) return;
+
+    const intervals: Map<string, NodeJS.Timeout> = new Map();
+    const timeouts: Map<string, NodeJS.Timeout> = new Map();
+
+    // Create independent interval for each generating article
+    generatingArticles.forEach(article => {
+      const topicId = article.topicTitle;
+      
+      // Random initial delay (0-2000ms) to desynchronize loaders
+      const initialDelay = Math.random() * 2000;
+      
+      const timeout = setTimeout(() => {
+        // First update after initial delay
+        setArticleLoaderMessages(prev => {
+          const next = new Map(prev);
+          const currentIndex = next.get(topicId) || 0;
+          next.set(topicId, (currentIndex + 1) % 8);
+          return next;
+        });
+
+        // Then set up regular interval for this specific loader
+        const interval = setInterval(() => {
+          setArticleLoaderMessages(prev => {
+            const next = new Map(prev);
+            const currentIndex = next.get(topicId) || 0;
+            next.set(topicId, (currentIndex + 1) % 8); // 8 messages in articleMessages array
+            return next;
+          });
+        }, 3500); // Rotate every 3.5 seconds
+
+        intervals.set(topicId, interval);
+      }, initialDelay);
+
+      timeouts.set(topicId, timeout);
+    });
+
+    return () => {
+      // Clean up all intervals and timeouts
+      intervals.forEach(interval => clearInterval(interval));
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [generatedArticles]);
+
+  // Play success sound when article or image is generated
+  // Note: We also call playSuccessSound() directly after generation for immediate feedback
+  // This useEffect serves as a backup to catch any missed completions
+  // IMPORTANT: This effect only triggers on changes to generatedArticles or articleImages.
+  // Theme and mode changes do NOT modify these arrays, so no sound will play when switching themes or modes.
+  // We also explicitly check that we're not in the middle of a theme or mode change to prevent any accidental sounds.
+  useEffect(() => {
+    // Skip sound if theme just changed (to prevent sound on theme switch)
+    if (prevThemeRef.current !== theme) {
+      prevThemeRef.current = theme;
+      return; // Don't play sound when theme changes
+    }
+    
+    // Skip sound if mode just changed (to prevent sound on mode switch)
+    if (prevModeRef.current !== mode) {
+      prevModeRef.current = mode;
+      return; // Don't play sound when mode changes
+    }
+    
+    // Check for newly completed articles
+    const completedArticles = generatedArticles.filter(a => a.status === "ready");
+    const completedImages = Array.from(articleImages.keys());
+
+    // Check for new completions
+    completedArticles.forEach(article => {
+      if (!prevCompletedArticlesRef.current.has(article.topicTitle)) {
+        // Only play sound if it wasn't already played directly after generation
+        // The direct calls in generate functions will handle most cases
+        setTimeout(() => {
+          playSuccessSound();
+        }, 100); // Small delay to avoid double sound if called directly
+        prevCompletedArticlesRef.current.add(article.topicTitle);
+      }
+    });
+
+    completedImages.forEach(imageId => {
+      if (!prevCompletedImagesRef.current.has(imageId)) {
+        // Image sounds are already handled in generateArticleImage
+        // This is just a backup
+        prevCompletedImagesRef.current.add(imageId);
+      }
+    });
+
+    // Update refs with current state
+    prevCompletedArticlesRef.current = new Set(completedArticles.map(a => a.topicTitle));
+    prevCompletedImagesRef.current = new Set(completedImages);
+  }, [generatedArticles, articleImages]);
+  
+  // Update theme ref when theme changes (separate effect to avoid triggering sound effect)
+  useEffect(() => {
+    prevThemeRef.current = theme;
+  }, [theme]);
+  
+  // Update mode ref when mode changes (separate effect to avoid triggering sound effect)
+  useEffect(() => {
+    prevModeRef.current = mode;
+  }, [mode]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".download-dropdown-wrapper")) {
+        document.querySelectorAll(".download-dropdown.show").forEach(dropdown => {
+          dropdown.classList.remove("show");
+        });
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  // Close modal when clicking outside
+  useEffect(() => {
+    const handleModalClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.classList.contains("article-view-modal")) {
+        setViewingArticle(null);
+      }
+    };
+
+    if (viewingArticle) {
+      document.addEventListener("click", handleModalClick);
+      return () => document.removeEventListener("click", handleModalClick);
+    }
+  }, [viewingArticle]);
+
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:145',message:'Component mounted - state verification',data:{briefFields:Object.keys(brief),topicsCount:topicsData?.topics.length || 0,selectedTopicsCount:selectedTopicIds.length,mode},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
+  }, [brief, topicsData, selectedTopicIds, mode]);
+  // #endregion
+
+  // Prevent hydration mismatch by not rendering until hydrated
+  if (!isHydrated) {
+    return (
+      <div className="page">
+        <div style={{ textAlign: "center", padding: "2rem" }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`page ${isGeneratingTopics ? "loading-active" : ""}`}>
+      {/* Loading Overlays */}
+      {isGeneratingTopics && <LoadingOverlay isOpen={isGeneratingTopics} mode="topics" />}
+      
+      {/* Image Preview Modal */}
+      {viewingImage && articleImages.has(viewingImage) && (
+        <div className="image-preview-modal" onClick={() => setViewingImage(null)}>
+          <div className="image-preview-backdrop"></div>
+          <div className="image-preview-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="image-preview-close"
+              onClick={() => setViewingImage(null)}
+              aria-label="Close preview"
+            >
+              ×
+            </button>
+            <img
+              src={`data:image/png;base64,${articleImages.get(viewingImage)}`}
+              alt="Hero image preview"
+              className="image-preview-full"
+            />
+          </div>
+        </div>
+      )}
+      
+      <header className="page-header">
+        <div className="eyebrow">Outreach Articles App</div>
+        <h1>Universal Content Creator</h1>
+        <p className="page-subtitle">Plan and draft outreach content in one place</p>
+        <div className="theme-switch-container">
+          <button
+            type="button"
+            className={`theme-toggle ${theme === "dark" ? "dark-active" : ""}`}
+            onClick={() => updateTheme(theme === "light" ? "dark" : "light")}
+            title={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+            aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+          >
+            <div className="theme-toggle-track">
+              <div className="theme-toggle-thumb">
+                {theme === "light" ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="2" fill="none"/>
+                    <path d="M12 1v3M12 20v3M23 12h-3M4 12H1M19.07 4.93l-2.12 2.12M6.05 17.95l-2.12 2.12M19.07 19.07l-2.12-2.12M6.05 6.05l-2.12-2.12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+            </div>
+          </button>
+        </div>
+      </header>
+
+      <main className="content">
+          {/* Mode Switch */}
+          <div className="mode-switch">
+            <button
+              type="button"
+              className={`mode-tab ${mode === "discovery" ? "active" : ""}`}
+              onClick={() => updateMode("discovery")}
+            >
+              <span className="mode-tab-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14 14L11.1067 11.1067" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+              <span className="mode-tab-text">Topic Discovery Mode</span>
+            </button>
+            <button
+              type="button"
+              className={`mode-tab ${mode === "direct" ? "active" : ""}`}
+              onClick={() => updateMode("direct")}
+            >
+              <span className="mode-tab-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10.4713 14.1953C10.3463 14.3203 10.1768 14.3905 9.99998 14.3905C9.8232 14.3905 9.65367 14.3203 9.52865 14.1953L8.47131 13.138C8.34633 13.013 8.27612 12.8435 8.27612 12.6667C8.27612 12.4899 8.34633 12.3204 8.47131 12.1953L12.1953 8.47134C12.3203 8.34636 12.4899 8.27615 12.6666 8.27615C12.8434 8.27615 13.013 8.34636 13.138 8.47134L14.1953 9.52868C14.3203 9.6537 14.3905 9.82324 14.3905 10C14.3905 10.1768 14.3203 10.3463 14.1953 10.4713L10.4713 14.1953Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M11.9999 8.66668L11.0833 4.08401C11.0583 3.95933 10.9983 3.84438 10.9101 3.75272C10.822 3.66106 10.7095 3.59651 10.5859 3.56668L2.15659 1.35201C2.04554 1.32517 1.92946 1.32731 1.81947 1.35823C1.70949 1.38915 1.6093 1.44782 1.52851 1.52861C1.44773 1.60939 1.38906 1.70958 1.35814 1.81956C1.32721 1.92955 1.32507 2.04563 1.35192 2.15668L3.56659 10.586C3.59642 10.7096 3.66097 10.8221 3.75263 10.9102C3.84429 10.9983 3.95924 11.0584 4.08392 11.0833L8.66659 12" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1.5332 1.53333L6.39054 6.39066" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7.33333 8.66667C8.06971 8.66667 8.66667 8.06971 8.66667 7.33333C8.66667 6.59695 8.06971 6 7.33333 6C6.59695 6 6 6.59695 6 7.33333C6 8.06971 6.59695 8.66667 7.33333 8.66667Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+              <span className="mode-tab-text">Direct Article Creation</span>
+            </button>
+          </div>
+
+          {/* Main Card with Two Columns */}
+          <div className="main-card">
+          <div className="two-column-layout">
+            {/* Left Column: Project Basics */}
+            <div className="left-column">
+              <h2 className="column-title">Project basics</h2>
+              
+              <div className="form-fields">
+            <label>
+              <span>Main niche or theme</span>
+              <input
+                type="text"
+                value={brief.niche}
+                onChange={handleBriefChange("niche")}
+                placeholder="e.g. Beatport promotion for techno labels, TikTok growth for DJs"
+              />
+              <small>Describe the main topic or industry focus</small>
+              
+              {/* Niche Preset Chips */}
+              <div className="niche-presets">
+                {[
+                  "Spotify Promotion",
+                  "YouTube Promotion",
+                  "TikTok Promotion",
+                  "Instagram Promotion",
+                  "SoundCloud Promotion",
+                  "Beatport Promotion",
+                  "Multi-platform music promotion",
+                  "Playlist & chart promotion"
+                ].map((preset) => (
+                  <TagPill
+                    key={preset}
+                    label={preset}
+                    selected={brief.niche === preset}
+                    onClick={() => updateBrief({ niche: preset })}
+                  />
+                ))}
+              </div>
+            </label>
+
+            <label>
+              <span>Client site URL</span>
+              <input
+                type="text"
+                value={brief.clientSite}
+                onChange={handleBriefChange("clientSite")}
+                placeholder="https://client-site.com"
+              />
+            </label>
+
+            <label>
+              <span>Language</span>
+              <select
+                value={
+                  brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language)
+                    ? "Other (custom)"
+                    : (brief.language || "English")
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "Other (custom)") {
+                    // Show custom input field, keep current language value if it's custom
+                    const currentCustom = brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language)
+                      ? brief.language
+                      : "";
+                    updateBrief({ 
+                      language: currentCustom
+                    });
+                  } else {
+                    // Standard language selected - always save it
+                    updateBrief({ 
+                      language: value
+                    });
+                  }
+                }}
+              >
+                <option value="English">English</option>
+                <option value="German">German</option>
+                <option value="Spanish">Spanish</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="French">French</option>
+                <option value="Italian">Italian</option>
+                <option value="Polish">Polish</option>
+                <option value="Ukrainian">Ukrainian</option>
+                <option value="Other (custom)">Other (custom)</option>
+              </select>
+              {brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language) && (
+                <input
+                  type="text"
+                  value={brief.language}
+                  onChange={(e) => {
+                    const customValue = e.target.value;
+                    updateBrief({ 
+                      language: customValue // Store custom value directly in language field
+                    });
+                  }}
+                  placeholder="Enter custom language"
+                  style={{ marginTop: "8px" }}
+                />
+              )}
+              <small>Select the language for article generation</small>
+            </label>
+
+            <label>
+              <span>Main platform focus</span>
+              <input
+                type="text"
+                value={brief.platform || ""}
+                onChange={handleBriefChange("platform")}
+                placeholder="e.g. Multi-platform, Spotify, YouTube, TikTok, Instagram, SoundCloud, Beatport, or any custom query"
+              />
+              <small>Select a preset or enter a custom platform/query. This value will be used to search for relevant topics via Tavily browsing.</small>
+              
+              {/* Platform Preset Chips */}
+              <div className="niche-presets">
+                {[
+                  "Multi-platform",
+                  "Spotify",
+                  "YouTube",
+                  "TikTok",
+                  "Instagram",
+                  "SoundCloud",
+                  "Beatport",
+                  "Deezer",
+                  "Tidal",
+                  "Music industry"
+                ].map((preset) => (
+                  <TagPill
+                    key={preset}
+                    label={preset}
+                    selected={brief.platform === preset}
+                    onClick={() => updateBrief({ platform: preset })}
+                  />
+                ))}
+              </div>
+            </label>
+
+            <label>
+                  <span>Content purpose</span>
+                  <select
+                    value={brief.contentPurpose || ""}
+                    onChange={handleBriefChange("contentPurpose")}
+                  >
+                    <option value="">Select a purpose</option>
+                    <option value="Guest post / outreach">Guest post / outreach</option>
+                    <option value="Brand blog">Brand blog</option>
+                    <option value="Educational guide">Educational guide</option>
+                    <option value="Partner blog">Partner blog</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <small>This helps the engine tune tone and depth.</small>
+            </label>
+
+            <label>
+                  <span>Word count</span>
+              <input
+                type="number"
+                min={0}
+                value={brief.wordCount}
+                onChange={handleBriefChange("wordCount")}
+                placeholder="1200"
+              />
+            </label>
+          </div>
+
+              {/* Branded link details */}
+              <div className="info-block">
+                <h3>Branded link details</h3>
+                <label>
+                  <span>Anchor text</span>
+                  <input
+                    type="text"
+                    value={brief.anchorText || ""}
+                    onChange={handleBriefChange("anchorText")}
+                    placeholder="Enter anchor text"
+                  />
+                </label>
+                <label>
+                  <span>URL</span>
+                  <input
+                    type="text"
+                    value={brief.anchorUrl || ""}
+                    onChange={handleBriefChange("anchorUrl")}
+                    placeholder="https://example.com"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Right Column: Steps */}
+            <div className="right-column">
+              {/* Step 1 - Topics (Discovery) or Article Topic (Direct) */}
+              <div className="step-card">
+                <div className="step-header">
+                  <h3>
+                    {mode === "discovery" 
+                      ? "Step 1 – Generate and approve topics"
+                      : "Step 1 – Enter article topic"}
+                  </h3>
+                  {mode === "discovery" && (
+                    <p className="step-description">
+                      Tell the engine about your niche and link. It will research the landscape and return clusters of deep, non-generic topics with mini-briefs, so you can approve the best ones for article generation.
+                    </p>
+                  )}
+                  {mode === "direct" && (
+                    <p className="step-description">
+                      Enter the topic for your article. The engine will research sources and generate a complete article based on your Project Basis settings.
+                    </p>
+                  )}
+                </div>
+                
+                {mode === "discovery" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={generateTopics}
+                      disabled={isLoading("topics")}
+                    >
+                      {isLoading("topics") ? "Generating…" : "Generate topic ideas"}
+                    </button>
+
+                  </>
+                ) : (
+                  <>
+                    <div className="form-fields">
+                      <label>
+                        <span>Article Topic</span>
+                        <input
+                          type="text"
+                          value={directArticleTopic}
+                          onChange={(e) => updateDirectArticleTopic(e.target.value)}
+                          placeholder="Enter the topic for your article"
+                        />
+                      </label>
+                    </div>
+                    
+                    {/* Light Human Edit Toggle */}
+                    <div className="light-human-edit-toggle" style={{ marginTop: "1.25rem" }}>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={lightHumanEditEnabled}
+                          onChange={(e) => {
+                            setPersistedState(prev => ({
+                              ...prev,
+                              lightHumanEditEnabled: e.target.checked
+                            }));
+                          }}
+                          disabled={isGeneratingArticles}
+                        />
+                        <span className="checkbox-text">
+                          <strong>Light Human Edit</strong> (recommended)
+                          <span className="checkbox-hint">Improves text flow and naturalness</span>
+                        </span>
+                      </label>
+                    </div>
+
+                    <div style={{ marginTop: "1.25rem" }}>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          generateDirectArticle();
+                        }}
+                        disabled={isGeneratingArticles || !directArticleTopic?.trim() || !brief?.niche?.trim() || !briefWithDefaults?.language?.trim()}
+                        title={
+                          isGeneratingArticles 
+                            ? "Generating article..." 
+                            : !directArticleTopic?.trim() 
+                            ? "Please enter article topic"
+                            : !brief?.niche?.trim()
+                            ? "Please fill in Main niche or theme in Project Basis"
+                            : !brief?.language?.trim()
+                            ? "Please select Language in Project Basis"
+                            : "Generate article"
+                        }
+                      >
+                        {isGeneratingArticles ? "Generating Article…" : "Generate Article"}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {mode === "discovery" && topicsData && (
+                  <div className="topics-results">
+                    {/* Overview Card */}
+                    {topicsData.overview && (
+                      <div className="overview-card">
+                        <h4 className="overview-title">Overview</h4>
+                        <p className="overview-text">{topicsData.overview}</p>
+                      </div>
+                    )}
+
+                    {/* Group topics by cluster */}
+                    {(() => {
+                      const clustersMap = new Map<string, Topic[]>();
+                      topicsData.topics.forEach(topic => {
+                        if (!clustersMap.has(topic.clusterName)) {
+                          clustersMap.set(topic.clusterName, []);
+                        }
+                        clustersMap.get(topic.clusterName)!.push(topic);
+                      });
+
+                      return Array.from(clustersMap.entries()).map(([clusterName, topics], index) => {
+                        const isExpanded = expandedClusterNames.has(clusterName);
+                        const firstTopic = topics[0];
+                        const clusterNumber = index + 1;
+                        
+                        // Check status for first topic (since we only show first topic in cluster)
+                        const hasArticle = firstTopic ? generatedArticles.some(a => a.topicTitle === firstTopic.id && a.status === "ready") : false;
+                        const isGenerating = firstTopic ? generatedArticles.some(a => a.topicTitle === firstTopic.id && a.status === "generating") : false;
+                        const isCompleted = hasArticle || isGenerating;
+                        
+                        return (
+                          <div key={clusterName} className="topic-collapsible-wrapper">
+                            {/* Collapsed Header Card */}
+                            <div className="topic-header-card-wrapper">
+                              <button
+                                type="button"
+                                className={`topic-header-card ${isCompleted ? "topic-header-completed" : ""}`}
+                                onClick={() => !isCompleted && toggleClusterExpansion(clusterName)}
+                                disabled={isCompleted}
+                              >
+                                <div className="topic-header-content">
+                                  <h4 className="topic-cluster-name">
+                                    <span className="cluster-number-badge">{clusterNumber}</span>
+                                    {clusterName}
+                                    {hasArticle && (
+                                      <span className="topic-completed-badge-header" title="Article created">
+                                        ✓ Article created
+                                      </span>
+                                    )}
+                                    {isGenerating && (
+                                      <span className="topic-generating-badge-header" title="Generating article">
+                                        ⏳ Generating...
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <div className="topic-header-meta">
+                                    {firstTopic && (
+                                      <span className="topic-for-problem">
+                                        For: {firstTopic.forWho} · Problem: {firstTopic.problem}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!isCompleted && (
+                                  <span className="topic-chevron">
+                                    {isExpanded ? (
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M18 15L12 9L6 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    ) : (
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                className="topic-remove-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeCluster(clusterName);
+                                }}
+                                title="Remove cluster"
+                                aria-label="Remove cluster"
+                              >
+                                ×
+                              </button>
+                            </div>
+
+                            {/* Expanded Topics List - Show only first topic */}
+                            {isExpanded && firstTopic && (
+                              <div className="topics-in-cluster">
+                                {(() => {
+                                  const topic = firstTopic;
+                                  const isSelected = selectedTopicIds.includes(topic.id);
+                                  
+                                  const getSearchIntentLabel = (intent: Topic['searchIntent']) => {
+                                    switch (intent) {
+                                      case 'informational':
+                                      case 'strategic':
+                                        return 'Informational / Strategic insight';
+                                      case 'how_to':
+                                        return 'How-to / Strategic guide';
+                                      case 'problem_solving':
+                                        return 'Problem-solving';
+                                      case 'comparison':
+                                        return 'Comparison / Decision help';
+                                      default:
+                                        return intent;
+                                    }
+                                  };
+
+                                  const hasArticle = generatedArticles.some(a => a.topicTitle === topic.id && a.status === "ready");
+                                  const isGenerating = generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating");
+                                  const isCompleted = hasArticle || isGenerating;
+                                  
+                                  return (
+                                    <div key={topic.id} className={`topic-preview-card ${isSelected ? "selected" : ""} ${isCompleted ? "topic-completed" : ""}`}>
+                                      {/* Search Intent Pill - placed at the top for quick reference */}
+                                      <div className="topic-preview-field" style={{ marginBottom: "0.75rem" }}>
+                                        <span className="search-intent-pill-large">
+                                          {getSearchIntentLabel(topic.searchIntent)}
+                                        </span>
+                                      </div>
+
+                                      {/* Title and Actions */}
+                                      <div className="topic-preview-header">
+                                        <h5 className="topic-preview-title">{topic.workingTitle}</h5>
+                                        <div className="topic-preview-actions">
+                                          <label className="topic-checkbox-label">
+                                            <input
+                                              type="checkbox"
+                                              checked={isSelected}
+                                              disabled={isCompleted}
+                                              onChange={(e) => {
+                                                e.stopPropagation();
+                                                if (!isCompleted) {
+                                                  toggleTopicSelection(topic.id);
+                                                }
+                                              }}
+                                            />
+                                            <span>Add to queue</span>
+                                          </label>
+                                        </div>
+                                      </div>
+
+                                      {/* Quick Generate Button - appears when topic is selected */}
+                                      {isSelected && !isCompleted && (
+                                        <div className="topic-quick-generate">
+                                          <button
+                                            type="button"
+                                            className="btn-quick-generate"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              await handleQuickGenerate(topic);
+                                            }}
+                                            disabled={isGeneratingArticles || generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")}
+                                          >
+                                            {generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")
+                                              ? "Generating…"
+                                              : "Generate article"}
+                                          </button>
+                                        </div>
+                                      )}
+
+                                      {/* Short Angle */}
+                                      <div className="topic-preview-field">
+                                        <strong className="preview-label">Short angle (2–3 sentences):</strong>
+                                        <p className="preview-text">{topic.shortAngle}</p>
+                                      </div>
+
+                                      {/* Why Non-Generic */}
+                                      <div className="topic-preview-field">
+                                        <strong className="preview-label">Why it's non-generic and link-worthy:</strong>
+                                        <p className="preview-text">{topic.whyNonGeneric}</p>
+                                      </div>
+
+                                      {/* How Anchor Fits */}
+                                      <div className="topic-preview-field highlight-preview-field">
+                                        <strong className="preview-label">How your anchor fits:</strong>
+                                        <p className="preview-text">{topic.howAnchorFits}</p>
+                                      </div>
+
+                                      {/* Evergreen Potential */}
+                                      <div className="topic-preview-field">
+                                        <strong className="preview-label">Evergreen potential:</strong>
+                                        <div className="evergreen-preview">
+                                          <div className="evergreen-dots-row">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                              <span
+                                                key={i}
+                                                className={`evergreen-dot-preview ${i <= topic.evergreenScore ? "filled" : "empty"}`}
+                                              >
+                                                ●
+                                              </span>
+                                            ))}
+                                          </div>
+                                          <span className="evergreen-explanation">{topic.evergreenNote}</span>
+                                        </div>
+                                      </div>
+
+                                      {/* Competition */}
+                                      <div className="topic-preview-field">
+                                        <strong className="preview-label">Competition:</strong>
+                                        <div className="competition-preview">
+                                          <span className={`competition-pill-preview ${topic.competitionLevel}`}>
+                                            {topic.competitionLevel.charAt(0).toUpperCase() + topic.competitionLevel.slice(1)}
+                                          </span>
+                                          <span className="competition-explanation">{topic.competitionNote}</span>
+        </div>
+      </div>
+      
+      {/* Notification */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          time={notification.time}
+          isVisible={notification.visible}
+          onClose={() => setNotification(null)}
+        />
+      )}
+    </div>
+  );
+})()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+
+                    {/* Topics Selected Counter */}
+                    {selectedTopicIds.length > 0 && (
+                      <div className="topics-selected-summary">
+                        <span className="selected-count">Topics selected: {selectedTopicIds.length}</span>
+                        <button
+                          type="button"
+                          className="clear-selections-btn"
+                          onClick={clearSelections}
+                        >
+                          Clear selections
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!topicsData && !isLoading("topics") && (
+                  <p className="empty-state">Topic ideas will appear here after generation.</p>
+                )}
+              </div>
+
+              {/* Step 2 - Article Draft (Discovery Mode only) */}
+              {mode === "discovery" && (
+                <div className={`step-card ${selectedTopicIds.length === 0 ? "step-card-inactive" : "step-card-active"}`}>
+                  <div className="step-header">
+                    <h3>Step 2 – Generate articles from selected topics</h3>
+                    <p className="step-description">
+                      Choose any topics from Step 1 and turn them into fully written outreach or blog articles. The engine uses our internal templates and delivers clean, human-sounding content ready for editors.
+                    </p>
+                  </div>
+
+                  <div className="step-content">
+                    {selectedTopicIds.length === 0 ? (
+                      <div className="step-inactive-message">
+                        <p>Select topics from Step 1 to enable article generation.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="step-actions">
+                          {/* Light Human Edit Toggle */}
+                          <div className="light-human-edit-toggle">
+                            <label className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={lightHumanEditEnabled}
+                                onChange={(e) => {
+                                  setPersistedState(prev => ({
+                                    ...prev,
+                                    lightHumanEditEnabled: e.target.checked
+                                  }));
+                                }}
+                                disabled={isGeneratingArticles}
+                              />
+                              <span className="checkbox-text">
+                                <strong>Light Human Edit</strong> (recommended)
+                                <span className="checkbox-hint">Improves text flow and naturalness</span>
+                              </span>
+                            </label>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn-primary btn-generate-articles"
+                            onClick={generateArticlesForSelected}
+                            disabled={isGeneratingArticles}
+                          >
+                            {isGeneratingArticles 
+                              ? "Generating…" 
+                              : selectedTopicIds.length === 1
+                                ? "Generate article"
+                                : `Generate articles (${selectedTopicIds.length} selected)`
+                            }
+                          </button>
+                        </div>
+                        
+                        <div className="topics-selected-status">
+                          <span className="topics-count-badge">{selectedTopicIds.length} topic{selectedTopicIds.length !== 1 ? 's' : ''} selected</span>
+                          <span>Ready to generate articles</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Generated Articles Section */}
+              {generatedArticles.length > 0 && (
+                <div className="generated-articles-section" ref={generatedArticlesSectionRef}>
+                  <h3 className="section-title">Generated Articles</h3>
+                  <div className="articles-list">
+                    {generatedArticles.map((article) => {
+                      const topicId = article.topicTitle;
+                      // For discovery mode, find topic in topicsData
+                      // For direct mode, topicTitle is stored in topicTitle (which is the articleId, but we extract the actual topic)
+                      const topic = mode === "discovery" ? topicsData?.topics.find(t => t.id === topicId) : undefined;
+                      const isEditing = editingArticles.has(topicId);
+                      const isViewing = viewingArticle === topicId;
+                      const articleText = getArticleText(article);
+                      
+                      const articleTitle = getArticleTitle(article, topic);
+                      const articleSummary = getArticleSummary(article, topic);
+                      const wordCount = getWordCount(articleText);
+                      const formattedWordCount = formatWordCount(wordCount);
+                      // For direct mode, use articleTitle or extract from topicId; for discovery, use topic.workingTitle
+                      const topicTitle = mode === "direct" 
+                        ? (article.titleTag ? stripHtmlTags(article.titleTag) : topicId.replace(/^direct-\d+-/, ""))
+                        : (topic?.workingTitle || topicId);
+                      const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : null;
+                      
+                      return (
+                        <div key={topicId} className="article-result-card" data-article-id={topicId}>
+                          <div className="article-result-header">
+                            <div>
+                              {/* Topic Title - H-level, bold, plain text (main heading) */}
+                              <h3 className="article-result-title">{topicTitle}</h3>
+                              
+                              {/* Title Tag - short phrase, regular text (subtitle) */}
+                              {titleTag && titleTag !== topicTitle && (
+                                <p className="article-title-tag">{titleTag}</p>
+                              )}
+                              
+                              {/* Article Summary - plain text, not bold */}
+                              {articleSummary && (
+                                <p className="article-summary-text">
+                                  <span className="article-summary-label">Summary: </span>
+                                  {articleSummary}
+                                </p>
+                              )}
+                              
+                              {article && article.status === "ready" && (
+                                <div className="article-meta">
+                                  <span>Word count: {formattedWordCount} words</span>
+                                  <span>·</span>
+                                  <span>Anchor included</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="article-header-actions">
+                              {article && (
+                                <span className={`article-status ${article.status}`}>
+                                  {article.status === "generating" ? "Generating…" : article.status === "error" ? "Error" : "Ready"}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                className="article-remove-btn"
+                                onClick={() => removeArticle(topicId)}
+                                title="Remove article"
+                                aria-label="Remove article"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {article && article.status === "ready" ? (
+                            <div className="article-result-content">
+                              {/* Article Preview */}
+                              {/* Article Preview - plain text only, no bold formatting */}
+                              <div className="article-summary-box">
+                                <p className="article-preview-text">{getArticlePreview(article)}</p>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="article-actions">
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  onClick={() => setViewingArticle(isViewing ? null : topicId)}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                  <span>{isViewing ? "Close" : "View / Edit"}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(articleText).catch(() => {});
+                                    setCopyStatus("copied");
+                                    setTimeout(() => setCopyStatus("idle"), 2000);
+                                  }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                  <span>{copyStatus === "copied" && viewingArticle === topicId ? "Copied!" : "Copy text"}</span>
+                                </button>
+                                <div className="download-dropdown-wrapper">
+                                  <button
+                                    type="button"
+                                    className="btn-outline"
+                                    onClick={(e) => {
+                                      const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                                      dropdown?.classList.toggle("show");
+                                    }}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    <span>Download</span>
+                                  </button>
+                                  <div className="download-dropdown">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        downloadArticle(topicId, articleText, "txt");
+                                        (document.querySelector(".download-dropdown.show") as HTMLElement)?.classList.remove("show");
+                                      }}
+                                    >
+                                      Plain text (.txt)
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        downloadArticle(topicId, articleText, "html");
+                                        (document.querySelector(".download-dropdown.show") as HTMLElement)?.classList.remove("show");
+                                      }}
+                                    >
+                                      HTML (.html)
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        downloadArticle(topicId, articleText, "pdf");
+                                        (document.querySelector(".download-dropdown.show") as HTMLElement)?.classList.remove("show");
+                                      }}
+                                    >
+                                      PDF (.pdf)
+                                    </button>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  onClick={() => regenerateArticleForTopic(topicId)}
+                                  disabled={isGeneratingArticles}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.48L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                  <span>Regenerate</span>
+                                </button>
+                              </div>
+
+                              {/* View Modal */}
+                              {isViewing && (
+                                <div className="article-view-modal">
+                                  <div className="article-view-content">
+                                    <div className="article-view-header">
+                                      <h1 className="article-view-title">{article.titleTag || topic?.workingTitle || topicId}</h1>
+                                      <div className="article-view-header-actions">
+                                        <button
+                                          type="button"
+                                          className="btn-outline btn-sm"
+                                          onClick={async () => {
+                                            const html = article.articleBodyHtml || article.fullArticleText || articleText;
+                                            // Create plain text fallback
+                                            const temp = document.createElement('div');
+                                            temp.innerHTML = html;
+                                            const plain = temp.textContent ?? temp.innerText ?? '';
+
+                                            try {
+                                              if (navigator.clipboard && (window as any).ClipboardItem) {
+                                                const blobHtml = new Blob([html], { type: 'text/html' });
+                                                const blobText = new Blob([plain], { type: 'text/plain' });
+                                                const item = new (window as any).ClipboardItem({
+                                                  'text/html': blobHtml,
+                                                  'text/plain': blobText,
+                                                });
+                                                await navigator.clipboard.write([item]);
+                                              } else {
+                                                await navigator.clipboard.writeText(plain);
+                                              }
+                                              setCopyStatus("copied");
+                                              setTimeout(() => setCopyStatus("idle"), 2000);
+                                            } catch (err) {
+                                              console.error('Failed to copy:', err);
+                                              // Fallback to plain text
+                                              await navigator.clipboard.writeText(plain);
+                                              setCopyStatus("copied");
+                                              setTimeout(() => setCopyStatus("idle"), 2000);
+                                            }
+                                          }}
+                                        >
+                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                          <span>{copyStatus === "copied" && viewingArticle === topicId ? "Copied!" : "Copy text"}</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="close-modal-btn"
+                                          onClick={() => setViewingArticle(null)}
+                                        >
+                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                          <span>Close</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="article-view-body">
+                                      {/* Title Tag Section */}
+                                      <section className="article-meta-section">
+                                        <p className="article-meta-label">Title tag</p>
+                                        <p className="article-meta-value">{article.titleTag}</p>
+                                      </section>
+                                      
+                                      {/* Meta Description Section */}
+                                      {article.metaDescription && (
+                                        <section className="article-meta-section">
+                                          <p className="article-meta-label">Meta description</p>
+                                          <p className="article-meta-value">{article.metaDescription}</p>
+                                        </section>
+                                      )}
+                                      
+                                      {/* Article Body Section */}
+                                      <section className="article-meta-section article-body-section">
+                                        <p className="article-meta-label">Article body</p>
+                                        <div 
+                                          className="article-view-text" 
+                                          dangerouslySetInnerHTML={{ 
+                                            __html: (() => {
+                                              const htmlContent = article.articleBodyHtml || article.fullArticleText || articleText;
+                                              return htmlContent.replace(/H[1-3]:\s*/gi, '');
+                                            })()
+                                          }} 
+                                        />
+                                      </section>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Edit Mode */}
+                              {isEditing && !isViewing && (
+                                <div className="article-edit-section">
+                                  <label>
+                                    <span>Article text</span>
+                                    <textarea
+                                      className="article-textarea"
+                                      value={articleText}
+                                      onChange={(e) => {
+                                        updateGeneratedArticles(
+                                          generatedArticles.map(a =>
+                                            a.topicTitle === topicId
+                                              ? { ...a, editedText: e.target.value }
+                                              : a
+                                          )
+                                        );
+                                      }}
+                                      rows={15}
+                                    />
+                                  </label>
+                                </div>
+                              )}
+
+                              <p className="anchor-note">Anchor is already integrated naturally in the body, not as an ad.</p>
+
+                              {/* Hero Image Generation Section */}
+                              <div className="article-image-section">
+                                {!articleImages.has(topicId) && !isGeneratingImage.has(topicId) && (
+                                  <button
+                                    type="button"
+                                    className="btn-outline btn-generate-image"
+                                    onClick={() => generateArticleImage(topicId)}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    <span>Generate hero image for this article</span>
+                                  </button>
+                                )}
+                                
+                                {isGeneratingImage.has(topicId) && (
+                                  <div className="image-generating-local">
+                                    <div className="image-loader-local-container">
+                                      <h4 className="image-loader-title">Creating your hero image…</h4>
+                                      
+                                      {/* Equalizer Bars */}
+                                      <div className="image-equalizer-container">
+                                        {[1, 2, 3, 4, 5, 6, 7].map((index) => (
+                                          <div
+                                            key={index}
+                                            className="image-equalizer-bar"
+                                            style={{
+                                              animationDelay: `${index * 0.1}s`,
+                                            }}
+                                          />
+                                        ))}
+                                      </div>
+
+                                      {/* Status Messages */}
+                                      {(() => {
+                                        const imageMessages = [
+                                          "Composing the perfect visual concept…",
+                                          "Selecting color palette and mood…",
+                                          "Crafting cinematic lighting and depth…",
+                                          "Refining details for professional quality…",
+                                          "Ensuring art-direction-level polish…",
+                                          "Adding subtle motion and atmosphere…",
+                                          "Balancing composition and negative space…",
+                                        ];
+                                        const messageIndex = imageLoaderMessages.get(topicId) || 0;
+                                        const currentMessage = imageMessages[messageIndex % imageMessages.length];
+                                        
+                                        return (
+                                          <div className="image-loader-messages">
+                                            <p className="image-loader-message">{currentMessage}</p>
+                                          </div>
+                                        );
+                                      })()}
+
+                                      {/* Timer */}
+                                      {(() => {
+                                        const formatTime = (seconds: number): string => {
+                                          const mins = Math.floor(seconds / 60);
+                                          const secs = seconds % 60;
+                                          return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                                        };
+                                        const elapsed = imageLoaderElapsed.get(topicId) || 0;
+                                        
+                                        return (
+                                          <div className="image-loader-timer">
+                                            <span className="image-loader-timer-icon">⏱</span>
+                                            <span className="image-loader-timer-text">Elapsed: {formatTime(elapsed)}</span>
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {articleImages.has(topicId) && (
+                                  <div className="article-image-container">
+                                    <div 
+                                      className="article-image-preview-wrapper"
+                                      onClick={() => setViewingImage(topicId)}
+                                    >
+                                      <img
+                                        src={`data:image/png;base64,${articleImages.get(topicId)}`}
+                                        alt={`Hero image for ${articleTitle}`}
+                                        className="article-hero-image"
+                                      />
+                                      <div className="image-zoom-overlay">
+                                        <span className="zoom-icon">🔍</span>
+                                        <span className="zoom-text">Click to enlarge</span>
+                                      </div>
+                                    </div>
+                                    <div className="article-image-actions">
+                                      <button
+                                        type="button"
+                                        className="btn-outline"
+                                        onClick={() => generateArticleImage(topicId)}
+                                        disabled={isGeneratingImage.has(topicId)}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.48L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                        <span>{isGeneratingImage.has(topicId) ? "Regenerating…" : "Regenerate"}</span>
+                                      </button>
+                                      <a
+                                        href={`data:image/png;base64,${articleImages.get(topicId)}`}
+                                        download={`${createSlug(articleTitle)}-hero.png`}
+                                        className="btn-outline"
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          <polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                        <span>Download</span>
+                                      </a>
+                                      <button
+                                        type="button"
+                                        className="btn-outline"
+                                        onClick={() => {
+                                          setArticleImages(prev => {
+                                            const next = new Map(prev);
+                                            next.delete(topicId);
+                                            // Note: Not persisting to localStorage to avoid quota issues
+                                            return next;
+                                          });
+                                        }}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                        <span>Remove</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : article && article.status === "generating" ? (
+                            <div className="article-generating-local">
+                              <div className="article-loader-local-container">
+                                <h4 className="article-loader-title">Writing your outreach article…</h4>
+                                
+                                {/* Equalizer Bars */}
+                                <div className="article-equalizer-container">
+                                  {[1, 2, 3, 4, 5, 6, 7].map((index) => (
+                                    <div
+                                      key={index}
+                                      className="article-equalizer-bar"
+                                      style={{
+                                        animationDelay: `${index * 0.1}s`,
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+
+                                {/* Status Messages */}
+                                {(() => {
+                                  const articleMessages = [
+                                    "Drafting a human-sounding article, not robotic fluff…",
+                                    "Weaving your anchor into the story…",
+                                    "Balancing SEO structure with real reader value…",
+                                    "Structuring an article a real editor wouldn't delete on sight…",
+                                    "Making sure your anchor link feels natural, not spammy…",
+                                    "Filling the gaps with data, not filler sentences…",
+                                    "Cutting robotic phrasing so it sounds like a human strategist…",
+                                    "Double-checking that this actually helps a musician, not just an algorithm…",
+                                  ];
+                                  const messageIndex = articleLoaderMessages.get(topicId) || 0;
+                                  const currentMessage = articleMessages[messageIndex % articleMessages.length];
+                                  
+                                  return (
+                                    <div className="article-loader-messages">
+                                      <p className="article-loader-message">{currentMessage}</p>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Timer */}
+                                {(() => {
+                                  const formatTime = (seconds: number): string => {
+                                    const mins = Math.floor(seconds / 60);
+                                    const secs = seconds % 60;
+                                    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                                  };
+                                  const elapsed = articleLoaderElapsed.get(topicId) || 0;
+                                  
+                                  return (
+                                    <div className="article-loader-timer">
+                                      <span className="article-loader-timer-icon">⏱</span>
+                                      <span className="article-loader-timer-text">Elapsed: {formatTime(elapsed)}</span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          ) : article && article.status === "error" ? (
+                            <div className="article-error">
+                              <p>Failed to generate article. Please try again.</p>
+                            </div>
+                          ) : (
+                            <div className="topic-preview">
+                              {topic && (
+                                <>
+                                  <p className="topic-preview-description">{topic.shortAngle}</p>
+                                </>
+                              )}
+                              <span className="topic-status-pending">Pending</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Reset Project Button */}
+        <div style={{ textAlign: "center", marginTop: "2rem", paddingBottom: "2rem" }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Are you sure you want to reset the entire project? This will clear all topics, articles, and form data.")) {
+                resetPersistedState();
+                setExpandedClusterNames(new Set());
+                setViewingArticle(null);
+                setEditingArticles(new Set());
+              }
+            }}
+            style={{
+              background: "transparent",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              padding: "0.5rem 1rem",
+              color: "var(--text-muted)",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--secondary)";
+              e.currentTarget.style.color = "var(--foreground)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
+          >
+            Reset project
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
