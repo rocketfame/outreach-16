@@ -30,6 +30,7 @@ export interface CostEntry {
     tokens?: { input?: number; output?: number };
     images?: number;
     model?: string;
+    size?: string;
   };
   timestamp: number;
 }
