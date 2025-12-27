@@ -121,12 +121,72 @@ body {
   gap: 2rem;
 }
 
+/* Header Controls - Cost Display + Theme Toggle */
+.header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.cost-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.cost-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cost-label {
+  opacity: 0.7;
+  color: var(--text-muted);
+}
+
+.cost-value {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.cost-value.cost-total {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.cost-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .cost-display {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .cost-value.cost-total {
+  color: #60a5fa;
+}
+
 /* Theme Switch - Creative Toggle */
 .theme-switch-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 1rem;
 }
 
 .theme-toggle {
@@ -330,18 +390,36 @@ body {
 }
 
 .mode-tab.active {
-  background: var(--card);
-  color: #CA3500;
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--foreground);
+  color: var(--background);
+  border: 1px solid var(--foreground);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+}
+
+[data-theme="light"] .mode-tab.active {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #1a1a1a;
 }
 
 [data-theme="dark"] .mode-tab.active {
-  color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3), 0 1px 3px rgba(255, 107, 157, 0.2);
 }
 
 .mode-tab.active .mode-tab-icon {
-  color: #CA3500;
+  color: inherit;
+}
+
+[data-theme="light"] .mode-tab.active .mode-tab-icon {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .mode-tab.active .mode-tab-icon {
+  color: var(--primary-text);
 }
 
 .mode-tab:not(.active):hover {

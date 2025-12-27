@@ -3001,32 +3001,24 @@ export default function Home() {
         <div className="eyebrow">Outreach Articles App</div>
         <h1>Universal Content Creator</h1>
         <p className="page-subtitle">Plan and draft outreach content in one place</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '0.5rem' }}>
-          {/* Cost Tracker */}
+        
+        {/* Header Controls: Cost Tracker + Theme Toggle */}
+        <div className="header-controls">
           {costData && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              padding: '0.5rem 1rem',
-              background: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              fontFamily: 'monospace',
-            }}>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <span style={{ opacity: 0.7 }}>Tavily:</span>
-                <span style={{ fontWeight: 600 }}>{costData.formatted.tavily}</span>
+            <div className="cost-display">
+              <div className="cost-item">
+                <span className="cost-label">Tavily:</span>
+                <span className="cost-value">{costData.formatted.tavily}</span>
               </div>
-              <div style={{ width: '1px', height: '16px', background: theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}></div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <span style={{ opacity: 0.7 }}>OpenAI:</span>
-                <span style={{ fontWeight: 600 }}>{costData.formatted.openai}</span>
+              <div className="cost-divider"></div>
+              <div className="cost-item">
+                <span className="cost-label">OpenAI:</span>
+                <span className="cost-value">{costData.formatted.openai}</span>
               </div>
-              <div style={{ width: '1px', height: '16px', background: theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}></div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <span style={{ opacity: 0.7 }}>Total:</span>
-                <span style={{ fontWeight: 700, color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>{costData.formatted.total}</span>
+              <div className="cost-divider"></div>
+              <div className="cost-item">
+                <span className="cost-label">Total:</span>
+                <span className="cost-value cost-total">{costData.formatted.total}</span>
               </div>
             </div>
           )}
