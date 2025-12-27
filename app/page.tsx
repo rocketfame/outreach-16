@@ -1506,7 +1506,17 @@ export default function Home() {
                          editRequestLower.includes('додай зображення') ||
                          editRequestLower.includes('add image') ||
                          editRequestLower.includes('find image') ||
-                         editRequestLower.includes('знайди зображення');
+                         editRequestLower.includes('знайди зображення') ||
+                         editRequestLower.includes('бит') ||
+                         editRequestLower.includes('broken') ||
+                         editRequestLower.includes('замінити') ||
+                         editRequestLower.includes('replace') ||
+                         editRequestLower.includes('виправити') ||
+                         editRequestLower.includes('fix') ||
+                         editRequestLower.includes('не відображається') ||
+                         editRequestLower.includes('not displaying') ||
+                         editRequestLower.includes('не працює') ||
+                         editRequestLower.includes('not working');
       
       // Detect if user wants to search social media or official sites
       const wantsSocialMedia = editRequestLower.includes('instagram') ||
