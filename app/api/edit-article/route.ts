@@ -190,12 +190,12 @@ export async function POST(req: NextRequest) {
       
       parsedResponse = JSON.parse(cleanedContent);
       console.log("[edit-article] Successfully parsed JSON response:", {
-        hasPlan: !!parsedResponse.plan,
-        planLength: parsedResponse.plan?.length || 0,
-        hasArticle: !!parsedResponse.articleUpdatedHtml,
-        articleLength: parsedResponse.articleUpdatedHtml?.length || 0,
-        hasImages: !!parsedResponse.images,
-        imagesCount: parsedResponse.images?.length || 0,
+        hasPlan: !!parsedResponse?.plan,
+        planLength: parsedResponse?.plan?.length || 0,
+        hasArticle: !!parsedResponse?.articleUpdatedHtml,
+        articleLength: parsedResponse?.articleUpdatedHtml?.length || 0,
+        hasImages: !!parsedResponse?.images,
+        imagesCount: parsedResponse?.images?.length || 0,
       });
     } catch (jsonError) {
       // Fallback to old format (plain HTML)
@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Process JSON response
-    if (!parsedResponse.articleUpdatedHtml) {
+    if (!parsedResponse || !parsedResponse.articleUpdatedHtml) {
       console.error("[edit-article] JSON response missing articleUpdatedHtml:", parsedResponse);
       return NextResponse.json(
         { success: false, error: "Response missing articleUpdatedHtml field" },
@@ -244,16 +244,16 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("[edit-article] Processed JSON response:", {
-      planSteps: parsedResponse.plan?.length || 0,
+      planSteps: parsedResponse?.plan?.length || 0,
       articleLength: cleanedHtml.length,
-      imagesCount: parsedResponse.images?.length || 0,
+      imagesCount: parsedResponse?.images?.length || 0,
     });
 
     return NextResponse.json({
       success: true,
       editedArticleHtml: cleanedHtml.trim(),
-      plan: parsedResponse.plan,
-      images: parsedResponse.images,
+      plan: parsedResponse?.plan,
+      images: parsedResponse?.images,
     });
   } catch (error) {
     console.error("[edit-article] Error:", error);
