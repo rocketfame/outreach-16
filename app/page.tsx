@@ -1769,7 +1769,7 @@ export default function Home() {
           
           if (allImages.length > 0) {
             // Validate and filter images - remove invalid URLs
-            const validImages = allImages.filter(image => {
+            let validImages = allImages.filter(image => {
               if (!image.url || !image.url.startsWith('http')) {
                 console.log(`[editArticleWithAI] Filtering out invalid image URL: ${image.url}`);
                 return false;
@@ -1804,12 +1804,180 @@ export default function Home() {
               }
             });
             
-            // Add valid image URLs to trust sources list in format "Image Title|Image URL|Source URL"
+            // Verify image accessibility - check if images are actually accessible (not broken)
+            setEditingArticleStatus(`Verifying image accessibility (checking ${validImages.length} images)...`);
+            const accessibleImages: typeof validImages = [];
+            
+            // Check images in parallel batches to avoid overwhelming the server
+            const batchSize = 5;
+            for (let i = 0; i < validImages.length; i += batchSize) {
+              const batch = validImages.slice(i, i + batchSize);
+              setEditingArticleStatus(`Verifying images ${i + 1}-${Math.min(i + batchSize, validImages.length)}/${validImages.length}...`);
+              
+              const batchChecks = await Promise.allSettled(
+                batch.map(async (image) => {
+                  try {
+                    // Use HEAD request to check if image is accessible without downloading
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                    
+                    const response = await fetch(image.url, {
+                      method: 'HEAD',
+                      signal: controller.signal,
+                      headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; ImageValidator/1.0)',
+                      },
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    // Check if response is successful and content-type is an image
+                    if (response.ok) {
+                      const contentType = response.headers.get('content-type') || '';
+                      const isImage = contentType.startsWith('image/') || 
+                                     image.url.match(/\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i);
+                      
+                      if (isImage) {
+                        return { image, accessible: true };
+                      } else {
+                        console.log(`[editArticleWithAI] Image URL returned non-image content-type: ${contentType} for ${image.url}`);
+                        return { image, accessible: false };
+                      }
+                    } else {
+                      console.log(`[editArticleWithAI] Image URL returned status ${response.status} for ${image.url}`);
+                      return { image, accessible: false };
+                    }
+                  } catch (error) {
+                    console.log(`[editArticleWithAI] Failed to verify image accessibility for ${image.url}:`, error);
+                    return { image, accessible: false };
+                  }
+                })
+              );
+              
+              // Add only accessible images
+              batchChecks.forEach((result) => {
+                if (result.status === 'fulfilled' && result.value.accessible) {
+                  accessibleImages.push(result.value.image);
+                }
+              });
+              
+              // Small delay between batches
+              if (i + batchSize < validImages.length) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+              }
+            }
+            
+            validImages = accessibleImages;
+            console.log(`[editArticleWithAI] Image verification completed: ${accessibleImages.length} accessible images out of ${allImages.length} total (filtered ${allImages.length - accessibleImages.length} invalid/inaccessible)`);
+            
+            // Detect and remove duplicate images (same content, different URLs)
+            setEditingArticleStatus(`Detecting duplicate images (checking ${validImages.length} images)...`);
+            const uniqueImages: typeof validImages = [];
+            const imageHashes = new Map<string, typeof validImages[0]>(); // hash -> first image with this hash
+            
+            // Compute image hashes in batches
+            const hashBatchSize = 3; // Smaller batches for hash computation (more resource-intensive)
+            for (let i = 0; i < validImages.length; i += hashBatchSize) {
+              const batch = validImages.slice(i, i + hashBatchSize);
+              setEditingArticleStatus(`Computing image hashes ${i + 1}-${Math.min(i + hashBatchSize, validImages.length)}/${validImages.length}...`);
+              
+              const hashResults = await Promise.allSettled(
+                batch.map(async (image) => {
+                  try {
+                    // Fetch image as ArrayBuffer
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for download
+                    
+                    const response = await fetch(image.url, {
+                      signal: controller.signal,
+                      headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; ImageValidator/1.0)',
+                      },
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                      console.log(`[editArticleWithAI] Failed to fetch image for hash: ${image.url} (status: ${response.status})`);
+                      return { image, hash: null };
+                    }
+                    
+                    // Get image data as ArrayBuffer
+                    const arrayBuffer = await response.arrayBuffer();
+                    
+                    // Compute SHA-256 hash
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                    
+                    return { image, hash: hashHex };
+                  } catch (error) {
+                    console.log(`[editArticleWithAI] Failed to compute hash for ${image.url}:`, error);
+                    return { image, hash: null };
+                  }
+                })
+              );
+              
+              // Process hash results
+              hashResults.forEach((result) => {
+                if (result.status === 'fulfilled' && result.value.hash) {
+                  const { image, hash } = result.value;
+                  
+                  // Check if we've seen this hash before
+                  if (imageHashes.has(hash)) {
+                    const existingImage = imageHashes.get(hash);
+                    console.log(`[editArticleWithAI] Duplicate image detected and REMOVED: ${image.url} (duplicate of ${existingImage?.url})`);
+                    // Skip this duplicate - DO NOT add it to uniqueImages
+                    // We keep the first image with this hash, remove all subsequent duplicates
+                  } else {
+                    // First time seeing this hash - add to unique images
+                    imageHashes.set(hash, image);
+                    uniqueImages.push(image);
+                    console.log(`[editArticleWithAI] Unique image added: ${image.url}`);
+                  }
+                } else if (result.status === 'fulfilled' && result.value.hash === null) {
+                  // Hash computation failed - try to check by URL normalization as fallback
+                  const image = result.value.image;
+                  const normalizedUrl = image.url.split('?')[0].split('#')[0].toLowerCase();
+                  
+                  // Check if we've seen this normalized URL before (basic duplicate check)
+                  const seenNormalized = Array.from(imageHashes.values()).some(
+                    existing => existing.url.split('?')[0].split('#')[0].toLowerCase() === normalizedUrl
+                  );
+                  
+                  if (!seenNormalized) {
+                    // Add image with failed hash computation, but mark it with a special key
+                    // Use a placeholder hash to track it
+                    const placeholderHash = `failed-hash-${normalizedUrl}`;
+                    if (!imageHashes.has(placeholderHash)) {
+                      imageHashes.set(placeholderHash, image);
+                      uniqueImages.push(image);
+                      console.log(`[editArticleWithAI] Image added (hash computation failed, but URL is unique): ${image.url}`);
+                    } else {
+                      console.log(`[editArticleWithAI] Duplicate image detected (by URL) and REMOVED: ${image.url}`);
+                    }
+                  } else {
+                    console.log(`[editArticleWithAI] Duplicate image detected (by normalized URL) and REMOVED: ${image.url}`);
+                  }
+                }
+              });
+              
+              // Small delay between batches
+              if (i + hashBatchSize < validImages.length) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+              }
+            }
+            
+            validImages = uniqueImages;
+            const duplicatesRemoved = accessibleImages.length - uniqueImages.length;
+            console.log(`[editArticleWithAI] Duplicate detection completed: ${uniqueImages.length} unique images (removed ${duplicatesRemoved} duplicates)`);
+            
+            // Add valid unique image URLs to trust sources list in format "Image Title|Image URL|Source URL"
             validImages.forEach(image => {
               const formatted = `${image.title || "Image"}|${image.url}|${image.sourceUrl}`;
               trustSourcesList.push(formatted);
             });
-            console.log(`[editArticleWithAI] Tavily browsing completed: Found ${validImages.length} valid images (filtered ${allImages.length - validImages.length} invalid) from ${searchQueries.length} queries via Tavily API`);
+            console.log(`[editArticleWithAI] Tavily browsing completed: Found ${validImages.length} unique valid images (filtered ${allImages.length - validImages.length} invalid/duplicates) from ${searchQueries.length} queries via Tavily API`);
           } else {
             console.warn("[editArticleWithAI] Tavily API returned no images for any query");
           }

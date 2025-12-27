@@ -100,15 +100,19 @@ TECHNICAL REQUIREMENTS:
 1. IMAGE HANDLING (when images are requested):
    - Images in [[TRUST_SOURCES_LIST]] format: "Title|Image URL|Source URL"
    - Use Image URL as src, Source URL for figcaption link
+   - 🚨 CRITICAL: All images in [[TRUST_SOURCES_LIST]] have been verified as accessible - they are NOT broken
+   - 🚨 CRITICAL: Ensure ALL images display correctly in the article - check that img tags are properly formatted
+   - 🚨 CRITICAL: Place images NEXT TO the relevant item (festival, event, etc.) - not at the end of the article
    - Validate URLs: only use http:// or https:// URLs that look like valid images
    - EXACT MATCHING: Image title/description MUST match the EXACT item mentioned in text
    - COMPLETE COVERAGE: Add images to ALL relevant sections, not just one
    - Distribute evenly: one image per item if user requests "for each" or "evenly"
    - Source diversity: don't use multiple images from the same domain
-   - Format: <figure><img src="..." alt="..." /><figcaption>Image source: <a href="..." target="_blank" rel="noopener noreferrer">...</a></figcaption></figure>
+   - Format: <figure style="margin: 1.5rem 0;"><img src="..." alt="..." style="max-width: 100%; height: auto; border-radius: 8px; display: block;" /><figcaption style="font-size: 0.85rem; color: #666; margin-top: 0.5rem; text-align: center;">Image source: <a href="..." target="_blank" rel="noopener noreferrer">...</a></figcaption></figure>
    - 🚨 CRITICAL: If an image is not available for an item, simply skip it - DO NOT add any text notes, messages, or explanations
    - 🚨 CRITICAL: NEVER add text like "Photo note:", "verified image was not included", "image not found", or any similar messages
    - 🚨 CRITICAL: The article must contain ONLY actual content - if you can't add an image, just leave the item without an image, silently
+   - 🚨 CRITICAL: When user asks to check images or ensure they display correctly - verify ALL images are properly embedded with correct HTML structure
 
 2. LINK HANDLING (when links are requested):
    - Use sources from [[TRUST_SOURCES_LIST]] when available
@@ -205,7 +209,7 @@ export function buildEditArticlePrompt(params: EditArticleParams): string {
   let sourcesGuidance = "";
   
   if (imageSources.length > 0) {
-    sourcesGuidance += `\n\nIMAGES AVAILABLE:\n- You have ${imageSources.length} image(s) found via Tavily browsing\n- These are real images from the web (social media, official sites, news, etc.)\n- CRITICAL: Match images EXACTLY to items mentioned in text (e.g., "Tomorrowland" image for "Tomorrowland" text)\n- CRITICAL: Add images to ALL relevant sections of the article, not just one section\n- Distribute evenly if user requested "for each" or "evenly"\n- Validate URLs before using (must be http:// or https://)\n- Ensure source diversity (don't use multiple images from same domain)\n- If you cannot find an exact match, DO NOT use a wrong image - skip it silently (no text notes or messages)\n- 🚨 CRITICAL: NEVER add text notes or messages in the article about missing images - just skip them\n`;
+    sourcesGuidance += `\n\nIMAGES AVAILABLE:\n- You have ${imageSources.length} image(s) found via Tavily browsing\n- These are real images from the web (social media, official sites, news, etc.)\n- 🚨 CRITICAL: All images have been verified as accessible - they are NOT broken files\n- 🚨 CRITICAL: Place images NEXT TO the relevant item (festival, event, etc.) in the article structure\n- 🚨 CRITICAL: Ensure ALL images display correctly - use proper HTML img tags with correct src attributes\n- CRITICAL: Match images EXACTLY to items mentioned in text (e.g., "Tomorrowland" image for "Tomorrowland" text)\n- CRITICAL: Add images to ALL relevant sections of the article, not just one section\n- Distribute evenly if user requested "for each" or "evenly"\n- Validate URLs before using (must be http:// or https://)\n- Ensure source diversity (don't use multiple images from same domain)\n- If you cannot find an exact match, DO NOT use a wrong image - skip it silently (no text notes or messages)\n- 🚨 CRITICAL: NEVER add text notes or messages in the article about missing images - just skip them\n- 🚨 CRITICAL: When user asks to check images or ensure correct display - verify ALL images are properly embedded\n`;
   }
   
   if (regularSources.length > 0) {
