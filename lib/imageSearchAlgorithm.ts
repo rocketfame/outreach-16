@@ -331,30 +331,30 @@ function generateEntityQueries(
   const name = entity.name;
 
   // Base queries - always include
-  const baseQueries = [
-    { query: name, priority: 9, type: 'specific' as const },
-    { query: `${name} ${context.niche}`, priority: 8, type: 'specific' as const },
+  const baseQueries: Array<{ query: string; priority: number; type: 'specific' | 'contextual' | 'general' }> = [
+    { query: name, priority: 9, type: 'specific' },
+    { query: `${name} ${context.niche}`, priority: 8, type: 'specific' },
   ];
 
   // Add type-specific queries
   if (entity.type === 'event') {
     baseQueries.push(
-      { query: `${name} event`, priority: 8, type: 'specific' as const },
-      { query: `${name} festival`, priority: 8, type: 'specific' as const },
+      { query: `${name} event`, priority: 8, type: 'specific' },
+      { query: `${name} festival`, priority: 8, type: 'specific' },
     );
   }
 
   if (entity.type === 'person') {
     baseQueries.push(
-      { query: `${name} artist`, priority: 8, type: 'specific' as const },
-      { query: `${name} musician`, priority: 8, type: 'specific' as const },
+      { query: `${name} artist`, priority: 8, type: 'specific' },
+      { query: `${name} musician`, priority: 8, type: 'specific' },
     );
   }
 
   // Add photo/image queries
   baseQueries.push(
-    { query: `${name} photo`, priority: 7, type: 'specific' as const },
-    { query: `${name} image`, priority: 7, type: 'specific' as const },
+    { query: `${name} photo`, priority: 7, type: 'specific' },
+    { query: `${name} image`, priority: 7, type: 'specific' },
   );
 
   // Add source-specific queries if requested
@@ -362,14 +362,14 @@ function generateEntityQueries(
     intent.preferredSources.forEach(source => {
       if (source === 'instagram') {
         baseQueries.push(
-          { query: `${name} instagram`, priority: 6, type: 'specific' as const },
-          { query: `${name} instagram photo`, priority: 6, type: 'specific' as const },
+          { query: `${name} instagram`, priority: 6, type: 'specific' },
+          { query: `${name} instagram photo`, priority: 6, type: 'specific' },
         );
       }
       if (source === 'facebook') {
         baseQueries.push(
-          { query: `${name} facebook`, priority: 6, type: 'specific' as const },
-          { query: `${name} facebook photo`, priority: 6, type: 'specific' as const },
+          { query: `${name} facebook`, priority: 6, type: 'specific' },
+          { query: `${name} facebook photo`, priority: 6, type: 'specific' },
         );
       }
     });
@@ -377,8 +377,8 @@ function generateEntityQueries(
 
   if (intent.wantsOfficialSites) {
     baseQueries.push(
-      { query: `${name} official`, priority: 6, type: 'specific' as const },
-      { query: `${name} official website`, priority: 6, type: 'specific' as const },
+      { query: `${name} official`, priority: 6, type: 'specific' },
+      { query: `${name} official website`, priority: 6, type: 'specific' },
     );
   }
 
@@ -388,7 +388,7 @@ function generateEntityQueries(
     contextKeywords.slice(0, 2).forEach(keyword => {
       if (keyword.length > 3) {
         baseQueries.push(
-          { query: `${name} ${keyword}`, priority: 5, type: 'contextual' as const },
+          { query: `${name} ${keyword}`, priority: 5, type: 'contextual' },
         );
       }
     });
