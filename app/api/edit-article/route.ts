@@ -22,9 +22,20 @@ export interface EditArticleRequest {
   editHistory?: EditHistoryEntry[];
 }
 
+export interface ImageInfo {
+  id: string;
+  query: string;
+  url: string;
+  alt: string;
+  source: "official_site" | "media" | "stock" | "other";
+  relevanceScore: number;
+}
+
 export interface EditArticleResponse {
   success: boolean;
   editedArticleHtml?: string;
+  plan?: string[];
+  images?: ImageInfo[];
   error?: string;
 }
 
@@ -149,9 +160,9 @@ export async function POST(req: NextRequest) {
       usage: { inputTokens, outputTokens },
     });
 
-    const editedHtml = data.choices?.[0]?.message?.content?.trim();
+    const responseContent = data.choices?.[0]?.message?.content?.trim();
 
-    if (!editedHtml) {
+    if (!responseContent) {
       console.error("[edit-article] No content in response:", JSON.stringify(data, null, 2));
       return NextResponse.json(
         { success: false, error: "No content returned from OpenAI" },
@@ -159,24 +170,90 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("[edit-article] Received HTML length:", editedHtml.length);
+    console.log("[edit-article] Received response length:", responseContent.length);
 
-    // Clean up the response (remove any markdown code fences if present)
-    let cleanedHtml = editedHtml;
-    if (cleanedHtml.startsWith("```html")) {
-      cleanedHtml = cleanedHtml.replace(/^```html\s*/, "").replace(/\s*```$/, "");
-    } else if (cleanedHtml.startsWith("```")) {
-      cleanedHtml = cleanedHtml.replace(/^```\s*/, "").replace(/\s*```$/, "");
+    // Try to parse as JSON (new format)
+    let parsedResponse: {
+      plan?: string[];
+      articleUpdatedHtml?: string;
+      images?: ImageInfo[];
+    } | null = null;
+    
+    try {
+      // Remove markdown code fences if present
+      let cleanedContent = responseContent;
+      if (cleanedContent.startsWith("```json")) {
+        cleanedContent = cleanedContent.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (cleanedContent.startsWith("```")) {
+        cleanedContent = cleanedContent.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+      
+      parsedResponse = JSON.parse(cleanedContent);
+      console.log("[edit-article] Successfully parsed JSON response:", {
+        hasPlan: !!parsedResponse.plan,
+        planLength: parsedResponse.plan?.length || 0,
+        hasArticle: !!parsedResponse.articleUpdatedHtml,
+        articleLength: parsedResponse.articleUpdatedHtml?.length || 0,
+        hasImages: !!parsedResponse.images,
+        imagesCount: parsedResponse.images?.length || 0,
+      });
+    } catch (jsonError) {
+      // Fallback to old format (plain HTML)
+      console.log("[edit-article] Response is not JSON, treating as plain HTML");
+      
+      // Clean up the response (remove any markdown code fences if present)
+      let cleanedHtml = responseContent;
+      if (cleanedHtml.startsWith("```html")) {
+        cleanedHtml = cleanedHtml.replace(/^```html\s*/, "").replace(/\s*```$/, "");
+      } else if (cleanedHtml.startsWith("```")) {
+        cleanedHtml = cleanedHtml.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+
+      // Apply text cleaning to remove em-dash, smart quotes, and other AI indicators
+      cleanedHtml = cleanText(cleanedHtml);
+
+      console.log("[edit-article] Cleaned HTML length:", cleanedHtml.trim().length);
+
+      return NextResponse.json({
+        success: true,
+        editedArticleHtml: cleanedHtml.trim(),
+      });
+    }
+
+    // Process JSON response
+    if (!parsedResponse.articleUpdatedHtml) {
+      console.error("[edit-article] JSON response missing articleUpdatedHtml:", parsedResponse);
+      return NextResponse.json(
+        { success: false, error: "Response missing articleUpdatedHtml field" },
+        { status: 500 }
+      );
     }
 
     // Apply text cleaning to remove em-dash, smart quotes, and other AI indicators
-    cleanedHtml = cleanText(cleanedHtml);
+    let cleanedHtml = cleanText(parsedResponse.articleUpdatedHtml);
 
-    console.log("[edit-article] Cleaned HTML length:", cleanedHtml.trim().length);
+    // Replace image placeholders with actual HTML
+    if (parsedResponse.images && parsedResponse.images.length > 0) {
+      parsedResponse.images.forEach((image) => {
+        if (image.url && image.id) {
+          const placeholder = `[IMAGE:id=${image.id}]`;
+          const imageHtml = `<figure style="margin: 1.5rem 0;"><img src="${image.url}" alt="${image.alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; display: block;" /><figcaption style="font-size: 0.85rem; color: #666; margin-top: 0.5rem; text-align: center;">Image source: <a href="${image.url}" target="_blank" rel="noopener noreferrer">${image.source || 'Source'}</a></figcaption></figure>`;
+          cleanedHtml = cleanedHtml.replace(placeholder, imageHtml);
+        }
+      });
+    }
+
+    console.log("[edit-article] Processed JSON response:", {
+      planSteps: parsedResponse.plan?.length || 0,
+      articleLength: cleanedHtml.length,
+      imagesCount: parsedResponse.images?.length || 0,
+    });
 
     return NextResponse.json({
       success: true,
       editedArticleHtml: cleanedHtml.trim(),
+      plan: parsedResponse.plan,
+      images: parsedResponse.images,
     });
   } catch (error) {
     console.error("[edit-article] Error:", error);

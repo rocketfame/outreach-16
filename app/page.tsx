@@ -1550,9 +1550,120 @@ export default function Home() {
             generateSearchQueries 
           } = await import('../lib/imageSearchAlgorithm');
           
-          // Build search context
+          // CRITICAL: If user wants to replace broken images, first detect broken images in HTML
+          const isBrokenImageRequest = editRequestLower.includes('бит') ||
+                                      editRequestLower.includes('broken') ||
+                                      editRequestLower.includes('замінити') ||
+                                      editRequestLower.includes('replace') ||
+                                      editRequestLower.includes('виправити') ||
+                                      editRequestLower.includes('fix');
+          
+          let brokenImagesInfo: Array<{ url: string; context: string; alt?: string }> = [];
+          let enhancedEditRequest = editRequest; // Will be enhanced if broken images found
+          
+          if (isBrokenImageRequest) {
+            setEditingArticleStatus("Detecting broken images in article...");
+            
+            // Extract all image URLs from HTML
+            const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+            const images: Array<{ url: string; fullTag: string; context: string; alt?: string }> = [];
+            let match;
+            
+            while ((match = imgRegex.exec(currentHtml)) !== null) {
+              const imgUrl = match[1];
+              const fullTag = match[0];
+              
+              // Extract alt text if present
+              const altMatch = fullTag.match(/alt=["']([^"']*)["']/i);
+              const alt = altMatch ? altMatch[1] : undefined;
+              
+              // Get context around the image (100 chars before and after)
+              const imgIndex = match.index || 0;
+              const contextStart = Math.max(0, imgIndex - 100);
+              const contextEnd = Math.min(currentHtml.length, imgIndex + fullTag.length + 100);
+              const context = currentHtml.substring(contextStart, contextEnd)
+                .replace(/<[^>]+>/g, ' ') // Remove HTML tags for context
+                .replace(/\s+/g, ' ')
+                .trim();
+              
+              images.push({ url: imgUrl, fullTag, context, alt });
+            }
+            
+            console.log(`[editArticleWithAI] Found ${images.length} images in article`);
+            
+            // Check which images are broken (quick check - verify URL is accessible)
+            setEditingArticleStatus(`Checking ${images.length} images for accessibility...`);
+            const brokenImages: typeof brokenImagesInfo = [];
+            
+            // Check images in parallel batches
+            const batchSize = 5;
+            for (let i = 0; i < images.length; i += batchSize) {
+              const batch = images.slice(i, i + batchSize);
+              setEditingArticleStatus(`Checking images ${i + 1}-${Math.min(i + batchSize, images.length)}/${images.length}...`);
+              
+              const checks = await Promise.allSettled(
+                batch.map(async (img) => {
+                  try {
+                    // Quick HEAD request to check if image is accessible
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+                    
+                    const response = await fetch(img.url, {
+                      method: 'HEAD',
+                      signal: controller.signal,
+                      headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; ImageValidator/1.0)',
+                      },
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok || !response.headers.get('content-type')?.startsWith('image/')) {
+                      return { url: img.url, context: img.context, alt: img.alt, isBroken: true };
+                    }
+                    return { url: img.url, context: img.context, alt: img.alt, isBroken: false };
+                  } catch (error) {
+                    // If fetch fails, assume image is broken
+                    console.log(`[editArticleWithAI] Image check failed for ${img.url}:`, error);
+                    return { url: img.url, context: img.context, alt: img.alt, isBroken: true };
+                  }
+                })
+              );
+              
+              checks.forEach((result) => {
+                if (result.status === 'fulfilled' && result.value.isBroken) {
+                  brokenImages.push({
+                    url: result.value.url,
+                    context: result.value.context,
+                    alt: result.value.alt,
+                  });
+                }
+              });
+              
+              // Small delay between batches
+              if (i + batchSize < images.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            }
+            
+            brokenImagesInfo = brokenImages;
+            console.log(`[editArticleWithAI] Detected ${brokenImages.length} broken images out of ${images.length} total`);
+            
+            // Add broken images info to edit request context
+            if (brokenImages.length > 0) {
+              const brokenImagesList = brokenImages.map((img, idx) => 
+                `${idx + 1}. URL: ${img.url}\n   Context: ${img.context.substring(0, 150)}...\n   Alt text: ${img.alt || 'none'}`
+              ).join('\n\n');
+              
+              // Enhance edit request with broken images info
+              enhancedEditRequest = `${editRequest}\n\n🚨 CRITICAL: The following ${brokenImages.length} image(s) are BROKEN and MUST be replaced:\n\n${brokenImagesList}\n\nYou MUST replace EACH broken image URL with a working image from the provided sources. Match images EXACTLY to the content context.`;
+            }
+          }
+          
+          // Build search context (use enhanced request if broken images were detected)
+          const finalEditRequest = brokenImagesInfo.length > 0 ? enhancedEditRequest : editRequest;
           const searchContext = {
-            userRequest: editRequest,
+            userRequest: finalEditRequest,
             articleTitle: articleTitle,
             articleHtml: currentHtml,
             niche: brief.niche || '',
@@ -1560,11 +1671,25 @@ export default function Home() {
           };
           
           // Analyze user request to understand intent
-          const intent = analyzeUserRequest(editRequest);
+          const intent = analyzeUserRequest(finalEditRequest);
+          
+          // Store final edit request for later use in API call
+          finalEditRequestForAPI = finalEditRequest;
           console.log(`[editArticleWithAI] Search intent:`, intent);
           
           // Extract entities from article (items, topics, concepts, etc.)
-          const entities = extractEntitiesFromArticle(currentHtml, articleTitle);
+          // If we have broken images, also extract entities from broken image contexts
+          let entities = extractEntitiesFromArticle(currentHtml, articleTitle);
+          
+          // If we have broken images, extract entities from their contexts too
+          if (brokenImagesInfo.length > 0) {
+            const brokenImageContexts = brokenImagesInfo.map(img => img.context).join(' ');
+            const brokenImageEntities = extractEntitiesFromArticle(brokenImageContexts, articleTitle);
+            // Merge entities, prioritizing those from broken image contexts
+            entities = [...brokenImageEntities, ...entities];
+            console.log(`[editArticleWithAI] Extracted ${brokenImageEntities.length} entities from broken image contexts`);
+          }
+          
           console.log(`[editArticleWithAI] Extracted ${entities.length} entities:`, entities.map(e => `${e.name} (${e.type}, priority: ${e.priority})`));
           
           // Generate intelligent search queries based on context and intent
@@ -2087,10 +2212,13 @@ export default function Home() {
       // Get edit history from article
       const editHistory = article.editHistory || [];
       
+      // Use enhanced edit request if it was created (for broken image replacement)
+      const finalEditRequestForAPICall = finalEditRequestForAPI || editRequest;
+      
       console.log("[editArticleWithAI] Sending request to API:", {
         articleId,
         articleTitle,
-        editRequest: editRequest.trim(),
+        editRequest: finalEditRequestForAPICall.trim(),
         editHistoryLength: editHistory.length,
         trustSourcesListLength: trustSourcesList.length,
         currentHtmlLength: currentHtml.length,
@@ -2104,7 +2232,7 @@ export default function Home() {
         body: JSON.stringify({
           articleHtml: currentHtml,
           articleTitle: articleTitle,
-          editRequest: editRequest.trim(),
+          editRequest: finalEditRequestForAPICall.trim(),
           niche: brief.niche || "",
           language: brief.language || "English",
           trustSourcesList: trustSourcesList,
@@ -2132,15 +2260,47 @@ export default function Home() {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json() as { success: boolean; editedArticleHtml?: string; error?: string };
+      const data = await response.json() as { 
+        success: boolean; 
+        editedArticleHtml?: string; 
+        plan?: string[];
+        images?: Array<{
+          id: string;
+          query: string;
+          url: string;
+          alt: string;
+          source: string;
+          relevanceScore: number;
+        }>;
+        error?: string;
+      };
 
       console.log("[editArticleWithAI] Response received:", {
         success: data.success,
         hasEditedHtml: !!data.editedArticleHtml,
         editedHtmlLength: data.editedArticleHtml?.length || 0,
+        hasPlan: !!data.plan,
+        planSteps: data.plan?.length || 0,
+        hasImages: !!data.images,
+        imagesCount: data.images?.length || 0,
         error: data.error,
         responseStatus: response.status,
       });
+      
+      // Log plan if available
+      if (data.plan && data.plan.length > 0) {
+        console.log("[editArticleWithAI] AI execution plan:", data.plan);
+      }
+      
+      // Log images if available
+      if (data.images && data.images.length > 0) {
+        console.log("[editArticleWithAI] AI found images:", data.images.map(img => ({
+          id: img.id,
+          url: img.url,
+          source: img.source,
+          relevanceScore: img.relevanceScore,
+        })));
+      }
 
       if (!data.success) {
         const errorMsg = data.error || "Failed to edit article";
@@ -2155,10 +2315,26 @@ export default function Home() {
 
       setEditingArticleStatus("Applying your edits to the article...");
       
-      // If images are needed, check if we have images or need to handle placeholders
+      // Process the edited HTML
       let finalHtml = data.editedArticleHtml!;
+      
+      // Handle new format image placeholders [IMAGE:id=<image-id>] from JSON response
+      if (data.images && data.images.length > 0) {
+        setEditingArticleStatus("Processing image placeholders...");
+        
+        // Replace [IMAGE:id=<id>] placeholders with actual image HTML
+        data.images.forEach((image) => {
+          if (image.url && image.id) {
+            const placeholder = `[IMAGE:id=${image.id}]`;
+            const imageHtml = `<figure style="margin: 1.5rem 0;"><img src="${image.url}" alt="${image.alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; display: block;" /><figcaption style="font-size: 0.85rem; color: #666; margin-top: 0.5rem; text-align: center;">Image source: <a href="${image.url}" target="_blank" rel="noopener noreferrer">${image.source || 'Source'}</a></figcaption></figure>`;
+            finalHtml = finalHtml.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), imageHtml);
+          }
+        });
+      }
+      
+      // Legacy placeholder handling (for backward compatibility)
       if (needsImages) {
-        // Check if HTML contains image placeholders
+        // Check if HTML contains legacy image placeholders
         const hasImagePlaceholders = /\[IMAGE_URL_PLACEHOLDER\]/gi.test(finalHtml);
         
         if (hasImagePlaceholders) {
