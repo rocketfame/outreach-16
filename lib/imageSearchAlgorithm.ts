@@ -295,9 +295,10 @@ export function generateSearchQueries(
     });
   }
 
-  // 2. Generate general article queries
+  // 2. Generate general article queries (LIMITED to save credits)
   const generalQueries = generateGeneralQueries(context, intent);
-  generalQueries.forEach(query => {
+  // Only add top 1-2 general queries
+  generalQueries.slice(0, 2).forEach(query => {
     const normalized = query.query.toLowerCase().trim();
     if (!seenQueries.has(normalized) && query.query.length > 5) {
       seenQueries.add(normalized);
@@ -305,9 +306,10 @@ export function generateSearchQueries(
     }
   });
 
-  // 3. Generate contextual queries based on user request keywords
+  // 3. Generate contextual queries (LIMITED to save credits)
   const contextualQueries = generateContextualQueries(context, intent);
-  contextualQueries.forEach(query => {
+  // Only add top 1 contextual query
+  contextualQueries.slice(0, 1).forEach(query => {
     const normalized = query.query.toLowerCase().trim();
     if (!seenQueries.has(normalized) && query.query.length > 5) {
       seenQueries.add(normalized);
@@ -330,69 +332,64 @@ function generateEntityQueries(
   const queries: SearchQuery[] = [];
   const name = entity.name;
 
-  // Base queries - always include
-  const baseQueries: Array<{ query: string; priority: number; type: 'specific' | 'contextual' | 'general' }> = [
-    { query: name, priority: 9, type: 'specific' },
-    { query: `${name} ${context.niche}`, priority: 8, type: 'specific' },
-  ];
+  // OPTIMIZED: Generate fewer, more targeted queries to save Tavily credits
+  // Priority: Official sites > Social media > General search
+  const baseQueries: Array<{ query: string; priority: number; type: 'specific' | 'contextual' | 'general' }> = [];
+  
+  // CRITICAL: Prioritize official website searches first (most reliable, best images)
+  // Extract potential official domain from entity name
+  const officialSiteQueries: string[] = [];
+  if (intent.wantsOfficialSites || true) { // Always prioritize official sites
+    // Try common official site patterns
+    const nameLower = name.toLowerCase().replace(/\s+/g, '');
+    officialSiteQueries.push(
+      `${name} official website`,
+      `${name} official site`,
+      `site:${nameLower}.com ${name}`,
+      `${name} homepage`,
+    );
+  }
+  
+  // Add official site queries with highest priority
+  officialSiteQueries.slice(0, 2).forEach(query => {
+    baseQueries.push({ query, priority: 10, type: 'specific' }); // Highest priority
+  });
 
-  // Add type-specific queries
+  // Add direct name query (high priority)
+  baseQueries.push(
+    { query: name, priority: 9, type: 'specific' },
+  );
+
+  // Add type-specific queries (only if needed)
   if (entity.type === 'event') {
     baseQueries.push(
-      { query: `${name} event`, priority: 8, type: 'specific' },
       { query: `${name} festival`, priority: 8, type: 'specific' },
     );
   }
 
-  if (entity.type === 'person') {
-    baseQueries.push(
-      { query: `${name} artist`, priority: 8, type: 'specific' },
-      { query: `${name} musician`, priority: 8, type: 'specific' },
-    );
-  }
-
-  // Add photo/image queries
+  // Add photo/image queries (only 1-2 most important)
   baseQueries.push(
     { query: `${name} photo`, priority: 7, type: 'specific' },
-    { query: `${name} image`, priority: 7, type: 'specific' },
   );
 
-  // Add source-specific queries if requested
+  // Add source-specific queries if requested (limited to save credits)
   if (intent.wantsSocialMedia) {
-    intent.preferredSources.forEach(source => {
+    intent.preferredSources.slice(0, 1).forEach(source => { // Limit to 1 source
       if (source === 'instagram') {
         baseQueries.push(
           { query: `${name} instagram`, priority: 6, type: 'specific' },
-          { query: `${name} instagram photo`, priority: 6, type: 'specific' },
         );
       }
       if (source === 'facebook') {
         baseQueries.push(
           { query: `${name} facebook`, priority: 6, type: 'specific' },
-          { query: `${name} facebook photo`, priority: 6, type: 'specific' },
         );
       }
     });
   }
 
-  if (intent.wantsOfficialSites) {
-    baseQueries.push(
-      { query: `${name} official`, priority: 6, type: 'specific' },
-      { query: `${name} official website`, priority: 6, type: 'specific' },
-    );
-  }
-
-  // Add context from entity context if available
-  if (entity.context) {
-    const contextKeywords = extractKeywords(entity.context);
-    contextKeywords.slice(0, 2).forEach(keyword => {
-      if (keyword.length > 3) {
-        baseQueries.push(
-          { query: `${name} ${keyword}`, priority: 5, type: 'contextual' },
-        );
-      }
-    });
-  }
+  // REMOVED: Context keywords - too many queries, not worth the credits
+  // Only use if absolutely necessary
 
   // Convert to SearchQuery format
   baseQueries.forEach(({ query, priority, type }) => {
@@ -408,7 +405,7 @@ function generateEntityQueries(
 }
 
 /**
- * Generate general article queries
+ * Generate general article queries (OPTIMIZED - fewer queries)
  */
 function generateGeneralQueries(
   context: ImageSearchContext,
@@ -416,34 +413,20 @@ function generateGeneralQueries(
 ): SearchQuery[] {
   const queries: SearchQuery[] = [];
 
-  // Article title + niche
+  // Only most important general query
   queries.push({
     query: `${context.articleTitle} ${context.niche}`,
     priority: 7,
     searchType: 'general',
   });
 
-  // Article title + image/photo
-  queries.push({
-    query: `${context.articleTitle} photo`,
-    priority: 6,
-    searchType: 'general',
-  });
-
-  // Niche-specific queries
-  if (context.niche) {
-    queries.push({
-      query: `${context.niche} images`,
-      priority: 5,
-      searchType: 'general',
-    });
-  }
+  // Removed other general queries to save Tavily credits
 
   return queries;
 }
 
 /**
- * Generate contextual queries based on user request
+ * Generate contextual queries based on user request (OPTIMIZED - fewer queries)
  */
 function generateContextualQueries(
   context: ImageSearchContext,
@@ -454,16 +437,19 @@ function generateContextualQueries(
   // Extract keywords from user request
   const requestKeywords = extractKeywords(context.userRequest);
   
-  // Combine with article title
-  requestKeywords.slice(0, 3).forEach(keyword => {
-    if (keyword.length > 3 && !['image', 'photo', 'add', 'find'].includes(keyword)) {
-      queries.push({
-        query: `${context.articleTitle} ${keyword}`,
-        priority: 5,
-        searchType: 'contextual',
-      });
-    }
-  });
+  // Only use top 1 most relevant keyword to save credits
+  const relevantKeyword = requestKeywords.find(keyword => 
+    keyword.length > 3 && 
+    !['image', 'photo', 'add', 'find', 'check', 'ensure'].includes(keyword)
+  );
+  
+  if (relevantKeyword) {
+    queries.push({
+      query: `${context.articleTitle} ${relevantKeyword}`,
+      priority: 5,
+      searchType: 'contextual',
+    });
+  }
 
   return queries;
 }

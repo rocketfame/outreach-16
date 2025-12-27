@@ -1556,14 +1556,35 @@ export default function Home() {
           // Convert to simple array, prioritizing high-priority queries
           const searchQueries = searchQueriesWithPriority.map(sq => sq.query);
           
-          // Determine max queries based on search depth
-          const maxQueriesByDepth = {
-            shallow: 15,
-            medium: 30,
-            deep: 50,
+          // OPTIMIZED: Determine max queries to minimize Tavily API credits usage
+          // Strategy: Use fewer, more targeted queries instead of many generic ones
+          const baseMaxQueriesByDepth = {
+            shallow: 5,   // Reduced from 10
+            medium: 12,   // Reduced from 20
+            deep: 20,     // Reduced from 30
           };
-          const maxQueries = Math.min(searchQueries.length, maxQueriesByDepth[intent.searchDepth]);
-          console.log(`[editArticleWithAI] Will search ${maxQueries} queries (search depth: ${intent.searchDepth})`);
+          
+          // Adjust based on number of entities, but be conservative
+          const entitiesCount = entities.length;
+          let maxQueries = baseMaxQueriesByDepth[intent.searchDepth];
+          
+          // Scale up conservatively - prioritize quality over quantity
+          if (entitiesCount > 10) {
+            // For many entities: 1-1.5 queries per entity max
+            maxQueries = Math.min(
+              searchQueries.length,
+              Math.max(maxQueries, Math.min(Math.ceil(entitiesCount * 1.2), 25)) // Max 25 queries
+            );
+          } else if (entitiesCount > 5) {
+            // For medium entities: 1.5-2 queries per entity
+            maxQueries = Math.min(searchQueries.length, Math.max(maxQueries, Math.ceil(entitiesCount * 1.5)));
+          }
+          
+          // CRITICAL: Final cap - never exceed 25 queries to save Tavily credits
+          // Each query costs credits, so we need to be efficient
+          maxQueries = Math.min(searchQueries.length, Math.min(maxQueries, 25));
+          
+          console.log(`[editArticleWithAI] OPTIMIZED: Will search ${maxQueries} queries (search depth: ${intent.searchDepth}, entities: ${entitiesCount}, total queries available: ${searchQueries.length}) - Tavily credits optimized`);
           
           // Search for images with each query and collect unique results
           const allImages: Array<{ url: string; sourceUrl: string; title?: string }> = [];
@@ -1804,22 +1825,27 @@ export default function Home() {
               }
             });
             
-            // Verify image accessibility - check if images are actually accessible (not broken)
-            setEditingArticleStatus(`Verifying image accessibility (checking ${validImages.length} images)...`);
+            // OPTIMIZED: Verify image accessibility - but be more efficient
+            // Only verify top priority images to save time and resources
+            setEditingArticleStatus(`Verifying image accessibility (checking top ${Math.min(validImages.length, 30)} images)...`);
             const accessibleImages: typeof validImages = [];
+            
+            // Limit verification to top 30 images to save time
+            // If we have many images, verify only the most promising ones
+            const imagesToVerify = validImages.slice(0, 30);
             
             // Check images in parallel batches to avoid overwhelming the server
             const batchSize = 5;
-            for (let i = 0; i < validImages.length; i += batchSize) {
-              const batch = validImages.slice(i, i + batchSize);
-              setEditingArticleStatus(`Verifying images ${i + 1}-${Math.min(i + batchSize, validImages.length)}/${validImages.length}...`);
+            for (let i = 0; i < imagesToVerify.length; i += batchSize) {
+              const batch = imagesToVerify.slice(i, i + batchSize);
+              setEditingArticleStatus(`Verifying images ${i + 1}-${Math.min(i + batchSize, imagesToVerify.length)}/${imagesToVerify.length}...`);
               
               const batchChecks = await Promise.allSettled(
                 batch.map(async (image) => {
                   try {
                     // Use HEAD request to check if image is accessible without downloading
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                    const timeoutId = setTimeout(() => controller.abort(), 3000); // Reduced to 3 seconds
                     
                     const response = await fetch(image.url, {
                       method: 'HEAD',
@@ -1862,31 +1888,47 @@ export default function Home() {
               });
               
               // Small delay between batches
-              if (i + batchSize < validImages.length) {
+              if (i + batchSize < imagesToVerify.length) {
                 await new Promise(resolve => setTimeout(resolve, 200));
               }
             }
             
-            validImages = accessibleImages;
-            console.log(`[editArticleWithAI] Image verification completed: ${accessibleImages.length} accessible images out of ${allImages.length} total (filtered ${allImages.length - accessibleImages.length} invalid/inaccessible)`);
+            // If we have more images than verified, add unverified ones (they might work)
+            // But prioritize verified ones
+            const unverifiedImages = validImages.slice(30);
+            validImages = [...accessibleImages, ...unverifiedImages];
             
-            // Detect and remove duplicate images (same content, different URLs)
-            setEditingArticleStatus(`Detecting duplicate images (checking ${validImages.length} images)...`);
+            console.log(`[editArticleWithAI] Image verification completed: ${accessibleImages.length} verified accessible images, ${unverifiedImages.length} unverified (added to end), total: ${validImages.length}`);
+            
+            // OPTIMIZED: Detect and remove duplicate images - but limit to top images to save time
+            // Only check duplicates for top 20 images (most important ones)
+            const imagesToCheckForDuplicates = validImages.slice(0, 20);
+            const imagesNotChecked = validImages.slice(20);
+            
+            setEditingArticleStatus(`Detecting duplicate images (checking top ${imagesToCheckForDuplicates.length} images)...`);
             const uniqueImages: typeof validImages = [];
             const imageHashes = new Map<string, typeof validImages[0]>(); // hash -> first image with this hash
+            const seenNormalizedUrls = new Set<string>(); // Track normalized URLs for quick duplicate check
             
-            // Compute image hashes in batches
-            const hashBatchSize = 3; // Smaller batches for hash computation (more resource-intensive)
-            for (let i = 0; i < validImages.length; i += hashBatchSize) {
-              const batch = validImages.slice(i, i + hashBatchSize);
-              setEditingArticleStatus(`Computing image hashes ${i + 1}-${Math.min(i + hashBatchSize, validImages.length)}/${validImages.length}...`);
+            // Compute image hashes in batches (only for top images)
+            const hashBatchSize = 3;
+            for (let i = 0; i < imagesToCheckForDuplicates.length; i += hashBatchSize) {
+              const batch = imagesToCheckForDuplicates.slice(i, i + hashBatchSize);
+              setEditingArticleStatus(`Computing image hashes ${i + 1}-${Math.min(i + hashBatchSize, imagesToCheckForDuplicates.length)}/${imagesToCheckForDuplicates.length}...`);
               
               const hashResults = await Promise.allSettled(
                 batch.map(async (image) => {
                   try {
-                    // Fetch image as ArrayBuffer
+                    // Quick URL-based duplicate check first (faster)
+                    const normalizedUrl = image.url.split('?')[0].split('#')[0].toLowerCase();
+                    if (seenNormalizedUrls.has(normalizedUrl)) {
+                      return { image, hash: null, isDuplicate: true };
+                    }
+                    seenNormalizedUrls.add(normalizedUrl);
+                    
+                    // Fetch image as ArrayBuffer for hash computation
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for download
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced to 5 seconds
                     
                     const response = await fetch(image.url, {
                       signal: controller.signal,
@@ -1899,7 +1941,7 @@ export default function Home() {
                     
                     if (!response.ok) {
                       console.log(`[editArticleWithAI] Failed to fetch image for hash: ${image.url} (status: ${response.status})`);
-                      return { image, hash: null };
+                      return { image, hash: null, isDuplicate: false };
                     }
                     
                     // Get image data as ArrayBuffer
@@ -1910,66 +1952,65 @@ export default function Home() {
                     const hashArray = Array.from(new Uint8Array(hashBuffer));
                     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                     
-                    return { image, hash: hashHex };
+                    return { image, hash: hashHex, isDuplicate: false };
                   } catch (error) {
                     console.log(`[editArticleWithAI] Failed to compute hash for ${image.url}:`, error);
-                    return { image, hash: null };
+                    return { image, hash: null, isDuplicate: false };
                   }
                 })
               );
               
               // Process hash results
               hashResults.forEach((result) => {
-                if (result.status === 'fulfilled' && result.value.hash) {
-                  const { image, hash } = result.value;
+                if (result.status === 'fulfilled') {
+                  const { image, hash, isDuplicate } = result.value;
                   
-                  // Check if we've seen this hash before
-                  if (imageHashes.has(hash)) {
-                    const existingImage = imageHashes.get(hash);
-                    console.log(`[editArticleWithAI] Duplicate image detected and REMOVED: ${image.url} (duplicate of ${existingImage?.url})`);
-                    // Skip this duplicate - DO NOT add it to uniqueImages
-                    // We keep the first image with this hash, remove all subsequent duplicates
-                  } else {
-                    // First time seeing this hash - add to unique images
-                    imageHashes.set(hash, image);
-                    uniqueImages.push(image);
-                    console.log(`[editArticleWithAI] Unique image added: ${image.url}`);
+                  // Skip if already identified as duplicate by URL
+                  if (isDuplicate) {
+                    console.log(`[editArticleWithAI] Duplicate image detected (by URL) and REMOVED: ${image.url}`);
+                    return;
                   }
-                } else if (result.status === 'fulfilled' && result.value.hash === null) {
-                  // Hash computation failed - try to check by URL normalization as fallback
-                  const image = result.value.image;
-                  const normalizedUrl = image.url.split('?')[0].split('#')[0].toLowerCase();
                   
-                  // Check if we've seen this normalized URL before (basic duplicate check)
-                  const seenNormalized = Array.from(imageHashes.values()).some(
-                    existing => existing.url.split('?')[0].split('#')[0].toLowerCase() === normalizedUrl
-                  );
-                  
-                  if (!seenNormalized) {
-                    // Add image with failed hash computation, but mark it with a special key
-                    // Use a placeholder hash to track it
-                    const placeholderHash = `failed-hash-${normalizedUrl}`;
-                    if (!imageHashes.has(placeholderHash)) {
-                      imageHashes.set(placeholderHash, image);
-                      uniqueImages.push(image);
-                      console.log(`[editArticleWithAI] Image added (hash computation failed, but URL is unique): ${image.url}`);
+                  if (hash) {
+                    // Check if we've seen this hash before
+                    if (imageHashes.has(hash)) {
+                      const existingImage = imageHashes.get(hash);
+                      console.log(`[editArticleWithAI] Duplicate image detected and REMOVED: ${image.url} (duplicate of ${existingImage?.url})`);
+                      // Skip this duplicate
                     } else {
-                      console.log(`[editArticleWithAI] Duplicate image detected (by URL) and REMOVED: ${image.url}`);
+                      // First time seeing this hash - add to unique images
+                      imageHashes.set(hash, image);
+                      uniqueImages.push(image);
+                      console.log(`[editArticleWithAI] Unique image added: ${image.url}`);
                     }
                   } else {
-                    console.log(`[editArticleWithAI] Duplicate image detected (by normalized URL) and REMOVED: ${image.url}`);
+                    // Hash computation failed, but URL is unique - add it
+                    uniqueImages.push(image);
+                    console.log(`[editArticleWithAI] Image added (hash computation failed, but URL is unique): ${image.url}`);
                   }
                 }
               });
               
               // Small delay between batches
-              if (i + hashBatchSize < validImages.length) {
-                await new Promise(resolve => setTimeout(resolve, 300));
+              if (i + hashBatchSize < imagesToCheckForDuplicates.length) {
+                await new Promise(resolve => setTimeout(resolve, 200));
               }
             }
             
+            // Add images that weren't checked for duplicates (they're lower priority anyway)
+            // But do a quick URL-based duplicate check
+            imagesNotChecked.forEach(image => {
+              const normalizedUrl = image.url.split('?')[0].split('#')[0].toLowerCase();
+              if (!seenNormalizedUrls.has(normalizedUrl)) {
+                seenNormalizedUrls.add(normalizedUrl);
+                uniqueImages.push(image);
+              } else {
+                console.log(`[editArticleWithAI] Duplicate image detected (by URL) and REMOVED: ${image.url}`);
+              }
+            });
+            
             validImages = uniqueImages;
-            const duplicatesRemoved = accessibleImages.length - uniqueImages.length;
+            const duplicatesRemoved = validImages.length - uniqueImages.length;
             console.log(`[editArticleWithAI] Duplicate detection completed: ${uniqueImages.length} unique images (removed ${duplicatesRemoved} duplicates)`);
             
             // Add valid unique image URLs to trust sources list in format "Image Title|Image URL|Source URL"

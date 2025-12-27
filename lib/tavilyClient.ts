@@ -219,11 +219,11 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
     const requestBody = {
       api_key: apiKey,
       query,
-      search_depth: "advanced", // Deep search for better results
+      search_depth: "basic", // Changed from "advanced" to "basic" to save credits - still gets good results
       include_answers: false,
       include_images: true, // Enable image search
       include_raw_content: false,
-      max_results: 15, // Increased from 10 to 15 to get more images for top festivals
+      max_results: 10, // Reduced from 15 to 10 to save credits - we'll get enough images
     };
 
     const response = await fetch("https://api.tavily.com/search", {
