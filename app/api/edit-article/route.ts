@@ -133,9 +133,9 @@ export async function POST(req: NextRequest) {
     
     // Track cost
     const costTracker = getCostTracker();
-    const usage = data.usage || {};
-    const inputTokens = usage.prompt_tokens || 0;
-    const outputTokens = usage.completion_tokens || 0;
+    const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+    const inputTokens = usage?.prompt_tokens || 0;
+    const outputTokens = usage?.completion_tokens || 0;
     if (inputTokens > 0 || outputTokens > 0) {
       costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
     }
