@@ -2938,12 +2938,22 @@ export default function Home() {
   useEffect(() => {
     const fetchCosts = async () => {
       try {
-        const response = await fetch('/api/cost-tracker');
+        const response = await fetch('/api/cost-tracker', {
+          cache: 'no-store', // Ensure fresh data
+        });
         if (response.ok) {
           const data = await response.json();
+          console.log('[cost-tracker] Response data:', data);
           if (data.success && data.totals) {
+            console.log('[cost-tracker] Setting cost data:', data.totals);
+            console.log('[cost-tracker] Formatted values:', data.totals.formatted);
             setCostData(data.totals);
+          } else {
+            console.warn('[cost-tracker] Invalid response structure:', data);
           }
+        } else {
+          const errorText = await response.text();
+          console.error('[cost-tracker] Response not OK:', response.status, response.statusText, errorText);
         }
       } catch (error) {
         console.error('[cost-tracker] Failed to fetch costs:', error);
@@ -3004,24 +3014,28 @@ export default function Home() {
         
         {/* Header Controls: Cost Tracker + Theme Toggle */}
         <div className="header-controls">
-          {costData && (
-            <div className="cost-display">
-              <div className="cost-item">
-                <span className="cost-label">Tavily:</span>
-                <span className="cost-value">{costData.formatted.tavily}</span>
-              </div>
-              <div className="cost-divider"></div>
-              <div className="cost-item">
-                <span className="cost-label">OpenAI:</span>
-                <span className="cost-value">{costData.formatted.openai}</span>
-              </div>
-              <div className="cost-divider"></div>
-              <div className="cost-item">
-                <span className="cost-label">Total:</span>
-                <span className="cost-value cost-total">{costData.formatted.total}</span>
-              </div>
+          <div className="cost-display">
+            <div className="cost-item">
+              <span className="cost-label">Tavily:</span>
+              <span className="cost-value">
+                {costData?.formatted?.tavily || '$0.0000'}
+              </span>
             </div>
-          )}
+            <div className="cost-divider"></div>
+            <div className="cost-item">
+              <span className="cost-label">OpenAI:</span>
+              <span className="cost-value">
+                {costData?.formatted?.openai || '$0.0000'}
+              </span>
+            </div>
+            <div className="cost-divider"></div>
+            <div className="cost-item">
+              <span className="cost-label">Total:</span>
+              <span className="cost-value cost-total">
+                {costData?.formatted?.total || '$0.0000'}
+              </span>
+            </div>
+          </div>
           <div className="theme-switch-container">
             <button
               type="button"

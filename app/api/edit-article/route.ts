@@ -147,8 +147,17 @@ export async function POST(req: NextRequest) {
     const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
+    console.log("[edit-article] Token usage:", { inputTokens, outputTokens, usage });
     if (inputTokens > 0 || outputTokens > 0) {
       costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
+      const totals = costTracker.getTotalCosts();
+      console.log("[edit-article] Cost tracked. Current totals:", {
+        tavily: totals.tavily,
+        openai: totals.openai,
+        total: totals.total,
+      });
+    } else {
+      console.warn("[edit-article] No tokens to track - usage:", usage);
     }
     
     console.log("[edit-article] OpenAI response:", {

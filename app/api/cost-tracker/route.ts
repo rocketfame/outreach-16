@@ -10,6 +10,10 @@ export async function GET() {
     const totals = costTracker.getTotalCosts();
     const allCosts = costTracker.getAllCosts();
     const sessionDuration = costTracker.getSessionDuration();
+    
+    console.log("[cost-tracker] GET request - totals:", totals);
+    console.log("[cost-tracker] All cost entries:", allCosts.length);
+    console.log("[cost-tracker] Session duration:", sessionDuration, "seconds");
 
     return NextResponse.json({
       success: true,

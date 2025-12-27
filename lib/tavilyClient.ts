@@ -64,6 +64,12 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
     // Track cost
     const costTracker = getCostTracker();
     costTracker.trackTavilySearch(requestBody.search_depth as 'basic' | 'advanced', 1);
+    const totals = costTracker.getTotalCosts();
+    console.log("[tavily-api] Cost tracked. Current totals:", {
+      tavily: totals.tavily,
+      openai: totals.openai,
+      total: totals.total,
+    });
 
     // #region agent log
     const resultsLog = {location:'tavilyClient.ts:60',message:'[tavily-api] Search completed',data:{query,resultsCount:(data.results || []).length,hasResults:(data.results || []).length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
@@ -251,6 +257,12 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
     // Track cost
     const costTracker = getCostTracker();
     costTracker.trackTavilyImageSearch(1);
+    const totals = costTracker.getTotalCosts();
+    console.log("[tavily-images] Cost tracked. Current totals:", {
+      tavily: totals.tavily,
+      openai: totals.openai,
+      total: totals.total,
+    });
     
     console.log(`[tavily-images] Response structure:`, {
       hasImages: !!data.images,

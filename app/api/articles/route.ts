@@ -211,8 +211,17 @@ Language: US English.`;
         const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
         const inputTokens = usage?.prompt_tokens || 0;
         const outputTokens = usage?.completion_tokens || 0;
+        console.log("[articles-api] Token usage:", { inputTokens, outputTokens, usage });
         if (inputTokens > 0 || outputTokens > 0) {
           costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
+          const totals = costTracker.getTotalCosts();
+          console.log("[articles-api] Cost tracked. Current totals:", {
+            tavily: totals.tavily,
+            openai: totals.openai,
+            total: totals.total,
+          });
+        } else {
+          console.warn("[articles-api] No tokens to track - usage:", usage);
         }
 
         // #region agent log
