@@ -1539,6 +1539,9 @@ export default function Home() {
                                 editRequestLower.includes('official site') ||
                                 editRequestLower.includes('official website');
 
+      // Variable for enhanced edit request (used across the function)
+      let finalEditRequestForAPI: string | undefined = undefined;
+
       // If edit request mentions images, use intelligent image search algorithm
       if (needsImages) {
         setEditingArticleStatus("Analyzing article and generating intelligent image search queries...");
