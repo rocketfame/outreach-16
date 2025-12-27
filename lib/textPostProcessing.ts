@@ -1,6 +1,8 @@
 // lib/textPostProcessing.ts
 // Post-processing utilities for cleaning and enhancing article text
 
+import { getCostTracker } from "@/lib/costTracker";
+
 /**
  * Cleans invisible Unicode characters and normalizes whitespace
  * Based on Originality.ai's approach: removes hidden Unicode characters that LLMs inject
