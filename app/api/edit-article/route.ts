@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { getOpenAIApiKey } from "@/lib/config";
 import { cleanText } from "@/lib/textPostProcessing";
+import { getCostTracker } from "@/lib/costTracker";
 
 export interface EditHistoryEntry {
   timestamp: string;
@@ -129,12 +130,23 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Track cost
+    const costTracker = getCostTracker();
+    const usage = data.usage || {};
+    const inputTokens = usage.prompt_tokens || 0;
+    const outputTokens = usage.completion_tokens || 0;
+    if (inputTokens > 0 || outputTokens > 0) {
+      costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
+    }
+    
     console.log("[edit-article] OpenAI response:", {
       hasChoices: !!data.choices,
       choicesLength: data.choices?.length || 0,
       hasMessage: !!data.choices?.[0]?.message,
       hasContent: !!data.choices?.[0]?.message?.content,
       contentLength: data.choices?.[0]?.message?.content?.length || 0,
+      usage: { inputTokens, outputTokens },
     });
 
     const editedHtml = data.choices?.[0]?.message?.content?.trim();

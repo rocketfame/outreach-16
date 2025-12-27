@@ -86,6 +86,14 @@ export default function Home() {
   const [articleLoaderStartTimes, setArticleLoaderStartTimes] = useState<Map<string, number>>(new Map()); // topicId -> start timestamp
   const [imageLoaderElapsed, setImageLoaderElapsed] = useState<Map<string, number>>(new Map()); // topicId -> elapsed seconds
   const [articleLoaderElapsed, setArticleLoaderElapsed] = useState<Map<string, number>>(new Map()); // topicId -> elapsed seconds
+  
+  // Cost tracking state
+  const [costData, setCostData] = useState<{
+    tavily: number;
+    openai: number;
+    total: number;
+    formatted: { tavily: string; openai: string; total: string };
+  } | null>(null);
 
   // Helper functions to update persisted state
   const updateBrief = (updates: Partial<Brief>) => {
@@ -2747,6 +2755,31 @@ export default function Home() {
   }, [brief, topicsData, selectedTopicIds, mode]);
   // #endregion
 
+  // Fetch cost data periodically
+  useEffect(() => {
+    const fetchCosts = async () => {
+      try {
+        const response = await fetch('/api/cost-tracker');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.totals) {
+            setCostData(data.totals);
+          }
+        }
+      } catch (error) {
+        console.error('[cost-tracker] Failed to fetch costs:', error);
+      }
+    };
+
+    // Fetch immediately
+    fetchCosts();
+
+    // Then fetch every 2 seconds
+    const interval = setInterval(fetchCosts, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Prevent hydration mismatch by not rendering until hydrated
   if (!isHydrated) {
     return (
@@ -2789,29 +2822,59 @@ export default function Home() {
         <div className="eyebrow">Outreach Articles App</div>
         <h1>Universal Content Creator</h1>
         <p className="page-subtitle">Plan and draft outreach content in one place</p>
-        <div className="theme-switch-container">
-          <button
-            type="button"
-            className={`theme-toggle ${theme === "dark" ? "dark-active" : ""}`}
-            onClick={() => updateTheme(theme === "light" ? "dark" : "light")}
-            title={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-            aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-          >
-            <div className="theme-toggle-track">
-              <div className="theme-toggle-thumb">
-                {theme === "light" ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="2" fill="none"/>
-                    <path d="M12 1v3M12 20v3M23 12h-3M4 12H1M19.07 4.93l-2.12 2.12M6.05 17.95l-2.12 2.12M19.07 19.07l-2.12-2.12M6.05 6.05l-2.12-2.12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', marginTop: '0.5rem' }}>
+          {/* Cost Tracker */}
+          {costData && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.5rem 1rem',
+              background: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              fontFamily: 'monospace',
+            }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ opacity: 0.7 }}>Tavily:</span>
+                <span style={{ fontWeight: 600 }}>{costData.formatted.tavily}</span>
+              </div>
+              <div style={{ width: '1px', height: '16px', background: theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}></div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ opacity: 0.7 }}>OpenAI:</span>
+                <span style={{ fontWeight: 600 }}>{costData.formatted.openai}</span>
+              </div>
+              <div style={{ width: '1px', height: '16px', background: theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }}></div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ opacity: 0.7 }}>Total:</span>
+                <span style={{ fontWeight: 700, color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>{costData.formatted.total}</span>
               </div>
             </div>
-          </button>
+          )}
+          <div className="theme-switch-container">
+            <button
+              type="button"
+              className={`theme-toggle ${theme === "dark" ? "dark-active" : ""}`}
+              onClick={() => updateTheme(theme === "light" ? "dark" : "light")}
+              title={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+              aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+            >
+              <div className="theme-toggle-track">
+                <div className="theme-toggle-thumb">
+                  {theme === "light" ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="2" fill="none"/>
+                      <path d="M12 1v3M12 20v3M23 12h-3M4 12H1M19.07 4.93l-2.12 2.12M6.05 17.95l-2.12 2.12M19.07 19.07l-2.12-2.12M6.05 6.05l-2.12-2.12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
       </header>
 

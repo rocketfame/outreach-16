@@ -2,6 +2,7 @@
 // Hero image generation endpoint for articles
 
 import { getOpenAIClient, validateApiKeys } from "@/lib/config";
+import { getCostTracker } from "@/lib/costTracker";
 
 // Simple debug logger
 const debugLog = (...args: any[]) => {
@@ -291,6 +292,10 @@ export async function POST(req: Request) {
     });
 
     const imageBase64 = imageResponse.data?.[0]?.b64_json;
+
+    // Track cost
+    const costTracker = getCostTracker();
+    costTracker.trackOpenAIImageGeneration('dall-e-3', '1792x1024', 1);
 
     if (!imageBase64) {
       // #region agent log

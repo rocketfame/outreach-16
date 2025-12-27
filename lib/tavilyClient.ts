@@ -2,6 +2,7 @@
 // Tavily Search API client - Single source of truth for external search
 
 import { getTavilyApiKey } from "@/lib/config";
+import { getCostTracker } from "@/lib/costTracker";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -59,6 +60,10 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
     }
 
     const data = await response.json();
+
+    // Track cost
+    const costTracker = getCostTracker();
+    costTracker.trackTavilySearch(requestBody.search_depth as 'basic' | 'advanced', 1);
 
     // #region agent log
     const resultsLog = {location:'tavilyClient.ts:60',message:'[tavily-api] Search completed',data:{query,resultsCount:(data.results || []).length,hasResults:(data.results || []).length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
@@ -242,6 +247,11 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
     }
 
     const data = await response.json();
+    
+    // Track cost
+    const costTracker = getCostTracker();
+    costTracker.trackTavilyImageSearch(1);
+    
     console.log(`[tavily-images] Response structure:`, {
       hasImages: !!data.images,
       imagesType: Array.isArray(data.images) ? 'array' : typeof data.images,

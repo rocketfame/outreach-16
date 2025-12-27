@@ -3,6 +3,7 @@
 import { buildArticlePrompt } from "@/lib/articlePrompt";
 import { cleanText, lightHumanEdit } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
+import { getCostTracker } from "@/lib/costTracker";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -205,8 +206,17 @@ Language: US English.`;
 
         const content = completion.choices[0]?.message?.content ?? "";
 
+        // Track cost
+        const costTracker = getCostTracker();
+        const usage = completion.usage || {};
+        const inputTokens = usage.prompt_tokens || 0;
+        const outputTokens = usage.completion_tokens || 0;
+        if (inputTokens > 0 || outputTokens > 0) {
+          costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
+        }
+
         // #region agent log
-        const apiLog = {location:'articles/route.ts:135',message:'OpenAI API success',data:{contentLength:content.length,topicTitle:topic.title,hasContent:!!content,contentPreview:content.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
+        const apiLog = {location:'articles/route.ts:135',message:'OpenAI API success',data:{contentLength:content.length,topicTitle:topic.title,hasContent:!!content,contentPreview:content.substring(0,100),usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
         debugLog(apiLog);
         // #endregion
 
