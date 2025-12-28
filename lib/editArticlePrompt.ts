@@ -314,3 +314,86 @@ Rules:
 
 You are a professional editor. You always work on the complete article scope, understand context deeply, and execute edits precisely and efficiently.
 `.trim();
+
+export function buildEditArticlePrompt(params: EditArticleParams): string {
+  let prompt = EDIT_ARTICLE_PROMPT_TEMPLATE;
+
+  // Replace placeholders
+  prompt = prompt.replaceAll("[[NICHE]]", params.niche || "");
+  prompt = prompt.replaceAll("[[ARTICLE_TITLE]]", params.articleTitle || "Article");
+  prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
+  prompt = prompt.replaceAll("[[CURRENT_ARTICLE_HTML]]", params.currentArticleHtml || "");
+  prompt = prompt.replaceAll("[[EDIT_REQUEST]]", params.editRequest.trim());
+
+  // Format edit history
+  let editHistoryFormatted = "No previous edits.";
+  if (params.editHistory && params.editHistory.length > 0) {
+    editHistoryFormatted = params.editHistory
+      .map((entry, index) => {
+        return `${index + 1}. [${entry.timestamp}] ${entry.editRequest}\n   Summary: ${entry.summary}`;
+      })
+      .join("\n\n");
+  }
+  prompt = prompt.replaceAll("[[EDIT_HISTORY]]", editHistoryFormatted);
+
+  // Format trust sources list
+  const imageSources: string[] = [];
+  const regularSources: string[] = [];
+
+  params.trustSourcesList.forEach((source) => {
+    if (source.includes("|") && source.split("|").length >= 3) {
+      // Image format: "Title|Image URL|Source URL"
+      imageSources.push(source);
+    } else {
+      // Regular source format: "Name|URL"
+      regularSources.push(source);
+    }
+  });
+
+  let trustSourcesFormatted = "";
+  
+  if (imageSources.length > 0) {
+    trustSourcesFormatted += `AVAILABLE IMAGES (found via Tavily web browsing):\n${imageSources.map((s, i) => {
+      const parts = s.split('|');
+      return `${i + 1}. Title: "${parts[0] || 'Image'}"\n   Image URL: ${parts[1] || ''}\n   Source URL: ${parts[2] || ''}`;
+    }).join('\n\n')}\n\n`;
+  }
+  
+  if (regularSources.length > 0) {
+    trustSourcesFormatted += `AVAILABLE SOURCES (for links):\n${regularSources.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n`;
+  }
+  
+  if (params.trustSourcesList.length === 0) {
+    trustSourcesFormatted = "No additional sources available.";
+  }
+
+  // Add intelligent guidance based on available resources
+  let sourcesGuidance = "";
+  
+  if (imageSources.length > 0) {
+    const isBrokenImageRequest = params.editRequest.toLowerCase().includes('бит') ||
+                                 params.editRequest.toLowerCase().includes('broken') ||
+                                 params.editRequest.toLowerCase().includes('замінити') ||
+                                 params.editRequest.toLowerCase().includes('replace') ||
+                                 params.editRequest.toLowerCase().includes('виправити') ||
+                                 params.editRequest.toLowerCase().includes('fix') ||
+                                 params.editRequest.toLowerCase().includes('не відображається') ||
+                                 params.editRequest.toLowerCase().includes('not displaying') ||
+                                 params.editRequest.toLowerCase().includes('не працює') ||
+                                 params.editRequest.toLowerCase().includes('not working');
+    
+    sourcesGuidance += `\n\nIMAGES AVAILABLE:\n- You have ${imageSources.length} image(s) found via Tavily browsing\n- These are real images from the web (social media, official sites, news, etc.)\n- 🚨 CRITICAL: All images have been verified as accessible - they are NOT broken files\n- 🚨 CRITICAL: Place images NEXT TO the relevant item (festival, event, etc.) in the article structure\n- 🚨 CRITICAL: Ensure ALL images display correctly - use proper HTML img tags with correct src attributes\n- CRITICAL: Match images EXACTLY to items mentioned in text (e.g., "Tomorrowland" image for "Tomorrowland" text)\n- CRITICAL: Add images to ALL relevant sections of the article, not just one section\n- Distribute evenly if user requested "for each" or "evenly"\n- Validate URLs before using (must be http:// or https://)\n- Ensure source diversity (don't use multiple images from same domain)\n- If you cannot find an exact match, DO NOT use a wrong image - skip it silently (no text notes or messages)\n- 🚨 CRITICAL: NEVER add text notes or messages in the article about missing images - just skip them\n- 🚨 CRITICAL: When user asks to check images or ensure correct display - verify ALL images are properly embedded\n`;
+    
+    if (isBrokenImageRequest) {
+      sourcesGuidance += `\n\n🚨🚨🚨 BROKEN IMAGE REPLACEMENT MODE - MANDATORY ACTION 🚨🚨🚨\n- User has requested to replace broken/non-working images\n- You MUST scan the ENTIRE article HTML for ALL <img> tags\n- For EACH broken image you find:\n  * Read the surrounding text to identify what content/item the image is associated with\n  * Look for festival names, event names, or other identifiers near the broken image\n  * Find a matching replacement image from the available images list (${imageSources.length} images available)\n  * Match EXACTLY - if text says "Tomorrowland", find a "Tomorrowland" image from the list\n  * If text says "Ultra Music Festival", find an "Ultra" image from the list\n  * Replace the broken image URL (src attribute) with the working image URL from the list\n  * Keep the same <figure> structure, alt text, and figcaption formatting\n  * Update the figcaption source link to match the new image source\n- Do NOT leave ANY broken images in the final article\n- Replace ALL broken images, not just some - this is MANDATORY\n- If you cannot find an exact match for a broken image, skip that specific image but continue replacing others\n- The final article must have ONLY working images - no broken image URLs\n`;
+    }
+  }
+  
+  if (regularSources.length > 0) {
+    sourcesGuidance += `\n\nSOURCES AVAILABLE:\n- You have ${regularSources.length} source(s) for links\n- Use them when adding links as requested\n- Prioritize based on user's specific instructions (official sites, social media, etc.)\n`;
+  }
+
+  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + sourcesGuidance);
+
+  return prompt;
+}
