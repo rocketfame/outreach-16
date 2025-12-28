@@ -549,8 +549,8 @@ If [[BRAND_NAME]] is non-empty:
 A) "Brand blog"  
    - Voice: brand or close expert voice ("we" is allowed).  
    - Guide topics: mention [[BRAND_NAME]] 2–3 times maximum.  
-   - List topics: at most one very short neutral mention in intro or conclusion,  
-     no separate section about the brand.
+   - List topics: at most one very short neutral mention in the concluding paragraph ONLY,  
+     no separate section about the brand, no mention in intro.
 
 B) "Guest post / outreach"  
    - Voice: neutral expert, no "we".  
@@ -563,7 +563,7 @@ C) "Educational guide"
 D) "Partner blog"  
    - Voice: friendly expert respecting both the host blog and [[BRAND_NAME]].  
    - Guide topics: up to 2–3 mentions.  
-   - List topics: one short mention max.
+   - List topics: one very short mention in the concluding paragraph ONLY (max 1 sentence).
 
 E) "Other"  
    - Voice: neutral editorial.  
@@ -622,12 +622,13 @@ Main goal: deliver a clear, concrete list of real items.
 Around 70% of the article should be the list with item descriptions.
 
 1) Short intro  
-   - 1–2 short paragraphs.  
+   - 1–2 short paragraphs (keep it concise).  
    - Explain in simple terms what the list is and why it matters in [[NICHE]].  
-   - No long storytelling and no generic "how to grow" advice.  
-   - If [[BRAND_NAME]] is non-empty AND content purpose is "Brand blog" or "Partner blog",  
-     you may mention the brand once in one short neutral sentence.  
-   - Otherwise, skip brand here.
+   - Focus on the list itself: what it contains, who it's for (fans, travelers, artists, etc.).  
+   - No long storytelling, no generic "how to grow" advice, no creator-centric framing unless the brief explicitly asks for it.  
+   - NEVER mention [[BRAND_NAME]] in the intro, even for "Brand blog" or "Partner blog".  
+     Any brand mention in list articles is allowed ONLY in the concluding paragraph,  
+     and ONLY under the rules in section 3.4 and 3.5.
 
 2) Main list (core content)  
    - Use <h1> for the main title, <h2>/<h3> for grouping.  
@@ -648,24 +649,40 @@ Around 70% of the article should be the list with item descriptions.
    - Use 1–3 sources from [[TRUST_SOURCES_LIST]] only if they clearly match the topic.  
    - Prefer official websites and strong editorial roundups.  
    - Integrate links inside the relevant item description.  
-   - Link format (always bold + clickable):  
+   - Link format (always bold + clickable - EXACT format required):  
      <b><a href="EXACT_URL_FROM_LIST" target="_blank" rel="noopener noreferrer">short natural anchor</a></b>  
+   - CRITICAL: Use target="_blank" (with underscore, NOT target="blank")
    - Never show raw URLs as visible text.
+   - Never create links with empty href attributes.
 
 4) Brand and growth content in list topics (VERY LIMITED)  
    - Do NOT create separate H2/H3 sections like  
-     "How to use these festivals to grow your music"  
-     or "Creator playbook",  
+     "How to use these festivals to grow your music",  
+     "Why this matters for creators",  
+     "Quick planning notes",  
+     "Creator playbook",  
+     or any advice/guide sections,  
      unless [[TOPIC_BRIEF]] explicitly demands it.  
    - Do NOT turn the second half of the article into a generic growth guide.  
    - Do NOT create a full section about [[BRAND_NAME]] in list articles.  
+   - CRITICAL: After the main list, you may ONLY have:
+     a) One optional "Sources" / "Where this list comes from" section (H2) with external links
+     b) One short concluding paragraph (plain <p>, NO H2/H3 heading)
    - With non-empty [[BRAND_NAME]] and "Brand blog" / "Partner blog" purpose,  
-     you may add ONE short neutral sentence about the brand in intro or conclusion.
+     you may add ONE very short neutral sentence about the brand in the concluding paragraph ONLY.  
+   - For all other content purposes, skip [[BRAND_NAME]] completely in list articles.
 
-5) Conclusion for list topics  
-   - One short paragraph that sums up how the reader can use the list  
-     (plan travel, discover new events or platforms, build research, etc.).  
-   - No extra frameworks or long advice blocks.
+5) Conclusion for list topics (CRITICAL - STRICT RULES)  
+   - After the main list, you may have:
+     a) ONE optional H2 section "Where this list comes from" / "Sources" with external links (if sources were used)
+     b) ONE short concluding paragraph using plain <p> tag (NO H2/H3 heading)
+   - The concluding paragraph should be:
+     • One short paragraph (3-5 sentences max)
+     • Summarizes how the reader can use the list (plan travel, discover events, research platforms, etc.)
+     • NO separate H2/H3 sections with advice, tips, "why this matters", or planning notes
+     • NO frameworks, NO long advice blocks, NO guide-like content
+   - If you have both sources section and conclusion, sources section comes FIRST, then conclusion paragraph.
+   - If you have only conclusion (no sources), just the paragraph - NO heading above it.
 
 ================================
 4. STRUCTURE FOR ADVICE / GUIDE TOPICS
@@ -703,15 +720,19 @@ Use this only when the topic is clearly about strategies / "how to".
 Commercial anchor is independent from [[BRAND_NAME]].
 
 1) If anchor text OR URL are invalid  
-   (empty, placeholder like "Enter anchor text", or URL is empty / "https://example.com"):
+   (empty, placeholder like "Enter anchor text", or URL is empty / "https://example.com" / contains only whitespace):
 
-   - You MUST NOT insert any commercial anchor.  
-   - You MUST NOT guess or invent a branded link.
+   - You MUST NOT insert any commercial anchor at all.  
+   - You MUST NOT create any <a> tag with empty href.  
+   - You MUST NOT guess or invent a branded link.  
+   - If you see [[ANCHOR_TEXT]] or [[ANCHOR_URL]] in your prompt but they are empty/invalid,  
+     treat it as if no commercial link was requested - write the article without any commercial anchor.
 
-2) If BOTH [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid:
+2) If BOTH [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid (non-empty, not placeholders):
 
    - Insert the exact anchor once in the first 2–3 paragraphs:  
      <b><a href="[[ANCHOR_URL]]" target="_blank" rel="noopener noreferrer">[[ANCHOR_TEXT]]</a></b>  
+   - CRITICAL: The href must be the exact [[ANCHOR_URL]] value - never empty, never a placeholder.  
    - Use this commercial anchor only once in the whole article.  
    - Do not translate or modify the anchor text.
 
@@ -723,8 +744,10 @@ Commercial anchor is independent from [[BRAND_NAME]].
 • 1–3 sources per article, only if they are truly relevant.  
 • Integrate each source naturally inside a sentence with a short anchor  
   (brand name or 2–4 word phrase).  
-• Format links as:  
+• Format links as (EXACT format required):  
   <b><a href="URL_FROM_LIST" target="_blank" rel="noopener noreferrer">anchor text</a></b>  
+• CRITICAL: Use target="_blank" (with underscore, NOT target="blank")
+• Never create links with empty href attributes.
 
 If no source in [[TRUST_SOURCES_LIST]] fits the topic, write the article without external links.
 
@@ -760,8 +783,10 @@ Technical format:
   - <p> for paragraphs,  
   - <ul>/<ol> with <li> for lists,  
   - <b> for bold text,  
-  - all links as  
-    <b><a href="..." target="_blank" rel="noopener noreferrer">anchor</a></b>.
+  - all links MUST use EXACT format:  
+    <b><a href="..." target="_blank" rel="noopener noreferrer">anchor</a></b>
+  - CRITICAL: target="_blank" (with underscore), NOT target="blank"
+  - NEVER create links with empty href attributes (<a href=""></a> is FORBIDDEN)
 
 • Do NOT output Markdown, code fences or any text outside the JSON object.  
 • Do NOT use em dash or en dash, only regular hyphen "-" or normal commas / periods.  
