@@ -320,10 +320,10 @@ QUALITY EXPECTATIONS
 
 SEO requirements:
 - Write an SEO title tag (max 60 characters) that matches the search intent for this topic, includes the main keyword and fits [[NICHE]].
-- Write a meta description (150–160 characters) that is clear, concrete and includes at least one number (e.g. %, steps, years, metrics).
+- Write a meta description (150-160 characters) that is clear, concrete and includes at least one number (e.g. %, steps, years, metrics). Use regular hyphen "-" not en-dash.
 - Use [[KEYWORD_LIST]] as your pool of SEO keywords.
 - Choose the most relevant keywords for this topic and integrate them naturally.
-- Use each chosen keyword 2–4 times across the article and in headings where it makes sense.
+- Use each chosen keyword 2-4 times across the article and in headings where it makes sense. Use regular hyphen "-" for ranges.
 - Keep at least 3 sentences between repetitions of the same keyword.
 - Make all used keywords bold in the final article.
 
@@ -349,7 +349,14 @@ Technical requirements:
 - Do NOT wrap the JSON in code fences, backticks, or markdown code blocks.
 - Do NOT include any extraneous text outside the JSON object.
 - Do not add extra spaces, tabs or blank lines that create gaps.
-- Do not insert any hidden or invisible Unicode characters.
+- 🚨 CRITICAL CHARACTER RULES - MANDATORY (prevents AI-detection):
+  * NEVER use em-dash (—) or en-dash (–). These are strong AI-detection signals.
+  * Use ONLY regular hyphen "-" for ranges (e.g., "5-10 items") or commas/periods for pauses.
+  * NEVER use smart quotes (" " or ' '). Use ONLY standard straight quotes (" " and ' ').
+  * NEVER use ellipsis character (…). Use three dots "..." instead.
+  * NEVER use zero-width spaces, non-breaking spaces, or any invisible Unicode characters.
+  * Use ONLY standard ASCII punctuation characters - this prevents AI-detection tools from flagging the text.
+  * This is MANDATORY - double-check your output to ensure no em-dash, en-dash, or hidden Unicode characters are present.
 
 FINAL CHECKLIST BEFORE OUTPUT:
 - [ ] Word count is approximately [[WORD_COUNT]] words (check by counting words in articleBodyHtml, excluding HTML tags)
@@ -796,9 +803,9 @@ Style:
 
 SEO:
 • Create an SEO title tag (max 60 characters) that matches the search intent of [[TOPIC_TITLE]].  
-• Create a meta description (150–160 characters) with at least one number.  
+• Create a meta description (150-160 characters) with at least one number (use regular hyphen "-" not en-dash).  
 • From [[KEYWORD_LIST]] pick the most relevant keywords,  
-  use each 2–4 times with at least 3 sentences between repetitions.  
+  use each 2-4 times with at least 3 sentences between repetitions (use regular hyphen "-" for ranges).  
 • If [[TOPIC_BRIEF]] explicitly lists keywords or phrases to include,  
   treat them as part of the keyword pool (unless they conflict with safety rules).  
 • Wrap each used keyword in <b>...</b> in the HTML.
@@ -819,13 +826,24 @@ Technical format:
   - <ul>/<ol> with <li> for lists,  
   - <b> for bold text,  
   - all links MUST use EXACT format:  
-    <b><a href="..." target="_blank" rel="noopener noreferrer">anchor</a></b>
+    <b><a href="..." target="_blank" rel="noopener noreferrer">anchor</a></b>  
   - CRITICAL: target="_blank" (with underscore), NOT target="blank"
   - NEVER create links with empty href attributes (<a href=""></a> is FORBIDDEN)
 
 • Do NOT output Markdown, code fences or any text outside the JSON object.  
-• Do NOT use em dash or en dash, only regular hyphen "-" or normal commas / periods.  
-• Use standard straight quotes only.
+• 🚨 CRITICAL CHARACTER RULES - MANDATORY (prevents AI-detection):
+  - NEVER use em-dash (—) or en-dash (–). These are strong AI-detection signals.
+  - Use ONLY regular hyphen "-" for ranges (e.g., "5-10 items") or commas/periods for pauses.
+  - NEVER use smart quotes (" " or ' '). Use ONLY standard straight quotes (" " and ' ').
+  - NEVER use ellipsis character (…). Use three dots "..." instead.
+  - NEVER use zero-width spaces, non-breaking spaces, or any invisible Unicode characters.
+  - Use ONLY standard ASCII punctuation characters - this prevents AI-detection tools from flagging the text.
+  - This is MANDATORY - double-check your output to ensure no em-dash, en-dash, or hidden Unicode characters are present.
+
+FINAL VERIFICATION BEFORE OUTPUT:
+• Scan the entire articleBodyHtml for em-dash (—) and en-dash (–) - if found, replace with regular hyphen "-" or comma/period.
+• Verify NO smart quotes, ellipsis character, or hidden Unicode characters are present.
+• Ensure ALL punctuation is standard ASCII only.
 
 Now generate ONLY the JSON object, nothing else.
 `.trim();
