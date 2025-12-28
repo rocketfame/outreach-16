@@ -1,6 +1,30 @@
 // app/api/articles/route.ts
 
-import { buildArticlePrompt } from "@/lib/articlePrompt";
+/**
+ * ============================================================================
+ * CRITICAL ARCHITECTURE DECISION - DO NOT CHANGE WITHOUT EXPLICIT APPROVAL
+ * ============================================================================
+ * 
+ * This API endpoint handles article generation for TWO DISTINCT MODES:
+ * 
+ * 1. TOPIC DISCOVERY MODE
+ *    - Uses: buildArticlePrompt() -> TOPIC_DISCOVERY_ARTICLE_PROMPT_TEMPLATE
+ *    - Detected by: topic has detailed brief fields (shortAngle, whyNonGeneric, etc.)
+ * 
+ * 2. DIRECT ARTICLE CREATION MODE  
+ *    - Uses: buildDirectArticlePrompt() -> DIRECT_ARTICLE_PROMPT_TEMPLATE
+ *    - Detected by: topic.brief === topic.title (simple topic without detailed brief)
+ * 
+ * CRITICAL RULES:
+ * - These two modes MUST use their respective prompt builders
+ * - DO NOT merge the logic or use the wrong prompt builder
+ * - Mode detection is automatic based on topic structure
+ * - Do NOT modify this architecture without explicit user approval
+ * 
+ * ============================================================================
+ */
+
+import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
 import { cleanText, lightHumanEdit } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
@@ -95,42 +119,82 @@ export async function POST(req: Request) {
     // Generate article for each selected topic
     for (const topic of selectedTopics) {
       try {
-        // Build comprehensive article brief from topic's deep brief fields
-        const topicBriefParts = [
-          topic.brief || "",
-          topic.shortAngle ? `Short angle: ${topic.shortAngle}` : "",
-          topic.whyNonGeneric ? `Why non-generic: ${topic.whyNonGeneric}` : "",
-          topic.howAnchorFits ? `How anchor fits: ${topic.howAnchorFits}` : "",
-          topic.evergreenNote ? `Evergreen potential: ${topic.evergreenNote}` : "",
-          topic.competitionNote ? `Competition level: ${topic.competitionNote}` : "",
-        ].filter(Boolean);
-        
-        const topicBrief = topicBriefParts.length > 0 
-          ? topicBriefParts.join("\n\n")
-          : topic.title;
+        // Determine if this is Direct Article Creation Mode or Topic Discovery Mode
+        // Direct Mode: topic.brief === topic.title (simple topic title without detailed brief)
+        // Topic Discovery Mode: topic has detailed brief fields (shortAngle, whyNonGeneric, etc.)
+        const isDirectMode = topic.brief === topic.title && 
+                             !topic.shortAngle && 
+                             !topic.whyNonGeneric && 
+                             !topic.howAnchorFits;
 
-        // #region agent log
-        const promptBuildLog = {location:'articles/route.ts:94',message:'Building article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
-        debugLog(promptBuildLog);
-        // #endregion
+        let prompt: string;
 
-        // Build the article prompt
-        // Note: buildArticlePrompt will throw an error if niche is missing
-        const prompt = buildArticlePrompt({
-          topicTitle: topic.title,
-          topicBrief: topicBrief,
-          niche: brief.niche || "", // Will be validated in buildArticlePrompt
-          mainPlatform: brief.platform || "multi-platform",
-          contentPurpose: brief.contentPurpose || "Guest post / outreach",
-          anchorText: brief.anchorText || "",
-          anchorUrl: brief.anchorUrl || brief.clientSite || "",
-          brandName: "PromosoundGroup",
-          keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
-          trustSourcesList: trustSourcesList,
-          language: brief.language || "English",
-          targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
-          wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
-        });
+        if (isDirectMode) {
+          // ========================================================================
+          // DIRECT ARTICLE CREATION MODE - CRITICAL: Use buildDirectArticlePrompt
+          // ========================================================================
+          // DO NOT use buildArticlePrompt here! This mode has its own separate prompt.
+          // ========================================================================
+          // #region agent log
+          const promptBuildLog = {location:'articles/route.ts:94',message:'Building DIRECT article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform,mode:'direct'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
+          debugLog(promptBuildLog);
+          // #endregion
+
+          prompt = buildDirectArticlePrompt({
+            topicTitle: topic.title,
+            topicBrief: topic.brief || topic.title, // For direct mode, brief is same as title
+            niche: brief.niche || "", // Will be validated in buildDirectArticlePrompt
+            mainPlatform: brief.platform || "multi-platform",
+            contentPurpose: brief.contentPurpose || "Guest post / outreach",
+            anchorText: brief.anchorText || "",
+            anchorUrl: brief.anchorUrl || brief.clientSite || "",
+            brandName: "PromosoundGroup",
+            keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
+            trustSourcesList: trustSourcesList,
+            language: brief.language || "English",
+            targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
+            wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
+          });
+        } else {
+          // ========================================================================
+          // TOPIC DISCOVERY MODE - CRITICAL: Use buildArticlePrompt
+          // ========================================================================
+          // DO NOT use buildDirectArticlePrompt here! This mode has its own separate prompt.
+          // ========================================================================
+          // Build comprehensive article brief from topic's deep brief fields
+          const topicBriefParts = [
+            topic.brief || "",
+            topic.shortAngle ? `Short angle: ${topic.shortAngle}` : "",
+            topic.whyNonGeneric ? `Why non-generic: ${topic.whyNonGeneric}` : "",
+            topic.howAnchorFits ? `How anchor fits: ${topic.howAnchorFits}` : "",
+            topic.evergreenNote ? `Evergreen potential: ${topic.evergreenNote}` : "",
+            topic.competitionNote ? `Competition level: ${topic.competitionNote}` : "",
+          ].filter(Boolean);
+          
+          const topicBrief = topicBriefParts.length > 0 
+            ? topicBriefParts.join("\n\n")
+            : topic.title;
+
+          // #region agent log
+          const promptBuildLog = {location:'articles/route.ts:94',message:'Building TOPIC DISCOVERY article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform,mode:'topic-discovery'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
+          debugLog(promptBuildLog);
+          // #endregion
+
+          prompt = buildArticlePrompt({
+            topicTitle: topic.title,
+            topicBrief: topicBrief,
+            niche: brief.niche || "", // Will be validated in buildArticlePrompt
+            mainPlatform: brief.platform || "multi-platform",
+            anchorText: brief.anchorText || "",
+            anchorUrl: brief.anchorUrl || brief.clientSite || "",
+            brandName: "PromosoundGroup",
+            keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
+            trustSourcesList: trustSourcesList,
+            language: brief.language || "English",
+            targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
+            wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
+          });
+        }
         
         // #region agent log
         const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{trustSourcesCount:trustSourcesList.length,trustSources:trustSourcesList.slice(0,3),hasTrustSources:trustSourcesList.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
@@ -181,20 +245,20 @@ Language: US English.`;
             const formatErrorLog = {location:'articles/route.ts:125',message:'response_format not supported, trying without it',data:{error:(formatError as Error).message,errorCode:formatError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
             debugLog(formatErrorLog);
             // #endregion
-            completion = await openai.chat.completions.create({
+              completion = await openai.chat.completions.create({
               model: "gpt-5.2",
-              messages: [
-                {
-                  role: "system",
-                  content: systemMessage,
-                },
-                {
-                  role: "user",
-                  content: prompt,
-                },
-              ],
-              temperature: 0.7,
-            });
+                messages: [
+                  {
+                    role: "system",
+                    content: systemMessage,
+                  },
+                  {
+                    role: "user",
+                    content: prompt,
+                  },
+                ],
+                temperature: 0.7,
+              });
           }
         } catch (apiError: any) {
           // #region agent log

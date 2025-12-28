@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   const logEntry = {location:'route.ts:23',message:'POST /api/generate called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
   debugLog(logEntry);
   // #endregion
-
+  
   // Validate API keys using centralized configuration
   try {
     validateApiKeys();

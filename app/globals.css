@@ -4142,7 +4142,7 @@ body {
   max-width: 500px;
   transition: background-color 0.3s ease;
   width: 90%;
-  text-align: center;
+    text-align: center;
   z-index: 10000;
 }
 

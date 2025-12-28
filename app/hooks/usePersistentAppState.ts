@@ -73,14 +73,14 @@ export type AppPersistedState = {
 const STORAGE_KEY = "ucca_state_v1";
 
 const defaultBrief: Brief = {
-  niche: "",
-  clientSite: "",
-  language: "",
-  wordCount: "",
-  platform: "",
-  anchorText: "",
-  anchorUrl: "",
-  contentPurpose: "",
+    niche: "",
+    clientSite: "",
+    language: "",
+    wordCount: "",
+    platform: "",
+    anchorText: "",
+    anchorUrl: "",
+    contentPurpose: "",
 };
 
 const defaultState: AppPersistedState = {
