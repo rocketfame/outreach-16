@@ -118,6 +118,36 @@ class CostTracker {
   }
 
   /**
+   * Get total tokens for current session
+   */
+  getTotalTokens(): {
+    tavily: { queries: number };
+    openai: { input: number; output: number; total: number };
+  } {
+    let tavilyQueries = 0;
+    let openaiInputTokens = 0;
+    let openaiOutputTokens = 0;
+
+    this.costs.forEach((entry) => {
+      if (entry.service === 'tavily') {
+        tavilyQueries += entry.details?.queries || 0;
+      } else if (entry.service === 'openai' && entry.type === 'chat') {
+        openaiInputTokens += entry.details?.tokens?.input || 0;
+        openaiOutputTokens += entry.details?.tokens?.output || 0;
+      }
+    });
+
+    return {
+      tavily: { queries: tavilyQueries },
+      openai: {
+        input: openaiInputTokens,
+        output: openaiOutputTokens,
+        total: openaiInputTokens + openaiOutputTokens,
+      },
+    };
+  }
+
+  /**
    * Get total costs for current session
    */
   getTotalCosts(): {
@@ -204,5 +234,13 @@ export function formatCost(cost: number): string {
     minimumFractionDigits: 4,
     maximumFractionDigits: 4,
   }).format(cost);
+}
+
+// Helper function to format tokens
+export function formatTokens(tokens: number): string {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(tokens);
 }
 

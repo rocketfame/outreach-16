@@ -2,16 +2,18 @@
 // API endpoint to get current cost tracking data
 
 import { NextResponse } from "next/server";
-import { getCostTracker, formatCost } from "@/lib/costTracker";
+import { getCostTracker, formatCost, formatTokens } from "@/lib/costTracker";
 
 export async function GET() {
   try {
     const costTracker = getCostTracker();
     const totals = costTracker.getTotalCosts();
+    const tokens = costTracker.getTotalTokens();
     const allCosts = costTracker.getAllCosts();
     const sessionDuration = costTracker.getSessionDuration();
     
     console.log("[cost-tracker] GET request - totals:", totals);
+    console.log("[cost-tracker] Tokens:", tokens);
     console.log("[cost-tracker] All cost entries:", allCosts.length);
     console.log("[cost-tracker] Session duration:", sessionDuration, "seconds");
 
@@ -25,6 +27,18 @@ export async function GET() {
           tavily: formatCost(totals.tavily),
           openai: formatCost(totals.openai),
           total: formatCost(totals.total),
+        },
+      },
+      tokens: {
+        tavily: tokens.tavily.queries,
+        openai: {
+          input: tokens.openai.input,
+          output: tokens.openai.output,
+          total: tokens.openai.total,
+        },
+        formatted: {
+          tavily: `${formatTokens(tokens.tavily.queries)} queries`,
+          openai: `${formatTokens(tokens.openai.total)} tokens`,
         },
       },
       breakdown: totals.breakdown,

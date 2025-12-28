@@ -93,6 +93,11 @@ export default function Home() {
     openai: number;
     total: number;
     formatted: { tavily: string; openai: string; total: string };
+    tokens?: {
+      tavily: number;
+      openai: { input: number; output: number; total: number };
+      formatted: { tavily: string; openai: string };
+    };
   } | null>(null);
 
   // Helper functions to update persisted state
@@ -1045,11 +1050,12 @@ export default function Home() {
     }
 
     // Validate Project Basis fields with detailed error messages
+    // Use briefWithDefaults to match button validation logic
     const missingFields: string[] = [];
-    if (!brief || !brief.niche || !brief.niche.trim()) {
+    if (!briefWithDefaults || !briefWithDefaults.niche || !briefWithDefaults.niche.trim()) {
       missingFields.push("Main niche or theme");
     }
-    const languageValue = brief?.language || "English";
+    const languageValue = briefWithDefaults?.language || "English";
     if (!languageValue || !languageValue.trim()) {
       missingFields.push("Language");
     }
@@ -1119,10 +1125,11 @@ export default function Home() {
 
     try {
       // Step 1: Find trust sources via Tavily for the topic
+      // Use briefWithDefaults to ensure we have valid values
       const queryParts = [
         directArticleTopic,
-        brief.niche || "",
-        brief.platform || "",
+        briefWithDefaults.niche || "",
+        briefWithDefaults.platform || "",
         "2024 2025", // Ensure recent data
       ].filter(Boolean);
       const searchQuery = queryParts.join(" ");
@@ -1148,11 +1155,12 @@ export default function Home() {
       }
 
       // Step 2: Generate article with found trust sources
+      // Use briefWithDefaults to ensure we have valid values
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          brief,
+          brief: briefWithDefaults,
           selectedTopics: [{
             title: directArticleTopic,
             brief: directArticleTopic,
@@ -2946,8 +2954,12 @@ export default function Home() {
           console.log('[cost-tracker] Response data:', data);
           if (data.success && data.totals) {
             console.log('[cost-tracker] Setting cost data:', data.totals);
+            console.log('[cost-tracker] Tokens:', data.tokens);
             console.log('[cost-tracker] Formatted values:', data.totals.formatted);
-            setCostData(data.totals);
+            setCostData({
+              ...data.totals,
+              tokens: data.tokens,
+            });
           } else {
             console.warn('[cost-tracker] Invalid response structure:', data);
           }
@@ -3018,14 +3030,14 @@ export default function Home() {
             <div className="cost-item">
               <span className="cost-label">Tavily:</span>
               <span className="cost-value">
-                {costData?.formatted?.tavily || '$0.0000'}
+                {costData?.tokens?.formatted?.tavily || '0 queries'}
               </span>
             </div>
             <div className="cost-divider"></div>
             <div className="cost-item">
               <span className="cost-label">OpenAI:</span>
               <span className="cost-value">
-                {costData?.formatted?.openai || '$0.0000'}
+                {costData?.tokens?.formatted?.openai || '0 tokens'}
               </span>
             </div>
             <div className="cost-divider"></div>
@@ -3360,17 +3372,23 @@ export default function Home() {
                         className="btn-primary"
                         onClick={(e) => {
                           e.preventDefault();
+                          console.log("[generateDirectArticle] Button clicked", {
+                            mode,
+                            directArticleTopic,
+                            brief: briefWithDefaults,
+                            isGeneratingArticles,
+                          });
                           generateDirectArticle();
                         }}
-                        disabled={isGeneratingArticles || !directArticleTopic?.trim() || !brief?.niche?.trim() || !(brief?.language || "English")?.trim()}
+                        disabled={isGeneratingArticles || !directArticleTopic?.trim() || !briefWithDefaults?.niche?.trim() || !briefWithDefaults?.language?.trim()}
                         title={
                           isGeneratingArticles 
                             ? "Generating article..." 
                             : !directArticleTopic?.trim() 
                             ? "Please enter article topic"
-                            : !brief?.niche?.trim()
+                            : !briefWithDefaults?.niche?.trim()
                             ? "Please fill in Main niche or theme in Project Basis"
-                            : !(brief?.language || "English")?.trim()
+                            : !briefWithDefaults?.language?.trim()
                             ? "Please select Language in Project Basis"
                             : "Generate article"
                         }
