@@ -463,6 +463,8 @@ export default function Home() {
         }
 
         // Step 2: Regenerate article
+        // CRITICAL: For Direct Article Creation Mode, do NOT include shortAngle, whyNonGeneric, howAnchorFits
+        // These fields are used by API to detect Topic Discovery Mode
         const response = await fetch("/api/articles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -470,8 +472,8 @@ export default function Home() {
             brief,
             selectedTopics: [{
               title: articleTopic,
-              brief: articleTopic,
-              shortAngle: articleTopic,
+              brief: articleTopic, // For Direct Mode: brief === title (no detailed brief fields)
+              // DO NOT include: shortAngle, whyNonGeneric, howAnchorFits - these indicate Topic Discovery Mode
               primaryKeyword: articleTopic.split(" ")[0] || articleTopic,
             }],
             keywordList: [articleTopic],
@@ -1156,6 +1158,8 @@ export default function Home() {
 
       // Step 2: Generate article with found trust sources
       // Use briefWithDefaults to ensure we have valid values
+      // CRITICAL: For Direct Article Creation Mode, do NOT include shortAngle, whyNonGeneric, howAnchorFits
+      // These fields are used by API to detect Topic Discovery Mode
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1163,8 +1167,8 @@ export default function Home() {
           brief: briefWithDefaults,
           selectedTopics: [{
             title: directArticleTopic,
-            brief: directArticleTopic,
-            shortAngle: directArticleTopic,
+            brief: directArticleTopic, // For Direct Mode: brief === title (no detailed brief fields)
+            // DO NOT include: shortAngle, whyNonGeneric, howAnchorFits - these indicate Topic Discovery Mode
             primaryKeyword: directArticleTopic.split(" ")[0] || directArticleTopic,
           }],
           keywordList: [directArticleTopic],
