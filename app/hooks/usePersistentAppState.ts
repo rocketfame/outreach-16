@@ -63,6 +63,7 @@ export type AppPersistedState = {
   discoveryArticles: GeneratedArticle[]; // Articles generated in Topic Discovery Mode
   directArticles: GeneratedArticle[]; // Articles generated in DirectArticleCreation Mode
   directArticleTopic: string; // Topic for direct article creation
+  directArticleBrief: string; // Optional detailed brief/instructions for direct article creation
   // Note: articleImages removed from persisted state to avoid localStorage quota issues
   // Images are stored in component state only and can be regenerated if needed
   mode: "discovery" | "direct";
@@ -94,6 +95,7 @@ const defaultState: AppPersistedState = {
   discoveryArticles: [], // Articles for Topic Discovery Mode
   directArticles: [], // Articles for DirectArticleCreation Mode
   directArticleTopic: "", // Topic input for direct article creation
+  directArticleBrief: "", // Optional detailed brief/instructions for direct article creation
   mode: "discovery",
   lightHumanEditEnabled: true, // Default to enabled (recommended)
   theme: "light", // Default to light theme

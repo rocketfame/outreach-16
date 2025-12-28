@@ -490,7 +490,7 @@ PROJECT CONTEXT
 
 Article brief:
 • Topic title: [[TOPIC_TITLE]]  
-• Topic description / brief: [[TOPIC_BRIEF]]  
+• Topic description / detailed brief: [[TOPIC_BRIEF]]  
 
 Language & length:
 • Language: [[LANGUAGE]]  
@@ -509,6 +509,27 @@ Trusted external sources from Tavily:
 
 Use ONLY these URLs when you need external links.  
 If nothing is relevant to the topic, write the article without external links.
+
+IMPORTANT: [[TOPIC_BRIEF]] may contain an additional custom brief from the user.  
+When [[TOPIC_BRIEF]] is non-empty, explicit instructions inside it have very high priority,  
+as long as they do NOT conflict with safety rules or hard technical rules in this prompt.
+
+Examples of high-priority instructions in [[TOPIC_BRIEF]] that you MUST follow when possible:
+• Requested format: "pure list only", "directory only", "write a how-to guide", etc.  
+• Requested scope: regions, genres, platforms, audience segment, etc.  
+• Requested length of the list: e.g. "at least 15 festivals", "5–7 tools", etc.  
+• Required or forbidden elements: e.g. "no tips", "no FAQ", "include FAQ",  
+  "do not mention brand", "no external links", "avoid talking about TikTok", etc.  
+• Required subheadings or sections: e.g. "add section about risks",  
+  "include separate H2 for EU festivals", etc.  
+• Extra keywords or phrases that must appear.
+
+If [[TOPIC_BRIEF]] and other rules in this prompt ever conflict, follow this priority:
+1) Hard safety + link rules in this prompt,  
+2) Commercial link rules,  
+3) Brand presence logic,  
+4) Explicit instructions from [[TOPIC_BRIEF]],  
+5) General list/guide templates and SEO preferences.
 
 ================================
 0. BRAND PRESENCE LOGIC (GLOBAL RULE)
@@ -573,10 +594,14 @@ E) "Other"
 2. CHOOSE FORMAT: LIST OR GUIDE
 ================================
 
-First, read [[TOPIC_BRIEF]].  
+First, carefully read [[TOPIC_BRIEF]].  
 If it explicitly says things like  
 "just provide a list", "pure directory", "no tips", "no guide content",  
 then it is ALWAYS a LIST, regardless of the title.
+
+If [[TOPIC_BRIEF]] explicitly asks for a "how-to guide",  
+"strategy guide", "playbook", etc., and does NOT demand a pure list,  
+then you should treat it as a GUIDE topic, even if the title is ambiguous.
 
 Next, use [[TOPIC_TITLE]] + [[TOPIC_BRIEF]] to classify:
 
@@ -599,7 +624,8 @@ Choose this format if ANY of these is true:
 IMPORTANT:  
 If there are both "list" and "guide" signals  
 (for example "Underground Electronic Music Festivals Announced for 2026: What Creators Should Do Now"),  
-you STILL choose LIST FORMAT.  
+you STILL choose LIST FORMAT, unless [[TOPIC_BRIEF]] explicitly says  
+to write a guide instead.  
 For such topics, the full list of concrete items is the main deliverable.
 
 B) ADVICE / GUIDE TOPIC  
@@ -624,8 +650,9 @@ Around 70% of the article should be the list with item descriptions.
 1) Short intro  
    - 1–2 short paragraphs (keep it concise).  
    - Explain in simple terms what the list is and why it matters in [[NICHE]].  
-   - Focus on the list itself: what it contains, who it's for (fans, travelers, artists, etc.).  
-   - No long storytelling, no generic "how to grow" advice, no creator-centric framing unless the brief explicitly asks for it.  
+   - Focus on the list itself: what it contains, who it is for (fans, travellers, artists, etc.).  
+   - No long storytelling, no generic "how to grow" advice,  
+     no creator-centric framing unless [[TOPIC_BRIEF]] explicitly asks for it.  
    - NEVER mention [[BRAND_NAME]] in the intro, even for "Brand blog" or "Partner blog".  
      Any brand mention in list articles is allowed ONLY in the concluding paragraph,  
      and ONLY under the rules in section 3.4 and 3.5.
@@ -641,7 +668,8 @@ Around 70% of the article should be the list with item descriptions.
    • Add 2–3 sentences per item explaining what it is and why it matters  
      (sound, audience, vibe, reach, features, etc.).
 
-   - Aim for at least 8–12 concrete items unless the brief clearly asks for a different number.  
+   - Aim for at least 8–12 concrete items unless [[TOPIC_BRIEF]]  
+     clearly asks for a different number.  
    - You may group items with <h2>/<h3> (for example "Europe", "North America", "Underground picks"),  
      but grouping must not replace the list itself.
 
@@ -692,11 +720,14 @@ Use this only when the topic is clearly about strategies / "how to".
 
 1) Intro  
    - 1–2 short paragraphs: problem + promise.  
-   - Tone depends on [[CONTENT_PURPOSE]] and, if present, [[BRAND_NAME]].
+   - Tone depends on [[CONTENT_PURPOSE]] and, if present, [[BRAND_NAME]].  
+   - If [[TOPIC_BRIEF]] asks for specific angles or examples, reflect them here.
 
 2) Main body  
    - 2–4 <h2> sections with practical steps, frameworks or tips.  
    - Use concrete examples tied to [[NICHE]] and [[MAIN_PLATFORM]].  
+   - Follow any structural requests in [[TOPIC_BRIEF]] where possible  
+     (for example required sections, points to cover, risks to mention).  
    - Avoid vague advice with no details.
 
 3) Brand integration in guide topics  
@@ -711,7 +742,9 @@ Use this only when the topic is clearly about strategies / "how to".
 
 4) Conclusion  
    - Short, concrete recap with 1–3 key takeaways.  
-   - No clichés like "in conclusion", "in today's digital world", etc.
+   - No clichés like "in conclusion", "in today's digital world", etc.  
+   - If [[TOPIC_BRIEF]] requests a specific type of closing (for example "give next steps"  
+     or "end with a short checklist"), follow that, as long as it stays concise.
 
 ================================
 5. COMMERCIAL BRANDED LINK LOGIC
@@ -766,6 +799,8 @@ SEO:
 • Create a meta description (150–160 characters) with at least one number.  
 • From [[KEYWORD_LIST]] pick the most relevant keywords,  
   use each 2–4 times with at least 3 sentences between repetitions.  
+• If [[TOPIC_BRIEF]] explicitly lists keywords or phrases to include,  
+  treat them as part of the keyword pool (unless they conflict with safety rules).  
 • Wrap each used keyword in <b>...</b> in the HTML.
 
 Technical format:

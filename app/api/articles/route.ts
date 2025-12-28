@@ -13,7 +13,8 @@
  * 
  * 2. DIRECT ARTICLE CREATION MODE  
  *    - Uses: buildDirectArticlePrompt() -> DIRECT_ARTICLE_PROMPT_TEMPLATE
- *    - Detected by: topic.brief === topic.title (simple topic without detailed brief)
+ *    - Detected by: absence of detailed brief fields (shortAngle, whyNonGeneric, howAnchorFits)
+ *      Note: topic.brief can be topic.title OR a custom brief from the user
  * 
  * CRITICAL RULES:
  * - These two modes MUST use their respective prompt builders
@@ -120,10 +121,10 @@ export async function POST(req: Request) {
     for (const topic of selectedTopics) {
       try {
         // Determine if this is Direct Article Creation Mode or Topic Discovery Mode
-        // Direct Mode: topic.brief === topic.title (simple topic title without detailed brief)
+        // Direct Mode: No detailed brief fields (shortAngle, whyNonGeneric, howAnchorFits)
         // Topic Discovery Mode: topic has detailed brief fields (shortAngle, whyNonGeneric, etc.)
-        const isDirectMode = topic.brief === topic.title && 
-                             !topic.shortAngle && 
+        // Note: topic.brief can be either topic.title OR a custom brief from the user in Direct Mode
+        const isDirectMode = !topic.shortAngle && 
                              !topic.whyNonGeneric && 
                              !topic.howAnchorFits;
 
@@ -142,7 +143,7 @@ export async function POST(req: Request) {
 
           prompt = buildDirectArticlePrompt({
             topicTitle: topic.title,
-            topicBrief: topic.brief || topic.title, // For direct mode, brief is same as title
+            topicBrief: topic.brief || topic.title, // Can be topic.title or custom brief from user
             niche: brief.niche || "", // Will be validated in buildDirectArticlePrompt
             mainPlatform: brief.platform || "multi-platform",
             contentPurpose: brief.contentPurpose || "Guest post / outreach",

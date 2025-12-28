@@ -17,6 +17,7 @@ export default function Home() {
   const selectedTopicIds = persistedState.selectedTopicIds;
   const lightHumanEditEnabled = persistedState.lightHumanEditEnabled;
   const directArticleTopic = persistedState.directArticleTopic || "";
+  const directArticleBrief = persistedState.directArticleBrief || "";
   const theme = persistedState.theme || "light";
   
   // Get the correct brief based on current mode with proper fallback
@@ -203,6 +204,13 @@ export default function Home() {
     setPersistedState(prev => ({
       ...prev,
       directArticleTopic: topic,
+    }));
+  };
+
+  const updateDirectArticleBrief = (brief: string) => {
+    setPersistedState(prev => ({
+      ...prev,
+      directArticleBrief: brief,
     }));
   };
 
@@ -472,7 +480,9 @@ export default function Home() {
             brief,
             selectedTopics: [{
               title: articleTopic,
-              brief: articleTopic, // For Direct Mode: brief === title (no detailed brief fields)
+              // For Direct Mode: if directArticleBrief is provided, use it; otherwise use topic title
+              // API detects Direct Mode by absence of shortAngle/whyNonGeneric/howAnchorFits fields
+              brief: directArticleBrief.trim() || articleTopic,
               // DO NOT include: shortAngle, whyNonGeneric, howAnchorFits - these indicate Topic Discovery Mode
               primaryKeyword: articleTopic.split(" ")[0] || articleTopic,
             }],
@@ -1167,7 +1177,9 @@ export default function Home() {
           brief: briefWithDefaults,
           selectedTopics: [{
             title: directArticleTopic,
-            brief: directArticleTopic, // For Direct Mode: brief === title (no detailed brief fields)
+            // For Direct Mode: if directArticleBrief is provided, use it; otherwise use topic title
+            // API detects Direct Mode by absence of shortAngle/whyNonGeneric/howAnchorFits fields
+            brief: directArticleBrief.trim() || directArticleTopic,
             // DO NOT include: shortAngle, whyNonGeneric, howAnchorFits - these indicate Topic Discovery Mode
             primaryKeyword: directArticleTopic.split(" ")[0] || directArticleTopic,
           }],
@@ -1514,29 +1526,52 @@ export default function Home() {
       }
 
       // Enhanced request understanding - detect various ways user might ask for images
-      const editRequestLower = editRequest.toLowerCase();
-      const needsImages = editRequestLower.includes('зображен') || 
-                         editRequestLower.includes('image') ||
-                         editRequestLower.includes('фото') ||
-                         editRequestLower.includes('photo') ||
-                         editRequestLower.includes('картинк') ||
-                         editRequestLower.includes('picture') ||
-                         editRequestLower.includes('visual') ||
-                         editRequestLower.includes('візуал') ||
-                         editRequestLower.includes('додай зображення') ||
-                         editRequestLower.includes('add image') ||
-                         editRequestLower.includes('find image') ||
-                         editRequestLower.includes('знайди зображення') ||
-                         editRequestLower.includes('бит') ||
-                         editRequestLower.includes('broken') ||
-                         editRequestLower.includes('замінити') ||
-                         editRequestLower.includes('replace') ||
-                         editRequestLower.includes('виправити') ||
-                         editRequestLower.includes('fix') ||
-                         editRequestLower.includes('не відображається') ||
-                         editRequestLower.includes('not displaying') ||
-                         editRequestLower.includes('не працює') ||
-                         editRequestLower.includes('not working');
+      // CRITICAL: Only trigger image search for EXPLICIT image-related requests
+      // Do NOT trigger for general text editing requests like "remove fragment", "fix text", etc.
+      const editRequestLower = editRequest.toLowerCase().trim();
+      
+      // Explicit image-related keywords (must be clearly about images)
+      const explicitImageKeywords = [
+        'зображен', 'image', 'фото', 'photo', 'картинк', 'picture', 
+        'visual', 'візуал', 'додай зображення', 'add image', 
+        'find image', 'знайди зображення', 'search image', 'шукай зображення',
+        'зображення не відображається', 'image not displaying',
+        'broken image', 'бите зображення', 'замінити зображення', 'replace image',
+        'виправити зображення', 'fix image', 'зображення не працює', 'image not working'
+      ];
+      
+      // Check if request is EXPLICITLY about images (not just contains ambiguous words)
+      const needsImages = explicitImageKeywords.some(keyword => {
+        // Use word boundaries or exact phrases to avoid false positives
+        if (keyword.includes(' ')) {
+          // For phrases, check if the phrase appears as a whole
+          return editRequestLower.includes(keyword);
+        } else {
+          // For single words, check if they appear in image-related context
+          // Avoid matching words that are part of other words (e.g., "image" in "imagine")
+          const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+          return regex.test(editRequestLower);
+        }
+      });
+      
+      // Additional check: if request mentions "broken" or "fix" but NOT in image context,
+      // it's likely a text editing request, not an image request
+      const hasBrokenOrFix = editRequestLower.includes('broken') || 
+                            editRequestLower.includes('fix') ||
+                            editRequestLower.includes('виправити') ||
+                            editRequestLower.includes('бит');
+      const hasImageContext = editRequestLower.includes('image') || 
+                             editRequestLower.includes('зображен') ||
+                             editRequestLower.includes('photo') ||
+                             editRequestLower.includes('фото') ||
+                             editRequestLower.includes('picture') ||
+                             editRequestLower.includes('картинк');
+      
+      // If request has "broken/fix" but NO image context, it's NOT an image request
+      const isTextEditRequest = hasBrokenOrFix && !hasImageContext;
+      
+      // Final decision: only needs images if explicitly about images AND not a text edit request
+      const finalNeedsImages = needsImages && !isTextEditRequest;
       
       // Detect if user wants to search social media or official sites
       const wantsSocialMedia = editRequestLower.includes('instagram') ||
@@ -1555,7 +1590,8 @@ export default function Home() {
       let finalEditRequestForAPI: string | undefined = undefined;
 
       // If edit request mentions images, use intelligent image search algorithm
-      if (needsImages) {
+      // CRITICAL: Only trigger for EXPLICIT image requests, not general text edits
+      if (finalNeedsImages) {
         setEditingArticleStatus("Analyzing article and generating intelligent image search queries...");
         try {
           // Import intelligent image search algorithm
@@ -1566,12 +1602,16 @@ export default function Home() {
           } = await import('../lib/imageSearchAlgorithm');
           
           // CRITICAL: If user wants to replace broken images, first detect broken images in HTML
-          const isBrokenImageRequest = editRequestLower.includes('бит') ||
-                                      editRequestLower.includes('broken') ||
-                                      editRequestLower.includes('замінити') ||
-                                      editRequestLower.includes('replace') ||
-                                      editRequestLower.includes('виправити') ||
-                                      editRequestLower.includes('fix');
+          // Only check for broken images if request explicitly mentions images
+          const isBrokenImageRequest = (editRequestLower.includes('broken image') ||
+                                      editRequestLower.includes('бите зображення') ||
+                                      editRequestLower.includes('замінити зображення') ||
+                                      editRequestLower.includes('replace image') ||
+                                      editRequestLower.includes('виправити зображення') ||
+                                      editRequestLower.includes('fix image') ||
+                                      editRequestLower.includes('зображення не працює') ||
+                                      editRequestLower.includes('image not working')) &&
+                                      hasImageContext; // Must have image context
           
           let brokenImagesInfo: Array<{ url: string; context: string; alt?: string }> = [];
           let enhancedEditRequest = editRequest; // Will be enhanced if broken images found
@@ -2348,7 +2388,7 @@ export default function Home() {
       }
       
       // Legacy placeholder handling (for backward compatibility)
-      if (needsImages) {
+      if (finalNeedsImages) {
         // Check if HTML contains legacy image placeholders
         const hasImagePlaceholders = /\[IMAGE_URL_PLACEHOLDER\]/gi.test(finalHtml);
         
@@ -2408,7 +2448,7 @@ export default function Home() {
             
             // Create summary of what was changed
             const summary = (() => {
-              if (needsImages) return "Додано зображення";
+              if (finalNeedsImages) return "Додано зображення";
               if (needsMoreLinks) return "Додано посилання";
               if (editRequest.toLowerCase().includes('анкор') || editRequest.toLowerCase().includes('anchor')) return "Додано анкори/посилання";
               return "Оновлено контент";
@@ -3346,6 +3386,30 @@ export default function Home() {
                           onChange={(e) => updateDirectArticleTopic(e.target.value)}
                           placeholder="Enter the topic for your article"
                         />
+                      </label>
+                    </div>
+                    
+                    <div className="form-fields" style={{ marginTop: "1.25rem" }}>
+                      <label>
+                        <span>Article brief / instructions <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "#666" }}>(optional)</span></span>
+                        <textarea
+                          value={directArticleBrief}
+                          onChange={(e) => updateDirectArticleBrief(e.target.value)}
+                          placeholder="Describe what you want in this article: type (list/guide), regions, number of items, angle, required subheadings, keywords, what to avoid, etc."
+                          rows={5}
+                          style={{
+                            width: "100%",
+                            padding: "0.75rem",
+                            fontSize: "0.9375rem",
+                            fontFamily: "inherit",
+                            border: "1px solid #ddd",
+                            borderRadius: "6px",
+                            resize: "vertical",
+                          }}
+                        />
+                        <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8125rem", color: "#666" }}>
+                          If you fill this in, the AI will treat it as a high-priority brief and follow your structure and constraints where possible.
+                        </span>
                       </label>
                     </div>
                     
