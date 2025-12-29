@@ -37,17 +37,6 @@ export default function Home() {
     ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
     : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
   
-  // Debug: log brief changes
-  useEffect(() => {
-    console.log("[brief] brief object updated:", {
-      mode,
-      hasCustomStyle: !!brief.customStyle,
-      customStyleLength: brief.customStyle?.length || 0,
-      customStylePreview: brief.customStyle?.substring(0, 100) || "empty",
-      discoveryProjectBasics: persistedState.discoveryProjectBasics?.customStyle?.substring(0, 50),
-      directProjectBasics: persistedState.directProjectBasics?.customStyle?.substring(0, 50),
-    });
-  }, [brief.customStyle, mode, persistedState.discoveryProjectBasics?.customStyle, persistedState.directProjectBasics?.customStyle]);
   
   // Ensure language has a default value if empty (for backward compatibility)
   // This is used for button disabled state and validation
@@ -146,28 +135,20 @@ export default function Home() {
 
   // Helper functions to update persisted state
   const updateBrief = (updates: Partial<Brief>) => {
-    console.log("[updateBrief] Updating brief with:", updates);
     setPersistedState(prev => {
       // Update the correct brief based on current mode
-      let updatedState;
       if (prev.mode === "discovery") {
-        updatedState = {
+        return {
           ...prev,
           discoveryProjectBasics: { ...(prev.discoveryProjectBasics || prev.projectBasics || defaultBrief), ...updates },
           projectBasics: { ...(prev.discoveryProjectBasics || prev.projectBasics || defaultBrief), ...updates }, // Keep for backward compatibility
         };
       } else {
-        updatedState = {
+        return {
           ...prev,
           directProjectBasics: { ...(prev.directProjectBasics || prev.projectBasics || defaultBrief), ...updates },
         };
       }
-      console.log("[updateBrief] Updated state:", {
-        mode: updatedState.mode,
-        discoveryProjectBasics: updatedState.discoveryProjectBasics,
-        directProjectBasics: updatedState.directProjectBasics,
-      });
-      return updatedState;
     });
   };
 
@@ -2621,12 +2602,7 @@ export default function Home() {
 
         if (data.success && data.styleDescription) {
           // Update customStyle field with analyzed style
-          console.log("[handleReferenceImageUpload] Updating customStyle with analyzed style:", {
-            styleDescriptionLength: data.styleDescription.length,
-            styleDescriptionPreview: data.styleDescription.substring(0, 100),
-          });
           updateBrief({ customStyle: data.styleDescription });
-          console.log("[handleReferenceImageUpload] customStyle updated, brief should now contain the style");
           setNotification({
             message: "Image style analyzed and applied successfully!",
             time: new Date().toLocaleTimeString(),
@@ -2830,13 +2806,6 @@ export default function Home() {
         });
         throw new Error(errorMsg);
       }
-
-      // Log customStyle before sending to API
-      console.log("[generateArticleImage] Sending request with customStyle:", {
-        hasCustomStyle: !!currentBrief.customStyle,
-        customStyleLength: currentBrief.customStyle?.length || 0,
-        customStylePreview: currentBrief.customStyle?.substring(0, 100) || "none",
-      });
 
       const response = await fetch("/api/article-image", {
         method: "POST",
@@ -4423,7 +4392,6 @@ export default function Home() {
                                     )}
                                     
                                     <textarea
-                                      key={`customStyle-${brief.customStyle?.length || 0}`}
                                       value={brief.customStyle || ""}
                                       onChange={handleBriefChange("customStyle")}
                                       placeholder="Style description..."
@@ -4435,7 +4403,7 @@ export default function Home() {
                                         borderRadius: "4px",
                                         fontSize: "0.75rem",
                                         fontFamily: "inherit",
-                                        resize: "none",
+                                        resize: "vertical",
                                         minHeight: "32px",
                                         maxHeight: "300px",
                                         overflow: "auto",
