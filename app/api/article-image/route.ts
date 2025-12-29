@@ -39,61 +39,40 @@ function buildImagePrompt(params: {
   // Deterministic hash function for consistent "randomness" based on input
   const getHash = (str: string) => str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
-  // Randomly select a visual approach for maximum variety
-  // Each approach is based on real reference images to ensure authentic diversity
-  // Character approach appears twice to increase selection frequency
+  // Character-focused approaches prioritized - modern digital art, Red Dot style
+  // Emphasis on stylized characters, abstract compositions, NOT technical details
   const visualApproaches = [
     {
-      type: "character_with_logo",
-      description: `Prominent stylized character as MAIN FOCUS (60-70% of composition). Style: flat 2D bold outlines, street art/graffiti high contrast, minimalist line art, retro poster, or New Yorker editorial illustration. ${mainPlatform} logo integrated on clothing/accessories/floating/background. Character represents ${niche} (musician/creator/artist). Logo feels organic, not added on.`,
+      type: "character_abstract",
+      description: `MAIN FOCUS: Bold stylized character (60-70% of composition) representing ${niche} culture. Modern digital art illustration style - Red Dot award-winning graphic design aesthetic. Character in expressive pose, dynamic composition. ${mainPlatform} logo integrated organically: on clothing pattern, as floating abstract shape, in background as subtle element, or as part of character's accessories. Abstract geometric shapes and flowing forms around character, NOT technical equipment. Clean, sophisticated, contemporary editorial illustration.`,
     },
     {
-      type: "character_with_logo_alt",
-      description: `Prominent stylized character as MAIN FOCUS (60-70% of composition). Style: flat 2D bold outlines, street art/graffiti high contrast, minimalist line art, retro poster, or New Yorker editorial illustration. ${mainPlatform} logo integrated on clothing/accessories/floating/background. Character represents ${niche} (musician/creator/artist). Logo feels organic, not added on.`,
+      type: "character_minimalist",
+      description: `MAIN FOCUS: Minimalist stylized character (60-70% of composition) in flat 2D style with bold outlines. Red Dot graphic design aesthetic - sophisticated, award-winning quality. Character represents ${niche} (musician/creator/artist). ${mainPlatform} logo as abstract element: integrated into character silhouette, as negative space, or as floating geometric shape. Abstract background with flowing forms, geometric patterns, or color blocks. NO technical details, NO buttons, NO screens, NO equipment. Pure graphic design excellence.`,
     },
     {
-      type: "transparent_container",
-      description: `Transparent container (capsule/jar/box) with ${mainPlatform} logo inside. Clear glossy material. Interior: creative elements related to ${niche} and ${mainPlatform} (objects/UI/abstract forms). Logo naturally integrated. Product photography style with dramatic lighting and reflections.`,
+      type: "character_editorial",
+      description: `MAIN FOCUS: Editorial illustration character (60-70% of composition) in New Yorker/Red Dot style - sophisticated, conceptual, visually striking. Character in dynamic pose related to ${niche}. ${mainPlatform} logo as creative element: woven into character's clothing design, as abstract symbol in background, or integrated into composition as graphic element. Abstract shapes, flowing lines, and bold color blocks around character. Professional magazine cover quality. NO isometric 3D, NO technical UI elements, NO childish style.`,
     },
     {
-      type: "product_packaging",
-      description: `Product packaging design: sealed pouches/boxes/containers with ${mainPlatform} logo. Product photography style, dramatic lighting/reflections/shadows. Real product look (gift cards/collectibles/subscription packages). Multiple packages arranged diagonally or grid. Include barcodes/labels. Dark textured background.`,
+      type: "character_street_art",
+      description: `MAIN FOCUS: Street art/graffiti-inspired character (60-70% of composition) with high contrast, bold colors. Modern digital art interpretation of street art aesthetic. Character represents ${niche} culture. ${mainPlatform} logo as street art element: on character's clothing, as tag/graffiti element, or as abstract symbol. Abstract spray paint effects, flowing lines, geometric patterns. Dynamic, energetic composition. Professional digital art, NOT childish.`,
     },
     {
-      type: "music_equipment",
-      description: `Music equipment/synthesizer as main subject: modular synth with glowing modules/patch cables, vintage keyboard/piano, mixing board with faders, or turntable setup. ${mainPlatform} logo on screen/interface/label/glowing element. Dramatic lighting with warm glows. Minimalist dark/light solid background.`,
+      type: "abstract_composition",
+      description: `Abstract composition with stylized character (40-50% of composition) and flowing abstract forms. Red Dot design agency aesthetic - experimental, high-concept, minimalist yet impactful. ${mainPlatform} logo as abstract geometric shape integrated into composition. Character partially visible or in silhouette. Abstract shapes, flowing lines, bold color fields. Sophisticated contemporary digital art. NO technical elements, NO isometric 3D, NO equipment.`,
     },
     {
-      type: "typography_object",
-      description: `Large 3D typography as main subject: massive letter/word (${mainPlatform} or ${niche}) as glossy/inflated/sculptural object. Dominant element with person for scale. Dramatic perspective (low angle/side view). ${mainPlatform} logo in letter design/reflection/nearby. Dark background with strong contrast.`,
+      type: "character_geometric",
+      description: `MAIN FOCUS: Character (60-70% of composition) constructed from geometric shapes and abstract forms. Modern graphic design style - Red Dot aesthetic. Character represents ${niche}. ${mainPlatform} logo as geometric element: part of character's form, as abstract shape, or integrated into background pattern. Bold geometric patterns, clean lines, sophisticated color blocks. Contemporary digital art illustration. NO technical details, NO buttons, NO screens.`,
     },
     {
-      type: "screen_head",
-      description: `Surreal: person's head replaced by screen/monitor showing ${mainPlatform} logo and interface. Person in profile or from behind. Glossy glowing screen with platform UI. Body in different style (sketch/illustration/photorealistic) for contrast. Minimalist flat color/pattern background.`,
+      type: "character_flowing",
+      description: `MAIN FOCUS: Character (60-70% of composition) with flowing, organic abstract forms around them. Modern digital art style - award-winning graphic illustration. Character in expressive pose related to ${niche}. ${mainPlatform} logo as flowing abstract element: integrated into character's movement, as part of background flow, or as organic shape. Abstract flowing lines, color gradients, organic forms. Sophisticated editorial illustration. NO technical elements, NO isometric 3D.`,
     },
     {
-      type: "retro_display_units",
-      description: `Retro-futuristic display units/modules in grid/pattern. Units: vintage monitor/keyboard key/digital display. Units spell ${niche}/${mainPlatform} words or show logo. Each unit glows (neon green/cyan/magenta/orange). Dark background, dramatic lighting. Vintage computer/arcade game aesthetic.`,
-    },
-    {
-      type: "interior_scene",
-      description: `Interior scene: person using ${mainPlatform}. Options: person in chair with headphones/speakers, studio setup with equipment, minimalist room with devices. ${mainPlatform} logo as floating elements/on screens/integrated naturally. Flat illustration style, bold colors, clean lines. Solid color background (light blue/pastel/dark). Details: coffee cups/music notes/UI elements.`,
-    },
-    {
-      type: "cyberpunk_data",
-      description: `Cyberpunk/data visualization: figure (behind/silhouette) surrounded by abstract UI elements/data visualizations/network diagrams. Neon colors (green/cyan/magenta) on dark black background. ${mainPlatform} logo in UI elements/dashboard/glowing elements. Digital realm aesthetic.`,
-    },
-    {
-      type: "surreal_landscape",
-      description: `Surreal desolate landscape with floating/prominent object featuring ${mainPlatform} logo. Options: dark moonscape with floating vintage TV/device, barren terrain with colorful path to structure, abstract landscape with impossible physics. Logo on floating object/integrated into landscape. Dramatic lighting, dark backgrounds, high contrast.`,
-    },
-    {
-      type: "minimalist_logo",
-      description: `Ultra-minimalist: ${mainPlatform} logo focus. Options: huge central with person for scale, integrated into bold shape, negative space, reflected/refracted creatively. Max 2-3 elements. Clean spacious sophisticated. Flat design or subtle gradients. Solid color or simple gradient background.`,
-    },
-    {
-      type: "collage_mixed",
-      description: `Creative collage mixing media: photography+illustration, vintage+modern digital, hand-drawn+digital renders, textures+flat shapes. ${mainPlatform} logo in different styles (photo/illustration/graphic). Each section has different visual treatment.`,
+      type: "character_negative_space",
+      description: `MAIN FOCUS: Character (60-70% of composition) using negative space and bold shapes. Ultra-minimalist Red Dot design aesthetic. Character represents ${niche}. ${mainPlatform} logo created through negative space or as bold geometric element. Abstract composition with strong contrast, clean lines, sophisticated simplicity. Contemporary graphic design excellence. NO technical details, NO equipment, NO childish elements.`,
     },
   ];
 
@@ -103,24 +82,21 @@ function buildImagePrompt(params: {
   ) % visualApproaches.length;
   const selectedApproach = visualApproaches[approachIndex];
 
-  // Randomly select art style - AVOID isometric 3D
+  // Modern digital art styles - Red Dot graphic design aesthetic
+  // Professional, sophisticated, contemporary illustration
   const artStyles = [
-    "flat 2D illustration with bold solid colors, no gradients",
-    "watercolor painting with soft edges and flowing colors",
-    "minimalist line art with negative space",
-    "photorealistic photography style with natural lighting",
-    "hand-drawn sketch with visible pencil texture",
-    "collage with vintage paper textures and modern elements",
-    "vector illustration with flat shapes and bold outlines",
-    "abstract geometric composition in 2D only",
-    "stylized character design in flat illustration style",
-    "retro poster design with bold typography",
-    "modern flat design with subtle shadows only",
-    "glitch art with clean digital elements",
-    "soft pastel dreamscape in painting style",
-    "product photography style on colored background",
-    "macro photography with extreme close-up details",
-    "vintage advertisement poster aesthetic",
+    "modern flat 2D digital illustration with bold solid colors and clean shapes - Red Dot award-winning graphic design style",
+    "contemporary editorial illustration with bold outlines and expressive forms - sophisticated magazine cover quality",
+    "minimalist graphic design with negative space and geometric precision - Red Dot design agency aesthetic",
+    "stylized character illustration in flat 2D style with bold colors - modern digital art excellence",
+    "abstract geometric composition with flowing forms - contemporary graphic design",
+    "sophisticated vector illustration with clean lines and bold shapes - award-winning design quality",
+    "modern flat design with subtle depth and sophisticated color blocks - Red Dot aesthetic",
+    "contemporary editorial illustration style - New Yorker meets Red Dot design agency",
+    "bold graphic illustration with high contrast and expressive character design - modern digital art",
+    "minimalist yet impactful illustration with geometric forms - Red Dot design excellence",
+    "sophisticated flat illustration with organic and geometric elements - contemporary graphic design",
+    "award-winning editorial illustration style - conceptual, visually striking, professional quality",
   ];
   const styleIndex = Math.abs(
     (articleTitle + niche).split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
@@ -150,63 +126,77 @@ function buildImagePrompt(params: {
   ) % colorPalettes.length;
   const selectedPalette = colorPalettes[paletteIndex];
 
-  // Select logo integration method based on approach type
+  // Select logo integration method based on approach type - all character/abstract focused
   const logoMethods: Record<string, string> = {
-    transparent_container: "Logo inside transparent container, visible through clear material",
-    character_with_logo: "Logo on character clothing/accessories/floating nearby",
-    character_with_logo_alt: "Logo on character clothing/accessories/floating nearby",
-    product_packaging: "Logo on product packaging with barcodes/labels",
-    music_equipment: "Logo on equipment screen/interface/label",
-    typography_object: "Logo in 3D typography/letter design",
-    screen_head: "Logo on screen/monitor replacing head",
-    retro_display_units: "Logo on retro display units/modules",
-    interior_scene: "Logo as floating elements in interior",
-    cyberpunk_data: "Logo in cyberpunk UI/dashboards",
-    surreal_landscape: "Logo on floating objects in landscape",
-    minimalist_logo: "Logo as minimalist focal point",
-    collage_mixed: "Logo in different collage styles",
+    character_abstract: "Logo integrated organically: on character's clothing pattern, as floating abstract shape, in background as subtle element, or as part of character's accessories",
+    character_minimalist: "Logo as abstract element: integrated into character silhouette, as negative space, or as floating geometric shape",
+    character_editorial: "Logo as creative element: woven into character's clothing design, as abstract symbol in background, or integrated into composition as graphic element",
+    character_street_art: "Logo as street art element: on character's clothing, as tag/graffiti element, or as abstract symbol",
+    abstract_composition: "Logo as abstract geometric shape integrated into composition",
+    character_geometric: "Logo as geometric element: part of character's form, as abstract shape, or integrated into background pattern",
+    character_flowing: "Logo as flowing abstract element: integrated into character's movement, as part of background flow, or as organic shape",
+    character_negative_space: "Logo created through negative space or as bold geometric element",
   };
-  const logoMethod = logoMethods[selectedApproach.type] || "Logo integrated naturally";
+  const logoMethod = logoMethods[selectedApproach.type] || "Logo integrated naturally as abstract element";
 
-  // Reference styles from top-tier publications and agencies
+  // Reference styles from top-tier publications and agencies - Red Dot prioritized
   const editorialStyles = [
-    "The New Yorker: Sophisticated editorial illustration, bold colors, expressive line work, conceptual depth, witty and visually striking.",
-    "MTV: Bold vibrant energetic visuals, high contrast, dynamic compositions, youth culture aesthetic, bright saturated colors, edgy design.",
-    "Billboard: Music industry editorial, sleek modern, strong typography (visual only), bold colors, dramatic lighting, celebrity photography aesthetic.",
-    "Timeout: Urban contemporary lifestyle visuals, clean compositions, sophisticated color palettes, mix of photography and illustration.",
-    "Red Dot Agency: Award-winning design agency, minimalist yet impactful, experimental compositions, unexpected colors, high-concept visuals.",
+    "Red Dot Design Agency: Award-winning design agency aesthetic, minimalist yet impactful, experimental compositions, unexpected colors, high-concept visuals, sophisticated contemporary graphic design.",
+    "The New Yorker meets Red Dot: Sophisticated editorial illustration with Red Dot design agency quality, bold colors, expressive line work, conceptual depth, visually striking, award-winning graphic design.",
+    "Red Dot Graphic Design: Modern digital art illustration, minimalist yet impactful, experimental compositions, high-concept visuals, professional award-winning quality.",
+    "Contemporary Editorial Illustration: Red Dot design agency style, sophisticated, minimalist yet impactful, experimental, high-concept, award-winning graphic design excellence.",
+    "Modern Digital Art: Red Dot award-winning design agency aesthetic, sophisticated contemporary illustration, minimalist yet impactful, experimental compositions, professional graphic design quality.",
   ];
   const editorialStyleIndex = Math.abs(getHash(articleTitle + mainPlatform)) % editorialStyles.length;
   const selectedEditorialStyle = editorialStyles[editorialStyleIndex];
 
   // Build concise prompt (must be under 4000 chars for DALL-E 3)
-  const prompt = `Editorial visual for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
+  const prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
 
-STYLE: ${selectedEditorialStyle}. Match this publication's visual language and color vibrancy.
+CRITICAL STYLE REQUIREMENTS - RED DOT DESIGN AGENCY AESTHETIC:
+- Modern contemporary digital art illustration - award-winning graphic design quality
+- Red Dot design agency style: minimalist yet impactful, experimental compositions, high-concept visuals
+- Professional editorial illustration level - NOT childish, NOT generic AI style, NOT isometric 3D
+- Sophisticated, sophisticated, sophisticated - this is premium graphic design
 
-REQUIREMENTS:
-- NO TEXT on image
-- NO isometric 3D
-- NO teal/orange/gold colors
-- Unique artist vision, vibrant diverse colors
+MANDATORY FORBIDDEN ELEMENTS (STRICTLY PROHIBITED):
+- NO isometric 3D blocks, cubes, or 3D geometric shapes
+- NO technical equipment: NO equalizers, NO buttons, NO screens, NO keyboards, NO control panels
+- NO UI elements: NO dashboards, NO interfaces, NO displays, NO modules
+- NO childish or game-like aesthetic
+- NO text on image
+- NO teal/orange/gold color clichés
 
-APPROACH: ${selectedApproach.description}
+REQUIRED FOCUS - CHARACTER + ABSTRACTION:
+${selectedApproach.description}
 
 ART STYLE: ${selectedStyle}
 
-COLORS: ${selectedPalette}. VIBRANT and DIVERSE. Bold contrasting combinations.
+COLOR PALETTE: ${selectedPalette}. VIBRANT, DIVERSE, BOLD contrasting combinations. Sophisticated color choices.
 
-LOGO: ${logoMethod}. Natural integration, vary size/position/treatment.
+LOGO INTEGRATION: ${mainPlatform} logo must be integrated organically as abstract element: on character's clothing pattern, as floating geometric shape, in background as subtle element, or as part of character's accessories. Logo should feel like natural part of composition, NOT added on top.
 
-CHARACTER NOTE: If character approach, character is 60-70% of composition. ${mainPlatform} logo on clothing/accessories/floating/background. Expressive pose related to ${niche}.
+COMPOSITION REQUIREMENTS:
+- Character-focused: if character is present, it should be 60-70% of composition
+- Abstract elements: flowing forms, geometric shapes, color blocks, organic lines
+- Dynamic, asymmetric layout with strong focal point
+- Creative negative space
+- Unusual angles: close-up, bird's eye, low angle, or Dutch tilt
+- Natural perspective (NOT isometric)
 
-COMPOSITION: Dynamic focus, natural perspective. Unusual angles (close-up/bird's eye/low/Dutch). Creative negative space. Asymmetric layouts.
+QUALITY STANDARDS:
+- Editorial magazine cover level quality
+- Red Dot award-winning design agency aesthetic
+- Contemporary graphic design excellence
+- Professional digital art illustration
+- Avoid generic AI styles completely
+- This must look like work from a top-tier design agency
 
-QUALITY: Editorial magazine cover level. Award-winning agency aesthetic. Avoid generic AI styles.
+BRAND MOOD: Subtle ${brandName} atmosphere through color and composition. No heavy branding or text.
 
-BRAND: Subtle ${brandName} mood via color/atmosphere. No heavy branding or text.
+FORMAT: 16:9 horizontal hero image.
 
-FORMAT: 16:9 horizontal hero image.`.trim();
+Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT technical equipment, NOT isometric 3D, NOT childish style. Professional Red Dot design agency quality.`.trim();
   
   // Ensure prompt is under 4000 characters
   if (prompt.length > 4000) {

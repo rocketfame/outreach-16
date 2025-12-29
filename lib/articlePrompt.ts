@@ -356,7 +356,11 @@ Technical requirements:
   * NEVER use ellipsis character (…). Use three dots "..." instead.
   * NEVER use zero-width spaces, non-breaking spaces, or any invisible Unicode characters.
   * Use ONLY standard ASCII punctuation characters - this prevents AI-detection tools from flagging the text.
-  * This is MANDATORY - double-check your output to ensure no em-dash, en-dash, or hidden Unicode characters are present.
+  * QUOTATION MARKS RULES:
+    - Use only standard straight quotes (") and (') in all generated content.
+    - Do not use smart / curly quotes (" " ' ') in the output.
+    - Avoid putting single words or short phrases in quotes just for emphasis - use quotes only for real speech, titles, or explicit terms.
+  * This is MANDATORY - double-check your output to ensure no em-dash, en-dash, smart quotes, or hidden Unicode characters are present.
 
 FINAL CHECKLIST BEFORE OUTPUT:
 - [ ] Word count is approximately [[WORD_COUNT]] words (check by counting words in articleBodyHtml, excluding HTML tags)
@@ -838,7 +842,11 @@ Technical format:
   - NEVER use ellipsis character (…). Use three dots "..." instead.
   - NEVER use zero-width spaces, non-breaking spaces, or any invisible Unicode characters.
   - Use ONLY standard ASCII punctuation characters - this prevents AI-detection tools from flagging the text.
-  - This is MANDATORY - double-check your output to ensure no em-dash, en-dash, or hidden Unicode characters are present.
+  - QUOTATION MARKS RULES:
+    - Use only standard straight quotes (") and (') in all generated content.
+    - Do not use smart / curly quotes (" " ' ') in the output.
+    - Avoid putting single words or short phrases in quotes just for emphasis - use quotes only for real speech, titles, or explicit terms.
+  - This is MANDATORY - double-check your output to ensure no em-dash, en-dash, smart quotes, or hidden Unicode characters are present.
 
 FINAL VERIFICATION BEFORE OUTPUT:
 • Scan the entire articleBodyHtml for em-dash (—) and en-dash (–) - if found, replace with regular hyphen "-" or comma/period.
