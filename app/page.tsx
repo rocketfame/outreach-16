@@ -37,16 +37,17 @@ export default function Home() {
     ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
     : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
   
-  // Debug: log brief.customStyle changes
+  // Debug: log brief changes
   useEffect(() => {
-    if (brief.customStyle) {
-      console.log("[brief] customStyle updated:", {
-        hasCustomStyle: !!brief.customStyle,
-        customStyleLength: brief.customStyle.length,
-        customStylePreview: brief.customStyle.substring(0, 100),
-      });
-    }
-  }, [brief.customStyle]);
+    console.log("[brief] brief object updated:", {
+      mode,
+      hasCustomStyle: !!brief.customStyle,
+      customStyleLength: brief.customStyle?.length || 0,
+      customStylePreview: brief.customStyle?.substring(0, 100) || "empty",
+      discoveryProjectBasics: persistedState.discoveryProjectBasics?.customStyle?.substring(0, 50),
+      directProjectBasics: persistedState.directProjectBasics?.customStyle?.substring(0, 50),
+    });
+  }, [brief.customStyle, mode, persistedState.discoveryProjectBasics?.customStyle, persistedState.directProjectBasics?.customStyle]);
   
   // Ensure language has a default value if empty (for backward compatibility)
   // This is used for button disabled state and validation
@@ -145,20 +146,28 @@ export default function Home() {
 
   // Helper functions to update persisted state
   const updateBrief = (updates: Partial<Brief>) => {
+    console.log("[updateBrief] Updating brief with:", updates);
     setPersistedState(prev => {
       // Update the correct brief based on current mode
+      let updatedState;
       if (prev.mode === "discovery") {
-        return {
+        updatedState = {
           ...prev,
           discoveryProjectBasics: { ...(prev.discoveryProjectBasics || prev.projectBasics || defaultBrief), ...updates },
           projectBasics: { ...(prev.discoveryProjectBasics || prev.projectBasics || defaultBrief), ...updates }, // Keep for backward compatibility
         };
       } else {
-        return {
+        updatedState = {
           ...prev,
           directProjectBasics: { ...(prev.directProjectBasics || prev.projectBasics || defaultBrief), ...updates },
         };
       }
+      console.log("[updateBrief] Updated state:", {
+        mode: updatedState.mode,
+        discoveryProjectBasics: updatedState.discoveryProjectBasics,
+        directProjectBasics: updatedState.directProjectBasics,
+      });
+      return updatedState;
     });
   };
 
@@ -4414,10 +4423,11 @@ export default function Home() {
                                     )}
                                     
                                     <textarea
+                                      key={`customStyle-${brief.customStyle?.length || 0}`}
                                       value={brief.customStyle || ""}
                                       onChange={handleBriefChange("customStyle")}
                                       placeholder="Style description..."
-                                      rows={1}
+                                      rows={brief.customStyle ? Math.min(Math.ceil((brief.customStyle.length || 0) / 80), 10) : 1}
                                       style={{
                                         flex: "1",
                                         padding: "6px 8px",
@@ -4427,7 +4437,8 @@ export default function Home() {
                                         fontFamily: "inherit",
                                         resize: "none",
                                         minHeight: "32px",
-                                        maxHeight: "60px",
+                                        maxHeight: "300px",
+                                        overflow: "auto",
                                       }}
                                     />
                                     
