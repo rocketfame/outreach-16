@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useState, useEffect, useRef } from "react";
+import { ChangeEvent, useState, useEffect, useRef, useMemo } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
 import { TagPill } from "./components/TagPill";
@@ -33,9 +33,11 @@ export default function Home() {
     customStyle: "",
   };
   
-  const brief = mode === "discovery" 
-    ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
-    : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
+  const brief = useMemo(() => {
+    return mode === "discovery" 
+      ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
+      : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
+  }, [mode, persistedState.discoveryProjectBasics, persistedState.directProjectBasics, persistedState.projectBasics]);
   
   
   // Ensure language has a default value if empty (for backward compatibility)
@@ -4392,6 +4394,7 @@ export default function Home() {
                                     )}
                                     
                                     <textarea
+                                      key={`style-textarea-${mode}-${brief.customStyle?.length || 0}`}
                                       value={brief.customStyle || ""}
                                       onChange={handleBriefChange("customStyle")}
                                       placeholder="Style description..."
