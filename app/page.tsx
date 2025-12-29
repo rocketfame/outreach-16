@@ -2580,8 +2580,13 @@ export default function Home() {
       const base64Data = e.target?.result as string;
       if (!base64Data) return;
 
-      // Store image for preview
+      // Store image for preview and persist it
       setReferenceImage(base64Data);
+      // Also save to persisted state immediately
+      setPersistedState(prev => ({
+        ...prev,
+        referenceImageBase64: base64Data,
+      }));
 
       // Analyze style using Vision API
       setIsAnalyzingStyle(true);
