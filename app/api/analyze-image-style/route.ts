@@ -54,9 +54,9 @@ export async function POST(req: Request) {
     // Extract base64 data
     const base64Data = extractBase64(imageBase64);
 
-    // Analyze image style using GPT-4o Vision (best model for vision analysis)
+    // Analyze image style using GPT-5.2
     const response = await openai.chat.completions.create({
-      model: "gpt-4o", // GPT-4o Vision model - best for detailed style analysis
+      model: "gpt-5.2", // GPT-5.2 for style analysis
       messages: [
         {
           role: "system",

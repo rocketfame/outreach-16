@@ -162,39 +162,39 @@ export async function POST(req: Request) {
           // ========================================================================
           // DO NOT use buildDirectArticlePrompt here! This mode has its own separate prompt.
           // ========================================================================
-          // Build comprehensive article brief from topic's deep brief fields
-          const topicBriefParts = [
-            topic.brief || "",
-            topic.shortAngle ? `Short angle: ${topic.shortAngle}` : "",
-            topic.whyNonGeneric ? `Why non-generic: ${topic.whyNonGeneric}` : "",
-            topic.howAnchorFits ? `How anchor fits: ${topic.howAnchorFits}` : "",
-            topic.evergreenNote ? `Evergreen potential: ${topic.evergreenNote}` : "",
-            topic.competitionNote ? `Competition level: ${topic.competitionNote}` : "",
-          ].filter(Boolean);
-          
-          const topicBrief = topicBriefParts.length > 0 
-            ? topicBriefParts.join("\n\n")
-            : topic.title;
+        // Build comprehensive article brief from topic's deep brief fields
+        const topicBriefParts = [
+          topic.brief || "",
+          topic.shortAngle ? `Short angle: ${topic.shortAngle}` : "",
+          topic.whyNonGeneric ? `Why non-generic: ${topic.whyNonGeneric}` : "",
+          topic.howAnchorFits ? `How anchor fits: ${topic.howAnchorFits}` : "",
+          topic.evergreenNote ? `Evergreen potential: ${topic.evergreenNote}` : "",
+          topic.competitionNote ? `Competition level: ${topic.competitionNote}` : "",
+        ].filter(Boolean);
+        
+        const topicBrief = topicBriefParts.length > 0 
+          ? topicBriefParts.join("\n\n")
+          : topic.title;
 
-          // #region agent log
+        // #region agent log
           const promptBuildLog = {location:'articles/route.ts:94',message:'Building TOPIC DISCOVERY article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform,mode:'topic-discovery'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
-          debugLog(promptBuildLog);
-          // #endregion
+        debugLog(promptBuildLog);
+        // #endregion
 
           prompt = buildArticlePrompt({
-            topicTitle: topic.title,
-            topicBrief: topicBrief,
-            niche: brief.niche || "", // Will be validated in buildArticlePrompt
-            mainPlatform: brief.platform || "multi-platform",
-            anchorText: brief.anchorText || "",
-            anchorUrl: brief.anchorUrl || brief.clientSite || "",
-            brandName: "PromosoundGroup",
-            keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
-            trustSourcesList: trustSourcesList,
-            language: brief.language || "English",
-            targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
-            wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
-          });
+          topicTitle: topic.title,
+          topicBrief: topicBrief,
+          niche: brief.niche || "", // Will be validated in buildArticlePrompt
+          mainPlatform: brief.platform || "multi-platform",
+          anchorText: brief.anchorText || "",
+          anchorUrl: brief.anchorUrl || brief.clientSite || "",
+          brandName: "PromosoundGroup",
+          keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
+          trustSourcesList: trustSourcesList,
+          language: brief.language || "English",
+          targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
+          wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
+        });
         }
         
         // #region agent log

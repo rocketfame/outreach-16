@@ -271,25 +271,25 @@ Hard limits:
 ================================
 
 You MUST always respond with a valid JSON object of this shape:
-
-{
-  "plan": [
-    "Step 1 – short natural language description of what you will do",
-    "Step 2 – …"
-  ],
-  "articleUpdatedHtml": "FULL UPDATED ARTICLE BODY HERE as HTML or Markdown",
-  "images": [
-    {
-      "id": "optional-or-empty-if-not-used",
-      "query": "search query used for this image",
-      "url": "https://... (empty string if no image)",
-      "alt": "human-readable alt text",
-      "source": "official_site | media | stock | other",
-      "relevanceScore": 0.0
-    }
-  ]
-}
-
+   
+   {
+     "plan": [
+       "Step 1 – short natural language description of what you will do",
+       "Step 2 – …"
+     ],
+     "articleUpdatedHtml": "FULL UPDATED ARTICLE BODY HERE as HTML or Markdown",
+     "images": [
+       {
+         "id": "optional-or-empty-if-not-used",
+         "query": "search query used for this image",
+         "url": "https://... (empty string if no image)",
+         "alt": "human-readable alt text",
+         "source": "official_site | media | stock | other",
+         "relevanceScore": 0.0
+       }
+     ]
+   }
+   
 Rules:
 • Do NOT wrap the JSON in Markdown code fences. No \`\`\`json, no \`\`\`.
 • Do NOT output any text outside the JSON (no explanations, no commentary).
