@@ -3421,97 +3421,6 @@ export default function Home() {
               />
             </label>
 
-            <label>
-              <span>Image style personalization <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "#666" }}>(optional)</span></span>
-              
-              {/* Reference Image Upload Section */}
-              <div style={{ marginBottom: "12px", padding: "12px", border: "1px solid #ddd", borderRadius: "6px", backgroundColor: "#f9f9f9" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: referenceImage ? "12px" : "0" }}>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleReferenceImageUpload}
-                    style={{ display: "none" }}
-                    id="reference-image-upload"
-                  />
-                  <label
-                    htmlFor="reference-image-upload"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      padding: "8px 16px",
-                      backgroundColor: "#0070f3",
-                      color: "white",
-                      borderRadius: "6px",
-                      cursor: isAnalyzingStyle ? "not-allowed" : "pointer",
-                      opacity: isAnalyzingStyle ? 0.6 : 1,
-                      fontSize: "0.875rem",
-                      fontWeight: "500",
-                    }}
-                  >
-                    {isAnalyzingStyle ? (
-                      <>
-                        <span className="spinning" style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid white", borderTopColor: "transparent", borderRadius: "50%" }}></span>
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                          <polyline points="7 10 12 15 17 10"></polyline>
-                          <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        Upload reference image
-                      </>
-                    )}
-                  </label>
-                  {referenceImage && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveReferenceImage}
-                      style={{
-                        padding: "6px 12px",
-                        backgroundColor: "#f0f0f0",
-                        border: "1px solid #ddd",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "0.875rem",
-                        color: "#666",
-                      }}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                
-                {/* Image Preview */}
-                {referenceImage && (
-                  <div style={{ marginTop: "12px" }}>
-                    <img
-                      src={referenceImage}
-                      alt="Reference style"
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "200px",
-                        borderRadius: "6px",
-                        border: "1px solid #ddd",
-                        objectFit: "contain",
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <textarea
-                value={brief.customStyle || ""}
-                onChange={handleBriefChange("customStyle")}
-                placeholder="Describe your personalized visual style learned from reference images. This style will be applied to all generated images. Include details about: character style, color palette, composition, art technique, and overall aesthetic. The AI will learn and adapt this style for future image generation. Or upload a reference image above to automatically analyze its style."
-                rows={6}
-              />
-              <small>Upload a reference image above to automatically analyze its style, or manually describe your visual style. This style description will be used to personalize all generated images.</small>
-            </label>
           </div>
 
               {/* Branded link details */}
@@ -3986,6 +3895,112 @@ export default function Home() {
               {generatedArticles.length > 0 && (
                 <div className="generated-articles-section" ref={generatedArticlesSectionRef}>
                   <h3 className="section-title">Generated Articles</h3>
+                  
+                  {/* Image Style Personalization Block - Minimalist */}
+                  <div style={{ marginBottom: "24px", padding: "16px", border: "1px solid #e0e0e0", borderRadius: "8px", backgroundColor: "#fafafa" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                      <label style={{ fontSize: "0.875rem", fontWeight: "500", color: "#333" }}>
+                        Image style personalization
+                      </label>
+                      {referenceImage && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveReferenceImage}
+                          style={{
+                            padding: "4px 8px",
+                            fontSize: "0.75rem",
+                            color: "#666",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          Remove image
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleReferenceImageUpload}
+                        style={{ display: "none" }}
+                        id="reference-image-upload"
+                      />
+                      <label
+                        htmlFor="reference-image-upload"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "6px 12px",
+                          border: "1px solid #d0d0d0",
+                          borderRadius: "6px",
+                          cursor: isAnalyzingStyle ? "not-allowed" : "pointer",
+                          fontSize: "0.875rem",
+                          color: "#333",
+                          backgroundColor: "white",
+                          opacity: isAnalyzingStyle ? 0.6 : 1,
+                        }}
+                      >
+                        {isAnalyzingStyle ? (
+                          <>
+                            <span className="spinning" style={{ display: "inline-block", width: "12px", height: "12px", border: "2px solid #666", borderTopColor: "transparent", borderRadius: "50%" }}></span>
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7 10 12 15 17 10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Upload reference image
+                          </>
+                        )}
+                      </label>
+                      
+                      {referenceImage && (
+                        <div style={{ flex: "0 0 auto" }}>
+                          <img
+                            src={referenceImage}
+                            alt="Reference style"
+                            style={{
+                              width: "60px",
+                              height: "60px",
+                              objectFit: "cover",
+                              borderRadius: "6px",
+                              border: "1px solid #e0e0e0",
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      <textarea
+                        value={brief.customStyle || ""}
+                        onChange={handleBriefChange("customStyle")}
+                        placeholder="Style description (auto-filled from reference image or enter manually)..."
+                        rows={2}
+                        style={{
+                          flex: "1",
+                          padding: "8px 12px",
+                          border: "1px solid #e0e0e0",
+                          borderRadius: "6px",
+                          fontSize: "0.875rem",
+                          fontFamily: "inherit",
+                          resize: "vertical",
+                          minHeight: "60px",
+                        }}
+                      />
+                    </div>
+                    <small style={{ display: "block", marginTop: "8px", fontSize: "0.75rem", color: "#666" }}>
+                      Upload a reference image to analyze its style, or describe your visual style manually. Applied to all generated images.
+                    </small>
+                  </div>
+                  
                   <div className="articles-list">
                     {generatedArticles.map((article) => {
                       const topicId = article.topicTitle;
