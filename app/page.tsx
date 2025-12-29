@@ -33,11 +33,9 @@ export default function Home() {
     customStyle: "",
   };
   
-  const brief = useMemo(() => {
-    return mode === "discovery" 
-      ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
-      : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
-  }, [mode, persistedState.discoveryProjectBasics, persistedState.directProjectBasics, persistedState.projectBasics]);
+  const brief = mode === "discovery" 
+    ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
+    : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
   
   
   // Ensure language has a default value if empty (for backward compatibility)
@@ -2609,7 +2607,18 @@ export default function Home() {
 
         if (data.success && data.styleDescription) {
           // Update customStyle field with analyzed style
+          console.log("[handleReferenceImageUpload] Received style description, length:", data.styleDescription.length);
           updateBrief({ customStyle: data.styleDescription });
+          
+          // Verify the update after a brief delay
+          setTimeout(() => {
+            const currentMode = persistedState.mode;
+            const currentBrief = currentMode === "discovery" 
+              ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief)
+              : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief);
+            console.log("[handleReferenceImageUpload] After updateBrief, currentBrief.customStyle length:", currentBrief.customStyle?.length || 0);
+          }, 200);
+          
           setNotification({
             message: "Image style analyzed and applied successfully!",
             time: new Date().toLocaleTimeString(),
@@ -4399,7 +4408,6 @@ export default function Home() {
                                     )}
                                     
                                     <textarea
-                                      key={`style-textarea-${mode}-${brief.customStyle?.length || 0}`}
                                       value={brief.customStyle || ""}
                                       onChange={handleBriefChange("customStyle")}
                                       placeholder="Style description..."
