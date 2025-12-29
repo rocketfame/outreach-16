@@ -180,78 +180,33 @@ function buildImagePrompt(params: {
   const selectedEditorialStyle = editorialStyles[editorialStyleIndex];
 
   // Build concise prompt (must be under 4000 chars for DALL-E 3)
-  const prompt = `
-Retro–futuristic editorial hero image for the article "${articleTitle}".
+  const prompt = `Editorial visual for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
 
-You are an art director for a music-tech magazine working for the brand ${brandName || "Promosound"}.
-Carefully read the full title and niche and create a scene that VISUALLY EXPLAINS the topic,
-not a random generic instrument.
+STYLE: ${selectedEditorialStyle}. Match this publication's visual language and color vibrancy.
 
-CONTEXT:
-- Topic: ${articleTitle}
-- Niche: ${niche}
-- Main platform: ${mainPlatform}
-- Content purpose: ${contentPurpose}
+REQUIREMENTS:
+- NO TEXT on image
+- NO isometric 3D
+- NO teal/orange/gold colors
+- Unique artist vision, vibrant diverse colors
 
-CORE VISUAL RULES (ALWAYS FOLLOW):
-1) The main scene must clearly match the topic and setting.
-   - If the title mentions festivals, events or tours: show a night festival scene with a crowd,
-     stage lights, speakers, lasers, people dancing, and subtle UI / social elements around them.
-   - If the title mentions playlists, algorithms, streams or stats: show futuristic screens,
-     dashboards, sound-wave interfaces and a character interacting with data.
-   - If the title mentions specific platforms (YouTube, TikTok, Spotify, Facebook, Instagram):
-     include their logo shapes and UI elements as abstract, stylized icons on screens,
-     clothing or floating panels (no plain screenshots).
-   - If the title mentions a country, region or city (for example Ukraine, Germany, USA):
-     reflect it in the mood, architecture silhouettes or light colors (for Ukraine: blue and yellow
-     accents in lights or sky), not with literal flags or maps.
-   - Never fall back to a single synthesizer, mixer or random studio shot if the title
-     clearly describes a different context.
+APPROACH: ${selectedApproach.description}
 
-2) PromoSound art direction:
-   - Retro-futuristic, cyberpunk-inspired editorial illustration.
-   - 2D or 2.5D look, not isometric 3D.
-   - Strong silhouettes, clean shapes, no photo-realism.
-   - One or more stylized characters with tech / music gadgets, screens, helmets or devices,
-     or a strong symbolic object in the center.
-   - Composition looks like a magazine cover or campaign visual, not a stock photo.
+ART STYLE: ${selectedStyle}
 
-3) Color and mood:
-   - Bold, vibrant, high-contrast palettes in the spirit of the provided references:
-     electric magenta, hot pink, cyan, deep blue, rich purple, neon accents on dark or solid
-     backgrounds.
-   - Avoid teal–orange clichés and avoid gold metallic dominance.
-   - Use color to separate foreground characters from background tech and crowd.
+COLORS: ${selectedPalette}. VIBRANT and DIVERSE. Bold contrasting combinations.
 
-4) Brand and platform integration:
-   - Integrate ${mainPlatform} visual language and logo shape naturally into the scene:
-     on screens, holograms, helmets, clothing patches or floating UI cards.
-   - If ${brandName} is not empty, echo its mood only through color and atmosphere,
-     not through visible text or big logos.
-   - No readable text anywhere in the image (no titles, no UI labels, no slogans).
+LOGO: ${logoMethod}. Natural integration, vary size/position/treatment.
 
-5) Composition:
-   - Horizontal 16:9 hero image.
-   - Dynamic, asymmetric layout with strong focal point.
-   - Use interesting angles (low angle, slight Dutch tilt, close-up with deep background, etc.).
-   - Background filled with abstract audio gear, social media icons, cables, dashboards,
-     city silhouettes or festival structures, matching the topic.
+CHARACTER NOTE: If character approach, character is 60-70% of composition. ${mainPlatform} logo on clothing/accessories/floating/background. Expressive pose related to ${niche}.
 
-6) Quality:
-   - High-detail, polished editorial artwork, consistent with a unified promo campaign.
-   - Every new image must feel unique but clearly part of the same visual universe as
-     other Promosound images.
-   - No generic AI artifacts, no messy anatomy, no random unrelated objects.
+COMPOSITION: Dynamic focus, natural perspective. Unusual angles (close-up/bird's eye/low/Dutch). Creative negative space. Asymmetric layouts.
 
-STYLE PRESET:
-- Visual approach: ${selectedApproach.description}
-- Art style: ${selectedStyle}
-- Color palette: ${selectedPalette}
-- Editorial reference: ${selectedEditorialStyle}
-- Logo treatment: ${logoMethod}
+QUALITY: Editorial magazine cover level. Award-winning agency aesthetic. Avoid generic AI styles.
 
-Generate one single cohesive scene that obeys ALL rules above.
-`.trim();
+BRAND: Subtle ${brandName} mood via color/atmosphere. No heavy branding or text.
+
+FORMAT: 16:9 horizontal hero image.`.trim();
   
   // Ensure prompt is under 4000 characters
   if (prompt.length > 4000) {
