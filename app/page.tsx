@@ -2806,6 +2806,11 @@ export default function Home() {
         throw new Error(errorMsg);
       }
 
+      // Only include customStyle if it's not empty (so default algorithm is used when no custom style)
+      const customStyleValue = currentBrief.customStyle && currentBrief.customStyle.trim() 
+        ? currentBrief.customStyle.trim() 
+        : undefined;
+
       const response = await fetch("/api/article-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2815,7 +2820,7 @@ export default function Home() {
           mainPlatform,
           contentPurpose,
           brandName,
-          customStyle: currentBrief.customStyle || undefined,
+          customStyle: customStyleValue,
         }),
       });
 
@@ -4329,9 +4334,9 @@ export default function Home() {
                                   </button>
                                 )}
                                 
-                                {/* Image Style Personalization - Always visible when there's a reference image or custom style */}
-                                {(referenceImage || brief.customStyle) && (
-                                  <div style={{ marginTop: "12px", padding: "12px", border: "1px solid #e5e5e5", borderRadius: "6px", backgroundColor: "#fafafa" }}>
+                                {/* Image Style Personalization - Only visible when there's a reference image or custom style */}
+                                {(referenceImage || (brief.customStyle && brief.customStyle.trim())) && (
+                                  <div style={{ marginTop: "12px", padding: "12px", border: "1px solid #e5e5e5", borderRadius: "6px", backgroundColor: "#fafafa", position: "relative" }}>
                                     <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
                                       <input
                                         ref={fileInputRef}
@@ -4395,7 +4400,7 @@ export default function Home() {
                                         value={brief.customStyle || ""}
                                         onChange={handleBriefChange("customStyle")}
                                         placeholder="Style description..."
-                                        rows={1}
+                                        rows={2}
                                         style={{
                                           flex: "1",
                                           padding: "6px 8px",
@@ -4403,9 +4408,12 @@ export default function Home() {
                                           borderRadius: "4px",
                                           fontSize: "0.75rem",
                                           fontFamily: "inherit",
-                                          resize: "none",
-                                          minHeight: "32px",
-                                          maxHeight: "60px",
+                                          resize: "both",
+                                          minHeight: "40px",
+                                          minWidth: "200px",
+                                          maxHeight: "300px",
+                                          maxWidth: "100%",
+                                          overflow: "auto",
                                         }}
                                       />
                                       
