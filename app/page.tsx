@@ -37,6 +37,17 @@ export default function Home() {
     ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
     : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
   
+  // Debug: log brief.customStyle changes
+  useEffect(() => {
+    if (brief.customStyle) {
+      console.log("[brief] customStyle updated:", {
+        hasCustomStyle: !!brief.customStyle,
+        customStyleLength: brief.customStyle.length,
+        customStylePreview: brief.customStyle.substring(0, 100),
+      });
+    }
+  }, [brief.customStyle]);
+  
   // Ensure language has a default value if empty (for backward compatibility)
   // This is used for button disabled state and validation
   const briefWithDefaults = {
@@ -2601,7 +2612,12 @@ export default function Home() {
 
         if (data.success && data.styleDescription) {
           // Update customStyle field with analyzed style
+          console.log("[handleReferenceImageUpload] Updating customStyle with analyzed style:", {
+            styleDescriptionLength: data.styleDescription.length,
+            styleDescriptionPreview: data.styleDescription.substring(0, 100),
+          });
           updateBrief({ customStyle: data.styleDescription });
+          console.log("[handleReferenceImageUpload] customStyle updated, brief should now contain the style");
           setNotification({
             message: "Image style analyzed and applied successfully!",
             time: new Date().toLocaleTimeString(),
@@ -2805,6 +2821,13 @@ export default function Home() {
         });
         throw new Error(errorMsg);
       }
+
+      // Log customStyle before sending to API
+      console.log("[generateArticleImage] Sending request with customStyle:", {
+        hasCustomStyle: !!currentBrief.customStyle,
+        customStyleLength: currentBrief.customStyle?.length || 0,
+        customStylePreview: currentBrief.customStyle?.substring(0, 100) || "none",
+      });
 
       const response = await fetch("/api/article-image", {
         method: "POST",
