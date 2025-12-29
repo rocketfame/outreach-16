@@ -11,6 +11,7 @@ export type Brief = {
   anchorText?: string;
   anchorUrl?: string;
   contentPurpose?: string;
+  customStyle?: string; // Personalized style description learned from reference images
 };
 
 export type Topic = {
@@ -82,6 +83,7 @@ const defaultBrief: Brief = {
     anchorText: "",
     anchorUrl: "",
     contentPurpose: "",
+    customStyle: "",
 };
 
 const defaultState: AppPersistedState = {

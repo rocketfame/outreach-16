@@ -15,6 +15,7 @@ export interface ArticleImageRequest {
   mainPlatform: string;
   contentPurpose: string;
   brandName: string;
+  customStyle?: string; // Optional: personalized style description learned from reference images
 }
 
 export interface ArticleImageResponse {
@@ -33,8 +34,9 @@ function buildImagePrompt(params: {
   mainPlatform: string;
   contentPurpose: string;
   brandName: string;
+  customStyle?: string; // Optional personalized style from reference images
 }): string {
-  const { articleTitle, niche, mainPlatform, contentPurpose, brandName } = params;
+  const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle } = params;
 
   // Deterministic hash function for consistent "randomness" based on input
   const getHash = (str: string) => str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -150,14 +152,40 @@ function buildImagePrompt(params: {
   const editorialStyleIndex = Math.abs(getHash(articleTitle + mainPlatform)) % editorialStyles.length;
   const selectedEditorialStyle = editorialStyles[editorialStyleIndex];
 
+  // Build personalized style section if customStyle is provided
+  const personalizedStyleSection = customStyle && customStyle.trim() 
+    ? `
+================================
+PERSONALIZED STYLE - HIGH PRIORITY
+================================
+
+IMPORTANT: The following style description is learned from reference images and represents your established visual identity. This personalized style has HIGH PRIORITY and should be integrated into ALL aspects of the image generation.
+
+PERSONALIZED STYLE DESCRIPTION:
+${customStyle.trim()}
+
+STYLE INTEGRATION RULES:
+- Apply this personalized style to ALL visual elements: character design, composition, color palette, art technique, and overall aesthetic
+- This style represents your brand's unique visual language - maintain consistency with this established identity
+- Integrate the personalized style while respecting the core requirements below (no isometric 3D, character focus, abstract elements)
+- The personalized style should override generic style suggestions when they conflict, but must still follow mandatory forbidden elements
+- Use this style to create sub-styles and variations that remain consistent with your established visual identity
+
+================================
+`.trim()
+    : "";
+
   // Build concise prompt (must be under 4000 chars for DALL-E 3)
   const prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
+
+${personalizedStyleSection}
 
 CRITICAL STYLE REQUIREMENTS - RED DOT DESIGN AGENCY AESTHETIC:
 - Modern contemporary digital art illustration - award-winning graphic design quality
 - Red Dot design agency style: minimalist yet impactful, experimental compositions, high-concept visuals
 - Professional editorial illustration level - NOT childish, NOT generic AI style, NOT isometric 3D
 - Sophisticated, sophisticated, sophisticated - this is premium graphic design
+${customStyle && customStyle.trim() ? "- IMPORTANT: Integrate the personalized style above while maintaining these quality standards" : ""}
 
 MANDATORY FORBIDDEN ELEMENTS (STRICTLY PROHIBITED):
 - NO isometric 3D blocks, cubes, or 3D geometric shapes
@@ -171,8 +199,10 @@ REQUIRED FOCUS - CHARACTER + ABSTRACTION:
 ${selectedApproach.description}
 
 ART STYLE: ${selectedStyle}
+${customStyle && customStyle.trim() ? "- IMPORTANT: Integrate the personalized style description above into this art style. The personalized style should shape and refine this art direction." : ""}
 
 COLOR PALETTE: ${selectedPalette}. VIBRANT, DIVERSE, BOLD contrasting combinations. Sophisticated color choices.
+${customStyle && customStyle.trim() ? "- IMPORTANT: If the personalized style specifies colors or color treatments, integrate them into this palette while maintaining vibrancy and sophistication." : ""}
 
 LOGO INTEGRATION: ${mainPlatform} logo must be integrated organically as abstract element: on character's clothing pattern, as floating geometric shape, in background as subtle element, or as part of character's accessories. Logo should feel like natural part of composition, NOT added on top.
 
@@ -200,10 +230,35 @@ Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT techn
   
   // Ensure prompt is under 4000 characters
   if (prompt.length > 4000) {
+    // If still too long, truncate customStyle first (if present)
+    if (customStyle && customStyle.trim() && personalizedStyleSection) {
+      const excessLength = prompt.length - 3900; // Leave 100 char buffer
+      if (excessLength > 0 && customStyle.trim().length > excessLength + 100) {
+        // Truncate customStyle content
+        const maxCustomStyleLength = customStyle.trim().length - excessLength;
+        const truncatedCustomStyle = customStyle.trim().substring(0, maxCustomStyleLength) + "...";
+        prompt = prompt.replace(customStyle.trim(), truncatedCustomStyle);
+      } else if (excessLength > personalizedStyleSection.length) {
+        // If personalizedStyleSection is too large, remove it completely
+        prompt = prompt.replace(personalizedStyleSection + "\n\n", "").replace("\n\n" + personalizedStyleSection, "").replace(personalizedStyleSection, "").trim();
+      }
+    }
+    
     // If still too long, truncate the approach description
-    const maxApproachLength = 4000 - (prompt.length - selectedApproach.description.length) - 100; // 100 char buffer
-    const truncatedApproach = selectedApproach.description.substring(0, maxApproachLength);
-    return prompt.replace(selectedApproach.description, truncatedApproach).trim();
+    if (prompt.length > 4000) {
+      const excessLength = prompt.length - 3900;
+      const approachLength = selectedApproach.description.length;
+      if (approachLength > excessLength + 50) {
+        const maxApproachLength = approachLength - excessLength;
+        const truncatedApproach = selectedApproach.description.substring(0, maxApproachLength) + "...";
+        prompt = prompt.replace(selectedApproach.description, truncatedApproach);
+      }
+    }
+    
+    // Final safety truncation if still too long
+    if (prompt.length > 4000) {
+      prompt = prompt.substring(0, 4000).trim();
+    }
   }
   
   return prompt;
@@ -232,10 +287,10 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleImageRequest = await req.json();
-    const { articleTitle, niche, mainPlatform, contentPurpose, brandName } = body;
+    const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle } = body;
 
     // #region agent log
-    const bodyLog = {location:'article-image/route.ts:POST',message:'Request body parsed',data:{articleTitle,niche,mainPlatform,contentPurpose,brandName},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const bodyLog = {location:'article-image/route.ts:POST',message:'Request body parsed',data:{articleTitle,niche,mainPlatform,contentPurpose,brandName,customStyle:customStyle?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(bodyLog);
     // #endregion
 
@@ -254,6 +309,7 @@ export async function POST(req: Request) {
       mainPlatform,
       contentPurpose,
       brandName,
+      customStyle,
     });
     
     // Ensure prompt is under 4000 characters (DALL-E 3 limit)

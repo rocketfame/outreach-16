@@ -30,6 +30,7 @@ export default function Home() {
     anchorText: "",
     anchorUrl: "",
     contentPurpose: "",
+    customStyle: "",
   };
   
   const brief = mode === "discovery" 
@@ -82,6 +83,11 @@ export default function Home() {
   const [isGeneratingImage, setIsGeneratingImage] = useState<Set<string>>(new Set()); // topicIds being generated
   const [viewingImage, setViewingImage] = useState<string | null>(null); // topicId of image being viewed in modal
   const [imageLoaderMessages, setImageLoaderMessages] = useState<Map<string, number>>(new Map()); // topicId -> message index
+  
+  // Reference image for style personalization
+  const [referenceImage, setReferenceImage] = useState<string | null>(null); // base64 image data
+  const [isAnalyzingStyle, setIsAnalyzingStyle] = useState(false); // loading state for style analysis
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [articleLoaderMessages, setArticleLoaderMessages] = useState<Map<string, number>>(new Map()); // topicId -> message index
   const [imageLoaderStartTimes, setImageLoaderStartTimes] = useState<Map<string, number>>(new Map()); // topicId -> start timestamp
   const [articleLoaderStartTimes, setArticleLoaderStartTimes] = useState<Map<string, number>>(new Map()); // topicId -> start timestamp
@@ -2515,6 +2521,104 @@ export default function Home() {
     }
   };
 
+  // Handle reference image upload and style analysis
+  const handleReferenceImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setNotification({
+        message: "Please upload an image file",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setNotification({
+        message: "Image file is too large. Please use an image under 10MB",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Data = e.target?.result as string;
+      if (!base64Data) return;
+
+      // Store image for preview
+      setReferenceImage(base64Data);
+
+      // Analyze style using Vision API
+      setIsAnalyzingStyle(true);
+      try {
+        // Extract base64 without data URL prefix for API
+        const base64Only = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+
+        const response = await fetch("/api/analyze-image-style", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64Only }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to analyze image style");
+        }
+
+        const data = await response.json() as { success: boolean; styleDescription?: string; error?: string };
+
+        if (data.success && data.styleDescription) {
+          // Update customStyle field with analyzed style
+          updateBrief({ customStyle: data.styleDescription });
+          setNotification({
+            message: "Image style analyzed and applied successfully!",
+            time: new Date().toLocaleTimeString(),
+            visible: true,
+          });
+        } else {
+          throw new Error(data.error || "Failed to analyze image style");
+        }
+      } catch (error) {
+        console.error("Style analysis error:", error);
+        const errorMessage = (error as Error).message || "Failed to analyze image style. Please try again.";
+        setNotification({
+          message: errorMessage,
+          time: new Date().toLocaleTimeString(),
+          visible: true,
+        });
+      } finally {
+        setIsAnalyzingStyle(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setNotification({
+        message: "Failed to read image file",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      setIsAnalyzingStyle(false);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveReferenceImage = () => {
+    setReferenceImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    // Optionally clear customStyle when removing image
+    // updateBrief({ customStyle: "" });
+  };
+
   // Play success sound function (reusable)
   const playSuccessSound = () => {
     try {
@@ -2681,6 +2785,7 @@ export default function Home() {
           mainPlatform,
           contentPurpose,
           brandName,
+          customStyle: currentBrief.customStyle || undefined,
         }),
       });
 
@@ -3314,6 +3419,98 @@ export default function Home() {
                 onChange={handleBriefChange("wordCount")}
                 placeholder="1200"
               />
+            </label>
+
+            <label>
+              <span>Image style personalization <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "#666" }}>(optional)</span></span>
+              
+              {/* Reference Image Upload Section */}
+              <div style={{ marginBottom: "12px", padding: "12px", border: "1px solid #ddd", borderRadius: "6px", backgroundColor: "#f9f9f9" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: referenceImage ? "12px" : "0" }}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleReferenceImageUpload}
+                    style={{ display: "none" }}
+                    id="reference-image-upload"
+                  />
+                  <label
+                    htmlFor="reference-image-upload"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 16px",
+                      backgroundColor: "#0070f3",
+                      color: "white",
+                      borderRadius: "6px",
+                      cursor: isAnalyzingStyle ? "not-allowed" : "pointer",
+                      opacity: isAnalyzingStyle ? 0.6 : 1,
+                      fontSize: "0.875rem",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {isAnalyzingStyle ? (
+                      <>
+                        <span className="spinning" style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid white", borderTopColor: "transparent", borderRadius: "50%" }}></span>
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="7 10 12 15 17 10"></polyline>
+                          <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Upload reference image
+                      </>
+                    )}
+                  </label>
+                  {referenceImage && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveReferenceImage}
+                      style={{
+                        padding: "6px 12px",
+                        backgroundColor: "#f0f0f0",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "0.875rem",
+                        color: "#666",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                
+                {/* Image Preview */}
+                {referenceImage && (
+                  <div style={{ marginTop: "12px" }}>
+                    <img
+                      src={referenceImage}
+                      alt="Reference style"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "200px",
+                        borderRadius: "6px",
+                        border: "1px solid #ddd",
+                        objectFit: "contain",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <textarea
+                value={brief.customStyle || ""}
+                onChange={handleBriefChange("customStyle")}
+                placeholder="Describe your personalized visual style learned from reference images. This style will be applied to all generated images. Include details about: character style, color palette, composition, art technique, and overall aesthetic. The AI will learn and adapt this style for future image generation. Or upload a reference image above to automatically analyze its style."
+                rows={6}
+              />
+              <small>Upload a reference image above to automatically analyze its style, or manually describe your visual style. This style description will be used to personalize all generated images.</small>
             </label>
           </div>
 
