@@ -152,40 +152,52 @@ function buildImagePrompt(params: {
   const editorialStyleIndex = Math.abs(getHash(articleTitle + mainPlatform)) % editorialStyles.length;
   const selectedEditorialStyle = editorialStyles[editorialStyleIndex];
 
-  // Build personalized style section if customStyle is provided
-  const personalizedStyleSection = customStyle && customStyle.trim() 
-    ? `
+  // TWO DIFFERENT PROMPT STRATEGIES:
+  // 1. If customStyle exists (reference image provided) - focus ENTIRELY on reproducing that style
+  // 2. If no customStyle - use default algorithm with all requirements
+
+  let prompt: string;
+
+  if (customStyle && customStyle.trim()) {
+    // REFERENCE IMAGE MODE: Generate image in the EXACT style of the reference
+    // The customStyle description is the PRIMARY goal - everything else is secondary
+    prompt = `Create an image for "${articleTitle}" (Niche: ${niche}, Platform: ${mainPlatform}) that REPRODUCES THE EXACT VISUAL STYLE described below.
+
 ================================
-PERSONALIZED STYLE - HIGH PRIORITY
+REFERENCE STYLE - PRIMARY OBJECTIVE
 ================================
 
-IMPORTANT: The following style description is learned from reference images and represents your established visual identity. This personalized style has HIGH PRIORITY and should be integrated into ALL aspects of the image generation.
-
-PERSONALIZED STYLE DESCRIPTION:
+Your MAIN GOAL is to generate an image that matches this visual style EXACTLY:
 ${customStyle.trim()}
 
-STYLE INTEGRATION RULES:
-- Apply this personalized style to ALL visual elements: character design, composition, color palette, art technique, and overall aesthetic
-- This style represents your brand's unique visual language - maintain consistency with this established identity
-- Integrate the personalized style while respecting the core requirements below (no isometric 3D, character focus, abstract elements)
-- The personalized style should override generic style suggestions when they conflict, but must still follow mandatory forbidden elements
-- Use this style to create sub-styles and variations that remain consistent with your established visual identity
+CRITICAL: Reproduce this style precisely. If the reference style is minimalist with a monotone background, generate it that way. If it's vibrant and colorful, generate it that way. Match the art technique, colors, composition, character design, and overall aesthetic EXACTLY as described.
 
-================================
-`.trim()
-    : "";
+CONTENT CONTEXT:
+- Topic: ${articleTitle}
+- Niche: ${niche}
+- Platform: ${mainPlatform}
 
-  // Build concise prompt (must be under 4000 chars for DALL-E 3)
-  let prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
+TECHNICAL REQUIREMENTS:
+- Integrate ${mainPlatform} logo organically (subtle, as part of the composition - NOT prominent or added on top)
+- Format: 16:9 horizontal hero image
+- Professional quality - NOT childish, NOT generic AI style
 
-${personalizedStyleSection}
+STYLE PRESERVATION:
+- DO NOT add elements that conflict with the reference style (e.g., if reference is minimalist, don't add complex compositions)
+- DO NOT change colors if the reference style specifies them
+- DO NOT alter the art technique described in the reference style
+- Match the composition style, background treatment, and visual mood EXACTLY as described
+
+Generate an image that looks like it was created by the same artist using the same visual language as the reference style above.`.trim();
+  } else {
+    // DEFAULT MODE: Use standard algorithm with all requirements
+    prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
 
 CRITICAL STYLE REQUIREMENTS - RED DOT DESIGN AGENCY AESTHETIC:
 - Modern contemporary digital art illustration - award-winning graphic design quality
 - Red Dot design agency style: minimalist yet impactful, experimental compositions, high-concept visuals
 - Professional editorial illustration level - NOT childish, NOT generic AI style, NOT isometric 3D
 - Sophisticated, sophisticated, sophisticated - this is premium graphic design
-${customStyle && customStyle.trim() ? "- IMPORTANT: Integrate the personalized style above while maintaining these quality standards" : ""}
 
 MANDATORY FORBIDDEN ELEMENTS (STRICTLY PROHIBITED):
 - NO isometric 3D blocks, cubes, or 3D geometric shapes
@@ -199,10 +211,8 @@ REQUIRED FOCUS - CHARACTER + ABSTRACTION:
 ${selectedApproach.description}
 
 ART STYLE: ${selectedStyle}
-${customStyle && customStyle.trim() ? "- IMPORTANT: Integrate the personalized style description above into this art style. The personalized style should shape and refine this art direction." : ""}
 
 COLOR PALETTE: ${selectedPalette}. VIBRANT, DIVERSE, BOLD contrasting combinations. Sophisticated color choices.
-${customStyle && customStyle.trim() ? "- IMPORTANT: If the personalized style specifies colors or color treatments, integrate them into this palette while maintaining vibrancy and sophistication." : ""}
 
 LOGO INTEGRATION: ${mainPlatform} logo must be integrated organically as abstract element: on character's clothing pattern, as floating geometric shape, in background as subtle element, or as part of character's accessories. Logo should feel like natural part of composition, NOT added on top.
 
@@ -227,25 +237,21 @@ BRAND MOOD: Subtle ${brandName} atmosphere through color and composition. No hea
 FORMAT: 16:9 horizontal hero image.
 
 Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT technical equipment, NOT isometric 3D, NOT childish style. Professional Red Dot design agency quality.`.trim();
+  }
   
-  // Ensure prompt is under 4000 characters
+  // Ensure prompt is under 4000 characters (DALL-E 3 limit)
   if (prompt.length > 4000) {
-    // If still too long, truncate customStyle first (if present)
-    if (customStyle && customStyle.trim() && personalizedStyleSection) {
+    if (customStyle && customStyle.trim()) {
+      // Reference mode: truncate customStyle if needed (keep core content)
       const excessLength = prompt.length - 3900; // Leave 100 char buffer
-      if (excessLength > 0 && customStyle.trim().length > excessLength + 100) {
-        // Truncate customStyle content
-        const maxCustomStyleLength = customStyle.trim().length - excessLength;
+      if (excessLength > 0 && customStyle.trim().length > excessLength + 200) {
+        // Truncate customStyle content from the end, keeping important style info
+        const maxCustomStyleLength = customStyle.trim().length - excessLength - 50;
         const truncatedCustomStyle = customStyle.trim().substring(0, maxCustomStyleLength) + "...";
         prompt = prompt.replace(customStyle.trim(), truncatedCustomStyle);
-      } else if (excessLength > personalizedStyleSection.length) {
-        // If personalizedStyleSection is too large, remove it completely
-        prompt = prompt.replace(personalizedStyleSection + "\n\n", "").replace("\n\n" + personalizedStyleSection, "").replace(personalizedStyleSection, "").trim();
       }
-    }
-    
-    // If still too long, truncate the approach description
-    if (prompt.length > 4000) {
+    } else {
+      // Default mode: truncate approach description if needed
       const excessLength = prompt.length - 3900;
       const approachLength = selectedApproach.description.length;
       if (approachLength > excessLength + 50) {
