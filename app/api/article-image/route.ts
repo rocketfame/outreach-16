@@ -176,7 +176,7 @@ STYLE INTEGRATION RULES:
     : "";
 
   // Build concise prompt (must be under 4000 chars for DALL-E 3)
-  const prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
+  let prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
 
 ${personalizedStyleSection}
 
