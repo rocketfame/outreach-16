@@ -54,53 +54,81 @@ export async function POST(req: Request) {
     // Extract base64 data
     const base64Data = extractBase64(imageBase64);
 
-    // Analyze image style using GPT-4 Vision
+    // Analyze image style using GPT-4o Vision (best model for vision analysis)
     const response = await openai.chat.completions.create({
-      model: "gpt-4o", // GPT-4 Vision model
+      model: "gpt-4o", // GPT-4o Vision model - best for detailed style analysis
       messages: [
         {
           role: "system",
-          content: `You are an expert art director and visual style analyst. Your job is to analyze reference images and extract detailed style descriptions that can be used to generate similar images.
+          content: `You are an expert art director and visual style analyst with deep expertise in digital art, editorial illustration, and graphic design. Your job is to analyze reference images with extreme precision and extract comprehensive style descriptions that can be used to generate images in EXACTLY the same visual style.
 
-Analyze the provided image and create a comprehensive style description that includes:
+CRITICAL: You must analyze EVERY visual detail with precision. Your description will be used to train an image generation AI to replicate this exact style. Missing details will result in incorrect style reproduction.
 
-1. ART STYLE & TECHNIQUE:
-   - Illustration style (flat 2D, 3D, vector, painterly, digital art, etc.)
-   - Art technique (line art, gradients, textures, shadows, etc.)
-   - Overall aesthetic (minimalist, detailed, abstract, realistic, etc.)
+Analyze the provided image and create a COMPREHENSIVE, DETAILED style description that includes:
 
-2. CHARACTER DESIGN (if present):
-   - Character proportions and style
-   - Facial features and expressions
-   - Clothing style and details
-   - Pose and composition
+1. ART STYLE & TECHNIQUE (CRITICAL - analyze precisely):
+   - Exact illustration style (flat 2D, 2.5D, 3D isometric, vector, painterly, photorealistic, digital collage, mixed media, etc.)
+   - Specific art techniques (line art thickness, gradient types, texture patterns, shadow styles, rendering approach, etc.)
+   - Overall aesthetic (minimalist, detailed, abstract, realistic, stylized, geometric, organic, etc.)
+   - Visual quality level (high-end editorial, magazine cover, commercial, artistic, etc.)
 
-3. COLOR PALETTE:
-   - Dominant colors
-   - Color harmony (complementary, monochrome, triadic, etc.)
-   - Brightness and saturation levels
-   - Background colors
+2. CHARACTER DESIGN (if present - analyze in detail):
+   - Character proportions (realistic, stylized, exaggerated, geometric)
+   - Facial features style (detailed, simplified, abstract, realistic)
+   - Facial expressions and mood
+   - Hair style and rendering technique
+   - Clothing style, details, and rendering approach
+   - Accessories and their visual treatment
+   - Body pose and composition
+   - Skin texture and color treatment
 
-4. COMPOSITION:
-   - Layout and framing
-   - Focal point
-   - Use of negative space
-   - Perspective and angles
+3. COLOR PALETTE (ANALYZE EXACT COLORS):
+   - Dominant colors with specific names (e.g., "electric magenta", "deep purple", "neon cyan")
+   - Exact color harmony (complementary, monochrome, triadic, analogous, split-complementary, etc.)
+   - Color saturation levels (vibrant, muted, pastel, neon, etc.)
+   - Color brightness (dark, medium, bright, high-contrast, etc.)
+   - Background color(s) and treatment
+   - Color gradients (direction, smoothness, color transitions)
+   - Accent colors and their placement
+   - Color temperature (warm, cool, neutral, mixed)
 
-5. VISUAL ELEMENTS:
-   - Abstract shapes, patterns, or graphic elements
-   - Typography style (if any)
-   - Logo integration (if any)
-   - Decorative elements
+4. COMPOSITION (ANALYZE STRUCTURE):
+   - Layout type (centered, asymmetric, rule of thirds, etc.)
+   - Framing and crop style
+   - Focal point location and treatment
+   - Use of negative space (extensive, minimal, balanced)
+   - Perspective (frontal, side, 3/4, bird's eye, etc.)
+   - Depth treatment (flat, shallow depth, deep, layered)
+   - Balance and visual weight distribution
 
-6. MOOD & ATMOSPHERE:
-   - Overall feeling and tone
-   - Energy level (calm, dynamic, energetic, etc.)
+5. VISUAL ELEMENTS (ANALYZE ALL DETAILS):
+   - Abstract shapes, patterns, geometric elements
+   - Line styles (thick, thin, varied, uniform, organic, geometric)
+   - Decorative elements and their style
+   - Texture types and rendering (smooth, grainy, halftone, wireframe, etc.)
+   - Typography style (if any) - font characteristics
+   - Logo integration style (if any)
+   - Graphic effects (glow, shadows, reflections, transparency, etc.)
+
+6. MOOD & ATMOSPHERE (DESCRIBE FEELING):
+   - Overall emotional tone (energetic, calm, mysterious, futuristic, retro, etc.)
+   - Energy level (static, dynamic, flowing, energetic, meditative)
    - Style era or cultural references
+   - Visual mood (dark, bright, dramatic, soft, bold, subtle, etc.)
 
-Format your response as a clear, detailed text description that can be directly used in image generation prompts. Focus on visual characteristics that would help recreate a similar style. Be specific about colors, techniques, and composition.
+7. SPECIFIC TECHNICAL DETAILS:
+   - Lighting style (dramatic, soft, directional, ambient, colored lighting, etc.)
+   - Rendering quality (polished, rough, stylized, photorealistic)
+   - Edge treatment (hard edges, soft edges, mixed, anti-aliased, etc.)
+   - Visual effects (glow, bloom, chromatic aberration, grain, etc.)
+   - Any unique or distinctive visual characteristics
 
-Do NOT describe what the image shows (content/subject matter), focus ONLY on visual style, technique, and aesthetic characteristics.`,
+OUTPUT FORMAT:
+Provide a detailed, structured description that can be directly used in image generation prompts. Be SPECIFIC about colors (use color names like "electric magenta", "deep purple", "neon cyan" not just "purple" or "blue"). Include exact techniques, proportions, and visual characteristics.
+
+Do NOT describe what the image shows (content/subject matter like "a person" or "a face"). Focus EXCLUSIVELY on visual style, technique, aesthetic characteristics, colors, composition, and rendering approach.
+
+Your description must be detailed enough that an AI image generator can replicate this EXACT visual style.`,
         },
         {
           role: "user",
@@ -109,16 +137,18 @@ Do NOT describe what the image shows (content/subject matter), focus ONLY on vis
               type: "image_url",
               image_url: {
                 url: `data:image/jpeg;base64,${base64Data}`,
+                detail: "high", // Request high detail analysis
               },
             },
             {
               type: "text",
-              text: "Analyze the visual style of this image and provide a detailed style description that can be used to generate similar images.",
+              text: "Analyze this image's visual style with extreme precision. Extract every detail about art technique, colors, composition, character design, visual elements, and mood. Provide a comprehensive style description that will allow an AI to generate images in EXACTLY this same visual style. Be specific about colors, techniques, and all visual characteristics.",
             },
           ],
         },
       ],
-      max_tokens: 1000,
+      max_tokens: 2000, // Increased for more detailed analysis
+      temperature: 0.3, // Lower temperature for more precise, consistent analysis
     });
 
     const styleDescription = response.choices[0]?.message?.content?.trim();

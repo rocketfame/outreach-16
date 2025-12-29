@@ -84,10 +84,35 @@ export default function Home() {
   const [viewingImage, setViewingImage] = useState<string | null>(null); // topicId of image being viewed in modal
   const [imageLoaderMessages, setImageLoaderMessages] = useState<Map<string, number>>(new Map()); // topicId -> message index
   
-  // Reference image for style personalization
-  const [referenceImage, setReferenceImage] = useState<string | null>(null); // base64 image data
+  // Reference image for style personalization - loaded from persisted state
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [isAnalyzingStyle, setIsAnalyzingStyle] = useState(false); // loading state for style analysis
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Load reference image from persisted state on mount/hydration (only once)
+  const referenceImageLoadedRef = useRef(false);
+  useEffect(() => {
+    if (isHydrated && persistedState.referenceImageBase64 && !referenceImageLoadedRef.current) {
+      setReferenceImage(persistedState.referenceImageBase64);
+      referenceImageLoadedRef.current = true;
+    }
+  }, [isHydrated, persistedState.referenceImageBase64]);
+  
+  // Sync reference image changes back to persisted state (but avoid initial load cycle)
+  useEffect(() => {
+    if (isHydrated && referenceImageLoadedRef.current) {
+      setPersistedState(prev => {
+        // Only update if it's different to avoid unnecessary re-renders
+        if (prev.referenceImageBase64 !== (referenceImage || undefined)) {
+          return {
+            ...prev,
+            referenceImageBase64: referenceImage || undefined,
+          };
+        }
+        return prev;
+      });
+    }
+  }, [referenceImage, isHydrated]);
   const [articleLoaderMessages, setArticleLoaderMessages] = useState<Map<string, number>>(new Map()); // topicId -> message index
   const [imageLoaderStartTimes, setImageLoaderStartTimes] = useState<Map<string, number>>(new Map()); // topicId -> start timestamp
   const [articleLoaderStartTimes, setArticleLoaderStartTimes] = useState<Map<string, number>>(new Map()); // topicId -> start timestamp
@@ -2615,6 +2640,11 @@ export default function Home() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    // Clear from persisted state
+    setPersistedState(prev => ({
+      ...prev,
+      referenceImageBase64: undefined,
+    }));
     // Optionally clear customStyle when removing image
     // updateBrief({ customStyle: "" });
   };
@@ -4285,120 +4315,120 @@ export default function Home() {
                               {/* Hero Image Generation Section */}
                               <div className="article-image-section">
                                 {!articleImages.has(topicId) && !isGeneratingImage.has(topicId) && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="btn-outline btn-generate-image"
-                                      onClick={() => generateArticleImage(topicId)}
-                                    >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                        <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                        <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                      </svg>
-                                      <span>Generate hero image for this article</span>
-                                    </button>
-                                    
-                                    {/* Image Style Personalization - Subtle, below button */}
-                                    <div style={{ marginTop: "12px", padding: "12px", border: "1px solid #e5e5e5", borderRadius: "6px", backgroundColor: "#fafafa" }}>
-                                      <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
-                                        <input
-                                          ref={fileInputRef}
-                                          type="file"
-                                          accept="image/*"
-                                          onChange={handleReferenceImageUpload}
-                                          style={{ display: "none" }}
-                                          id="reference-image-upload"
-                                        />
-                                        <label
-                                          htmlFor="reference-image-upload"
-                                          style={{
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            gap: "4px",
-                                            padding: "4px 8px",
-                                            border: "1px solid #d0d0d0",
-                                            borderRadius: "4px",
-                                            cursor: isAnalyzingStyle ? "not-allowed" : "pointer",
-                                            fontSize: "0.75rem",
-                                            color: "#555",
-                                            backgroundColor: "white",
-                                            opacity: isAnalyzingStyle ? 0.6 : 1,
-                                            whiteSpace: "nowrap",
-                                          }}
-                                        >
-                                          {isAnalyzingStyle ? (
-                                            <>
-                                              <span className="spinning" style={{ display: "inline-block", width: "10px", height: "10px", border: "2px solid #666", borderTopColor: "transparent", borderRadius: "50%" }}></span>
-                                              Analyzing...
-                                            </>
-                                          ) : (
-                                            <>
-                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                                <polyline points="7 10 12 15 17 10"></polyline>
-                                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                                              </svg>
-                                              Upload style
-                                            </>
-                                          )}
-                                        </label>
-                                        
-                                        {referenceImage && (
-                                          <div style={{ flex: "0 0 auto", marginLeft: "4px" }}>
-                                            <img
-                                              src={referenceImage}
-                                              alt="Reference"
-                                              style={{
-                                                width: "40px",
-                                                height: "40px",
-                                                objectFit: "cover",
-                                                borderRadius: "4px",
-                                                border: "1px solid #e0e0e0",
-                                              }}
-                                            />
-                                          </div>
+                                  <button
+                                    type="button"
+                                    className="btn-outline btn-generate-image"
+                                    onClick={() => generateArticleImage(topicId)}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    <span>Generate hero image for this article</span>
+                                  </button>
+                                )}
+                                
+                                {/* Image Style Personalization - Always visible when there's a reference image or custom style */}
+                                {(referenceImage || brief.customStyle) && (
+                                  <div style={{ marginTop: "12px", padding: "12px", border: "1px solid #e5e5e5", borderRadius: "6px", backgroundColor: "#fafafa" }}>
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                                      <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleReferenceImageUpload}
+                                        style={{ display: "none" }}
+                                        id="reference-image-upload"
+                                      />
+                                      <label
+                                        htmlFor="reference-image-upload"
+                                        style={{
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "4px",
+                                          padding: "4px 8px",
+                                          border: "1px solid #d0d0d0",
+                                          borderRadius: "4px",
+                                          cursor: isAnalyzingStyle ? "not-allowed" : "pointer",
+                                          fontSize: "0.75rem",
+                                          color: "#555",
+                                          backgroundColor: "white",
+                                          opacity: isAnalyzingStyle ? 0.6 : 1,
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {isAnalyzingStyle ? (
+                                          <>
+                                            <span className="spinning" style={{ display: "inline-block", width: "10px", height: "10px", border: "2px solid #666", borderTopColor: "transparent", borderRadius: "50%" }}></span>
+                                            Analyzing...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                              <polyline points="7 10 12 15 17 10"></polyline>
+                                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                            Upload style
+                                          </>
                                         )}
-                                        
-                                        <textarea
-                                          value={brief.customStyle || ""}
-                                          onChange={handleBriefChange("customStyle")}
-                                          placeholder="Style description..."
-                                          rows={1}
-                                          style={{
-                                            flex: "1",
-                                            padding: "6px 8px",
-                                            border: "1px solid #e0e0e0",
-                                            borderRadius: "4px",
-                                            fontSize: "0.75rem",
-                                            fontFamily: "inherit",
-                                            resize: "none",
-                                            minHeight: "32px",
-                                            maxHeight: "60px",
-                                          }}
-                                        />
-                                        
-                                        {referenceImage && (
-                                          <button
-                                            type="button"
-                                            onClick={handleRemoveReferenceImage}
+                                      </label>
+                                      
+                                      {referenceImage && (
+                                        <div style={{ flex: "0 0 auto", marginLeft: "4px" }}>
+                                          <img
+                                            src={referenceImage}
+                                            alt="Reference"
                                             style={{
-                                              padding: "4px 6px",
-                                              fontSize: "0.7rem",
-                                              color: "#888",
-                                              background: "none",
-                                              border: "none",
-                                              cursor: "pointer",
-                                              opacity: 0.7,
+                                              width: "40px",
+                                              height: "40px",
+                                              objectFit: "cover",
+                                              borderRadius: "4px",
+                                              border: "1px solid #e0e0e0",
                                             }}
-                                            title="Remove image"
-                                          >
-                                            ×
-                                          </button>
-                                        )}
-                                      </div>
+                                          />
+                                        </div>
+                                      )}
+                                      
+                                      <textarea
+                                        value={brief.customStyle || ""}
+                                        onChange={handleBriefChange("customStyle")}
+                                        placeholder="Style description..."
+                                        rows={1}
+                                        style={{
+                                          flex: "1",
+                                          padding: "6px 8px",
+                                          border: "1px solid #e0e0e0",
+                                          borderRadius: "4px",
+                                          fontSize: "0.75rem",
+                                          fontFamily: "inherit",
+                                          resize: "none",
+                                          minHeight: "32px",
+                                          maxHeight: "60px",
+                                        }}
+                                      />
+                                      
+                                      {referenceImage && (
+                                        <button
+                                          type="button"
+                                          onClick={handleRemoveReferenceImage}
+                                          style={{
+                                            padding: "4px 6px",
+                                            fontSize: "0.7rem",
+                                            color: "#888",
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            opacity: 0.7,
+                                          }}
+                                          title="Remove image"
+                                        >
+                                          ×
+                                        </button>
+                                      )}
                                     </div>
-                                  </>
+                                  </div>
                                 )}
                                 
                                 {isGeneratingImage.has(topicId) && (
