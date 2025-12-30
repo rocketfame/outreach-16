@@ -329,7 +329,7 @@ export default function Home() {
     if (missingFields.length > 0) {
       const fieldsList = missingFields.join(", ");
       setNotification({
-        message: `Будь ласка, заповніть обов'язкові поля в Project Basis: ${fieldsList}`,
+        message: `Please fill in the required fields in Project Basis: ${fieldsList}`,
         time: "",
         visible: true,
       });
@@ -383,11 +383,11 @@ export default function Home() {
         const minutes = Math.floor(elapsedSeconds / 60);
         const seconds = elapsedSeconds % 60;
         const timeString = minutes > 0 
-          ? `${minutes} хв ${seconds} сек`
-          : `${seconds} сек`;
+          ? `${minutes} min ${seconds} sec`
+          : `${seconds} sec`;
         
         setNotification({
-          message: "Ми шукали теми для статтей",
+          message: "We searched for article topics",
           time: timeString,
           visible: true,
         });
@@ -398,7 +398,7 @@ export default function Home() {
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:303',message:'generateTopics error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
       // #endregion
       console.error(error);
-      const errorMessage = (error as Error).message || "Не вдалося згенерувати теми. Спробуйте ще раз.";
+      const errorMessage = (error as Error).message || "Failed to generate topics. Please try again.";
       setNotification({
         message: errorMessage,
         time: "",
@@ -563,7 +563,7 @@ export default function Home() {
           );
 
           setNotification({
-            message: "Статтю успішно регенеровано",
+            message: "Article successfully regenerated",
             time: new Date().toLocaleTimeString(),
             visible: true,
           });
@@ -572,7 +572,7 @@ export default function Home() {
       } catch (error) {
         console.error("[regenerateArticleForTopic] Error:", error);
         setNotification({
-          message: error instanceof Error ? error.message : "Помилка при регенерації статті",
+          message: error instanceof Error ? error.message : "Error regenerating article",
           time: new Date().toLocaleTimeString(),
           visible: true,
         });
@@ -738,7 +738,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error(error);
-      const errorMessage = (error as Error).message || "Не вдалося регенерувати статтю. Спробуйте ще раз.";
+      const errorMessage = (error as Error).message || "Failed to regenerate article. Please try again.";
       setNotification({
         message: errorMessage,
         time: "",
@@ -761,7 +761,7 @@ export default function Home() {
   const handleQuickGenerate = async (topic: Topic) => {
     if (!topicsData) {
       setNotification({
-        message: "Будь ласка, спочатку згенеруйте теми в Step 1",
+        message: "Please generate topics in Step 1 first",
         time: "",
         visible: true,
       });
@@ -788,7 +788,7 @@ export default function Home() {
 
     if (!topicsData) {
       setNotification({
-        message: "Будь ласка, спочатку згенеруйте теми в Step 1",
+        message: "Please generate topics in Step 1 first",
         time: "",
         visible: true,
       });
@@ -798,7 +798,7 @@ export default function Home() {
 
     if (topics.length === 0) {
       setNotification({
-        message: "Будь ласка, оберіть принаймні одну тему для генерації статті",
+        message: "Please select at least one topic for article generation",
         time: "",
         visible: true,
       });
@@ -1011,11 +1011,11 @@ export default function Home() {
         const minutes = Math.floor(elapsedSeconds / 60);
         const seconds = elapsedSeconds % 60;
         const timeString = minutes > 0 
-          ? `${minutes} хв ${seconds} сек`
-          : `${seconds} сек`;
+          ? `${minutes} min ${seconds} sec`
+          : `${seconds} sec`;
         
         setNotification({
-          message: "Ми генерували і створювали найкращу статтю",
+          message: "We generated and created the best article",
           time: timeString,
           visible: true,
         });
@@ -1061,7 +1061,7 @@ export default function Home() {
       }, 500); // Increased delay to ensure DOM is fully updated
     } catch (error) {
       console.error(error);
-      const errorMessage = (error as Error).message || "Не вдалося згенерувати статті. Спробуйте ще раз.";
+      const errorMessage = (error as Error).message || "Failed to generate articles. Please try again.";
       setNotification({
         message: errorMessage,
         time: "",
@@ -1096,7 +1096,7 @@ export default function Home() {
     // Validate article topic
     if (!directArticleTopic || !directArticleTopic.trim()) {
       setNotification({
-        message: "Будь ласка, введіть тему статті в полі 'Article Topic'",
+        message: "Please enter the article topic in the 'Article Topic' field",
         time: "",
         visible: true,
       });
@@ -1118,7 +1118,7 @@ export default function Home() {
     if (missingFields.length > 0) {
       const fieldsList = missingFields.join(", ");
       setNotification({
-        message: `Будь ласка, заповніть обов'язкові поля в Project Basis: ${fieldsList}`,
+        message: `Please fill in the required fields in Project Basis: ${fieldsList}`,
         time: "",
         visible: true,
       });
@@ -1302,18 +1302,18 @@ export default function Home() {
         const minutes = Math.floor(elapsedSeconds / 60);
         const seconds = elapsedSeconds % 60;
         const timeString = minutes > 0 
-          ? `${minutes} хв ${seconds} сек`
-          : `${seconds} сек`;
+          ? `${minutes} min ${seconds} sec`
+          : `${seconds} sec`;
         
         setNotification({
-          message: "Статтю згенеровано успішно",
+          message: "Article generated successfully",
           time: timeString,
           visible: true,
         });
         setGenerationStartTime(null);
       } else {
         setNotification({
-          message: "Статтю згенеровано успішно",
+          message: "Article generated successfully",
           time: new Date().toLocaleTimeString(),
           visible: true,
         });
@@ -1323,7 +1323,7 @@ export default function Home() {
       playSuccessSound();
     } catch (error) {
       console.error(error);
-      const errorMessage = (error as Error).message || "Не вдалося згенерувати статтю. Спробуйте ще раз.";
+      const errorMessage = (error as Error).message || "Failed to generate article. Please try again.";
       setNotification({
         message: errorMessage,
         time: "",
@@ -1349,7 +1349,7 @@ export default function Home() {
   const generateArticlesForSelected = async () => {
     if (selectedTopicIds.length === 0) {
       setNotification({
-        message: "Будь ласка, оберіть принаймні одну тему для генерації статті",
+        message: "Please select at least one topic for article generation",
         time: "",
         visible: true,
       });
@@ -1359,7 +1359,7 @@ export default function Home() {
 
     if (!topicsData) {
       setNotification({
-        message: "Будь ласка, спочатку згенеруйте теми в Step 1",
+        message: "Please generate topics in Step 1 first",
         time: "",
         visible: true,
       });
@@ -2489,7 +2489,7 @@ export default function Home() {
               
               // Show notification that image generation was started
               setNotification({
-                message: "Зображення генерується в фоновому режимі. Після завершення ви можете повторно застосувати редагування.",
+                message: "Image is being generated in the background. After completion, you can reapply editing.",
                 time: new Date().toLocaleTimeString(),
                 visible: true,
               });
@@ -2575,7 +2575,7 @@ export default function Home() {
       console.error("[editArticleWithAI] Error:", error);
       setEditingArticleStatus(null);
       setNotification({
-        message: error instanceof Error ? error.message : "Помилка при редагуванні статті",
+          message: error instanceof Error ? error.message : "Error editing article",
         time: new Date().toLocaleTimeString(),
         visible: true,
       });
@@ -2896,7 +2896,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Image generation error:", error);
-      const errorMessage = (error as Error).message || "Не вдалося згенерувати зображення. Спробуйте ще раз.";
+      const errorMessage = (error as Error).message || "Failed to generate image. Please try again.";
       setNotification({
         message: errorMessage,
         time: "",

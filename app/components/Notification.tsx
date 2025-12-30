@@ -17,14 +17,14 @@ export default function Notification({ message, time, isVisible, onClose }: Noti
     if (isVisible) {
       setShouldRender(true);
       setIsClosing(false);
-      // Auto-close after 4 seconds with slide-out animation
+      // Auto-close after 3 seconds with slide-out animation
       const timer = setTimeout(() => {
         setIsClosing(true);
         setTimeout(() => {
           setShouldRender(false);
           onClose();
         }, 400); // Wait for slide-out animation
-      }, 4000);
+      }, 3000);
       return () => clearTimeout(timer);
     } else {
       setIsClosing(true);
