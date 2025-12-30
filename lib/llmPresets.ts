@@ -19,13 +19,14 @@ export interface LLMPreset {
  * 
  * Goals: Predictability, minimal fluff, proper keywords, structured output
  * Use for: Production SEO articles, category pages, landing pages
+ * 
+ * Note: For JSON responses with response_format, we keep parameters minimal
+ * to avoid potential conflicts. Temperature is the main control parameter.
+ * stop_sequences removed for JSON format compatibility.
  */
 export const SEO_ARTICLE_PRESET: LLMPreset = {
   temperature: 0.25, // Low for predictable, structured content
-  top_p: 0.9,
-  frequency_penalty: 0.4, // Reduces tautology and keyword repetition
-  presence_penalty: 0.1, // Minimal push to new topics
-  stop_sequences: ['</article>', '</body>', '}]}'], // Prevent overflow
+  // top_p, frequency_penalty, presence_penalty, stop_sequences removed for JSON response_format compatibility
 };
 
 /**
@@ -33,13 +34,13 @@ export const SEO_ARTICLE_PRESET: LLMPreset = {
  * 
  * Goals: More creativity, exploratory ideas, but controlled structure
  * Use for: Idea articles, briefs, exploratory content
+ * 
+ * Note: For JSON responses with response_format, we keep parameters minimal
+ * to avoid potential conflicts. Temperature is the main control parameter.
  */
 export const TOPIC_DISCOVERY_PRESET: LLMPreset = {
   temperature: 0.6, // Balanced for ideas + structure
-  top_p: 0.9,
-  frequency_penalty: 0.3, // Moderate reduction of repetition
-  presence_penalty: 0.5, // Encourages new angles/formats
-  stop_sequences: ['\n\n###', '</article>'], // Limit heading count
+  // top_p, frequency_penalty, presence_penalty, stop_sequences removed for JSON response_format compatibility
 };
 
 /**
@@ -61,12 +62,12 @@ export const TOPIC_GENERATION_PRESET: LLMPreset = {
  * 
  * Goals: Variability in formulations without losing meaning
  * Use for: Editing existing articles, adding images/links
+ * 
+ * Note: GPT-5.2 doesn't support presence_penalty, frequency_penalty, top_p
+ * Only temperature is used for compatibility.
  */
 export const ARTICLE_EDIT_PRESET: LLMPreset = {
   temperature: 0.7,
-  top_p: 0.9,
-  frequency_penalty: 0.3,
-  presence_penalty: 0.2,
   max_completion_tokens: 8000, // Allow for longer articles
 };
 
@@ -74,12 +75,12 @@ export const ARTICLE_EDIT_PRESET: LLMPreset = {
  * Humanize Pass 1: Restructure/Outline
  * 
  * Goals: Controlled restructuring, preserve meaning
+ * 
+ * Note: GPT-5.2 doesn't support presence_penalty, frequency_penalty, top_p
+ * Only temperature is used for compatibility.
  */
 export const HUMANIZE_PASS_1_PRESET: LLMPreset = {
   temperature: 0.4, // Controlled variation
-  top_p: 0.9,
-  frequency_penalty: 0.2,
-  presence_penalty: 0.1,
 };
 
 /**
@@ -111,10 +112,12 @@ export const HUMANIZE_PASS_3_PRESET: LLMPreset = {
  * 
  * Goals: Precise, detailed style extraction
  * Use for: Analyzing reference image styles
+ * 
+ * Note: GPT-5.2 doesn't support top_p
+ * Only temperature and max_completion_tokens are used for compatibility.
  */
 export const STYLE_ANALYSIS_PRESET: LLMPreset = {
   temperature: 0.3, // Low for precise analysis
-  top_p: 1.0,
   max_completion_tokens: 2000, // Detailed descriptions
 };
 
@@ -123,12 +126,12 @@ export const STYLE_ANALYSIS_PRESET: LLMPreset = {
  * 
  * Goals: Concise, keyword-rich, controlled length
  * Use for: Title tags, meta descriptions, OG tags
+ * 
+ * Note: GPT-5.2 doesn't support presence_penalty, frequency_penalty, top_p
+ * Only temperature is used for compatibility.
  */
 export const META_SNIPPET_PRESET: LLMPreset = {
   temperature: 0.3, // Low for consistency
-  top_p: 0.9,
-  frequency_penalty: 0.3,
-  presence_penalty: 0.2,
   // max_completion_tokens calculated based on target length
 };
 
@@ -151,9 +154,6 @@ export function calculateMaxTokens(wordCount: number | string): number {
  */
 export function applyPreset(preset: LLMPreset, overrides?: Partial<LLMPreset>): {
   temperature: number;
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
   max_completion_tokens?: number;
   stop?: string[];
 } {
@@ -162,12 +162,12 @@ export function applyPreset(preset: LLMPreset, overrides?: Partial<LLMPreset>): 
     temperature: merged.temperature,
   };
   
-  if (merged.top_p !== undefined) result.top_p = merged.top_p;
-  if (merged.frequency_penalty !== undefined) result.frequency_penalty = merged.frequency_penalty;
-  if (merged.presence_penalty !== undefined) result.presence_penalty = merged.presence_penalty;
+  // GPT-5.2 doesn't support top_p, frequency_penalty, presence_penalty
+  // Only include max_completion_tokens and stop sequences if defined
   if (merged.max_completion_tokens !== undefined) result.max_completion_tokens = merged.max_completion_tokens;
-  // Only include stop if stop_sequences is defined and not explicitly set to undefined
-  if (merged.stop_sequences !== undefined && merged.stop_sequences !== null && Array.isArray(merged.stop_sequences) && merged.stop_sequences.length > 0) {
+  // Only include stop if stop_sequences is defined, is an array, and has items
+  // Note: We check for array explicitly to handle undefined/null cases
+  if (Array.isArray(merged.stop_sequences) && merged.stop_sequences.length > 0) {
     result.stop = merged.stop_sequences;
   }
   
