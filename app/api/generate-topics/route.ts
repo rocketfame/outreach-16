@@ -127,8 +127,8 @@ export async function POST(req: Request) {
             content: prompt,
           },
         ],
-        response_format: { type: "json_object" },
         ...apiParams,
+        response_format: { type: "json_object" },
       });
     } catch (formatError: any) {
       // If response_format is not supported, try without it

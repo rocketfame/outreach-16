@@ -227,8 +227,10 @@ Language: US English.`;
         const maxTokens = calculateMaxTokens(wordCount);
         
         // Apply preset with wordCount-based max_completion_tokens
+        // Note: For JSON response_format, we exclude stop_sequences as they conflict
         const apiParams = applyPreset(preset, { 
-          max_completion_tokens: maxTokens 
+          max_completion_tokens: maxTokens,
+          stop_sequences: undefined // Remove stop_sequences for JSON format compatibility
         });
 
         // Call OpenAI API with system + user messages
@@ -271,8 +273,8 @@ Language: US English.`;
                   content: prompt,
                 },
               ],
-              response_format: { type: "json_object" },
               ...apiParams,
+              response_format: { type: "json_object" },
             });
           } catch (formatError: any) {
             // If response_format is not supported, try without it

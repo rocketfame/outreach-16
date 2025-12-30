@@ -47,12 +47,13 @@ export const TOPIC_DISCOVERY_PRESET: LLMPreset = {
  * 
  * Goals: Creative topic ideas, diverse suggestions
  * Use for: Generating topic clusters, brainstorming
+ * 
+ * Note: For JSON responses with response_format, we keep parameters minimal
+ * to avoid potential conflicts. Temperature is the main control parameter.
  */
 export const TOPIC_GENERATION_PRESET: LLMPreset = {
   temperature: 0.7, // Higher for more creative ideas
-  top_p: 0.95,
-  frequency_penalty: 0.2, // Light penalty
-  presence_penalty: 0.4, // Encourages diversity
+  // top_p, frequency_penalty, presence_penalty removed for JSON response_format compatibility
 };
 
 /**
@@ -165,7 +166,10 @@ export function applyPreset(preset: LLMPreset, overrides?: Partial<LLMPreset>): 
   if (merged.frequency_penalty !== undefined) result.frequency_penalty = merged.frequency_penalty;
   if (merged.presence_penalty !== undefined) result.presence_penalty = merged.presence_penalty;
   if (merged.max_completion_tokens !== undefined) result.max_completion_tokens = merged.max_completion_tokens;
-  if (merged.stop_sequences && merged.stop_sequences.length > 0) result.stop = merged.stop_sequences;
+  // Only include stop if stop_sequences is defined and not explicitly set to undefined
+  if (merged.stop_sequences !== undefined && merged.stop_sequences !== null && Array.isArray(merged.stop_sequences) && merged.stop_sequences.length > 0) {
+    result.stop = merged.stop_sequences;
+  }
   
   return result;
 }
