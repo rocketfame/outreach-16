@@ -32,8 +32,7 @@ import { getCostTracker } from "@/lib/costTracker";
 import { 
   SEO_ARTICLE_PRESET, 
   TOPIC_DISCOVERY_PRESET, 
-  applyPreset, 
-  calculateMaxTokens 
+  applyPreset
 } from "@/lib/llmPresets";
 
 // Simple debug logger that works in both local and production (Vercel)
@@ -223,12 +222,10 @@ Language: US English.`;
 
         // Select preset based on mode
         const preset = isDirectMode ? SEO_ARTICLE_PRESET : TOPIC_DISCOVERY_PRESET;
-        const wordCount = brief.wordCount || "1500";
-        const maxTokens = calculateMaxTokens(wordCount);
         
-        // Apply preset with wordCount-based max_completion_tokens
+        // Apply preset with fixed max_completion_tokens (8000 as before preset system)
         const apiParams = applyPreset(preset, { 
-          max_completion_tokens: maxTokens
+          max_completion_tokens: 8000
         });
 
         // Call OpenAI API with system + user messages
@@ -307,10 +304,11 @@ Language: US English.`;
 
         // Track cost
         const costTracker = getCostTracker();
-        const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+        const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } | undefined;
         const inputTokens = usage?.prompt_tokens || 0;
         const outputTokens = usage?.completion_tokens || 0;
-        console.log("[articles-api] Token usage:", { inputTokens, outputTokens, usage });
+        const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens || 0;
+        console.log("[articles-api] Token usage:", { inputTokens, outputTokens, reasoningTokens, usage });
         if (inputTokens > 0 || outputTokens > 0) {
           costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
           const totals = costTracker.getTotalCosts();
@@ -323,8 +321,20 @@ Language: US English.`;
           console.warn("[articles-api] No tokens to track - usage:", usage);
         }
 
+        // Check if content is empty but we have reasoning tokens - this indicates a problem
+        if (!content || content.trim().length === 0) {
+          console.error("[articles-api] Empty content received from API", {
+            hasReasoningTokens: reasoningTokens > 0,
+            reasoningTokens,
+            outputTokens,
+            choicesLength: completion.choices?.length || 0,
+            message: completion.choices[0]?.message,
+          });
+          throw new Error("Received empty content from OpenAI API. The model returned no content, only reasoning tokens.");
+        }
+
         // #region agent log
-        const apiLog = {location:'articles/route.ts:135',message:'OpenAI API success',data:{contentLength:content.length,topicTitle:topic.title,hasContent:!!content,contentPreview:content.substring(0,100),usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
+        const apiLog = {location:'articles/route.ts:135',message:'OpenAI API success',data:{contentLength:content.length,topicTitle:topic.title,hasContent:!!content,contentPreview:content.substring(0,100),usage:{inputTokens,outputTokens,reasoningTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
         debugLog(apiLog);
         // #endregion
 

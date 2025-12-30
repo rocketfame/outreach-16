@@ -11,27 +11,33 @@ interface NotificationProps {
 
 export default function Notification({ message, time, isVisible, onClose }: NotificationProps) {
   const [shouldRender, setShouldRender] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
       setShouldRender(true);
-      // Auto-close after 5 seconds
+      setIsClosing(false);
+      // Auto-close after 4 seconds with slide-out animation
       const timer = setTimeout(() => {
-        setShouldRender(false);
+        setIsClosing(true);
         setTimeout(() => {
+          setShouldRender(false);
           onClose();
-        }, 300); // Wait for fade-out animation
-      }, 5000);
+        }, 400); // Wait for slide-out animation
+      }, 4000);
       return () => clearTimeout(timer);
     } else {
-      setShouldRender(false);
+      setIsClosing(true);
+      setTimeout(() => {
+        setShouldRender(false);
+      }, 400);
     }
   }, [isVisible, onClose]);
 
   if (!shouldRender) return null;
 
   return (
-    <div className={`notification ${shouldRender && isVisible ? "notification-visible" : ""}`}>
+    <div className={`notification ${shouldRender && isVisible && !isClosing ? "notification-visible" : ""} ${isClosing ? "notification-closing" : ""}`}>
       <div className="notification-content">
         <p className="notification-message">{message}</p>
         <span className="notification-time">{time}</span>

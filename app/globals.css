@@ -4036,9 +4036,9 @@ body {
 /* Notification Styles */
 .notification {
   position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
+  top: 1.5rem;
+  right: 1.5rem;
+  transform: translateX(calc(100% + 2rem));
   background: var(--card);
   border-radius: 12px;
   padding: 1rem 1.5rem;
@@ -4049,7 +4049,7 @@ body {
   min-width: 300px;
   max-width: 500px;
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="dark"] .notification {
@@ -4057,8 +4057,13 @@ body {
 }
 
 .notification-visible {
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(0);
   opacity: 1;
+}
+
+.notification-closing {
+  transform: translateX(calc(100% + 2rem));
+  opacity: 0;
 }
 
 .notification-content {
