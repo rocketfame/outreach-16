@@ -2,6 +2,7 @@
 // Post-processing utilities for cleaning and enhancing article text
 
 import { getCostTracker } from "@/lib/costTracker";
+import { HUMANIZE_PASS_1_PRESET, applyPreset } from "@/lib/llmPresets";
 
 /**
  * Cleans invisible Unicode characters and normalizes whitespace
@@ -305,6 +306,11 @@ Important:
     console.log("[text-post-processing-debug]", apiCallLog);
     // #endregion
 
+    // Use HUMANIZE_PASS_1 preset for light human edit
+    // Note: For multi-pass humanization, we could use PASS_1, PASS_2, PASS_3
+    // Currently using PASS_1 as a balanced approach
+    const apiParams = applyPreset(HUMANIZE_PASS_1_PRESET);
+
     const completion = await openaiClient.chat.completions.create({
       model: "gpt-5.2",
       messages: [
@@ -317,7 +323,7 @@ Important:
           content: rewritePrompt,
         },
       ],
-      temperature: 0.6, // Lower temperature for more controlled variation
+      ...apiParams,
     });
 
     let rewritten = completion.choices[0]?.message?.content ?? textWithPlaceholders;

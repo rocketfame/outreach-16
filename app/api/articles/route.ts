@@ -29,6 +29,12 @@ import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePromp
 import { cleanText, lightHumanEdit } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
+import { 
+  SEO_ARTICLE_PRESET, 
+  TOPIC_DISCOVERY_PRESET, 
+  applyPreset, 
+  calculateMaxTokens 
+} from "@/lib/llmPresets";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -215,9 +221,37 @@ Brand to feature: PromosoundGroup
 Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
 Language: US English.`;
 
+        // Select preset based on mode
+        const preset = isDirectMode ? SEO_ARTICLE_PRESET : TOPIC_DISCOVERY_PRESET;
+        const wordCount = brief.wordCount || "1500";
+        const maxTokens = calculateMaxTokens(wordCount);
+        
+        // Apply preset with wordCount-based max_completion_tokens
+        const apiParams = applyPreset(preset, { 
+          max_completion_tokens: maxTokens 
+        });
+
         // Call OpenAI API with system + user messages
         // #region agent log
-        const beforeApiLog = {location:'articles/route.ts:103',message:'About to call OpenAI API',data:{model:'gpt-5.2',hasSystemMessage:!!systemMessage,hasUserPrompt:!!prompt,promptLength:prompt.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
+        const beforeApiLog = {
+          location: 'articles/route.ts:103',
+          message: 'About to call OpenAI API',
+          data: {
+            model: 'gpt-5.2',
+            mode: isDirectMode ? 'direct' : 'topic-discovery',
+            preset: isDirectMode ? 'SEO_ARTICLE' : 'TOPIC_DISCOVERY',
+            hasSystemMessage: !!systemMessage,
+            hasUserPrompt: !!prompt,
+            promptLength: prompt.length,
+            wordCount,
+            maxTokens,
+            apiParams,
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'articles-api',
+          hypothesisId: 'articles-endpoint'
+        };
         debugLog(beforeApiLog);
         // #endregion
 
@@ -237,8 +271,8 @@ Language: US English.`;
                   content: prompt,
                 },
               ],
-              temperature: 0.7,
               response_format: { type: "json_object" },
+              ...apiParams,
             });
           } catch (formatError: any) {
             // If response_format is not supported, try without it
@@ -258,7 +292,7 @@ Language: US English.`;
                     content: prompt,
                   },
                 ],
-                temperature: 0.7,
+                ...apiParams,
               });
           }
         } catch (apiError: any) {

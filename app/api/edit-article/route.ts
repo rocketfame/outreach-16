@@ -5,6 +5,7 @@ import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { getOpenAIApiKey } from "@/lib/config";
 import { cleanText } from "@/lib/textPostProcessing";
 import { getCostTracker } from "@/lib/costTracker";
+import { ARTICLE_EDIT_PRESET, applyPreset } from "@/lib/llmPresets";
 
 export interface EditHistoryEntry {
   timestamp: string;
@@ -107,6 +108,9 @@ export async function POST(req: NextRequest) {
     console.log("[edit-article] Prompt built, length:", prompt.length);
 
     // Call OpenAI API
+    // Apply preset for article editing
+    const apiParams = applyPreset(ARTICLE_EDIT_PRESET);
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -125,8 +129,7 @@ export async function POST(req: NextRequest) {
             content: prompt,
           },
         ],
-        temperature: 0.7,
-        max_completion_tokens: 8000, // Use max_completion_tokens instead of max_tokens for newer models
+        ...apiParams,
       }),
     });
 
