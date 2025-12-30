@@ -120,6 +120,11 @@ export default function Home() {
   const [imageLoaderElapsed, setImageLoaderElapsed] = useState<Map<string, number>>(new Map()); // topicId -> elapsed seconds
   const [articleLoaderElapsed, setArticleLoaderElapsed] = useState<Map<string, number>>(new Map()); // topicId -> elapsed seconds
   
+  // Topic loader state (for Step 1 in Topic Discovery Mode)
+  const [topicLoaderStartTime, setTopicLoaderStartTime] = useState<number | null>(null);
+  const [topicLoaderElapsed, setTopicLoaderElapsed] = useState<number>(0);
+  const [topicLoaderMessageIndex, setTopicLoaderMessageIndex] = useState<number>(0);
+  
   // Cost tracking state
   const [costData, setCostData] = useState<{
     tavily: number;
@@ -335,6 +340,10 @@ export default function Home() {
     setLoadingStep("topics");
     setIsGeneratingTopics(true);
     setGenerationStartTime(Date.now());
+    const startTime = Date.now();
+    setTopicLoaderStartTime(startTime);
+    setTopicLoaderElapsed(0);
+    setTopicLoaderMessageIndex(0);
     try {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:277',message:'About to call /api/generate-topics',data:{endpoint:'/api/generate-topics',briefFields:Object.keys(brief)},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
@@ -399,6 +408,8 @@ export default function Home() {
     } finally {
       setLoadingStep(null);
       setIsGeneratingTopics(false);
+      setTopicLoaderStartTime(null);
+      setTopicLoaderElapsed(0);
       if (generationStartTime) {
         setGenerationStartTime(null);
       }
@@ -1202,13 +1213,14 @@ export default function Home() {
       // Use briefWithDefaults to ensure we have valid values
       // CRITICAL: For Direct Article Creation Mode, do NOT include shortAngle, whyNonGeneric, howAnchorFits
       // These fields are used by API to detect Topic Discovery Mode
+      // IMPORTANT: Pass articleId in the topic title so we can match it on response
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brief: briefWithDefaults,
           selectedTopics: [{
-            title: directArticleTopic,
+            title: articleId, // Use articleId as title so we can match it in response
             // For Direct Mode: if directArticleBrief is provided, use it; otherwise use topic title
             // API detects Direct Mode by absence of shortAngle/whyNonGeneric/howAnchorFits fields
             brief: directArticleBrief.trim() || directArticleTopic,
@@ -1233,8 +1245,18 @@ export default function Home() {
         fullArticleText: string;
       }> };
 
+      console.log("[generateDirectArticle] Response received:", {
+        articlesCount: data.articles?.length || 0,
+        firstArticleTopicTitle: data.articles?.[0]?.topicTitle,
+        articleId,
+        hasTitleTag: !!data.articles?.[0]?.titleTag,
+        hasMetaDescription: !!data.articles?.[0]?.metaDescription,
+        hasFullArticleText: !!data.articles?.[0]?.fullArticleText,
+      });
+
       // Validate response data
       if (!data.articles || !Array.isArray(data.articles) || data.articles.length === 0) {
+        console.error("[generateDirectArticle] Invalid response:", data);
         throw new Error("Invalid response from server: articles array is empty or missing");
       }
 
@@ -1243,15 +1265,31 @@ export default function Home() {
       const existingArticle = generatedArticles.find(a => a.topicTitle === articleId);
       const preservedTitleTag = existingArticle?.titleTag || data.articles[0]?.titleTag || directArticleTopic;
       
-      updateGeneratedArticles(prev => [
-        ...prev.filter(a => a.topicTitle !== articleId),
-        {
-          ...data.articles[0],
-          topicTitle: articleId,
-          titleTag: preservedTitleTag, // Preserve titleTag from directArticleTopic
-          status: "ready" as const,
-        }
-      ]);
+      console.log("[generateDirectArticle] Updating article:", {
+        articleId,
+        existingArticleFound: !!existingArticle,
+        preservedTitleTag,
+        responseTopicTitle: data.articles[0]?.topicTitle,
+      });
+      
+      updateGeneratedArticles(prev => {
+        const filtered = prev.filter(a => a.topicTitle !== articleId);
+        const updated = [
+          ...filtered,
+          {
+            ...data.articles[0],
+            topicTitle: articleId,
+            titleTag: preservedTitleTag, // Preserve titleTag from directArticleTopic
+            status: "ready" as const,
+          }
+        ];
+        console.log("[generateDirectArticle] Updated articles:", {
+          beforeCount: prev.length,
+          afterCount: updated.length,
+          articleStatus: updated.find(a => a.topicTitle === articleId)?.status,
+        });
+        return updated;
+      });
       
       // Clear topic input
       updateDirectArticleTopic("");
@@ -3042,6 +3080,49 @@ export default function Home() {
     return () => clearInterval(timerInterval);
   }, [articleLoaderStartTimes]);
 
+  // Update elapsed time for topic loader every second
+  useEffect(() => {
+    if (!topicLoaderStartTime) {
+      setTopicLoaderElapsed(0);
+      return;
+    }
+
+    const timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - topicLoaderStartTime) / 1000);
+      setTopicLoaderElapsed(elapsed);
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [topicLoaderStartTime]);
+
+  // Rotate topic loader messages
+  useEffect(() => {
+    if (!isGeneratingTopics) {
+      setTopicLoaderMessageIndex(0);
+      return;
+    }
+
+    // Random initial delay (0-2000ms)
+    const initialDelay = Math.random() * 2000;
+    
+    let interval: NodeJS.Timeout | null = null;
+    
+    const timeout = setTimeout(() => {
+      // First update after initial delay
+      setTopicLoaderMessageIndex(prev => (prev + 1) % 8);
+
+      // Then set up regular interval
+      interval = setInterval(() => {
+        setTopicLoaderMessageIndex(prev => (prev + 1) % 8); // 8 messages in topicsMessages array
+      }, 3500); // Rotate every 3.5 seconds
+    }, initialDelay);
+
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
+  }, [isGeneratingTopics]);
+
   // Rotate article loader messages asynchronously for each loader
   useEffect(() => {
     const generatingArticles = generatedArticles.filter(a => a.status === "generating");
@@ -3190,8 +3271,8 @@ export default function Home() {
 
   return (
     <div className={`page ${isGeneratingTopics ? "loading-active" : ""}`}>
-      {/* Loading Overlays */}
-      {isGeneratingTopics && <LoadingOverlay isOpen={isGeneratingTopics} mode="topics" />}
+      {/* Loading Overlays - topics now uses local loader in Step 1 */}
+      {/* {isGeneratingTopics && <LoadingOverlay isOpen={isGeneratingTopics} mode="topics" />} */}
       
       {/* Image Preview Modal */}
       {viewingImage && articleImages.has(viewingImage) && (
@@ -3526,6 +3607,65 @@ export default function Home() {
                     >
                       {isLoading("topics") ? "Generating…" : "Generate topic ideas"}
                     </button>
+
+                    {/* Topic Generation Loader */}
+                    {isGeneratingTopics && (
+                      <div className="article-generating-local" style={{ marginTop: "1.5rem" }}>
+                        <div className="article-loader-local-container">
+                          <h4 className="article-loader-title">Researching outreach ideas…</h4>
+                          
+                          {/* Equalizer Bars */}
+                          <div className="article-equalizer-container">
+                            {[1, 2, 3, 4, 5, 6, 7].map((index) => (
+                              <div
+                                key={index}
+                                className="article-equalizer-bar"
+                                style={{
+                                  animationDelay: `${index * 0.1}s`,
+                                }}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Status Messages */}
+                          {(() => {
+                            const topicsMessages = [
+                              "Scanning the landscape for content opportunities…",
+                              "Analyzing SERP results and competitor strategies…",
+                              "Identifying gaps and non-generic angles…",
+                              "Grouping ideas into meaningful clusters…",
+                              "Crafting briefs that balance SEO and reader value…",
+                              "Ensuring anchor integration feels natural…",
+                              "Filtering out low-quality and generic topics…",
+                              "Preparing deep, link-worthy topic proposals…",
+                            ];
+                            const currentMessage = topicsMessages[topicLoaderMessageIndex % topicsMessages.length];
+                            
+                            return (
+                              <div className="article-loader-messages">
+                                <p className="article-loader-message">{currentMessage}</p>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Timer */}
+                          {(() => {
+                            const formatTime = (seconds: number): string => {
+                              const mins = Math.floor(seconds / 60);
+                              const secs = seconds % 60;
+                              return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                            };
+                            
+                            return (
+                              <div className="article-loader-timer">
+                                <span className="article-loader-timer-icon">⏱</span>
+                                <span className="article-loader-timer-text">Elapsed: {formatTime(topicLoaderElapsed)}</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
 
                   </>
                 ) : (
