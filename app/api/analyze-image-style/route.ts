@@ -147,7 +147,7 @@ Your description must be detailed enough that an AI image generator can replicat
           ],
         },
       ],
-      max_tokens: 2000, // Increased for more detailed analysis
+      max_completion_tokens: 2000, // Increased for more detailed analysis (gpt-5.2 uses max_completion_tokens instead of max_tokens)
       temperature: 0.3, // Lower temperature for more precise, consistent analysis
     });
 
