@@ -153,7 +153,7 @@ Anchor links to PromoSound:
 
 Brand integration ([[BRAND_NAME]] — OPTIONAL):
 - ONLY if [[BRAND_NAME]] is provided and not empty:
-  - Mention [[BRAND_NAME]] 2–3 times in the article (3 max).
+  - Mention [[BRAND_NAME]] 1–2 times in the article (2 max).
   - Tie the brand to concrete benefits that make sense in [[NICHE]].
   - You may use the brand in one H2/H3 subheading if it feels natural.
   - Avoid aggressive sales tone. Focus on "how this helps" rather than "buy now".
