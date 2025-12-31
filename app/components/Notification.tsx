@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 interface NotificationProps {
   message: string;
@@ -12,27 +12,41 @@ interface NotificationProps {
 export default function Notification({ message, time, isVisible, onClose }: NotificationProps) {
   const [shouldRender, setShouldRender] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleClose = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsClosing(true);
+    setTimeout(() => {
+      setShouldRender(false);
+      onClose();
+    }, 200); // Wait for slide-out animation
+  }, [onClose]);
 
   useEffect(() => {
     if (isVisible) {
       setShouldRender(true);
       setIsClosing(false);
-      // Auto-close after 3 seconds with slide-out animation
-      const timer = setTimeout(() => {
-        setIsClosing(true);
-        setTimeout(() => {
-          setShouldRender(false);
-          onClose();
-        }, 400); // Wait for slide-out animation
-      }, 3000);
-      return () => clearTimeout(timer);
+      // Auto-close after 2 seconds with slide-out animation
+      timerRef.current = setTimeout(() => {
+        handleClose();
+      }, 2000);
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+      };
     } else {
       setIsClosing(true);
       setTimeout(() => {
         setShouldRender(false);
-      }, 400);
+      }, 200);
     }
-  }, [isVisible, onClose]);
+  }, [isVisible, handleClose]);
 
   if (!shouldRender) return null;
 
@@ -42,6 +56,15 @@ export default function Notification({ message, time, isVisible, onClose }: Noti
         <p className="notification-message">{message}</p>
         <span className="notification-time">{time}</span>
       </div>
+      <button 
+        className="notification-close" 
+        onClick={handleClose}
+        aria-label="Close notification"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
     </div>
   );
 }

@@ -4042,14 +4042,14 @@ body {
   background: var(--card);
   border-radius: 12px;
   padding: 1rem 1.5rem;
+  padding-right: 2.75rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   border: 1px solid var(--border);
-  z-index: 10001;
-  transition: background-color 0.3s ease;
+  z-index: 99999;
   min-width: 300px;
   max-width: 500px;
   opacity: 0;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="dark"] .notification {
@@ -4070,6 +4070,32 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.notification-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  z-index: 1;
+}
+
+.notification-close:hover {
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+.notification-close:active {
+  transform: scale(0.95);
 }
 
 .notification-message {
