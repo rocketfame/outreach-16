@@ -3,6 +3,7 @@
 
 import { getOpenAIClient, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
+import { selectImageBoxPrompt, buildImagePromptFromBox } from "@/lib/imageBoxPrompts";
 
 // Simple debug logger
 const debugLog = (...args: any[]) => {
@@ -190,8 +191,29 @@ STYLE PRESERVATION:
 
 Generate an image that looks like it was created by the same artist using the same visual language as the reference style above.`.trim();
   } else {
-    // DEFAULT MODE: Use standard algorithm with all requirements
-    prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
+    // DEFAULT MODE: Use Image Box Prompt component system
+    try {
+      const selectedBox = selectImageBoxPrompt(articleTitle);
+      prompt = buildImagePromptFromBox(selectedBox, {
+        articleTitle,
+        niche,
+        mainPlatform,
+        brandName,
+      });
+      
+      debugLog({
+        location: 'buildImagePrompt',
+        message: 'Selected Image Box Prompt component',
+        data: {
+          boxId: selectedBox.id,
+          boxName: selectedBox.name,
+          articleTitle,
+        },
+      });
+    } catch (error) {
+      // Fallback to legacy prompt if Image Box Prompts are not configured
+      console.warn("[buildImagePrompt] Image Box Prompts not available, using legacy prompt:", error);
+      prompt = `Create a sophisticated modern digital art illustration for "${articleTitle}". Niche: ${niche}, Platform: ${mainPlatform}.
 
 CRITICAL STYLE REQUIREMENTS - RED DOT DESIGN AGENCY AESTHETIC:
 - Modern contemporary digital art illustration - award-winning graphic design quality
@@ -237,6 +259,7 @@ BRAND MOOD: Subtle ${brandName} atmosphere through color and composition. No hea
 FORMAT: 16:9 horizontal hero image.
 
 Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT technical equipment, NOT isometric 3D, NOT childish style. Professional Red Dot design agency quality.`.trim();
+    }
   }
   
   // Ensure prompt is under 4000 characters (DALL-E 3 limit)
