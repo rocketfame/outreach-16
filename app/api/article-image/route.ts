@@ -17,6 +17,7 @@ export interface ArticleImageRequest {
   contentPurpose: string;
   brandName: string;
   customStyle?: string; // Optional: personalized style description learned from reference images
+  regenerationIndex?: number; // Optional: 0 for first generation, 1+ for regenerations (enables round-robin rotation)
 }
 
 export interface ArticleImageResponse {
@@ -36,8 +37,9 @@ function buildImagePrompt(params: {
   contentPurpose: string;
   brandName: string;
   customStyle?: string; // Optional personalized style from reference images
+  regenerationIndex?: number; // Optional: 0 for first generation, 1+ for regenerations
 }): string {
-  const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle } = params;
+  const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, regenerationIndex = 0 } = params;
 
   // Deterministic hash function for consistent "randomness" based on input
   const getHash = (str: string) => str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -193,7 +195,7 @@ Generate an image that looks like it was created by the same artist using the sa
   } else {
     // DEFAULT MODE: Use Image Box Prompt component system
     try {
-      const selectedBox = selectImageBoxPrompt(articleTitle);
+      const selectedBox = selectImageBoxPrompt(articleTitle, regenerationIndex);
       prompt = buildImagePromptFromBox(selectedBox, {
         articleTitle,
         niche,
@@ -208,6 +210,7 @@ Generate an image that looks like it was created by the same artist using the sa
           boxId: selectedBox.id,
           boxName: selectedBox.name,
           articleTitle,
+          regenerationIndex,
         },
       });
     } catch (error) {
@@ -316,10 +319,10 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleImageRequest = await req.json();
-    const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle } = body;
+    const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, regenerationIndex = 0 } = body;
 
     // #region agent log
-    const bodyLog = {location:'article-image/route.ts:POST',message:'Request body parsed',data:{articleTitle,niche,mainPlatform,contentPurpose,brandName,customStyle:customStyle?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const bodyLog = {location:'article-image/route.ts:POST',message:'Request body parsed',data:{articleTitle,niche,mainPlatform,contentPurpose,brandName,customStyle:customStyle?.substring(0,100),regenerationIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(bodyLog);
     // #endregion
 
@@ -339,6 +342,7 @@ export async function POST(req: Request) {
       contentPurpose,
       brandName,
       customStyle,
+      regenerationIndex,
     });
     
     // Ensure prompt is under 4000 characters (DALL-E 3 limit)

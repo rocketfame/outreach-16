@@ -55,6 +55,10 @@ export default function Home() {
   // This avoids localStorage quota issues since base64 images are large
   // Images can be regenerated if needed
   const [articleImages, setArticleImages] = useState<Map<string, string>>(new Map());
+  
+  // Track regeneration index for each article (for round-robin box selection)
+  // Key: topicId, Value: regenerationIndex (0 for first generation, 1+ for regenerations)
+  const [articleRegenerationIndices, setArticleRegenerationIndices] = useState<Map<string, number>>(new Map());
 
   // Local UI state (not persisted)
   const [expandedClusterNames, setExpandedClusterNames] = useState<Set<string>>(new Set());
@@ -2763,6 +2767,13 @@ export default function Home() {
       return;
     }
 
+    // Determine if this is a regeneration (image already exists) or first generation
+    const isRegeneration = articleImages.has(topicId);
+    
+    // Get current regeneration index (0 for first generation, increment for regenerations)
+    const currentIndex = articleRegenerationIndices.get(topicId) ?? 0;
+    const regenerationIndex = isRegeneration ? currentIndex + 1 : 0;
+
     setIsGeneratingImage(prev => new Set(prev).add(topicId));
     setImageLoaderMessages(prev => {
       const next = new Map(prev);
@@ -2871,6 +2882,7 @@ export default function Home() {
           contentPurpose,
           brandName,
           customStyle: currentBrief.customStyle || undefined,
+          regenerationIndex,
         }),
       });
 
@@ -2889,6 +2901,14 @@ export default function Home() {
           // Images are stored in component state only and can be regenerated
           return next;
         });
+        
+        // Update regeneration index after successful generation
+        setArticleRegenerationIndices(prev => {
+          const next = new Map(prev);
+          next.set(topicId, regenerationIndex);
+          return next;
+        });
+        
         // Play success sound after image generation (including regeneration)
         playSuccessSound();
       } else {

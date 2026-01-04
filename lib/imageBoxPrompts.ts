@@ -1304,20 +1304,40 @@ export function buildImagePromptFromBox(
 }
 
 /**
- * Select a random Image Box Prompt component based on article title hash
- * This ensures consistent selection for the same article title
+ * Select an Image Box Prompt component using round-robin rotation
+ * 
+ * - First generation (regenerationIndex = 0): Uses hash of articleTitle to determine starting box
+ * - Regeneration (regenerationIndex > 0): Rotates to next box in sequence
+ * - Automatically wraps around when reaching the end of the array
+ * 
+ * This ensures:
+ * 1. Consistent starting box for the same article title
+ * 2. Different boxes on regeneration (user gets variety when regenerating)
+ * 3. Works with any number of boxes (automatically adapts to IMAGE_BOX_PROMPTS.length)
+ * 
+ * @param articleTitle - The article title (used for initial box selection)
+ * @param regenerationIndex - 0 for first generation, 1+ for regenerations
+ * @returns The selected ImageBoxPrompt
  */
-export function selectImageBoxPrompt(articleTitle: string): ImageBoxPrompt {
+export function selectImageBoxPrompt(
+  articleTitle: string,
+  regenerationIndex: number = 0
+): ImageBoxPrompt {
   if (IMAGE_BOX_PROMPTS.length === 0) {
     throw new Error("IMAGE_BOX_PROMPTS array is empty. Please add image box prompt components.");
   }
   
-  // Deterministic hash-based selection for consistency
+  // Round-robin rotation: start with hash-based index, then rotate by regenerationIndex
   const hash = articleTitle
     .split("")
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   
-  const index = Math.abs(hash) % IMAGE_BOX_PROMPTS.length;
+  // Base index: hash % number of boxes (ensures consistent starting point per article)
+  const baseIndex = Math.abs(hash) % IMAGE_BOX_PROMPTS.length;
+  
+  // Rotate by regenerationIndex (wraps around automatically)
+  const index = (baseIndex + regenerationIndex) % IMAGE_BOX_PROMPTS.length;
+  
   return IMAGE_BOX_PROMPTS[index];
 }
 
