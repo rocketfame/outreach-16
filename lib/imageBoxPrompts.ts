@@ -602,6 +602,683 @@ CONTEXT:
 
 FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
   },
+  {
+    id: "box12_neon_lounge_pop_art",
+    name: "Neon Lounge Pop Art",
+    description: "Bold pop-art hero image with relaxed creator lounging, hyper-saturated neon palette, and 80s/90s vaporwave mood",
+    promptTemplate: `Create a bold pop-art hero image for "[[ARTICLE_TITLE]]" about [[NICHE]] on [[MAIN_PLATFORM]].
+
+BOX 12 STYLE – NEON LOUNGE POP ART
+
+CORE AESTHETIC:
+- Relaxed creator lounging on a sofa, chair, or casual interior setup
+- Strong graphic outlines, simplified anatomy, pop-art illustration style
+- 80s/90s inspired vaporwave mood: playful, stylish, slightly surreal
+- Character can be any gender or ethnicity; always looks confident and cool
+
+COLOR & TEXTURE:
+- Hyper-saturated neon palette: lime, teal, magenta, violet, hot orange, electric yellow
+- Flat fields of color combined with soft noise or grain for depth
+- Clear color separation between character, furniture, and background
+- Optional subtle halftone or retro-print texture, but keep image clean and crisp
+
+BACKGROUND & COMPOSITION:
+- Interior scene suggested with minimal shapes: sofa, cushions, simple decor blocks
+- Large colored rectangles and geometric panels behind or around the character
+- Asymmetric composition with strong horizontal flow and lots of negative space
+- Character occupies ~40–60% of the frame, legs or arms creating dynamic diagonals
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo used as a small object: sticker on device, pin on clothing, small floating disc, or decor element
+- Logo is graphic and flat, fully integrated into the pop-art style
+- Absolutely NO readable UI, captions, app screens, or text in the image
+
+VARIATION RULES:
+- Change poses: lounging, half-reclining, sitting cross-legged, leaning on armrest
+- Vary outfits: oversized t-shirt, shorts, streetwear, socks, sneakers, etc.
+- Accessories like sunglasses, headphones, or a handheld device are allowed but stylized
+- Background blocks and gradients should shift layout and colors for each new image
+
+DO NOT:
+- Do not include any written words, captions, or interface elements
+- Do not use realistic photography or bland gradients only
+- Do not make it childish or comic-strip; keep it edgy, editorial, and design-driven
+- No isometric 3D dashboards, screens, or complex tech objects
+
+OVERALL MOOD:
+- Feels like a poster for a modern social media culture magazine
+- Fun, relaxed, and visually loud, but still minimal and sophisticated
+- Clearly aligned with [[BRAND_NAME]] as a bold, creative, youth-oriented brand
+
+FORMAT:
+- 16:9 horizontal hero illustration, ready for use as an article header.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box13_bubble_pop_crew",
+    name: "Bubble Pop Crew",
+    description: "Playful pop-art hero image with 2-4 friends, overlapping circles/bubbles, and bright flat colors",
+    promptTemplate: `Create a playful pop-art hero image for "[[ARTICLE_TITLE]]" about [[NICHE]] on [[MAIN_PLATFORM]].
+
+BOX 13 STYLE – BUBBLE POP CREW
+
+CORE AESTHETIC:
+- 2–4 friends standing close together, arms on shoulders or casually grouped
+- Faces and bodies stylized in bold pop-art illustration or photo-collage style
+- Exaggerated expressions: laughing, smiling, mischievous, high-energy vibe
+- Characters can be any mix of genders and ethnicities, always feeling like a real crew
+
+COLOR & TEXTURE:
+- Flat, bright background in a single color (yellow, mint, peach, sky blue, etc.)
+- Large overlapping circles and dots in multiple neon / pastel tones (cyan, magenta, lime, violet)
+- Characters painted in unexpected colors (blue skin, pink shadows, etc.) but with clear shapes
+- Soft grain or subtle noise allowed; overall look remains clean and graphic
+
+BACKGROUND & COMPOSITION:
+- Full frame filled with circles / bubbles of different sizes
+- Characters centered and occupying ~40–60% of the width
+- Circles can overlap characters slightly to create depth and playfulness
+- Asymmetric, dynamic composition with a clear main focal point on the group
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo appears as a small graphic bubble, badge, or sticker near the group
+- Logo is flat and stylized to match the pop-art palette
+- Absolutely NO text labels, UI panels, or readable words anywhere in the image
+
+VARIATION RULES:
+- Vary number of characters and their poses (side hugs, leaning in, stacked heights)
+- Change clothing styles: streetwear, casual tees, caps, sunglasses, etc.
+- Let circle patterns and color schemes differ on each render for high visual variety
+- Keep the mood celebratory and social, like a party snapshot turned into pop art
+
+DO NOT:
+- Do not include any captions, banners, or interface elements
+- Do not use realistic photographic background scenes
+- Do not make the style childish; it should feel like edgy editorial illustration
+- No isometric 3D dashboards or complex tech objects
+
+OVERALL MOOD:
+- Feels like a poster for a youth culture / social media event
+- Fun, loud, and energetic, yet still clean and design-driven
+- Subtly aligned with [[BRAND_NAME]] as a bold, community-focused brand
+
+FORMAT:
+- 16:9 horizontal hero illustration for an article header.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box14_neon_organic_anti_bot",
+    name: "Neon Portrait – Organic Anti-Bot Energy",
+    description: "Bold neon digital illustration with modern music creator, polished digital painting, and vivid magenta background",
+    promptTemplate: `Create a bold neon digital illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Use a SINGLE main character as the clear focal point (60–70% of the composition): a modern music creator / producer / digital native in headphones, hoodie or jacket, sitting with a laptop, sampler, or DJ gear in front of them.
+
+STYLE & RENDERING:
+- Highly polished digital painting with sharp outlines and glossy shading, between comic-book and concept-art quality
+- Skin and clothing rendered in cool blue / violet tones with subtle gradients, not realistic skin tones
+- Strong expressive lighting from the laptop / equipment, reflecting on face, glasses, headphones, and clothing
+- Avoid childish style, avoid flat vector; it should feel like premium illustration for an editorial cover
+
+COLOR & BACKGROUND:
+- Clean, flat neon background in vivid magenta / hot pink with soft vignetting toward the edges
+- Accent colors: electric cyan, deep violet, saturated teal, small touches of lime or neon green
+- Background mostly empty for negative space; can include minimal waveforms, glitch streaks, or abstract sound waves behind the character
+
+MOOD & SYMBOLISM:
+- Overall mood: "real person, real sound, no bots" – organic, authentic, a bit rebellious
+- Convey the anti-bot / organic feeling through visual metaphors only:
+  - Stickers on the laptop or gear with simple iconography (shield, leaf, heart, waveform), NO readable words
+  - Optional cat, plant, or small side-object to add personality, but keep it secondary
+- Expression: confident, focused, or laughing with joy while listening to music on headphones
+
+COMPOSITION:
+- Centered or slightly off-center character, chest-up or half-body framing
+- Hands visible on the keyboard, mixer, or pushing headphones to ears
+- Foreground gear simplified: blocks of knobs and faders, no detailed UI, no brand names, no text
+- Use strong contrast between bright character and flat neon background for immediate impact
+
+PLATFORM LOGO INTEGRATION:
+- Integrate the [[MAIN_PLATFORM]] logo subtly:
+  - as a small glowing icon on the laptop lid
+  - or as a minimal badge on headphones or clothing
+  - or as a soft, semi-transparent hologram floating behind the character
+- The logo must feel naturally embedded into the scene, not pasted on top
+
+BRAND MOOD:
+- Light hint of [[BRAND_NAME]] through color choices and overall vibe only, NO visible "PROMOSOUND", NO slogans, NO readable typography at all.
+
+FORMAT:
+- 16:9 horizontal hero image
+- High resolution, crisp details, ready to use as a premium website or article cover.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box15_crew_fisheye_circle",
+    name: "Fisheye Creator Crew Circle",
+    description: "Dynamic group-portrait illustration with fisheye/ultra-wide perspective, diverse crew of creators in circular arrangement",
+    promptTemplate: `Create a dynamic group-portrait illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Use a FISHEYE / ULTRA-WIDE perspective: the viewer looks up from the center of a circle, surrounded by a diverse crew of modern creators leaning in toward the "camera".
+
+STYLE & RENDERING:
+- Stylized semi-realistic digital painting (not photo, not comic, not 3D render)
+- Clean, slightly softened outlines with smooth shading
+- Faces expressive and clearly different from each other (age, gender, ethnicity, hairstyles)
+- No recognizable movie/IP costumes; outfits should feel like futuristic streetwear, music studio or digital-creator clothing
+
+COMPOSITION:
+- Circular arrangement of 6–10 characters around the edge of the frame, all looking toward the viewer
+- Strong fisheye distortion: heads closer to the edge appear larger and curved
+- Camera placed low in the center, pointed upward, creating a tunnel-like feeling
+- Foreground can include a few abstract devices (mics, headphones, controllers) near the lens, simplified with no detailed UI
+
+BACKGROUND:
+- Interior hint of a futuristic studio / spaceship-like hub / creative control room, but kept soft and defocused
+- Use smooth shapes, arches, cables, light panels—no specific franchise elements, no logos from movies
+
+COLOR & LIGHT:
+- Duotone or tritone gradient overlay: deep violet to magenta to warm orange, softly sweeping across the frame
+- Strong rim light on faces from the circular opening, creating dramatic highlights
+- Maintain enough contrast so every face reads clearly against the environment
+
+PLATFORM LOGO INTEGRATION:
+- Subtle [[MAIN_PLATFORM]] logo integrated as a small badge on one device, patch on a jacket, or tiny glowing icon on the ceiling
+- Logo must feel part of the environment, not pasted on top; no other readable text
+
+MOOD & STORY:
+- Feeling of "creative squad assembling" or "team huddle before launch" – collaborative, slightly epic, but playful
+- Characters show a mix of curiosity, focus, excitement, and quiet confidence
+
+BRAND MOOD:
+- Gentle echo of [[BRAND_NAME]] through color accents and overall energy only. NO visible brand names, NO slogans, NO readable typography.
+
+FORMAT:
+- 16:9 horizontal hero image
+- High resolution, designed as a striking website or article cover with strong central focal point and circular composition.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box16_retro_music_collage",
+    name: "Surreal Retro Gear Money-Collage",
+    description: "Bold surreal collage illustration with stack of retro music devices and abstract money energy elements",
+    promptTemplate: `Create a bold surreal collage illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Center the composition on a towering stack of RETRO MUSIC DEVICES: old-school samplers, cassette decks, synths, radios and boomboxes, all stylized and colorful, arranged like a totem in the middle of the frame.
+
+STYLE & RENDERING:
+- High-end digital collage with cut-out feeling, combining illustrated elements and photo-textures
+- Sharp, clean shapes with slight grain, inspired by editorial music-magazine covers
+- Playful, surreal, slightly absurd – not realistic, not 3D-rendered
+
+COMPOSITION:
+- Central vertical stack of various music machines forming one iconic object
+- Around the stack, dynamic explosion of abstract "money energy": flying stylized banknotes, tickets, vouchers or geometric shapes that clearly hint at income, without showing real currencies
+- Optional quirky character element: a small surreal figure or bird-headed character peeking from behind the gear, adding personality without dominating the frame
+
+BACKGROUND:
+- Full-bleed gradient or textured color field (for example warm orange or sunset tones), with subtle noise
+- No detailed environment; background must stay clean so the collage pops
+
+COLOR & LIGHT:
+- Bright, saturated palette with contrasting accents (neon pinks, cyans, yellows, oranges)
+- Use color blocking to separate the devices and keep the stack readable
+- Light is mostly flat and graphic, as in poster art, with minimal shadows
+
+PLATFORM LOGO INTEGRATION:
+- Subtle [[MAIN_PLATFORM]] logo can appear as a tiny sticker or badge on one of the devices, or as a small glowing icon hidden among the abstract shapes
+- Logo must feel embedded into the collage, not pasted on top; no other readable text or branding
+
+MOOD & STORY:
+- Visual metaphor of "turning creativity and music tools into income"
+- Energetic, fun, slightly chaotic, but still balanced and premium – a celebration of DIY music production and monetization
+
+BRAND MOOD:
+- Light echo of [[BRAND_NAME]] through a few accent colors and overall vibe; no visible brand names, slogans or UI elements.
+
+FORMAT:
+- 16:9 horizontal hero image
+- High resolution, designed as a strong website or article header with a clear central focal point.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box17_neon_stream_lab",
+    name: "Neon Stream Strategists Lab",
+    description: "Cinematic neon illustration with hooded strategists working on laptops in dark room, cyberpunk/techno-lab mood",
+    promptTemplate: `Create a cinematic neon illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The scene shows a small group of anonymous, hooded music strategists working on laptops in a dark room, lit almost entirely by glowing screens and headphones.
+
+STYLE & RENDERING:
+- Minimalist, high-contrast digital illustration with smooth gradients
+- Strong cyberpunk / techno-lab mood, but clean and editorial, not gritty
+- Characters are stylized silhouettes with simple facial features or glowing glasses, not realistic portraits
+
+COMPOSITION:
+- 1–3 seated figures at a desk facing the viewer, arranged in a tight horizontal row
+- Each character has headphones and a laptop, forming a rhythmic visual pattern
+- Behind the central character, add a large abstract halo or financial icon (e.g. stylized currency shape, waveform, or geometric aura) suggesting revenue and data, not literal dollar signage
+
+COLOR & LIGHT:
+- Dominantly monochrome palette based on [[MAIN_PLATFORM]] brand color (for example neon green for Spotify) against almost black background
+- Harsh rim light outlines characters and laptops, creating silhouettes
+- Subtle secondary hues (deep blues or purples) can be used sparingly for depth
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo appears as glowing icon on laptop lids, headphones, or as a small symbol within the background aura
+- Logo must feel integrated into the lighting, not pasted on; no other readable text, stickers, or UI
+
+MOOD & STORY:
+- Visual metaphor of a focused, data-driven "stream lab" where campaigns and growth strategies are engineered
+- Feels powerful, controlled, and professional – not criminal, not spammy, no bots or hacking references
+
+BRAND MOOD:
+- Subtle echo of [[BRAND_NAME]] through overall vibe and color choices; no visible brand names or slogans.
+
+FORMAT:
+- 16:9 horizontal hero image
+- Designed as a strong website or article header with clear central focal point and plenty of negative space around the figures.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box19_glitch_fighter",
+    name: "Glitch Fighter vs Algorithm",
+    description: "Bold high-energy illustration with fighter character, glitch energy, and VHS/90s arcade aesthetic",
+    promptTemplate: `Create a bold, high-energy illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should feel like a surreal fight against an invisible algorithm, with a strong central fighter figure and intense glitch energy.
+
+STYLE & RENDERING:
+- Stylized semi-realistic character, inspired by arcade fighting games or action figures
+- Strong anatomy, exaggerated muscles, dynamic pose (punching, blocking, or ready to fight)
+- Heavy film grain, slight blur and chromatic aberration for a gritty VHS / 90s arcade feel
+- Overall look: editorial poster meets retro game cover, not childish
+
+COMPOSITION:
+- One main fighter character, partially cropped on one side of the frame to create tension
+- Diagonal band of glitchy neon light crossing the image (RGB streaks, digital noise, distorted pixels)
+- Background split into two or three big fields: one noisy/dark, one bright/glitchy, maybe an extra color block
+- Clear focal point on the fighter's upper body and pose
+
+COLOR & MOOD:
+- Contrast between deep dark areas and bright saturated neons (electric blue, magenta, red, purple)
+- Use grain and subtle gradient transitions instead of flat colors
+- Mood: defiant, intense, "fighting back" but still stylish and modern
+
+GRAPHIC ELEMENTS (NO REAL TEXT):
+- Use bold white rectangular graphic bars or abstract typographic blocks that hint at poster text
+- Do NOT include any readable words or letters; keep all text-like elements abstract
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo can appear as a subtle hologram, glitch symbol, or icon in the glitch band or background
+- Logo should feel embedded in the digital noise, not slapped on top
+
+BRAND MOOD:
+- Subtle [[BRAND_NAME]] vibe through attitude and color choices (smart, rebellious, creator-first), without visible brand wording.
+
+FORMAT:
+- 16:9 horizontal hero image
+- Designed to work as a website header with a strong left/right composition and clear focal point.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box20_clay_question_energy",
+    name: "Clay Question Marks Teaser",
+    description: "Teaser-style illustration with soft 3D clay/plastiline abstract question-mark forms and warm gradient background",
+    promptTemplate: `Create a teaser-style illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should feel like a playful mystery announcement with bold color and sculpted abstract forms.
+
+STYLE & RENDERING:
+- Soft 3D clay / plastiline style shapes with smooth shading and subtle texture
+- Abstract question-mark-like forms made of chunky tubes and spheres, NOT literal text characters
+- Clean, modern, editorial-quality illustration (no childish clipart vibe)
+
+COMPOSITION:
+- 2–4 large abstract "question" forms grouped in the upper part of the frame, leaning diagonally
+- Plenty of empty space in the lower part of the image for future typography overlay
+- Simple composition with one clear focal cluster, no clutter
+
+COLOR & MOOD:
+- Strong warm gradient background: deep red-orange at the top transitioning to lighter orange/yellow at the bottom
+- Question shapes in saturated contrasting colors (mustard yellow, lilac, magenta, rich purple accents)
+- A few small dots or spheres as secondary elements to add rhythm
+- Mood: curious, energetic, "something big is coming" teaser
+
+GRAPHIC ELEMENTS (NO REAL TEXT):
+- Do NOT render any readable words or numbers
+- You may hint at future text placement using subtle horizontal glow bands or faint rectangular areas near the bottom, but they must stay abstract
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo can appear as a tiny, subtle icon near one of the abstract shapes or as a faint watermark in the background
+- Logo must be small and integrated, not dominating the teaser
+
+BRAND MOOD:
+- Subtle [[BRAND_NAME]] attitude: bold, confident, creator-focused, expressed only through color and composition (no visible brand wording).
+
+FORMAT:
+- 16:9 horizontal hero image
+- Designed as a teaser banner/cover with strong top-heavy composition and clean lower area for UI text.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box21_pixel_creator_overload",
+    name: "Pixel Creators in Real Tunnel",
+    description: "Illustration blending realistic photo-style background with bold pixel-art characters in urban/underground setting",
+    promptTemplate: `Create an illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should blend a realistic photo-style background with bold pixel-art characters to capture the chaotic, funny energy of modern creators.
+
+STYLE & MIX:
+- Background: soft-focused, realistic urban or underground corridor (e.g. tunnel, hallway, subway, backstage), with graffiti or abstract textures
+- Foreground: 2–4 large 8-bit / 16-bit pixel-art human characters standing in a row or cluster
+- Characters may have slightly exaggerated or toy-like eyes for a humorous, exhausted-creator vibe
+- Overall look: meme-adjacent but still premium, editorial-quality illustration
+
+COMPOSITION:
+- Characters occupy the lower and central area of the frame, clearly readable and large
+- Background has strong perspective lines (tunnel depth, receding lights) pulling the eye toward the center
+- Leave generous empty space in the upper or lower zone for potential text overlays (no text rendered by the model)
+
+COLOR & MOOD:
+- Background in moody purples, dark reds, or deep blues with neon accents
+- Pixel characters in brighter, contrasting clothing colors to pop against the darker environment
+- Lighting that feels like late-night studio/underground vibe: soft glow from overhead lights or distant neon
+- Mood: humorous frustration, "creator brain overload", but playful not dark
+
+GRAPHIC RULES:
+- NO readable words or UI on the image (no titles, captions, menu bars, etc.)
+- Keep any props simple: headphones, hoodies, casual outfits; optional subtle tech/music hints (earbuds, tiny recorder) in pixel form
+- Avoid complex equipment renders; keep focus on characters' poses and expressions
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo can appear as a tiny detail: a sticker on a character's pixel hoodie, a far-away sign in the tunnel, or a subtle glowing icon on the wall
+- Logo must be integrated and secondary, not the main focal point
+
+BRAND MOOD:
+- Subtle [[BRAND_NAME]] spirit: smart, self-aware creator humor, expressed only through color, attitude, and composition.
+
+FORMAT:
+- 16:9 horizontal hero image suitable for article headers and landing pages.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box22_dark_brain_grid",
+    name: "Dark Sculptural Brain Grid",
+    description: "Bold conceptual illustration with repeated grid of surreal sculptural heads revealing glowing brain/core on dark background",
+    promptTemplate: `Create a bold conceptual illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should use a dark, almost black background with a repeated grid of surreal sculptural heads or geometric busts that reveal a glowing "brain" or inner core.
+
+STYLE & MIX:
+- Stylized, faceted, geometric heads / helmets / masks, rendered like matte metal or stone objects
+- Each object has an open top or cut-out revealing an organic brain-like form or bright abstract core
+- Clean, minimal layout: repetition as a design device, not clutter
+- Overall feeling: smart, slightly unsettling, high-concept editorial poster
+
+COMPOSITION:
+- Arrange 6–12 heads/objects in a loose grid or pattern across the frame
+- Use subtle variations: different angles, light direction, or expression to avoid perfect uniformity
+- Strong central focus: middle row or central object can be slightly larger, brighter, or differently lit
+- Large areas of pure black or very dark background to create heavy negative space
+
+COLOR & LIGHT:
+- Dominantly monochrome for the heads and background (black, charcoal, dark grey, muted silver)
+- Inner "brain/core" rendered in vivid contrasting colors (e.g. saturated reds, magentas, or electric oranges)
+- Directional lighting that carves out sharp edges and shadows on the faces, cinematic and moody
+- No gradients in the background; keep it flat or subtly textured for a premium print feel
+
+GRAPHIC RULES:
+- Absolutely NO typography, slogans, UI elements, or readable text in the illustration
+- Avoid visible seams, frames, or boxes around the heads; they should feel integrated into one continuous dark field
+- Props are optional; if used, keep them minimal and abstract (thin lines, halos, subtle geometric marks)
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo can appear once as a tiny detail: etched on the side of one head, softly glowing on the inner core of a single object, or as a faint symbol in the background
+- Logo must remain secondary; the sculptural grid is the hero
+
+BRAND MOOD:
+- Subtle [[BRAND_NAME]] sensibility: smart critique of boring/robotic content, expressed through the repeated "heads" with exposed brains, not through words.
+
+FORMAT:
+- 16:9 horizontal hero image suitable for article headers and landing pages.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box23_grainy_crt_glitch_projection",
+    name: "Grainy CRT Glitch Projection",
+    description: "Retro-futuristic illustration with CRT-style screen projecting neon glitch light, 80s/90s analog tech aesthetic",
+    promptTemplate: `Create a retro-futuristic illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Center the image around an old CRT-style screen or boxy device in a dark room, throwing intense neon glitch light onto the wall.
+
+STYLE & MOOD:
+- 80s/90s analog tech aesthetic: chunky CRT monitor or speaker-like box, no visible UI or readable text
+- Strong VHS / CRT effects: RGB channel shifts, scanlines, subtle noise, chromatic aberration
+- High-contrast, cinematic atmosphere: feels like a still from an underground club or hacker's studio
+- Conceptual mood: "algorithmic chaos", shown only through abstract glitch graphics and lighting
+
+COMPOSITION:
+- CRT/device sits in the lower part of the frame, angled slightly, occupying 25–40% of the image
+- From the screen, project bold glitch shapes onto the wall: jagged bars, distorted graphs, and pixel streaks forming an explosive abstract halo
+- Keep the rest of the scene minimal: hint of a table or pedestal, soft shadows, lots of negative space
+- Camera viewpoint can be slightly low-angle for drama
+
+COLOR & LIGHT:
+- Neon magentas, hot pinks, electric blues, and acid greens as primary glow colors
+- Background in deep purples, dark reds, or near-black, with film grain texture
+- Light from the screen should cast colorful reflections on nearby surfaces, with soft bloom
+
+GRAPHIC RULES:
+- NO readable text, captions, UI screens, or slogans on the device or background
+- Use only abstract blocks, bars, and glitch shapes to imply data, sound waves, or algorithms
+- Keep shapes sharp and graphic, not messy noise; it should feel designed and intentional
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo can appear once, subtly: as a tiny glowing icon in a corner of the device frame, hidden in the glitch projection, or as a faint reflection
+- Logo must be secondary and partially stylized by the CRT/glitch effect, not flatly overlaid
+
+BRAND MOOD:
+- Subtle [[BRAND_NAME]] attitude: playful but critical view of "algorithms", expressed only through colors, light, and glitch energy — no direct messaging.
+
+FORMAT:
+- Vertical story-friendly format is preferred (9:16), but composition should be adaptable to a cropped 16:9 hero if needed.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box24_neo_punk_creature_poster",
+    name: "Neo-Punk Creature Poster",
+    description: "Bold neo-punk poster with hand-drawn monster/creature, thick black comic outlines, aggressive typography, and ultra-saturated background",
+    promptTemplate: `Create a bold neo-punk poster illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should feature a hand-drawn monster/creature as the main character with thick black comic outlines, aggressive attitude, loud typography, and flat, ultra-saturated background.
+
+CORE STYLE:
+- Bold neo-punk poster aesthetic with hand-drawn monster/creature as the main character
+- Thick black comic outlines with sketchy variations, some hatching and dots like classic comic printing
+- Aggressive, expressive attitude with exaggerated anatomy and facial expression
+- Flat, ultra-saturated background colors: electric violet, deep purple, or neon magenta
+- Optional subtle radial gradient in background (center slightly lighter than edges)
+- Very light print/poster grain texture, no visible photo noise
+
+COMPOSITION:
+- Central oversized cartoon creature or limb (raptor, dragon, snake, claw, mutated animal, etc.)
+- Creature turned slightly in three-quarter view for dynamism
+- Occupies 40–60% of canvas height, placed slightly off-center for tension
+- Visible teeth, claws, eyes, scales or skin texture with graphic highlights and shadow blocks (cell-shaded, 2–3 tone values max)
+- Creature usually in neon green or another loud color that contrasts with violet background
+
+GRAPHIC BURSTS:
+- Spikes, comic starburst shapes, halftone triangles, angled shards radiating from behind the creature or from its mouth/limb
+- Sharp, high-contrast shapes in black/white or one accent color (orange or magenta), sometimes with halftone dot fill
+- 1–2 burst/impact clusters max to avoid clutter
+
+TYPOGRAPHY:
+- Large blocky headline: short, punchy 1–3 word slogan (e.g. LAUNCH HARDER, FEED THE FEED, SYSTEM OVERDRIVE – use generic phrases, not article title)
+- Mix of brutal grotesk sans-serif for main words and rough marker/brush script for one accent word
+- Solid neon fill (neon green or white) with subtle darker drop shadow or outline for readability
+- Headline placement: large blocky letters in lower third or upper half, overlapping or hugging the creature
+- Optional small subcopy: 2–3 short lines in one corner, clean sans-serif, white or very light color, aligned to grid
+
+VARIATION LOGIC (model should randomize):
+- Subject: close-up roaring creature head, side view of long creature claw, serpent/tentacle wrapping around text, or hybrid creature (robot-dino, cyber-dragon)
+- Layout: headline at top with creature in middle, creature centered with headline in lower third, or diagonal composition with creature tilted
+- Colors: swap background between violet, electric blue, or deep magenta while keeping creature in bright complementary color; sometimes invert scheme (darker creature on lighter neon background)
+- Always keep one single creature or limb as hero; no busy crowd scenes
+- Headline is always readable, not distorted; never cover entire canvas with text
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo appears as small, subtle logo mark or wordmark near one corner
+- Keep tiny and unobtrusive so it doesn't fight with headline
+- No other readable branding or text
+
+LIGHTING & TEXTURE:
+- Simple poster-style lighting: bold shadows and highlights painted as graphic shapes, not realistic 3D rendering
+- Cell-shaded with 2–3 tone values max per color
+- Crisp digital illustration with slight retro print feel (small halftone patches, subtle paper grain)
+
+COLOR PALETTE:
+- Background: electric violet (#6A3BFF), deep purple, or neon magenta
+- Creature: neon green (#28FF54) or another loud contrasting color
+- Accents: hot orange (#FF4B1F), white, black
+- High contrast combinations, no muted pastel palettes
+
+DO NOT:
+- No photographic humans or realistic animals
+- No gradients that turn the whole scene into soft 3D – keep it graphic and poster-like
+- No muted pastel palettes
+- No complex backgrounds with cityscapes or detailed scenery; background must stay simple and flat
+- No corporate UI elements or app screenshots
+- No readable article title or specific text from the article
+
+BRAND MOOD:
+- Subtle [[BRAND_NAME]] attitude: bold, aggressive, creator-focused, expressed only through visual style and color choices (no visible brand wording beyond platform logo).
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box25_neon_balaclava_portraits",
+    name: "Neon Balaclava Portraits",
+    description: "High-resolution editorial portrait with person wearing striking textured accessory (balaclava/mask), neon accent color, and bold typography",
+    promptTemplate: `Create a high-resolution editorial portrait for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
+
+STYLE & RENDERING:
+- High-resolution editorial portrait, realistic photography mixed with subtle grain
+- Strong fabric texture, sharp details on eyes and mouth
+- Minimalist layout, bold contemporary typography
+
+SUBJECT:
+- Single person in a close-up or medium-close portrait
+- Wearing a striking textured accessory that partially covers the face (balaclava, knitted mask, hood, scarf, or similar)
+- Eyes or mouth clearly visible and expressive
+- Emotion somewhere between frustration, tension, and quiet confidence
+- Gender, skin tone, and facial features can vary every time
+- Emphasize the knit or fabric texture of the mask/hood and subtle skin details
+
+COLOR & MOOD:
+- Dominant neon accessory color (acid green, toxic yellow, or electric cyan) contrasted with natural skin tones
+- Background: flat or very soft-gradient (sky blue, warm beige, muted teal, or grainy orange)
+- Overall limited palette with one loud accent color and 1–2 supporting tones
+
+COMPOSITION:
+- Vertical 9:16 poster format (composition should be adaptable to 16:9 hero if needed)
+- Subject filling most of the frame, face cropped tight (forehead, eyes, and mouth are the main focus)
+- Plenty of empty negative space on one side or in the upper third for text
+- Camera angle straight-on or slight side profile
+- Background clean and uncluttered
+
+TYPOGRAPHY:
+- Allow one or two short bold white headlines in a clean grotesk font, placed in the negative space
+- The exact wording is not important and can be replaced later (use generic phrases, not article title)
+- Headlines should be readable and complement the portrait
+
+LIGHTING:
+- Soft but directional lighting with gentle shadows that sculpt the face and mask
+- Keep everything else simple beyond the lighting
+
+PLATFORM LOGO INTEGRATION:
+- [[MAIN_PLATFORM]] logo can appear as a small, subtle mark near one corner or integrated into the typography area
+- Logo must be unobtrusive and secondary
+
+EXTRA RULES:
+- No logos (except platform logo), no brand names, no readable text from the reference images
+- Avoid weapons, gore, or explicit violence; focus on emotional intensity and attitude instead
+- Keep focus on the portrait and typography; avoid complex backgrounds or props
+
+BRAND MOOD:
+- Subtle [[BRAND_NAME]] attitude: intense, confident, creator-focused, expressed only through visual style and color choices (no visible brand wording beyond platform logo).
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
 ];
 
 /**
