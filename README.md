@@ -26,7 +26,7 @@ A minimal Next.js (App Router + TypeScript) tool that helps outreach teams move 
    # Beta Access Code (опціонально)
    # За замовчуванням: "typereach-beta" якщо не встановлено
    # Встановіть це для захисту додатку спільним кодом доступу
-   NEXT_PUBLIC_APP_ACCESS_KEY=typereach-beta-example
+   NEXT_PUBLIC_ArtistPush=typereach-beta-example
    ```
 
    **Важливо:** 
@@ -38,11 +38,11 @@ A minimal Next.js (App Router + TypeScript) tool that helps outreach teams move 
 
 The app is currently protected by a simple shared access code. Users need to enter the code on first visit to access the application.
 
-- **Configuration**: The access code is set via `NEXT_PUBLIC_APP_ACCESS_KEY` environment variable
+- **Configuration**: The access code is set via `NEXT_PUBLIC_ArtistPush` environment variable
 - **Local development**: Set it in `.env.local` (see example above)
 - **Production (Vercel)**: Set it in Project → Settings → Environment Variables
 - **Default**: If not set, the default code is `"typereach-beta"`
-- **Important**: Changing `NEXT_PUBLIC_APP_ACCESS_KEY` will immediately invalidate old codes for all users (they will need to enter the new code)
+- **Important**: Changing `NEXT_PUBLIC_ArtistPush` will immediately invalidate old codes for all users (they will need to enter the new code)
 
 2. Install dependencies:
 

@@ -21,7 +21,7 @@ export default function AccessGate({ children }: AccessGateProps) {
     e.preventDefault();
     setError("");
 
-    const correctCode = process.env.NEXT_PUBLIC_APP_ACCESS_KEY || "typereach-beta";
+    const correctCode = process.env.NEXT_PUBLIC_ArtistPush || "typereach-beta";
 
     if (accessCode === correctCode) {
       localStorage.setItem("typereach_access", "true");
