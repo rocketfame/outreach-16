@@ -3088,13 +3088,19 @@ body {
   position: absolute;
   top: 100%;
   left: 0;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   min-width: 150px;
   margin-top: 0.25rem;
+}
+
+[data-theme="dark"] .download-dropdown {
+  background: #2a2a2a;
+  border-color: #404040;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .download-dropdown.show {
@@ -3114,12 +3120,16 @@ body {
   transition: background 0.2s ease;
 }
 
+[data-theme="dark"] .download-dropdown button {
+  color: #ffffff;
+}
+
 .download-dropdown button:hover {
   background: var(--secondary);
 }
 
 [data-theme="dark"] .download-dropdown button:hover {
-  background: #3a3a3a;
+  background: #333333;
 }
 
 .download-dropdown button:first-child {
