@@ -397,6 +397,9 @@ export default function Home() {
         });
         setGenerationStartTime(null);
       }
+      
+      // Play success sound after topic generation
+      playSuccessSound();
     } catch (error) {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:303',message:'generateTopics error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
