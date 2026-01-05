@@ -22,12 +22,27 @@ A minimal Next.js (App Router + TypeScript) tool that helps outreach teams move 
    # Отримайте ключ на https://tavily.com/
    # Або використайте безкоштовний dev ключ: tvly-dev-...
    TAVILY_API_KEY=tvly-...
+
+   # Beta Access Code (опціонально)
+   # За замовчуванням: "typereach-beta" якщо не встановлено
+   # Встановіть це для захисту додатку спільним кодом доступу
+   NEXT_PUBLIC_APP_ACCESS_KEY=typereach-beta-example
    ```
 
    **Важливо:** 
    - Обидва ключі обов'язкові для роботи додатку
    - Додайте ключі **тільки один раз** в `.env.local` - вони автоматично використовуються в усіх частинах додатку
    - Вся конфігурація централізована в `lib/config.ts` (див. [CONFIGURATION.md](./CONFIGURATION.md))
+
+## Beta Access Code
+
+The app is currently protected by a simple shared access code. Users need to enter the code on first visit to access the application.
+
+- **Configuration**: The access code is set via `NEXT_PUBLIC_APP_ACCESS_KEY` environment variable
+- **Local development**: Set it in `.env.local` (see example above)
+- **Production (Vercel)**: Set it in Project → Settings → Environment Variables
+- **Default**: If not set, the default code is `"typereach-beta"`
+- **Important**: Changing `NEXT_PUBLIC_APP_ACCESS_KEY` will immediately invalidate old codes for all users (they will need to enter the new code)
 
 2. Install dependencies:
 

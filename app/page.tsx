@@ -56,9 +56,9 @@ export default function Home() {
   // Images can be regenerated if needed
   const [articleImages, setArticleImages] = useState<Map<string, string>>(new Map());
   
-  // Track regeneration index for each article (for round-robin box selection)
-  // Key: topicId, Value: regenerationIndex (0 for first generation, 1+ for regenerations)
-  const [articleRegenerationIndices, setArticleRegenerationIndices] = useState<Map<string, number>>(new Map());
+  // Track used box indices for each article (for random selection without repeats)
+  // Key: topicId, Value: Set of box indices already used for this article
+  const [articleUsedBoxIndices, setArticleUsedBoxIndices] = useState<Map<string, Set<number>>>(new Map());
 
   // Local UI state (not persisted)
   const [expandedClusterNames, setExpandedClusterNames] = useState<Set<string>>(new Set());
@@ -2767,12 +2767,8 @@ export default function Home() {
       return;
     }
 
-    // Determine if this is a regeneration (image already exists) or first generation
-    const isRegeneration = articleImages.has(topicId);
-    
-    // Get current regeneration index (0 for first generation, increment for regenerations)
-    const currentIndex = articleRegenerationIndices.get(topicId) ?? 0;
-    const regenerationIndex = isRegeneration ? currentIndex + 1 : 0;
+    // Get used box indices for this article (empty Set for first generation)
+    const usedBoxIndices = articleUsedBoxIndices.get(topicId) ?? new Set<number>();
 
     setIsGeneratingImage(prev => new Set(prev).add(topicId));
     setImageLoaderMessages(prev => {
@@ -2882,7 +2878,7 @@ export default function Home() {
           contentPurpose,
           brandName,
           customStyle: currentBrief.customStyle || undefined,
-          regenerationIndex,
+          usedBoxIndices: Array.from(usedBoxIndices),
         }),
       });
 
@@ -2891,7 +2887,7 @@ export default function Home() {
         throw new Error(errorData.error || "Failed to generate image");
       }
 
-      const data = await response.json() as { success: boolean; imageBase64?: string; error?: string };
+      const data = await response.json() as { success: boolean; imageBase64?: string; selectedBoxIndex?: number; error?: string };
 
       if (data.success && data.imageBase64) {
         setArticleImages(prev => {
@@ -2902,12 +2898,28 @@ export default function Home() {
           return next;
         });
         
-        // Update regeneration index after successful generation
-        setArticleRegenerationIndices(prev => {
-          const next = new Map(prev);
-          next.set(topicId, regenerationIndex);
-          return next;
-        });
+        // Update used box indices after successful generation
+        if (data.selectedBoxIndex !== undefined) {
+          setArticleUsedBoxIndices(prev => {
+            const next = new Map(prev);
+            const currentUsed = next.get(topicId) ?? new Set<number>();
+            
+            // Check if the returned index is already in the set
+            // This means the backend reset the cycle (all boxes were used)
+            // In this case, we should also reset on frontend
+            if (currentUsed.has(data.selectedBoxIndex!)) {
+              // Cycle reset - start fresh with just this index
+              next.set(topicId, new Set([data.selectedBoxIndex!]));
+            } else {
+              // Normal case - add the new index
+              const updatedUsed = new Set(currentUsed);
+              updatedUsed.add(data.selectedBoxIndex!);
+              next.set(topicId, updatedUsed);
+            }
+            
+            return next;
+          });
+        }
         
         // Play success sound after image generation (including regeneration)
         playSuccessSound();

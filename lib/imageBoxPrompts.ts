@@ -1304,40 +1304,40 @@ export function buildImagePromptFromBox(
 }
 
 /**
- * Select an Image Box Prompt component using round-robin rotation
+ * Select an Image Box Prompt component using random selection with no repeats
  * 
- * - First generation (regenerationIndex = 0): Uses hash of articleTitle to determine starting box
- * - Regeneration (regenerationIndex > 0): Rotates to next box in sequence
- * - Automatically wraps around when reaching the end of the array
+ * - First generation: Completely random box selection (independent of title, niche, platform)
+ * - Regeneration: Random selection from unused boxes (no repeats until all boxes are used)
+ * - When all boxes are used, cycle resets and starts again
  * 
  * This ensures:
- * 1. Consistent starting box for the same article title
- * 2. Different boxes on regeneration (user gets variety when regenerating)
+ * 1. Completely random selection for first generation
+ * 2. No repeats during regeneration cycle (all boxes used before any repeat)
  * 3. Works with any number of boxes (automatically adapts to IMAGE_BOX_PROMPTS.length)
  * 
- * @param articleTitle - The article title (used for initial box selection)
- * @param regenerationIndex - 0 for first generation, 1+ for regenerations
- * @returns The selected ImageBoxPrompt
+ * @param usedBoxIndices - Set of box indices already used for this article (empty for first generation)
+ * @returns The selected ImageBoxPrompt and its index
  */
 export function selectImageBoxPrompt(
-  articleTitle: string,
-  regenerationIndex: number = 0
-): ImageBoxPrompt {
+  usedBoxIndices: Set<number> = new Set()
+): { box: ImageBoxPrompt; index: number } {
   if (IMAGE_BOX_PROMPTS.length === 0) {
     throw new Error("IMAGE_BOX_PROMPTS array is empty. Please add image box prompt components.");
   }
   
-  // Round-robin rotation: start with hash-based index, then rotate by regenerationIndex
-  const hash = articleTitle
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  // If all boxes have been used, reset the cycle
+  const availableIndices = usedBoxIndices.size >= IMAGE_BOX_PROMPTS.length
+    ? Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i) // All boxes available
+    : Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i)
+        .filter(i => !usedBoxIndices.has(i)); // Only unused boxes
   
-  // Base index: hash % number of boxes (ensures consistent starting point per article)
-  const baseIndex = Math.abs(hash) % IMAGE_BOX_PROMPTS.length;
+  // Random selection from available boxes
+  const randomIndex = Math.floor(Math.random() * availableIndices.length);
+  const selectedIndex = availableIndices[randomIndex];
   
-  // Rotate by regenerationIndex (wraps around automatically)
-  const index = (baseIndex + regenerationIndex) % IMAGE_BOX_PROMPTS.length;
-  
-  return IMAGE_BOX_PROMPTS[index];
+  return {
+    box: IMAGE_BOX_PROMPTS[selectedIndex],
+    index: selectedIndex,
+  };
 }
 

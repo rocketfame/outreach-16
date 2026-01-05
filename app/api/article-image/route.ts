@@ -17,18 +17,20 @@ export interface ArticleImageRequest {
   contentPurpose: string;
   brandName: string;
   customStyle?: string; // Optional: personalized style description learned from reference images
-  regenerationIndex?: number; // Optional: 0 for first generation, 1+ for regenerations (enables round-robin rotation)
+  usedBoxIndices?: number[]; // Optional: array of box indices already used for this article (for random selection without repeats)
 }
 
 export interface ArticleImageResponse {
   success: boolean;
   imageBase64?: string; // raw base64 from OpenAI, no prefix
+  selectedBoxIndex?: number; // Index of the selected box (for tracking used boxes)
   error?: string;
 }
 
 /**
  * Build image generation prompt from article metadata
  * Each image gets a unique style, technique, and approach for maximum variety
+ * @returns Object with prompt and selected box index (if using Image Box system)
  */
 function buildImagePrompt(params: {
   articleTitle: string;
@@ -37,9 +39,9 @@ function buildImagePrompt(params: {
   contentPurpose: string;
   brandName: string;
   customStyle?: string; // Optional personalized style from reference images
-  regenerationIndex?: number; // Optional: 0 for first generation, 1+ for regenerations
-}): string {
-  const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, regenerationIndex = 0 } = params;
+  usedBoxIndices?: number[]; // Optional: array of box indices already used for this article
+}): { prompt: string; selectedBoxIndex?: number } {
+  const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, usedBoxIndices = [] } = params;
 
   // Deterministic hash function for consistent "randomness" based on input
   const getHash = (str: string) => str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -160,6 +162,7 @@ function buildImagePrompt(params: {
   // 2. If no customStyle - use default algorithm with all requirements
 
   let prompt: string;
+  let selectedBoxIndex: number | undefined = undefined;
 
   if (customStyle && customStyle.trim()) {
     // REFERENCE IMAGE MODE: Generate image in the EXACT style of the reference
@@ -195,7 +198,9 @@ Generate an image that looks like it was created by the same artist using the sa
   } else {
     // DEFAULT MODE: Use Image Box Prompt component system
     try {
-      const selectedBox = selectImageBoxPrompt(articleTitle, regenerationIndex);
+      const usedIndicesSet = new Set(usedBoxIndices);
+      const { box: selectedBox, index: selectedIndex } = selectImageBoxPrompt(usedIndicesSet);
+      selectedBoxIndex = selectedIndex;
       prompt = buildImagePromptFromBox(selectedBox, {
         articleTitle,
         niche,
@@ -209,8 +214,9 @@ Generate an image that looks like it was created by the same artist using the sa
         data: {
           boxId: selectedBox.id,
           boxName: selectedBox.name,
+          boxIndex: selectedIndex,
           articleTitle,
-          regenerationIndex,
+          usedBoxIndices: Array.from(usedIndicesSet),
         },
       });
     } catch (error) {
@@ -293,7 +299,7 @@ Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT techn
     }
   }
   
-  return prompt;
+  return { prompt, selectedBoxIndex };
 }
 
 export async function POST(req: Request) {
@@ -319,10 +325,10 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleImageRequest = await req.json();
-    const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, regenerationIndex = 0 } = body;
+    const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, usedBoxIndices = [] } = body;
 
     // #region agent log
-    const bodyLog = {location:'article-image/route.ts:POST',message:'Request body parsed',data:{articleTitle,niche,mainPlatform,contentPurpose,brandName,customStyle:customStyle?.substring(0,100),regenerationIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const bodyLog = {location:'article-image/route.ts:POST',message:'Request body parsed',data:{articleTitle,niche,mainPlatform,contentPurpose,brandName,customStyle:customStyle?.substring(0,100),usedBoxIndices},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(bodyLog);
     // #endregion
 
@@ -335,23 +341,24 @@ export async function POST(req: Request) {
     }
 
     // Build image prompt
-    let prompt = buildImagePrompt({
+    const { prompt: promptText, selectedBoxIndex } = buildImagePrompt({
       articleTitle,
       niche,
       mainPlatform,
       contentPurpose,
       brandName,
       customStyle,
-      regenerationIndex,
+      usedBoxIndices,
     });
     
     // Ensure prompt is under 4000 characters (DALL-E 3 limit)
+    let prompt = promptText;
     if (prompt.length > 4000) {
       console.warn(`[article-image] Prompt too long (${prompt.length} chars), truncating to 4000`);
       prompt = prompt.substring(0, 4000).trim();
     }
     
-    debugLog({ location: 'article-image/route.ts:POST', message: 'Prompt built', data: { promptLength: prompt.length } });
+    debugLog({ location: 'article-image/route.ts:POST', message: 'Prompt built', data: { promptLength: prompt.length, selectedBoxIndex } });
 
     // #region agent log
     const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:'dall-e-3',size:'1792x1024'},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
@@ -393,7 +400,7 @@ export async function POST(req: Request) {
     // #endregion
 
     return new Response(
-      JSON.stringify({ success: true, imageBase64 }),
+      JSON.stringify({ success: true, imageBase64, selectedBoxIndex }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error: any) {
