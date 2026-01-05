@@ -26,6 +26,17 @@
   --text-light: #666666;
 }
 
+/* Global dark mode styles for select dropdown options (native dropdown) */
+[data-theme="dark"] select option {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
+[data-theme="dark"] select optgroup {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -542,9 +553,21 @@ body {
 }
 
 [data-theme="dark"] .form-fields select option {
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
+  padding: 0.5rem;
+}
+
+[data-theme="dark"] .form-fields select option:hover,
+[data-theme="dark"] .form-fields select option:focus,
+[data-theme="dark"] .form-fields select option:checked {
+  background-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .form-fields select optgroup {
   background-color: #2a2a2a;
   color: #ffffff;
-  padding: 0.5rem;
 }
 
 .form-fields textarea {
