@@ -4522,8 +4522,8 @@ export default function Home() {
                                 )}
                                 
                                 {/* Image Style Personalization */}
-                                <div style={{ marginTop: "12px", padding: "12px", border: "1px solid #e5e5e5", borderRadius: "6px", backgroundColor: "#fafafa" }}>
-                                  <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                                <div className="image-style-personalization">
+                                  <div className="image-style-personalization-container">
                                     <input
                                       ref={fileInputRef}
                                       type="file"
@@ -4534,24 +4534,15 @@ export default function Home() {
                                     />
                                     <label
                                       htmlFor="reference-image-upload"
+                                      className="image-style-upload-label"
                                       style={{
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        padding: "4px 8px",
-                                        border: "1px solid #d0d0d0",
-                                        borderRadius: "4px",
                                         cursor: isAnalyzingStyle ? "not-allowed" : "pointer",
-                                        fontSize: "0.75rem",
-                                        color: "#555",
-                                        backgroundColor: "white",
                                         opacity: isAnalyzingStyle ? 0.6 : 1,
-                                        whiteSpace: "nowrap",
                                       }}
                                     >
                                       {isAnalyzingStyle ? (
                                         <>
-                                          <span className="spinning" style={{ display: "inline-block", width: "10px", height: "10px", border: "2px solid #666", borderTopColor: "transparent", borderRadius: "50%" }}></span>
+                                          <span className="spinning" style={{ display: "inline-block", width: "10px", height: "10px", border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }}></span>
                                           Analyzing...
                                         </>
                                       ) : (
@@ -4567,53 +4558,27 @@ export default function Home() {
                                     </label>
                                     
                                     {referenceImage && (
-                                      <div style={{ flex: "0 0 auto", marginLeft: "4px" }}>
+                                      <div className="image-style-reference-preview">
                                         <img
                                           src={referenceImage}
                                           alt="Reference"
-                                          style={{
-                                            width: "40px",
-                                            height: "40px",
-                                            objectFit: "cover",
-                                            borderRadius: "4px",
-                                            border: "1px solid #e0e0e0",
-                                          }}
                                         />
                                       </div>
                                     )}
                                     
                                     <textarea
+                                      className="image-style-textarea"
                                       value={brief.customStyle || ""}
                                       onChange={handleBriefChange("customStyle")}
                                       placeholder="Style description..."
                                       rows={brief.customStyle ? Math.min(Math.ceil((brief.customStyle.length || 0) / 80), 10) : 1}
-                                      style={{
-                                        flex: "1",
-                                        padding: "6px 8px",
-                                        border: "1px solid #e0e0e0",
-                                        borderRadius: "4px",
-                                        fontSize: "0.75rem",
-                                        fontFamily: "inherit",
-                                        resize: "vertical",
-                                        minHeight: "32px",
-                                        maxHeight: "300px",
-                                        overflow: "auto",
-                                      }}
                                     />
                                     
                                     {referenceImage && (
                                       <button
                                         type="button"
+                                        className="image-style-remove-btn"
                                         onClick={handleRemoveReferenceImage}
-                                        style={{
-                                          padding: "4px 6px",
-                                          fontSize: "0.7rem",
-                                          color: "#888",
-                                          background: "none",
-                                          border: "none",
-                                          cursor: "pointer",
-                                          opacity: 0.7,
-                                        }}
                                         title="Remove image"
                                       >
                                         ×
