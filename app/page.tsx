@@ -3340,7 +3340,15 @@ export default function Home() {
         
         {/* Header Controls: Cost Tracker + Theme Toggle */}
         <div className="header-controls">
-          <div className="cost-display">
+          {/* HIDDEN: Cost Tracker Component - Usage Statistics Display
+              This component displays:
+              - Tavily API usage (queries count)
+              - OpenAI API usage (tokens count)
+              - Total cost calculation
+              
+              To re-enable: uncomment the cost-display div below
+          */}
+          {/* <div className="cost-display">
             <div className="cost-item">
               <span className="cost-label">Tavily:</span>
               <span className="cost-value">
@@ -3361,7 +3369,7 @@ export default function Home() {
                 {costData?.formatted?.total || '$0.0000'}
               </span>
             </div>
-          </div>
+          </div> */}
           <div className="theme-switch-container">
             <button
               type="button"
