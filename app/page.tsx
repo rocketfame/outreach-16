@@ -74,6 +74,7 @@ export default function Home() {
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
   const [isGeneratingArticles, setIsGeneratingArticles] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
+  const [copyStatusByTopic, setCopyStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<{
     message: string;
@@ -4207,17 +4208,65 @@ export default function Home() {
                                 <button
                                   type="button"
                                   className="btn-outline"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(articleText).catch(() => {});
-                                    setCopyStatus("copied");
-                                    setTimeout(() => setCopyStatus("idle"), 2000);
+                                  onClick={async () => {
+                                    const html = article.articleBodyHtml || article.fullArticleText || articleText;
+                                    // Create plain text fallback
+                                    const temp = document.createElement('div');
+                                    temp.innerHTML = html;
+                                    const plain = temp.textContent ?? temp.innerText ?? '';
+
+                                    try {
+                                      if (navigator.clipboard && (window as any).ClipboardItem) {
+                                        const blobHtml = new Blob([html], { type: 'text/html' });
+                                        const blobText = new Blob([plain], { type: 'text/plain' });
+                                        const item = new (window as any).ClipboardItem({
+                                          'text/html': blobHtml,
+                                          'text/plain': blobText,
+                                        });
+                                        await navigator.clipboard.write([item]);
+                                      } else {
+                                        await navigator.clipboard.writeText(plain);
+                                      }
+                                      setCopyStatus("copied");
+                                      setCopyStatusByTopic(prev => {
+                                        const next = new Map(prev);
+                                        next.set(topicId, "copied");
+                                        return next;
+                                      });
+                                      setTimeout(() => {
+                                        setCopyStatus("idle");
+                                        setCopyStatusByTopic(prev => {
+                                          const next = new Map(prev);
+                                          next.set(topicId, "idle");
+                                          return next;
+                                        });
+                                      }, 2000);
+                                    } catch (err) {
+                                      console.error('Failed to copy:', err);
+                                      // Fallback to plain text
+                                      await navigator.clipboard.writeText(plain);
+                                      setCopyStatus("copied");
+                                      setCopyStatusByTopic(prev => {
+                                        const next = new Map(prev);
+                                        next.set(topicId, "copied");
+                                        return next;
+                                      });
+                                      setTimeout(() => {
+                                        setCopyStatus("idle");
+                                        setCopyStatusByTopic(prev => {
+                                          const next = new Map(prev);
+                                          next.set(topicId, "idle");
+                                          return next;
+                                        });
+                                      }, 2000);
+                                    }
                                   }}
                                 >
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
-                                  <span>{copyStatus === "copied" && viewingArticle === topicId ? "Copied!" : "Copy text"}</span>
+                                  <span>{copyStatusByTopic.get(topicId) === "copied" ? "Copied!" : "Copy text"}</span>
                                 </button>
                                 <div className="download-dropdown-wrapper">
                                   <button
