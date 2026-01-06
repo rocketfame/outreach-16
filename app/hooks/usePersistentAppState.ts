@@ -12,6 +12,7 @@ export type Brief = {
   anchorUrl?: string;
   contentPurpose?: string;
   customStyle?: string; // Personalized style description learned from reference images
+  includeNewsHook?: boolean; // Include news hook clusters in topic generation
 };
 
 export type Topic = {
@@ -85,6 +86,7 @@ const defaultBrief: Brief = {
     anchorUrl: "",
     contentPurpose: "",
     customStyle: "",
+    includeNewsHook: false,
 };
 
 const defaultState: AppPersistedState = {

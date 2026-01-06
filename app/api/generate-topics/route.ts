@@ -96,7 +96,8 @@ export async function POST(req: Request) {
       contentPurpose: brief.contentPurpose || "",
       anchorText: brief.anchorText || "",
       anchorUrl: brief.anchorUrl || "",
-      brandName: "PromosoundGroup",
+      brandName: brief.brandName || "",
+      includeNewsHook: brief.includeNewsHook || false,
     }, browsingData);
 
     // #region agent log

@@ -7,6 +7,7 @@ export type TopicBrief = {
   anchorText?: string;
   anchorUrl?: string;
   brandName?: string;
+  includeNewsHook?: boolean;
 };
 
 const RAW_PROMPT = `
@@ -46,7 +47,7 @@ Research and strategy rules:
   • Bottom funnel (when and how to use paid/external tools like [ANCHOR_TEXT]) – problem_solving intent
 
 Pay special attention to the following:
-• One or more clusters must be dedicated to news hooks and industry shifts: platform updates, new rules, policies, trends, and case studies that influence strategy in MAIN_NICHE. In these topics, you should build articles around core principles and implications for the reader, not just recap the news.
+• [[NEWS_HOOK_INSTRUCTION]]
 
 2. Virtually scan the landscape (use browsing data if available):
 • Search behavior and intent around [MAIN_NICHE] and [MAIN_PLATFORM]
@@ -207,6 +208,12 @@ export function buildTopicPrompt(brief: TopicBrief, browsingData?: {
   prompt = prompt.replaceAll("[BRAND_NAME]", brief.brandName || "");
   prompt = prompt.replaceAll("[ANCHOR_TEXT]", brief.anchorText || "");
   prompt = prompt.replaceAll("[ANCHOR_URL]", brief.anchorUrl || "");
+  
+  // Add news hook instruction based on user preference
+  const newsHookInstruction = brief.includeNewsHook
+    ? "CRITICAL: One or more clusters MUST be dedicated to news hooks and industry shifts: platform updates, new rules, policies, trends, and case studies that influence strategy in MAIN_NICHE. In these topics, you should build articles around core principles and implications for the reader, not just recap the news. Prioritize news hook clusters when generating topics."
+    : "One or more clusters may be dedicated to news hooks and industry shifts: platform updates, new rules, policies, trends, and case studies that influence strategy in MAIN_NICHE. In these topics, you should build articles around core principles and implications for the reader, not just recap the news.";
+  prompt = prompt.replaceAll("[[NEWS_HOOK_INSTRUCTION]]", newsHookInstruction);
 
   // Add browsing data if provided
   if (browsingData) {
