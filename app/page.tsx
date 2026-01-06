@@ -3435,21 +3435,22 @@ export default function Home() {
                 type="text"
                 value={brief.niche}
                 onChange={handleBriefChange("niche")}
-                placeholder="e.g. Beatport promotion for techno labels, TikTok growth for DJs"
+                placeholder="e.g. Music industry, IT, Med tech, Casino, VPN, HR, or your custom niche"
               />
               <small>Describe the main topic or industry focus</small>
               
               {/* Niche Preset Chips */}
               <div className="niche-presets">
                 {[
-                  "Spotify Promotion",
-                  "YouTube Promotion",
-                  "TikTok Promotion",
-                  "Instagram Promotion",
-                  "SoundCloud Promotion",
-                  "Beatport Promotion",
-                  "Multi-platform music promotion",
-                  "Playlist & chart promotion"
+                  "Music industry",
+                  "IT",
+                  "Med tech",
+                  "Mil tech",
+                  "Casino",
+                  "Gambling",
+                  "Astrology",
+                  "VPN",
+                  "HR"
                 ].map((preset) => (
                   <TagPill
                     key={preset}
