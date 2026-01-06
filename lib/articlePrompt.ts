@@ -93,21 +93,72 @@ Tone and style:
 • Every paragraph should deliver an idea, an example, or a concrete tip.
 • Prefer active voice and short or medium length sentences.
 
-Human written style (CRITICAL):
-Write so the text clearly feels human written, not AI generated:
-• Vary sentence length and rhythm: mix short punchy lines with longer explanations. Avoid repeating the same structure from sentence to sentence.
-• Avoid typical SEO filler phrases like "in today's digital world", "as a creator, you know that…", "in the ever evolving landscape of…", "it is no secret that…".
-• Prefer concrete examples, small observations, and realistic scenarios over abstractions. Show rather than just tell.
-• Allow small natural "imperfections" in style: occasional informal phrases, direct address to the reader ("you", "let's"), and different paragraph lengths (some short, some longer).
-• Each article must differ in structure from previous ones: do not repeat the same patterns of headings, lists, transitions, or section layouts.
-• Use natural transitions that feel conversational rather than formal. Sometimes you can skip a transition entirely if the flow still feels smooth.
-• Add occasional rhetorical questions, personal observations, or brief asides that sound authentic.
-• Write as if you are explaining something to a friend who understands the basics but needs practical steps, not as if you are writing a corporate manual.
-• Do not start several paragraphs in a row with the same words or constructions; avoid series of paragraphs that all begin with "First", "Also", "Moreover", etc. Change how you introduce each idea.
-• Do not build every paragraph on the same template "claim - explanation - conclusion". Sometimes a single strong thought or example is enough.
-• Avoid overly formal phrasing, passive constructions, and bureaucratic language; if something can be said more simply, say it more simply.
-• Add small, recognizable real life details (typical mistakes, internal doubts, small pains) but do not invent precise case studies with specific numbers if you do not have them from sources.
-• Avoid repeating the same endings like "this is very important" or "this is the key to success". Show what actually changes for the reader instead.
+Human-written style and anti-template rules (CRITICAL):
+• You write like a strategist with 10+ years of experience in [[NICHE]], not like an SEO bot.
+• Topic descriptions must read as if you are talking to a colleague: direct, clear, with real opinions and concrete angles, not corporate jargon.
+• Vary sentence length and rhythm:
+  • Mix short punchy lines with longer, more detailed explanations.
+  • Avoid repeating the same opening structure across sentences (for example, do not start three sentences in a row with "This topic…", "This article…", "This guide…").
+• Avoid generic SEO filler and overused phrases:
+  • Do NOT use clichés like "in today's digital world", "in the ever-evolving landscape of…", "it's no secret that…".
+  • Do NOT write empty promises like "this article will cover everything you need to know".
+  • Every sentence in the brief must add a specific idea: who it is for, what exact problem it solves, what angle makes it different.
+• Increase "human burstiness":
+  • Use a varied vocabulary; do not repeat the same nouns, verbs and adjectives in a short span if you can reasonably rephrase.
+  • When you mention a concept twice, try to refer to it in a slightly different way the second time instead of copy-pasting the same phrase.
+  • It is OK to include occasional sharp or slightly informal wording if it fits the niche (for example, pointing out common traps, myths, or mistakes).
+• Make each topic feel distinct:
+  • Do NOT reuse the same hook pattern across topics (avoid repeating structures like "The ultimate guide to…", "Everything you need to know about…").
+  • Change how you frame the problem, the audience and the benefit from topic to topic, even inside the same cluster.
+  • If two topics start to sound similar, push one of them into a more specific, opinionated, or contrarian angle.
+• Show, don't just label:
+  • Instead of saying "non-generic tips", briefly hint at what kind of framework, example, or comparison the future article could use.
+  • When possible, connect the topic to a realistic scenario in [[NICHE]] (for example: a small team launching a new feature, a solo creator fighting ad fatigue, a marketer trying to justify budget).
+• Keep language simple and accessible:
+  • Prefer clear, plain words over complex academic terms, unless the niche truly requires them.
+  • Write as if the reader has experience in [[NICHE]] but is tired of vague marketing talk and wants something specific and usable.
+• Additional humanizing techniques:
+  • Allow small natural "imperfections" in style: occasional informal phrases, direct address to the reader ("you", "let's"), and different paragraph lengths (some short, some longer).
+  • Use natural transitions that feel conversational rather than formal. Sometimes you can skip a transition entirely if the flow still feels smooth.
+  • Add occasional rhetorical questions, personal observations, or brief asides that sound authentic.
+  • Write as if you are explaining something to a friend who understands the basics but needs practical steps, not as if you are writing a corporate manual.
+  • Do not start several paragraphs in a row with the same words or constructions; avoid series of paragraphs that all begin with "First", "Also", "Moreover", etc. Change how you introduce each idea.
+  • Do not build every paragraph on the same template "claim - explanation - conclusion". Sometimes a single strong thought or example is enough.
+  • Avoid overly formal phrasing, passive constructions, and bureaucratic language; if something can be said more simply, say it more simply.
+  • Add small, recognizable real life details (typical mistakes, internal doubts, small pains) but do not invent precise case studies with specific numbers if you do not have them from sources.
+  • Avoid repeating the same endings like "this is very important" or "this is the key to success". Show what actually changes for the reader instead.
+  • Each article must differ in structure from previous ones: do not repeat the same patterns of headings, lists, transitions, or section layouts.
+
+AI detection evasion techniques (CRITICAL - based on perplexity and burstiness analysis):
+• Maximize Perplexity (increase unpredictability and complexity):
+  • Use unexpected word choices: occasionally pick slightly less common synonyms instead of the most obvious word (e.g., "navigate" instead of "use", "tackle" instead of "solve", "unpack" instead of "explain").
+  • Vary sentence complexity: mix simple sentences with complex, multi-clause structures that show natural human thinking patterns. Include occasional long, winding sentences that reflect real thought processes.
+  • Introduce slight syntactic variations: use passive voice occasionally ("This approach was tested by many teams" instead of always "Many teams tested this"), inverted word order in questions, or parenthetical asides that break predictable patterns.
+  • Include domain-specific terminology: use niche-specific jargon naturally, as a real expert would, not just generic business terms. For example, in music: "pitch", "drop", "remix"; in HR: "ATS", "ROI of hiring", "time-to-fill".
+  • Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective. First discuss "strategies", then later refer to "tactics" or "approaches" or "frameworks".
+
+• Minimize Burstiness (reduce word/phrase repetition within short spans):
+  • CRITICAL: Never repeat the same noun, verb, or adjective within 2-3 consecutive sentences. Use synonyms or referential phrases instead.
+  • Example: If you mention "strategy" in one sentence, use "approach", "method", "framework", "system", "playbook", or "roadmap" in the next 2-3 sentences instead.
+  • When discussing the same concept multiple times, vary your phrasing: first mention "content creators", then "artists", then "creators", then "professionals in this field", then "those building an audience".
+  • Avoid repeating entire phrases: if you wrote "common mistakes" earlier, use "typical errors", "frequent pitfalls", "regular missteps", "usual traps", or "often-overlooked issues" later.
+  • Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
+  • Vary transition words: don't always use "However", "Moreover", "Additionally", "Furthermore". Mix with "That said", "On the flip side", "Here's the thing", "The catch is", "What's interesting", "Now, here's where it gets tricky".
+
+• Linguistic diversity to avoid AI patterns:
+  • Use varied sentence starters: begin sentences with different parts of speech (nouns, verbs, adjectives, clauses, questions). Don't start multiple sentences in a row with "The", "This", "It", "You".
+  • Mix formal and informal register: occasionally drop in casual expressions or contractions where appropriate ("can't", "won't", "it's", "you're", "they've"). Balance professional tone with conversational moments.
+  • Include incomplete thoughts or fragments: short, impactful standalone phrases that add emphasis ("Here's why. This matters. Let's break it down.").
+  • Use rhetorical questions naturally: not formulaic ones ("Have you ever wondered?"), but genuine questions that reflect real curiosity or challenge assumptions ("But what if the platform changes the rules tomorrow?").
+  • Vary paragraph lengths dramatically: some single-sentence paragraphs for emphasis ("This changes everything."), others 4-5 sentences for depth. Avoid uniform paragraph lengths.
+  • Introduce unexpected analogies or metaphors: compare niche concepts to unrelated domains to show creative thinking (e.g., "Like a DJ mixing tracks, you're blending different content types").
+
+• Pattern breaking techniques:
+  • Avoid symmetrical structures: don't create parallel lists or bullet points with identical grammatical structures (e.g., avoid "First, you need... Second, you must... Third, you should...").
+  • Break formulaic transitions: instead of always using "First... Second... Third...", mix with "Let's start with...", "Another angle...", "What's interesting here is...", "Here's a curveball...", "One thing people miss...".
+  • Vary list formats: use numbered lists, bullet points, narrative paragraphs, and mixed formats throughout different sections. Don't rely on one format.
+  • Include tangents or asides: brief digressions that a human writer might naturally include (e.g., "This reminds me of a similar situation I saw...", "One thing to watch here is...", "A quick note on this...", "Side note: this is where many creators trip up...").
+  • Mix declarative and imperative sentences: balance statements ("This works because...") with direct commands ("Try this approach", "Avoid that trap", "Test this first").
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
@@ -761,45 +812,79 @@ you MUST NOT use it, unless it supports a universal principle that genuinely fit
 If no source in [[TRUST_SOURCES_LIST]] fits the topic, write the article without external links.
 
 ================================
-7. HUMAN STYLE / ANTI-AI REQUIREMENTS
+7. HUMAN-WRITTEN STYLE AND ANTI-TEMPLATE RULES (CRITICAL)
 
-Write so the article clearly feels human written, not machine generated:
-
+• You write like a strategist with 10+ years of experience in [[NICHE]], not like an SEO bot.
+• Topic descriptions must read as if you are talking to a colleague: direct, clear, with real opinions and concrete angles, not corporate jargon.
 • Vary sentence length and rhythm:
-	•	mix short punchy lines with longer explanations;
-	•	avoid long blocks where every sentence has the same structure.
+	•	Mix short punchy lines with longer, more detailed explanations.
+	•	Avoid repeating the same opening structure across sentences (for example, do not start three sentences in a row with "This topic…", "This article…", "This guide…").
+	•	Avoid long blocks where every sentence has the same structure.
 
-• Avoid generic SEO filler phrases such as:
-	•	"in today's digital world",
-	•	"as a creator, you know that",
-	•	"in the ever-evolving landscape of",
-	•	"it is no secret that",
-	•	"now more than ever",
-	•	or similar boilerplate.
-Replace them with concrete, down to earth observations.
+• Avoid generic SEO filler and overused phrases:
+	•	Do NOT use clichés like "in today's digital world", "in the ever-evolving landscape of…", "it's no secret that…".
+	•	Do NOT write empty promises like "this article will cover everything you need to know".
+	•	Do NOT use phrases such as "as a creator, you know that", "now more than ever", or similar boilerplate.
+	•	Replace them with concrete, down to earth observations.
+	•	Every sentence must add a specific idea: who it is for, what exact problem it solves, what angle makes it different.
 
-• Prefer specific examples and scenarios over abstractions:
-	•	show how a musician, player, recruiter, founder or marketer actually acts;
-	•	use small realistic details, not vague statements.
+• Increase "human burstiness":
+	•	Use a varied vocabulary; do not repeat the same nouns, verbs and adjectives in a short span if you can reasonably rephrase.
+	•	When you mention a concept twice, try to refer to it in a slightly different way the second time instead of copy-pasting the same phrase.
+	•	It is OK to include occasional sharp or slightly informal wording if it fits the niche (for example, pointing out common traps, myths, or mistakes).
 
-• Use a natural, conversational voice:
-	•	when appropriate, address the reader as "you";
-	•	write as if you explain to a colleague who understands the basics but wants clarity and a plan, not a corporate memo.
+• Make each article feel distinct:
+	•	Do NOT reuse the same hook pattern across articles (avoid repeating structures like "The ultimate guide to…", "Everything you need to know about…").
+	•	Change how you frame the problem, the audience and the benefit from article to article.
+	•	If two sections start to sound similar, push one into a more specific, opinionated, or contrarian angle.
 
-• Allow small stylistic imperfections:
-	•	occasional informal phrases are fine;
-	•	paragraph length can vary (some short, some longer);
-	•	you do not need a formal transition sentence before every paragraph if the flow still works.
+• Show, don't just label:
+	•	Instead of saying "non-generic tips", briefly hint at what kind of framework, example, or comparison the article uses.
+	•	When possible, connect the content to a realistic scenario in [[NICHE]] (for example: a small team launching a new feature, a solo creator fighting ad fatigue, a marketer trying to justify budget).
+	•	Show how a musician, player, recruiter, founder or marketer actually acts; use small realistic details, not vague statements.
 
-• Structural variety:
-	•	do not reuse the same heading pattern in every article;
-	•	do not start each section with the same type of phrase;
-	•	vary the way you present tips, lists and examples.
+• Keep language simple and accessible:
+	•	Prefer clear, plain words over complex academic terms, unless the niche truly requires them.
+	•	Write as if the reader has experience in [[NICHE]] but is tired of vague marketing talk and wants something specific and usable.
+	•	Use a natural, conversational voice: when appropriate, address the reader as "you".
+	•	Write as if you explain to a colleague who understands the basics but wants clarity and a plan, not a corporate memo.
 
-• Rhetorical devices:
-	•	sometimes ask rhetorical questions if they sharpen a point;
-	•	short asides like "this sounds obvious, but most teams skip it" are allowed when they add value;
-	•	use them sparingly and only when they help the reader.
+• Additional humanizing techniques:
+	•	Allow small stylistic imperfections: occasional informal phrases are fine; paragraph length can vary (some short, some longer).
+	•	You do not need a formal transition sentence before every paragraph if the flow still works.
+	•	Structural variety: do not reuse the same heading pattern in every article; do not start each section with the same type of phrase; vary the way you present tips, lists and examples.
+	•	Rhetorical devices: sometimes ask rhetorical questions if they sharpen a point; short asides like "this sounds obvious, but most teams skip it" are allowed when they add value; use them sparingly and only when they help the reader.
+
+AI detection evasion techniques (CRITICAL - based on perplexity and burstiness analysis):
+• Maximize Perplexity (increase unpredictability and complexity):
+	•	Use unexpected word choices: occasionally pick slightly less common synonyms instead of the most obvious word (e.g., "navigate" instead of "use", "tackle" instead of "solve", "unpack" instead of "explain").
+	•	Vary sentence complexity: mix simple sentences with complex, multi-clause structures that show natural human thinking patterns. Include occasional long, winding sentences that reflect real thought processes.
+	•	Introduce slight syntactic variations: use passive voice occasionally ("This approach was tested by many teams" instead of always "Many teams tested this"), inverted word order in questions, or parenthetical asides that break predictable patterns.
+	•	Include domain-specific terminology: use niche-specific jargon naturally, as a real expert would, not just generic business terms. For example, in music: "pitch", "drop", "remix"; in HR: "ATS", "ROI of hiring", "time-to-fill".
+	•	Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective. First discuss "strategies", then later refer to "tactics" or "approaches" or "frameworks".
+
+• Minimize Burstiness (reduce word/phrase repetition within short spans):
+	•	CRITICAL: Never repeat the same noun, verb, or adjective within 2-3 consecutive sentences. Use synonyms or referential phrases instead.
+	•	Example: If you mention "strategy" in one sentence, use "approach", "method", "framework", "system", "playbook", or "roadmap" in the next 2-3 sentences instead.
+	•	When discussing the same concept multiple times, vary your phrasing: first mention "content creators", then "artists", then "creators", then "professionals in this field", then "those building an audience".
+	•	Avoid repeating entire phrases: if you wrote "common mistakes" earlier, use "typical errors", "frequent pitfalls", "regular missteps", "usual traps", or "often-overlooked issues" later.
+	•	Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
+	•	Vary transition words: don't always use "However", "Moreover", "Additionally", "Furthermore". Mix with "That said", "On the flip side", "Here's the thing", "The catch is", "What's interesting", "Now, here's where it gets tricky".
+
+• Linguistic diversity to avoid AI patterns:
+	•	Use varied sentence starters: begin sentences with different parts of speech (nouns, verbs, adjectives, clauses, questions). Don't start multiple sentences in a row with "The", "This", "It", "You".
+	•	Mix formal and informal register: occasionally drop in casual expressions or contractions where appropriate ("can't", "won't", "it's", "you're", "they've"). Balance professional tone with conversational moments.
+	•	Include incomplete thoughts or fragments: short, impactful standalone phrases that add emphasis ("Here's why. This matters. Let's break it down.").
+	•	Use rhetorical questions naturally: not formulaic ones ("Have you ever wondered?"), but genuine questions that reflect real curiosity or challenge assumptions ("But what if the platform changes the rules tomorrow?").
+	•	Vary paragraph lengths dramatically: some single-sentence paragraphs for emphasis ("This changes everything."), others 4-5 sentences for depth. Avoid uniform paragraph lengths.
+	•	Introduce unexpected analogies or metaphors: compare niche concepts to unrelated domains to show creative thinking (e.g., "Like a DJ mixing tracks, you're blending different content types").
+
+• Pattern breaking techniques:
+	•	Avoid symmetrical structures: don't create parallel lists or bullet points with identical grammatical structures (e.g., avoid "First, you need... Second, you must... Third, you should...").
+	•	Break formulaic transitions: instead of always using "First... Second... Third...", mix with "Let's start with...", "Another angle...", "What's interesting here is...", "Here's a curveball...", "One thing people miss...".
+	•	Vary list formats: use numbered lists, bullet points, narrative paragraphs, and mixed formats throughout different sections. Don't rely on one format.
+	•	Include tangents or asides: brief digressions that a human writer might naturally include (e.g., "This reminds me of a similar situation I saw...", "One thing to watch here is...", "A quick note on this...", "Side note: this is where many creators trip up...").
+	•	Mix declarative and imperative sentences: balance statements ("This works because...") with direct commands ("Try this approach", "Avoid that trap", "Test this first").
 
 Character rules for the FINAL OUTPUT (articleBodyHtml):
 	•	NEVER use em dash (—) or en dash (–).
