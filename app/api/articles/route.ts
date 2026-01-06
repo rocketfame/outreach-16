@@ -389,8 +389,12 @@ Language: US English.`;
 
             cleanedArticleBodyHtml = await lightHumanEdit(cleanedArticleBodyHtml, openai, { preserveHtml: true });
 
+            // CRITICAL: Clean text again after Light Human Edit
+            // GPT-5.2 can re-introduce em-dashes, smart quotes, and other AI indicators during rewrite
+            cleanedArticleBodyHtml = cleanText(cleanedArticleBodyHtml);
+
             // #region agent log
-            const editCompleteLog = {location:'articles/route.ts:260',message:'Light human edit completed',data:{topicTitle:topic.title,newLength:cleanedArticleBodyHtml.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
+            const editCompleteLog = {location:'articles/route.ts:260',message:'Light human edit completed and re-cleaned',data:{topicTitle:topic.title,newLength:cleanedArticleBodyHtml.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
             debugLog(editCompleteLog);
             // #endregion
           } catch (editError) {

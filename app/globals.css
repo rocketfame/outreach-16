@@ -71,7 +71,10 @@ body {
 }
 
 .page.loading-active {
-  pointer-events: none;
+  /* Allow UI interactions while background processes (e.g., topic search) run.
+     We rely on per-button disabled states instead of globally blocking the page,
+     so Discovery + Direct flows can be used in parallel. */
+  pointer-events: auto;
 }
 
 .page.loading-active .content {
