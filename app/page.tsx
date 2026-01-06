@@ -3341,9 +3341,9 @@ export default function Home() {
               e.preventDefault();
               window.location.reload();
             }}
-            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
+            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}
           >
-            Outreach Articles App
+            typereach.app
           </a>
         </div>
         <h1>Universal Content Creator</h1>
