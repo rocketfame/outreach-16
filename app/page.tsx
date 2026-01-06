@@ -3334,7 +3334,18 @@ export default function Home() {
       )}
       
       <header className="page-header">
-        <div className="eyebrow">Outreach Articles App</div>
+        <div className="eyebrow">
+          <a 
+            href="https://www.typereach.app/" 
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.reload();
+            }}
+            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
+          >
+            Outreach Articles App
+          </a>
+        </div>
         <h1>Universal Content Creator</h1>
         <p className="page-subtitle">Plan and draft outreach content in one place</p>
         
