@@ -158,7 +158,7 @@ export async function POST(req: Request) {
             keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
             trustSourcesList: trustSourcesList,
             language: brief.language || "English",
-            targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
+            targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
             wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
           });
         } else {
@@ -191,13 +191,14 @@ export async function POST(req: Request) {
           topicBrief: topicBrief,
           niche: brief.niche || "", // Will be validated in buildArticlePrompt
           mainPlatform: brief.platform || "multi-platform",
+          contentPurpose: brief.contentPurpose || "Guest post / outreach",
           anchorText: brief.anchorText || "",
           anchorUrl: brief.anchorUrl || brief.clientSite || "",
           brandName: "PromosoundGroup",
           keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
           trustSourcesList: trustSourcesList,
           language: brief.language || "English",
-          targetAudience: "B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
+          targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
           wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
         });
         }

@@ -16,7 +16,7 @@ You are an experienced SEO strategist and outreach content planner working acros
 Your task is to research and propose topic clusters based on the following inputs:
 • MAIN_NICHE (the overall niche or theme of the outreach campaign; can be a predefined option or a fully custom description from the user, for example: music industry, IT, med tech, mil tech, casino, gambling, astrology, VPN, HR, or any other custom description)
 • MAIN_PLATFORM (the main platform, for example: Spotify, YouTube, TikTok, Instagram, a casino brand, VPN services, an HR platform, astrology, dating, IT industry, med tech, mil tech, or any other custom description from the user)
-• CONTENT_PURPOSE (guest post / outreach, blog, educational guide, partner blog, other)
+• CONTENT_PURPOSE (guest post / outreach, blog, educational guide, partner blog, news hook, other)
 • BRAND_NAME (the brand name provided by the user, not hardcoded in the prompt)
 • ANCHOR_TEXT (exact anchor text for the branded link)
 • ANCHOR_URL (URL for the branded link)
@@ -209,8 +209,10 @@ export function buildTopicPrompt(brief: TopicBrief, browsingData?: {
   prompt = prompt.replaceAll("[ANCHOR_TEXT]", brief.anchorText || "");
   prompt = prompt.replaceAll("[ANCHOR_URL]", brief.anchorUrl || "");
   
-  // Add news hook instruction based on user preference
-  const newsHookInstruction = brief.includeNewsHook
+  // Add news hook instruction based on user preference (or infer from content purpose)
+  const includeNewsHook =
+    brief.includeNewsHook ?? (brief.contentPurpose || "").trim().toLowerCase() === "news hook";
+  const newsHookInstruction = includeNewsHook
     ? "CRITICAL: One or more clusters MUST be dedicated to news hooks and industry shifts: platform updates, new rules, policies, trends, and case studies that influence strategy in MAIN_NICHE. In these topics, you should build articles around core principles and implications for the reader, not just recap the news. Prioritize news hook clusters when generating topics."
     : "One or more clusters may be dedicated to news hooks and industry shifts: platform updates, new rules, policies, trends, and case studies that influence strategy in MAIN_NICHE. In these topics, you should build articles around core principles and implications for the reader, not just recap the news.";
   prompt = prompt.replaceAll("[[NEWS_HOOK_INSTRUCTION]]", newsHookInstruction);

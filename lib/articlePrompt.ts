@@ -39,6 +39,7 @@ export interface ArticlePromptParams {
   topicBrief: string;
   mainPlatform: string;
   niche: string;
+  contentPurpose?: string;
   anchorText: string;
   anchorUrl: string;
   brandName: string;
@@ -68,6 +69,9 @@ Context:
 • Brand to feature (optional): [[BRAND_NAME]]
 	•	If [[BRAND_NAME]] is empty or equal to "NONE", you MUST NOT mention any specific brand in the article.
 • Main platform/service focus: [[MAIN_PLATFORM]]
+• Content purpose (tone / POV): [[CONTENT_PURPOSE]]
+  One of: "Guest post / outreach", "Blog", "Educational guide", "Partner blog", "News Hook", "Other"
+  - If [[CONTENT_PURPOSE]] = "News Hook": treat the article as a news-hook analysis piece. Focus on platform updates, policy changes, and industry shifts, but write evergreen takeaways and implications - do not make it a short-lived news recap.
 
 You will receive:
 • Article topic: [[TOPIC_TITLE]]
@@ -321,7 +325,7 @@ CRITICAL CHARACTER RULES (prevent AI detection patterns):
 • NEVER use em dash or en dash characters.
 • Use ONLY the regular hyphen "-" for ranges ("5-10 items") or commas/periods for pauses.
 • NEVER use smart quotes. Use ONLY straight quotes (" " and ' ').
-• NEVER use the single ellipsis character; use three dots "…" instead.
+• NEVER use the single ellipsis character; use three dots "..." instead.
 • NEVER use zero width spaces, non breaking spaces, or any other invisible Unicode characters.
 • Use ONLY standard ASCII punctuation characters.
 • QUOTATION MARKS RULES:
@@ -342,7 +346,7 @@ Now generate the response as JSON only, with no explanations:
 {
 "titleTag": "Your SEO title tag here (max 60 characters)",
 "metaDescription": "Your meta description here (150-160 characters)",
-"articleBodyHtml": "Your article heading\\n\\nFirst paragraph with bold keywords and <a href=\\"[[ANCHOR_URL]]\\">[[ANCHOR_TEXT]] naturally integrated.\\n\\nSecond section heading\\n\\nMore content…"
+"articleBodyHtml": "Your article heading\\n\\nFirst paragraph with bold keywords and <a href=\\"[[ANCHOR_URL]]\\">[[ANCHOR_TEXT]] naturally integrated.\\n\\nSecond section heading\\n\\nMore content..."
 }
 `.trim();
 
@@ -367,11 +371,12 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[TOPIC_BRIEF]]", params.topicBrief);
   prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform || "multi-platform");
+  prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
   prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText);
   prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl);
   prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "NONE");
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
-  prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C — beginner and mid-level users");
+  prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
   
   // Parse wordCount to determine if it's a number or range
@@ -481,10 +486,12 @@ One of:
 	•	"Blog"
 	•	"Educational guide"
 	•	"Partner blog"
+	•	"News Hook"
 	•	"Other"
 
 Content purpose is a PRIMARY parameter. It shapes tone, brand presence and, when relevant, the main structure of the article:
 	•	If [[CONTENT_PURPOSE]] = "Educational guide": treat the article as a GUIDE by default (advice/strategy structure), unless [[TOPIC_BRIEF]] explicitly demands a pure directory-style list.
+	•	If [[CONTENT_PURPOSE]] = "News Hook": treat the article as a GUIDE by default (analysis/strategy structure) centered on platform updates, policy changes, and industry shifts. Focus on implications and evergreen takeaways, not short-lived news recap.
 	•	For all other values ("Guest post / outreach", "Blog", "Partner blog", "Other"): choose between LIST and GUIDE format using the rules in section 2, and adjust voice and brand presence according to section 1.
 
 • Client / brand name (may be empty): [[BRAND_NAME]]
@@ -574,7 +581,12 @@ D) "Partner blog"
 	•	Guide topics: up to 2-3 mentions.
 	•	List topics: one very short mention in the final paragraph ONLY (max 1 sentence).
 
-E) "Other"
+E) "News Hook"
+	•	Voice: neutral analyst / strategist, no "we".
+	•	Focus on platform updates, policy changes, and industry shifts, but always turn them into evergreen implications and action steps.
+	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally. No sales tone.
+
+F) "Other"
 	•	Voice: neutral editorial.
 	•	[[BRAND_NAME]] may be skipped, or mentioned once very lightly if it feels natural.
 
@@ -723,7 +735,7 @@ treat the article as if no commercial link was requested.
 	2.	If BOTH [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid (non empty, not placeholders):
 	•	Insert the exact anchor once in the first 2-3 paragraphs:
 <b><a href="[[ANCHOR_URL]]" target="_blank" rel="noopener noreferrer">[[ANCHOR_TEXT]]</a></b>
-	•	CRITICAL: href must be exactly [[ANCHOR_URL]] – never empty, never a placeholder.
+	•	CRITICAL: href must be exactly [[ANCHOR_URL]] - never empty, never a placeholder.
 	•	Use this commercial anchor only once in the whole article.
 	•	Do not translate or modify the anchor text.
 
@@ -793,7 +805,7 @@ Character rules for the FINAL OUTPUT (articleBodyHtml):
 	•	NEVER use em dash (—) or en dash (–).
 	•	Use ONLY regular hyphen "-" for ranges (for example "5-10 items") or normal commas/periods for pauses.
 	•	NEVER use smart quotes (" " or ' '). Use ONLY straight quotes (" " and ' ').
-	•	NEVER use the ellipsis character (…). Use three dots "…" instead.
+	•	NEVER use the ellipsis character (…). Use three dots "..." instead.
 	•	NEVER use zero width spaces, non breaking spaces or any invisible Unicode characters.
 	•	Use ONLY standard ASCII punctuation characters.
 	•	Avoid putting single words in quotes for emphasis; use quotes only for real speech, titles or clearly marked terms.
@@ -874,7 +886,7 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl || "");
   prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "NONE");
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
-  prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C — beginner and mid-level users");
+  prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
   
   // Parse wordCount
