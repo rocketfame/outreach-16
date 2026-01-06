@@ -31,7 +31,6 @@ export default function Home() {
     anchorUrl: "",
     contentPurpose: "",
     customStyle: "",
-    includeNewsHook: false,
   };
   
   const brief = mode === "discovery" 
@@ -3590,24 +3589,12 @@ export default function Home() {
                     <option value="Blog">Blog</option>
                     <option value="Educational guide">Educational guide</option>
                     <option value="Partner blog">Partner blog</option>
+                    <option value="News Hook">News Hook</option>
                     <option value="Other">Other</option>
                   </select>
                   <small>This helps the engine tune tone and depth.</small>
             </label>
 
-            <div className="form-fields">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={brief.includeNewsHook || false}
-                  onChange={(e) => updateBrief({ includeNewsHook: e.target.checked })}
-                />
-                <div className="checkbox-text">
-                  <strong>Include News Hook clusters</strong>
-                  <span className="checkbox-hint">Generate topics focused on platform updates, policy changes, and industry trends</span>
-                </div>
-              </label>
-            </div>
 
             <label>
                   <span>Word count</span>

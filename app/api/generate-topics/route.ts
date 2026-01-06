@@ -97,7 +97,7 @@ export async function POST(req: Request) {
       anchorText: brief.anchorText || "",
       anchorUrl: brief.anchorUrl || "",
       brandName: brief.brandName || "",
-      includeNewsHook: brief.includeNewsHook || false,
+      includeNewsHook: brief.contentPurpose === "News Hook",
     }, browsingData);
 
     // #region agent log
