@@ -141,10 +141,15 @@ export async function POST(req: Request) {
           // ========================================================================
           // DO NOT use buildArticlePrompt here! This mode has its own separate prompt.
           // ========================================================================
-          // #region agent log
-          const promptBuildLog = {location:'articles/route.ts:94',message:'Building DIRECT article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform,mode:'direct'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
+        // #region agent log
+        const promptBuildLog = {location:'articles/route.ts:94',message:'Building DIRECT article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform,mode:'direct'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
           debugLog(promptBuildLog);
           // #endregion
+
+          // Extract brand name from clientSite if available, otherwise use empty string (will be handled as "NONE" in prompt)
+          const brandName = brief.clientSite 
+            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            : "";
 
           prompt = buildDirectArticlePrompt({
             topicTitle: topic.title,
@@ -154,7 +159,7 @@ export async function POST(req: Request) {
             contentPurpose: brief.contentPurpose || "Guest post / outreach",
             anchorText: brief.anchorText || "",
             anchorUrl: brief.anchorUrl || brief.clientSite || "",
-            brandName: "PromosoundGroup",
+            brandName: brandName,
             keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
             trustSourcesList: trustSourcesList,
             language: brief.language || "English",
@@ -186,6 +191,11 @@ export async function POST(req: Request) {
         debugLog(promptBuildLog);
         // #endregion
 
+          // Extract brand name from clientSite if available, otherwise use empty string (will be handled as "NONE" in prompt)
+          const brandName = brief.clientSite 
+            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            : "";
+
           prompt = buildArticlePrompt({
           topicTitle: topic.title,
           topicBrief: topicBrief,
@@ -194,7 +204,7 @@ export async function POST(req: Request) {
           contentPurpose: brief.contentPurpose || "Guest post / outreach",
           anchorText: brief.anchorText || "",
           anchorUrl: brief.anchorUrl || brief.clientSite || "",
-          brandName: "PromosoundGroup",
+          brandName: brandName,
           keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
           trustSourcesList: trustSourcesList,
           language: brief.language || "English",
@@ -213,11 +223,16 @@ export async function POST(req: Request) {
         debugLog(promptLog);
         // #endregion
 
+        // Extract brand name for system message
+        const brandNameForSystem = brief.clientSite 
+          ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+          : "";
+
         // Build system message
         const systemMessage = `You are an expert SEO Content Strategist and outreach content writer, native English speaker (US), with deep experience in social media, music marketing and creator economy. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
 
 Target audience: B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms.
-Brand to feature: PromosoundGroup
+${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific brand to feature."}
 Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
 Language: US English.`;
 
