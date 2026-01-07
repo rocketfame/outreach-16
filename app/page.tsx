@@ -91,6 +91,9 @@ export default function Home() {
     showSettings: false, // Toggle settings panel
   });
   
+  // Humanize on write toggle (for live humanization during generation)
+  const [humanizeOnWrite, setHumanizeOnWrite] = useState(false);
+  
   // Track humanization costs (words used for humanization)
   // AIHumanize pricing: 50,000 words = $25, so $0.0005 per word
   const [humanizeWordsUsed, setHumanizeWordsUsed] = useState(0);
@@ -1008,6 +1011,7 @@ export default function Home() {
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesList: trustSourcesList,
           lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
+          humanizeOnWrite: humanizeOnWrite, // Pass humanize on write toggle to API
         }),
       });
 
@@ -1266,6 +1270,7 @@ export default function Home() {
           keywordList: [directArticleTopic],
           trustSourcesList: trustSourcesList,
           lightHumanEdit: lightHumanEditEnabled,
+          humanizeOnWrite: humanizeOnWrite, // Pass humanize on write toggle to API
         }),
       });
 
@@ -4147,6 +4152,24 @@ export default function Home() {
                         </span>
                       </label>
                     </div>
+                    
+                    {/* Humanize on Write Toggle */}
+                    <div className="light-human-edit-toggle" style={{ marginTop: "1rem" }}>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={humanizeOnWrite}
+                          onChange={(e) => {
+                            setHumanizeOnWrite(e.target.checked);
+                          }}
+                          disabled={isGeneratingArticles}
+                        />
+                        <span className="checkbox-text">
+                          <strong>Humanize on write</strong>
+                          <span className="checkbox-hint">Humanize text during generation (reduces AI detection)</span>
+                        </span>
+                      </label>
+                    </div>
 
                     <div style={{ marginTop: "1.25rem" }}>
                       <button
@@ -4470,6 +4493,24 @@ export default function Home() {
                               <span className="checkbox-text">
                                 <strong>Light Human Edit</strong> (recommended)
                                 <span className="checkbox-hint">Improves text flow and naturalness</span>
+                              </span>
+                            </label>
+                          </div>
+                          
+                          {/* Humanize on Write Toggle */}
+                          <div className="light-human-edit-toggle" style={{ marginTop: "1rem" }}>
+                            <label className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={humanizeOnWrite}
+                                onChange={(e) => {
+                                  setHumanizeOnWrite(e.target.checked);
+                                }}
+                                disabled={isGeneratingArticles}
+                              />
+                              <span className="checkbox-text">
+                                <strong>Humanize on write</strong>
+                                <span className="checkbox-hint">Humanize text during generation (reduces AI detection)</span>
                               </span>
                             </label>
                           </div>

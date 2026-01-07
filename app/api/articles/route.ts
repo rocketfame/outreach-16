@@ -64,6 +64,7 @@ export interface ArticleRequest {
   keywordList?: string[];
   trustSourcesList?: string[];
   lightHumanEdit?: boolean; // Optional: enable light human edit post-processing
+  humanizeOnWrite?: boolean; // NEW: enable live humanization during generation
 }
 
 export interface ArticleResponse {
