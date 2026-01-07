@@ -85,9 +85,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 1: Prepare text for humanization (protect anchors, convert to plain text)
+    // Step 1: Prepare text for humanization (protect anchors, convert to plain text, preserve structure)
     console.log("[humanize-api] Preparing text for humanization...");
-    const { textForHumanize, chunks: protectedChunks, originalHtml } = prepareForHumanization(html, frozenPhrases);
+    const { textForHumanize, chunks: protectedChunks, originalHtml, structure } = prepareForHumanization(html, frozenPhrases);
     
     console.log(`[humanize-api] Protected ${protectedChunks.length} chunks (${protectedChunks.filter(c => c.type === 'anchor').length} anchors, ${protectedChunks.filter(c => c.type === 'phrase').length} phrases)`);
     console.log(`[humanize-api] Text length: ${textForHumanize.length} characters`);
@@ -147,9 +147,9 @@ export async function POST(req: NextRequest) {
 
     console.log(`[humanize-api] Humanization complete. Words used: ${totalWordsUsed}, Remaining: ${remainingWords}`);
 
-    // Step 3: Restore protected chunks (anchors and phrases) back into HTML
-    console.log("[humanize-api] Restoring protected chunks...");
-    const restoredHtml = restoreFromHumanization(humanizedText, protectedChunks, originalHtml);
+    // Step 3: Restore protected chunks (anchors and phrases) back into HTML with structure
+    console.log("[humanize-api] Restoring protected chunks and structure...");
+    const restoredHtml = restoreFromHumanization(humanizedText, protectedChunks, originalHtml, structure);
 
     console.log("[humanize-api] Humanization successful");
 
