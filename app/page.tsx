@@ -78,6 +78,9 @@ export default function Home() {
   const [copyStatusByTopic, setCopyStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   const [copyPlainTextStatus, setCopyPlainTextStatus] = useState<"idle" | "copied">("idle");
   const [copyPlainTextStatusByTopic, setCopyPlainTextStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
+  const [isHumanizing, setIsHumanizing] = useState(false);
+  const [humanizeStatusByTopic, setHumanizeStatusByTopic] = useState<Map<string, "idle" | "humanized">>(new Map());
+  const [articleBeforeHumanize, setArticleBeforeHumanize] = useState<Map<string, string>>(new Map()); // topicId -> HTML before humanize
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<{
     message: string;
@@ -1499,6 +1502,181 @@ export default function Home() {
 
   const getArticleText = (article: GeneratedArticle): string => {
     return article.editedText || article.articleBodyHtml || article.fullArticleText;
+  };
+
+  // Humanize article function
+  const humanizeArticle = async (topicId: string) => {
+    const article = generatedArticles.find(a => a.topicTitle === topicId);
+    if (!article) {
+      console.error("[humanize] Article not found", topicId);
+      return;
+    }
+
+    const currentHtml = article.articleBodyHtml || article.fullArticleText || "";
+    if (!currentHtml || currentHtml.trim().length === 0) {
+      setNotification({
+        message: "No article content to humanize",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      setTimeout(() => {
+        setNotification(prev => prev ? { ...prev, visible: false } : null);
+      }, 2000);
+      return;
+    }
+
+    // Store original HTML for undo
+    setArticleBeforeHumanize(prev => {
+      const next = new Map(prev);
+      next.set(topicId, currentHtml);
+      return next;
+    });
+
+    setIsHumanizing(true);
+
+    try {
+      // Default settings: Balance model (1), Blog style (stored but not sent to API)
+      const model = 1; // Balance (default and recommended)
+      const registeredEmail = process.env.NEXT_PUBLIC_AIHUMANIZE_EMAIL || "";
+
+      if (!registeredEmail) {
+        throw new Error("AIHumanize email is not configured");
+      }
+
+      // Extract frozen phrases (brand names, anchor texts)
+      const frozenPhrases: string[] = [];
+      
+      // Extract brand name from clientSite if available
+      // Brand name is typically extracted from clientSite domain
+      if (brief.clientSite && brief.clientSite.trim()) {
+        try {
+          const url = new URL(brief.clientSite.startsWith('http') ? brief.clientSite : `https://${brief.clientSite}`);
+          const domain = url.hostname.replace(/^www\./, '');
+          // Extract brand name from domain (e.g., "promosoundgroup.com" -> "PromosoundGroup")
+          const brandName = domain.split('.')[0];
+          if (brandName && brandName.length > 0) {
+            frozenPhrases.push(brandName.charAt(0).toUpperCase() + brandName.slice(1));
+          }
+        } catch (e) {
+          // If URL parsing fails, try to use clientSite as-is
+          const brandName = brief.clientSite.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '').split('.')[0];
+          if (brandName && brandName.length > 0) {
+            frozenPhrases.push(brandName.charAt(0).toUpperCase() + brandName.slice(1));
+          }
+        }
+      }
+
+      // Extract anchor text if available
+      if (brief.anchorText && brief.anchorText.trim()) {
+        frozenPhrases.push(brief.anchorText.trim());
+      }
+
+      const response = await fetch("/api/humanize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          html: currentHtml,
+          model,
+          registeredEmail,
+          frozenPhrases,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error(data.userMessage || data.error || "Humanization failed");
+      }
+
+      // Update article with humanized HTML
+      updateGeneratedArticles(prev => {
+        return prev.map(a => {
+          if (a.topicTitle === topicId) {
+            return {
+              ...a,
+              articleBodyHtml: data.html,
+              // Keep other fields intact
+            };
+          }
+          return a;
+        });
+      });
+
+      // Mark as humanized
+      setHumanizeStatusByTopic(prev => {
+        const next = new Map(prev);
+        next.set(topicId, "humanized");
+        return next;
+      });
+
+      setNotification({
+        message: "Text humanized. AI detection should be lower now.",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      setTimeout(() => {
+        setNotification(prev => prev ? { ...prev, visible: false } : null);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error("[humanize] Error:", error);
+      setNotification({
+        message: error.message || "Failed to humanize text. Please try again.",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      setTimeout(() => {
+        setNotification(prev => prev ? { ...prev, visible: false } : null);
+      }, 3000);
+    } finally {
+      setIsHumanizing(false);
+    }
+  };
+
+  // Undo humanize function
+  const undoHumanize = (topicId: string) => {
+    const originalHtml = articleBeforeHumanize.get(topicId);
+    if (!originalHtml) {
+      console.warn("[humanize] No original HTML found for undo");
+      return;
+    }
+
+    updateGeneratedArticles(prev => {
+      return prev.map(a => {
+        if (a.topicTitle === topicId) {
+          return {
+            ...a,
+            articleBodyHtml: originalHtml,
+          };
+        }
+        return a;
+      });
+    });
+
+    // Remove from undo map
+    setArticleBeforeHumanize(prev => {
+      const next = new Map(prev);
+      next.delete(topicId);
+      return next;
+    });
+
+    // Reset humanized status
+    setHumanizeStatusByTopic(prev => {
+      const next = new Map(prev);
+      next.set(topicId, "idle");
+      return next;
+    });
+
+    setNotification({
+      message: "Humanization undone",
+      time: new Date().toLocaleTimeString(),
+      visible: true,
+    });
+    setTimeout(() => {
+      setNotification(prev => prev ? { ...prev, visible: false } : null);
+    }, 2000);
   };
 
   const stripHtmlTags = (html: string): string => {
@@ -4495,6 +4673,47 @@ export default function Home() {
                                           </svg>
                                           <span>{copyPlainTextStatus === "copied" && viewingArticle === topicId ? "Copied!" : "Copy plain text"}</span>
                                         </button>
+                                        {humanizeStatusByTopic.get(topicId) === "humanized" ? (
+                                          <button
+                                            type="button"
+                                            className="btn-outline btn-sm"
+                                            title="Undo humanization and restore original text"
+                                            onClick={() => undoHumanize(topicId)}
+                                          >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <path d="M3 7v6h6M21 17v-6h-6M7 3l4 4-4 4M17 21l-4-4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                            <span>Undo Humanize</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            className="btn-outline btn-sm"
+                                            title="Humanize text to reduce AI detection (preserves all links and anchors)"
+                                            onClick={() => humanizeArticle(topicId)}
+                                            disabled={isHumanizing}
+                                          >
+                                            {isHumanizing ? (
+                                              <>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" opacity="0.3"/>
+                                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="8 24" strokeDashoffset="0">
+                                                    <animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" values="0 12 12;360 12 12"/>
+                                                  </circle>
+                                                </svg>
+                                                <span>Humanizing...</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                  <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                  <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
+                                                <span>HUMANIZE TXT</span>
+                                              </>
+                                            )}
+                                          </button>
+                                        )}
                                         <button
                                           type="button"
                                           className="close-modal-btn"

@@ -1379,6 +1379,20 @@ body {
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* Spinning animation for loading states */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
