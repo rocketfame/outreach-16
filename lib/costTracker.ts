@@ -19,6 +19,10 @@ const PRICING = {
       '1024x1792': 0.08,
     },
   },
+  // AIHumanize pricing: 50,000 words = $25 → $0.0005 per word
+  aihumanize: {
+    words: 0.0005,
+  },
 };
 
 export interface CostEntry {
