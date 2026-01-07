@@ -76,6 +76,8 @@ export default function Home() {
   const [isGeneratingArticles, setIsGeneratingArticles] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [copyStatusByTopic, setCopyStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
+  const [copyPlainTextStatus, setCopyPlainTextStatus] = useState<"idle" | "copied">("idle");
+  const [copyPlainTextStatusByTopic, setCopyPlainTextStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<{
     message: string;
@@ -4317,13 +4319,17 @@ export default function Home() {
                                       
                                       if (articleElement) {
                                         await copyArticleAsPlainText(articleElement);
-                                        setNotification({
-                                          message: "Plain text copied for AI checkers",
-                                          time: new Date().toLocaleTimeString(),
-                                          visible: true,
+                                        setCopyPlainTextStatusByTopic(prev => {
+                                          const next = new Map(prev);
+                                          next.set(topicId, "copied");
+                                          return next;
                                         });
                                         setTimeout(() => {
-                                          setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                          setCopyPlainTextStatusByTopic(prev => {
+                                            const next = new Map(prev);
+                                            next.set(topicId, "idle");
+                                            return next;
+                                          });
                                         }, 2000);
                                       } else {
                                         throw new Error("Could not find article element");
@@ -4345,7 +4351,7 @@ export default function Home() {
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
-                                  <span>Copy plain text</span>
+                                  <span>{copyPlainTextStatusByTopic.get(topicId) === "copied" ? "Copied!" : "Copy plain text"}</span>
                                 </button>
                                 <div className="download-dropdown-wrapper">
                                   <button
@@ -4463,13 +4469,9 @@ export default function Home() {
                                               
                                               if (articleElement) {
                                                 await copyArticleAsPlainText(articleElement);
-                                                setNotification({
-                                                  message: "Plain text copied for AI checkers",
-                                                  time: new Date().toLocaleTimeString(),
-                                                  visible: true,
-                                                });
+                                                setCopyPlainTextStatus("copied");
                                                 setTimeout(() => {
-                                                  setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                                  setCopyPlainTextStatus("idle");
                                                 }, 2000);
                                               } else {
                                                 throw new Error("Could not find article element");
@@ -4491,7 +4493,7 @@ export default function Home() {
                                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                           </svg>
-                                          <span>Copy plain text</span>
+                                          <span>{copyPlainTextStatus === "copied" && viewingArticle === topicId ? "Copied!" : "Copy plain text"}</span>
                                         </button>
                                         <button
                                           type="button"

@@ -93,41 +93,55 @@ Tone and style:
 • Every paragraph should deliver an idea, an example, or a concrete tip.
 • Prefer active voice and short or medium length sentences.
 
-Human written style and anti template rules (CRITICAL):
-• You write like a strategist with 10+ years of experience in [[NICHE]], not like an SEO bot.
-• Articles must read as if you are talking to a colleague: direct, clear, with real opinions and concrete angles, not corporate jargon.
-• Vary sentence length and rhythm:
-• Mix short punchy lines with longer, more detailed explanations.
-• Avoid repeating the same opening structure across sentences (for example, do not start three sentences in a row with "This topic…", "This article…", "This guide…").
+Human-written style and anti-AI-signature rules (v2 – CRITICAL):
+• You write like a strategist with 10+ years of real practice in [[NICHE]]. Your goal is not to sound "smart", but to sound like a practitioner who has actually shipped campaigns and made mistakes.
+
+• Do NOT chase "perfect" structure. It is fine if the article feels a bit asymmetrical:
+  – Some sections longer, some shorter.
+  – Some with bullets, some only with paragraphs.
+  – Not every article needs "Phase 1 / Phase 2 / Phase 3" or "Step 1 / Step 2 / Step 3".
+
+• Allow light repetition of key terms. Humans repeat important words ("release", "playlist", "campaign") instead of forcing a new synonym every time. Do NOT mechanically replace every repeated noun or verb.
+
+• Vary heading patterns from article to article:
+  – Sometimes use direct, practical headings ("Warm up your listeners before release day").
+  – Sometimes use question-style headings.
+  – Avoid using the same skeleton like "Phase X (Days Y-Z): …" in many different articles.
+
+• Bullet lists must not all look the same:
+  – Mix short bullets (2–4 words) and full-sentence bullets.
+  – Avoid repeating the pattern "Label: explanation" in every bullet.
+  – In some sections, skip bullets completely and keep it as narrative text.
+
+• Add small human "imperfections":
+  – Occasional side notes in brackets.
+  – One or two slightly informal phrases per section ("honestly", "the funny part is", "here's the catch").
+  – A couple of sentences that are a bit longer and messy, like natural thinking, not textbook-perfect.
+
+• Use 1–2 micro anecdotes or realistic snapshots per article:
+  – For example: "I keep seeing artists who…", "One team I worked with tried…".
+  – Keep them short, but concrete (realistic situations, not invented statistics).
+
+• Sentence rhythm:
+  – Mix very short sentences with medium and longer ones.
+  – Do not let several sentences in a row have exactly the same structure.
+  – It is acceptable to use a fragment for emphasis ("That's the whole point.").
+
+• Tone:
+  – Speak directly to the reader ("you", "your release", "your team").
+  – Occasionally use first person ("I", "we") when you share an opinion or observation.
+  – It should feel like a mentor talking, not a corporate whitepaper.
+
+• Avoid mechanical frameworks:
+  – Do not overuse words like "strategy", "framework", "step-by-step system" in tight clusters.
+  – When you describe a process, you can break it into parts, but keep the wording natural, as if explaining it aloud.
+
+• Important: do NOT over-optimise for "smartness". A slightly rough, conversational, opinionated article is better than a perfectly polished, highly symmetrical one. The text should be something a human editor might tweak, not something that already looks like a polished manual.
+
 • Avoid generic SEO filler and overused phrases:
-• Do NOT use cliches like "in today's digital world", "in the ever evolving landscape of", "it is no secret that".
-• Do NOT write empty promises like "this article will cover everything you need to know".
-• Every sentence must add a specific idea: who it is for, what problem it solves, what angle makes it different.
-• Increase "human burstiness":
-• Use a varied vocabulary; do not repeat the same nouns, verbs and adjectives in a short span if you can reasonably rephrase.
-• When you mention a concept twice, refer to it in a slightly different way the second time instead of copy pasting the same phrase.
-• It is OK to include occasional sharp or slightly informal wording if it fits the niche (for example, pointing out common traps, myths, or mistakes).
-• Make each article feel distinct:
-• Do NOT reuse the same hook pattern across articles (avoid repeating structures like "The ultimate guide to", "Everything you need to know about").
-• Change how you frame the problem, the audience, and the benefit from article to article, even inside the same cluster.
-• If two angles start to sound similar, push one of them into a more specific, opinionated, or contrarian direction.
-• Show, do not just label:
-• Instead of saying "non generic tips", briefly hint at what kind of framework, example, or comparison you will use.
-• When possible, connect the content to a realistic scenario in [[NICHE]] (for example: a small team launching a new feature, a solo creator fighting ad fatigue, a marketer trying to justify budget).
-• Keep language simple and accessible:
-• Prefer clear, plain words over complex academic terms, unless the niche truly requires them.
-• Write as if the reader has experience in [[NICHE]] but is tired of vague marketing talk and wants something specific and usable.
-• Additional humanizing techniques:
-• Allow small natural "imperfections" in style: occasional informal phrases, direct address to the reader ("you", "let us"), and different paragraph lengths (some short, some longer).
-• Use natural transitions that feel conversational rather than formal. Sometimes you can skip a transition entirely if the flow still feels smooth.
-• Add occasional rhetorical questions, personal observations, or brief asides that sound authentic.
-• Write as if you are explaining something to a friend who understands the basics but needs practical steps, not as if you are writing a corporate manual.
-• Do not start several paragraphs in a row with the same words or constructions; avoid series of paragraphs that all begin with "First", "Also", "Moreover", etc. Change how you introduce each idea.
-• Do not build every paragraph on the same template "claim - explanation - conclusion". Sometimes a single strong thought or example is enough.
-• Avoid overly formal phrasing, passive constructions, and bureaucratic language; if something can be said more simply, say it more simply.
-• Add small, recognizable real life details (typical mistakes, internal doubts, small pains) but do not invent precise case studies with specific numbers if you do not have them from sources.
-• Avoid repeating the same endings like "this is very important" or "this is the key to success". Show what actually changes for the reader instead.
-• Each article must differ in structure from previous ones: do not repeat the same patterns of headings, lists, transitions, or section layouts.
+  – Do NOT use cliches like "in today's digital world", "in the ever evolving landscape of", "it is no secret that".
+  – Do NOT write empty promises like "this article will cover everything you need to know".
+  – Every sentence must add a specific idea: who it is for, what problem it solves, what angle makes it different.
 
 AI detection evasion techniques (CRITICAL - based on perplexity and burstiness analysis):
 • Maximize Perplexity (increase unpredictability and complexity):
@@ -138,11 +152,11 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 • Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective.
 
 • Minimize Burstiness (reduce word and phrase repetition within short spans):
-• CRITICAL: Never repeat the same key noun, verb, or adjective in 2-3 consecutive sentences. Use synonyms or referential phrases instead.
-• When discussing the same concept multiple times, vary your phrasing: for example, "content creators", then "artists", then "professionals in this field", then "people building an audience".
-• Avoid repeating entire phrases: if you wrote "common mistakes" earlier, use "frequent pitfalls", "typical errors", "usual traps", or "often overlooked issues" later.
+• Allow light repetition of key domain terms (e.g., "release", "playlist", "campaign") as humans naturally do, but avoid mechanical repetition of generic words.
+• When discussing the same concept multiple times, you can vary phrasing occasionally, but do not force synonyms if the natural term fits better.
+• Avoid repeating entire phrases verbatim: if you wrote "common mistakes" earlier, you can use "frequent pitfalls" or "typical errors" later, but do not over-optimize.
 • Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
-• Vary transition words: do not always use the same connectors. Mix neutral transitions with more conversational ones like "The catch is", "Here is the tricky part", "Now for the good news".
+• Vary transition words: do not always use the same connectors. Mix neutral transitions with more conversational ones like "The catch is", "Here's the tricky part", "Now for the good news".
 
 • Linguistic diversity to avoid AI patterns:
 • Use varied sentence starters: begin sentences with different parts of speech (nouns, verbs, adjectives, clauses, questions). Do not start multiple sentences in a row with "The", "This", "It", "You".
@@ -375,6 +389,18 @@ CRITICAL CHARACTER RULES (prevent AI detection patterns):
 • Do not use smart or curly quotes.
 • Avoid putting single words or short phrases in quotes purely for emphasis - use quotes only for real speech, titles, or explicit terms.
 
+PRACTICAL POST-GENERATION CHECK (for human QA):
+
+After generating the article, perform a quick human QA:
+	1.	Review one H2 block and:
+	•	Remove 1-2 overly "academic" sentences.
+	•	Add one micro-comment from yourself ("honestly, most people mess this up" or similar vibe) – in English, but with that casual tone.
+	2.	If you see perfect "Phase 1/2/3" structure with identical formatting – regenerate that section with instruction:
+"Rewrite this section in a more narrative, slightly messy paragraph style, with fewer formal subheadings and more conversational flow."
+	3.	For the most important articles – run a "plain text rewrite" through your Human Rewrite Mode (second prompt designed for plain text).
+
+Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
+
 FINAL CHECKLIST BEFORE OUTPUT:
 • Word count is approximately [[WORD_COUNT]] words (counted in articleBodyHtml without HTML tags).
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
@@ -383,6 +409,7 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • The commercial anchor [[ANCHOR_TEXT]] → [[ANCHOR_URL]] is integrated naturally (if provided).
 • The article structure matches the brief requirements.
 • All formatting rules are followed (HTML tags, bold phrases, link rules, character rules).
+• The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 
 Now generate the response as JSON only, with no explanations:
 {
@@ -803,48 +830,58 @@ you MUST NOT use it, unless it supports a universal principle that genuinely fit
 If no source in [[TRUST_SOURCES_LIST]] fits the topic, write the article without external links.
 
 ================================
-7. HUMAN-WRITTEN STYLE AND ANTI-TEMPLATE RULES (CRITICAL)
+7. HUMAN-WRITTEN STYLE AND ANTI-AI-SIGNATURE RULES (v2 – CRITICAL)
 
-• You write like a strategist with 10+ years of experience in [[NICHE]], not like an SEO bot.
-• Topic descriptions must read as if you are talking to a colleague: direct, clear, with real opinions and concrete angles, not corporate jargon.
-• Vary sentence length and rhythm:
-	•	Mix short punchy lines with longer, more detailed explanations.
-	•	Avoid repeating the same opening structure across sentences (for example, do not start three sentences in a row with "This topic…", "This article…", "This guide…").
-	•	Avoid long blocks where every sentence has the same structure.
+• You write like a strategist with 10+ years of real practice in [[NICHE]]. Your goal is not to sound "smart", but to sound like a practitioner who has actually shipped campaigns and made mistakes.
+
+• Do NOT chase "perfect" structure. It is fine if the article feels a bit asymmetrical:
+	– Some sections longer, some shorter.
+	– Some with bullets, some only with paragraphs.
+	– Not every article needs "Phase 1 / Phase 2 / Phase 3" or "Step 1 / Step 2 / Step 3".
+
+• Allow light repetition of key terms. Humans repeat important words ("release", "playlist", "campaign") instead of forcing a new synonym every time. Do NOT mechanically replace every repeated noun or verb.
+
+• Vary heading patterns from article to article:
+	– Sometimes use direct, practical headings ("Warm up your listeners before release day").
+	– Sometimes use question-style headings.
+	– Avoid using the same skeleton like "Phase X (Days Y-Z): …" in many different articles.
+
+• Bullet lists must not all look the same:
+	– Mix short bullets (2–4 words) and full-sentence bullets.
+	– Avoid repeating the pattern "Label: explanation" in every bullet.
+	– In some sections, skip bullets completely and keep it as narrative text.
+
+• Add small human "imperfections":
+	– Occasional side notes in brackets.
+	– One or two slightly informal phrases per section ("honestly", "the funny part is", "here's the catch").
+	– A couple of sentences that are a bit longer and messy, like natural thinking, not textbook-perfect.
+
+• Use 1–2 micro anecdotes or realistic snapshots per article:
+	– For example: "I keep seeing artists who…", "One team I worked with tried…".
+	– Keep them short, but concrete (realistic situations, not invented statistics).
+
+• Sentence rhythm:
+	– Mix very short sentences with medium and longer ones.
+	– Do not let several sentences in a row have exactly the same structure.
+	– It is acceptable to use a fragment for emphasis ("That's the whole point.").
+
+• Tone:
+	– Speak directly to the reader ("you", "your release", "your team").
+	– Occasionally use first person ("I", "we") when you share an opinion or observation.
+	– It should feel like a mentor talking, not a corporate whitepaper.
+
+• Avoid mechanical frameworks:
+	– Do not overuse words like "strategy", "framework", "step-by-step system" in tight clusters.
+	– When you describe a process, you can break it into parts, but keep the wording natural, as if explaining it aloud.
+
+• Important: do NOT over-optimise for "smartness". A slightly rough, conversational, opinionated article is better than a perfectly polished, highly symmetrical one. The text should be something a human editor might tweak, not something that already looks like a polished manual.
 
 • Avoid generic SEO filler and overused phrases:
-	•	Do NOT use clichés like "in today's digital world", "in the ever-evolving landscape of…", "it's no secret that…".
-	•	Do NOT write empty promises like "this article will cover everything you need to know".
-	•	Do NOT use phrases such as "as a creator, you know that", "now more than ever", or similar boilerplate.
-	•	Replace them with concrete, down to earth observations.
-	•	Every sentence must add a specific idea: who it is for, what exact problem it solves, what angle makes it different.
-
-• Increase "human burstiness":
-	•	Use a varied vocabulary; do not repeat the same nouns, verbs and adjectives in a short span if you can reasonably rephrase.
-	•	When you mention a concept twice, try to refer to it in a slightly different way the second time instead of copy-pasting the same phrase.
-	•	It is OK to include occasional sharp or slightly informal wording if it fits the niche (for example, pointing out common traps, myths, or mistakes).
-
-• Make each article feel distinct:
-	•	Do NOT reuse the same hook pattern across articles (avoid repeating structures like "The ultimate guide to…", "Everything you need to know about…").
-	•	Change how you frame the problem, the audience and the benefit from article to article.
-	•	If two sections start to sound similar, push one into a more specific, opinionated, or contrarian angle.
-
-• Show, don't just label:
-	•	Instead of saying "non-generic tips", briefly hint at what kind of framework, example, or comparison the article uses.
-	•	When possible, connect the content to a realistic scenario in [[NICHE]] (for example: a small team launching a new feature, a solo creator fighting ad fatigue, a marketer trying to justify budget).
-	•	Show how a musician, player, recruiter, founder or marketer actually acts; use small realistic details, not vague statements.
-
-• Keep language simple and accessible:
-	•	Prefer clear, plain words over complex academic terms, unless the niche truly requires them.
-	•	Write as if the reader has experience in [[NICHE]] but is tired of vague marketing talk and wants something specific and usable.
-	•	Use a natural, conversational voice: when appropriate, address the reader as "you".
-	•	Write as if you explain to a colleague who understands the basics but wants clarity and a plan, not a corporate memo.
-
-• Additional humanizing techniques:
-	•	Allow small stylistic imperfections: occasional informal phrases are fine; paragraph length can vary (some short, some longer).
-	•	You do not need a formal transition sentence before every paragraph if the flow still works.
-	•	Structural variety: do not reuse the same heading pattern in every article; do not start each section with the same type of phrase; vary the way you present tips, lists and examples.
-	•	Rhetorical devices: sometimes ask rhetorical questions if they sharpen a point; short asides like "this sounds obvious, but most teams skip it" are allowed when they add value; use them sparingly and only when they help the reader.
+	– Do NOT use clichés like "in today's digital world", "in the ever-evolving landscape of…", "it's no secret that…".
+	– Do NOT write empty promises like "this article will cover everything you need to know".
+	– Do NOT use phrases such as "as a creator, you know that", "now more than ever", or similar boilerplate.
+	– Replace them with concrete, down to earth observations.
+	– Every sentence must add a specific idea: who it is for, what exact problem it solves, what angle makes it different.
 
 AI detection evasion techniques (CRITICAL - based on perplexity and burstiness analysis):
 • Maximize Perplexity (increase unpredictability and complexity):
@@ -855,10 +892,9 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 	•	Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective. First discuss "strategies", then later refer to "tactics" or "approaches" or "frameworks".
 
 • Minimize Burstiness (reduce word/phrase repetition within short spans):
-	•	CRITICAL: Never repeat the same noun, verb, or adjective within 2-3 consecutive sentences. Use synonyms or referential phrases instead.
-	•	Example: If you mention "strategy" in one sentence, use "approach", "method", "framework", "system", "playbook", or "roadmap" in the next 2-3 sentences instead.
-	•	When discussing the same concept multiple times, vary your phrasing: first mention "content creators", then "artists", then "creators", then "professionals in this field", then "those building an audience".
-	•	Avoid repeating entire phrases: if you wrote "common mistakes" earlier, use "typical errors", "frequent pitfalls", "regular missteps", "usual traps", or "often-overlooked issues" later.
+	•	Allow light repetition of key domain terms (e.g., "release", "playlist", "campaign") as humans naturally do, but avoid mechanical repetition of generic words.
+	•	When discussing the same concept multiple times, you can vary phrasing occasionally, but do not force synonyms if the natural term fits better.
+	•	Avoid repeating entire phrases verbatim: if you wrote "common mistakes" earlier, you can use "frequent pitfalls" or "typical errors" later, but do not over-optimize.
 	•	Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
 	•	Vary transition words: don't always use "However", "Moreover", "Additionally", "Furthermore". Mix with "That said", "On the flip side", "Here's the thing", "The catch is", "What's interesting", "Now, here's where it gets tricky".
 
@@ -924,6 +960,18 @@ Technical format:
 	•	NEVER create links with empty href attributes (<a href=""></a> is forbidden).
 	•	Do NOT output Markdown.
 
+PRACTICAL POST-GENERATION CHECK (for human QA):
+
+After generating the article, perform a quick human QA:
+	1.	Review one H2 block and:
+	•	Remove 1-2 overly "academic" sentences.
+	•	Add one micro-comment from yourself ("honestly, most people mess this up" or similar vibe) – in English, but with that casual tone.
+	2.	If you see perfect "Phase 1/2/3" structure with identical formatting – regenerate that section with instruction:
+"Rewrite this section in a more narrative, slightly messy paragraph style, with fewer formal subheadings and more conversational flow."
+	3.	For the most important articles – run a "plain text rewrite" through your Human Rewrite Mode (second prompt designed for plain text).
+
+Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
+
 FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
@@ -931,6 +979,7 @@ FINAL VERIFICATION BEFORE OUTPUT:
 • If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the commercial anchor appears exactly once in the first 2-3 paragraphs and uses the correct HTML format.
 • Confirm that you used 0-3 relevant external sources from [[TRUST_SOURCES_LIST]] with correct link formatting.
 • Scan articleBodyHtml for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
+• The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 • Make sure there is NO extra text outside the JSON object.
 
 Now generate ONLY the JSON object, nothing else.
