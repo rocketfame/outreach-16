@@ -3596,7 +3596,7 @@ export default function Home() {
         humanizeWords: humanizeWordsUsed,
       };
     });
-  }, [humanizeWordsUsed, costData]);
+  }, [humanizeWordsUsed]);
 
   // Prevent hydration mismatch by not rendering until hydrated
   if (!isHydrated) {
@@ -3675,13 +3675,13 @@ export default function Home() {
                 {costData?.tokens?.formatted?.openai || '0 tokens'}
               </span>
             </div>
-            {humanizeWordsUsed > 0 && (
+            {(humanizeWordsUsed > 0 || (costData?.humanizeWords && costData.humanizeWords > 0)) && (
               <>
                 <div className="cost-divider"></div>
                 <div className="cost-item">
                   <span className="cost-label">Humanize:</span>
                   <span className="cost-value">
-                    {humanizeWordsUsed.toLocaleString()} words ({costData?.formatted?.humanize || '$0.0000'})
+                    {(humanizeWordsUsed || costData?.humanizeWords || 0).toLocaleString()} words ({costData?.formatted?.humanize || '$0.0000'})
                   </span>
                 </div>
               </>
