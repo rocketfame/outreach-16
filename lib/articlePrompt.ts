@@ -151,12 +151,14 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 • Include domain specific terminology: use niche specific jargon naturally, as a real expert would, not just generic business terms.
 • Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective.
 
-• Minimize Burstiness (reduce word and phrase repetition within short spans):
+• Minimize Burstiness (reduce word/phrase repetition within short spans):
+• CRITICAL: Never repeat the same noun, verb, or adjective within 2-3 consecutive sentences. Use synonyms or referential phrases instead.
+• Example: If you mention "strategy" in one sentence, use "approach", "method", "framework", "system", "playbook", or "roadmap" in the next 2-3 sentences instead.
 • Allow light repetition of key domain terms (e.g., "release", "playlist", "campaign") as humans naturally do, but avoid mechanical repetition of generic words.
-• When discussing the same concept multiple times, you can vary phrasing occasionally, but do not force synonyms if the natural term fits better.
-• Avoid repeating entire phrases verbatim: if you wrote "common mistakes" earlier, you can use "frequent pitfalls" or "typical errors" later, but do not over-optimize.
+• When discussing the same concept multiple times, vary your phrasing: first mention "content creators", then "artists", then "creators", then "professionals in this field", then "those building an audience".
+• Avoid repeating entire phrases verbatim: if you wrote "common mistakes" earlier, use "typical errors", "frequent pitfalls", "regular missteps", "usual traps", or "often-overlooked issues" later.
 • Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
-• Vary transition words: do not always use the same connectors. Mix neutral transitions with more conversational ones like "The catch is", "Here's the tricky part", "Now for the good news".
+• Vary transition words: do not always use "However", "Moreover", "Additionally", "Furthermore". Mix with "That said", "On the flip side", "Here's the thing", "The catch is", "What's interesting", "Now, here's where it gets tricky".
 
 • Linguistic diversity to avoid AI patterns:
 • Use varied sentence starters: begin sentences with different parts of speech (nouns, verbs, adjectives, clauses, questions). Do not start multiple sentences in a row with "The", "This", "It", "You".
@@ -219,13 +221,28 @@ Repetition:
 Commercial anchor link (user's brand/service):
 • The topic brief may already contain anchor phrases that must link to a specific product or service via [[ANCHOR_TEXT]] and [[ANCHOR_URL]].
 • When such anchors are provided, integrate them naturally into the article body as parts of sentences, not as ads or isolated CTAs.
-• In the first 2-3 paragraphs, naturally insert the placeholder [A1] where [[ANCHOR_TEXT]] should appear.
+• CRITICAL - Anchor placement (MANDATORY):
+  • You MUST place the placeholder [A1] in the FIRST 2-3 paragraphs of the article.
+  • Do NOT place it later in the article - it must appear near the beginning.
+  • The anchor must be in one of the first three paragraph blocks (type "p") in articleBlocks.
+• CRITICAL - Anchor format (MANDATORY):
+  • [[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
+  • Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
+  • FORBIDDEN: using long, technical anchor text that harms readability.
+  • FORBIDDEN: using generic phrases like "click here" or "learn more".
+  • REQUIRED: use short, natural anchor text that fits smoothly into the sentence.
+  • Anchor text examples: brand names ("RouteNote", "Spotify"), short descriptive phrases ("recent analysis", "this tool").
 • CRITICAL: Use the [A1] placeholder EXACTLY ONCE in the entire article. You MUST NOT use it twice, even if it looks very natural.
 • Do not change or translate the anchor text; the placeholder [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
 • Make the sentence around the placeholder natural, specific, and relevant to the topic.
 • After using it once, never mention [A1] or [[ANCHOR_TEXT]] again in the article.
 • Do NOT add any extra links to brands or services beyond what is explicitly requested.
-• Example: "Some teams use [A1] to boost their early signals." (where [A1] will become the actual anchor link)
+• Examples of CORRECT anchor integration:
+  ✓ "Some teams use [A1] to boost their early signals." (where [A1] = short phrase like "this tool")
+  ✓ "A breakdown on [A1] shows how smaller playlists work better." (where [A1] = brand name)
+• Examples of INCORRECT anchor integration:
+  ✗ "To learn more about how some teams boost their early signals, you can read about it [A1]." (anchor at end, too long)
+  ✗ "Click here [A1] to discover more." (generic phrase, not natural)
 
 Brand integration ([[BRAND_NAME]] - OPTIONAL):
 • ONLY if [[BRAND_NAME]] is provided and not empty:
@@ -272,35 +289,46 @@ b) The source adds value to a specific point you are making (statistic, definiti
 • If [[TRUST_SOURCES_LIST]] contains sources, you MUST use 1-3 of them. Do NOT write without external links.
 • Only if [[TRUST_SOURCES_LIST]] is completely empty may you write without external links.
 • Never stack long chains of citations. One strong source per point is enough.
-	5.	How to write in text references - ORGANIC INTEGRATION REQUIRED
+	5.	How to write in-text references - ORGANIC INTEGRATION REQUIRED
 • Integrate each source NATURALLY into the paragraph.
 • The source should feel like a natural part of your argument, not a forced citation.
 • Do NOT copy the page title verbatim if it sounds clunky; you may paraphrase the title while keeping the meaning.
-• Vary how you introduce sources; do NOT reuse the same lead in phrase more than once.
-Examples:
-• "A recent breakdown from [SOURCE_NAME] shows that…"
-• "[SOURCE_NAME] reports that…"
-• "In an analysis published on [SOURCE_NAME] …"
-• "Research highlighted on [SOURCE_NAME] suggests…"
-• "Streaming data from [SOURCE_NAME] indicates…"
-• "As [SOURCE_NAME] explains …"
-• "Findings from [SOURCE_NAME] reveal that…"
-• "A study featured on [SOURCE_NAME] demonstrates…"
+• Vary how you introduce sources. You MUST NOT reuse the same lead-in phrase more than once (for example, do not use "According to…" or "Data from…" multiple times).
+• Improvise to fit the context. Examples of different patterns:
+  • "A recent breakdown from [T1] shows that…"
+  • "[T1] reports that…"
+  • "In an analysis published on [T1], …"
+  • "Research highlighted on [T1] suggests…"
+  • "Streaming data from [T1] indicates…"
+  • "As [T1] explains, …"
+  • "Findings from [T1] reveal that…"
+  • "A study featured on [T1] demonstrates…"
+• The source should support your point, not distract from it.
 • Place sources in the first half or middle of the article, not only at the end.
 • Each source should add something concrete: a number, a term, a trend, or a guideline.
-• The source reference must flow naturally inside the sentence and must not break its structure.
-	6.	Link formatting - PLACEHOLDER RULES (CRITICAL)
+• CRITICAL: The source reference must flow naturally inside the sentence and must not break its structure.
+	6.	Link formatting - ANCHOR TEXT RULES (CRITICAL)
 • Every external source must appear as a placeholder INSIDE a natural sentence.
 • Use placeholders [T1], [T2], [T3] for trust sources (in order of appearance).
-• FORBIDDEN: using the full URL as visible text.
+• FORBIDDEN: using the full URL as visible text or anchor text.
 • FORBIDDEN: long, technical anchor text that harms readability.
-• REQUIRED: the placeholder should fit naturally into the sentence where a short anchor text (2-5 words) would appear.
+• FORBIDDEN: copying the full page title verbatim if it's too long or clunky.
+• REQUIRED: use short, natural anchor text (2-5 words) that fits smoothly into the sentence.
 • The placeholder will be replaced with actual anchor text during processing.
-• Anchor text can be:
-• A brand name ("RouteNote", "Spotify").
-• A short descriptive phrase ("recent analysis", "industry report", "platform guidelines").
+• Anchor text format (REQUIRED):
+  • Must be a SHORT phrase (2-5 words maximum).
+  • Can be a brand name ("RouteNote", "Spotify", "TikTok Creator Portal").
+  • Can be a short descriptive phrase ("recent analysis", "industry report", "platform guidelines").
+  • Must be a natural part of the sentence describing the source without being verbose.
+• Examples of CORRECT anchor integration:
+  ✓ "A breakdown on [T1] shows how smaller playlists work better." (where [T1] = "RouteNote")
+  ✓ "Research from [T1] indicates that short form content is gaining traction." (where [T1] = "Spotify's blog")
+  ✓ "As [T1] explains, algorithmic playlists favor consistency." (where [T1] = "YouTube Creator Academy")
+• Examples of INCORRECT anchor integration:
+  ✗ "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows..." (full URL)
+  ✗ "A breakdown on playlist pitching in 2026 what artists need to know [T1] shows..." (too long, copied from title)
+  ✗ "A breakdown on this article about playlist pitching [T1] shows..." (too generic)
 • The sentence should remain clear even if you remove the placeholder.
-• Example: "Research from [T1] shows that..." (where [T1] will become the actual anchor link)
 • Do not change or clean the URL - use it EXACTLY as given in [[TRUST_SOURCES_LIST]].
 	7.	MANDATORY SOURCE USAGE
 • If [[TRUST_SOURCES_LIST]] contains ANY sources, you MUST use 1-3 of them.
@@ -323,22 +351,31 @@ c) "Does the sentence remain clear with the placeholder?"
 • CRITICAL: In the final text, count your placeholders. You MUST have 1-3 trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]] (if the list is not empty).
 	9.	EXAMPLES OF CORRECT VS INCORRECT INTEGRATION
 
-CORRECT (natural integration with placeholder):
+CORRECT (natural integration with short anchor):
 "Playlists remain important, but where the power sits has changed. Editorial placements are rare;
 user curated and niche algorithmic playlists are where most indie artists actually gain momentum.
 A breakdown on [T1] shows how smaller, targeted lists often bring more engaged listeners than a single massive playlist."
+(where [T1] = "RouteNote" - short brand name)
 
-INCORRECT (full URL as text - FORBIDDEN):
+INCORRECT (full URL as anchor - FORBIDDEN):
 "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows…"
+
+INCORRECT (long anchor text copied from title - FORBIDDEN):
+"A breakdown on playlist pitching in 2026 what artists need to know [T1] shows…"
 
 INCORRECT (placeholder breaks sentence flow - FORBIDDEN):
 "Playlists remain important. [T1].
 Editorial placements are rare."
 
-CORRECT (placeholder integrated naturally):
+CORRECT (short anchor integrated naturally):
 "Research from [T1] indicates that short form content is gaining traction among independent artists."
+(where [T1] = "Spotify's blog" - short descriptive phrase)
 
-REMEMBER: The placeholder should feel like a natural part of the sentence, not like a footnote. It will be replaced with the actual anchor link during processing.
+CORRECT (short anchor with brand name):
+"As [T1] explains, algorithmic playlists favor consistency over volume."
+(where [T1] = "YouTube Creator Academy" - short brand name)
+
+REMEMBER: The placeholder should feel like a natural part of the sentence with a SHORT anchor (2-5 words), not like a footnote or a long URL. It will be replaced with the actual anchor link during processing.
 
 ⸻
 
@@ -377,7 +414,12 @@ Technical requirements:
 • Lists:
   • Use { "type": "ul" } or { "type": "ol" } with "items": ["..."].
   • Each item is plain text (no HTML).
-• Tables (optional, 0-2 per article):
+• Tables (CRITICAL - only when topic/brief requires it):
+  • Tables are OPTIONAL and should be used ONLY when the topic ([[TOPIC_TITLE]]) or brief ([[TOPIC_BRIEF]]) explicitly requires comparison, structured data, or tabular information.
+  • DO NOT create tables just to fill space or because you think they look professional.
+  • Examples of when tables make sense: comparing platform features, pricing tiers, step-by-step timelines with dates, side-by-side tool comparisons, structured checklists with multiple columns.
+  • If the topic is narrative, tutorial, or opinion-based, DO NOT include tables - use paragraphs, lists, or headings instead.
+  • Maximum: 0-2 tables per article, and only if genuinely needed based on [[TOPIC_BRIEF]].
   • Use { "type": "table" } with "headers": [...] and "rows": [[...], ...].
   • Keep cell text short and practical. No HTML. No markdown tables. Only JSON arrays.
 • CRITICAL - Use placeholders for links INSIDE any text/items/cells:
@@ -819,11 +861,26 @@ The commercial anchor is independent from [[BRAND_NAME]].
 	•	If you see [[ANCHOR_TEXT]] or [[ANCHOR_URL]] in the prompt but they are empty/invalid,
 treat the article as if no commercial link was requested.
 	2.	If BOTH [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid (non empty, not placeholders):
-	•	Insert the [A1] placeholder once in the first 2-3 paragraphs where [[ANCHOR_TEXT]] should appear.
-	•	Example: "Some teams use [A1] to boost their early signals."
+	•	CRITICAL - Anchor placement (MANDATORY):
+	  •	You MUST place the placeholder [A1] in the FIRST 2-3 paragraphs of the article.
+	  •	Do NOT place it later in the article - it must appear near the beginning.
+	  •	The anchor must be in one of the first three paragraph blocks (type "p") in articleBlocks.
+	•	CRITICAL - Anchor format (MANDATORY):
+	  •	[[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
+	  •	Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
+	  •	FORBIDDEN: using long, technical anchor text that harms readability.
+	  •	FORBIDDEN: using generic phrases like "click here" or "learn more".
+	  •	REQUIRED: use short, natural anchor text that fits smoothly into the sentence.
+	  •	Anchor text examples: brand names ("RouteNote", "Spotify"), short descriptive phrases ("recent analysis", "this tool").
 	•	CRITICAL: Use [A1] placeholder only once in the whole article.
 	•	The placeholder will be replaced with the actual anchor link during processing.
 	•	Do not translate or modify the anchor text - the placeholder represents [[ANCHOR_TEXT]].
+	•	Examples of CORRECT anchor integration:
+	  ✓ "Some teams use [A1] to boost their early signals." (where [A1] = short phrase like "this tool")
+	  ✓ "A breakdown on [A1] shows how smaller playlists work better." (where [A1] = brand name)
+	•	Examples of INCORRECT anchor integration:
+	  ✗ "To learn more about how some teams boost their early signals, you can read about it [A1]." (anchor at end, too long)
+	  ✗ "Click here [A1] to discover more." (generic phrase, not natural)
 
 ================================
 6. EXTERNAL SOURCES (TAVILY)
@@ -833,8 +890,42 @@ treat the article as if no commercial link was requested.
 • Each source must support a specific point (definition, number, trend, guideline, case).
 • Integrate each source naturally inside a sentence using placeholders [T1], [T2], [T3].
 • Placeholder format: Use [T1] for the first source, [T2] for the second, [T3] for the third.
-• Example: "Research from [T1] shows that..." (where [T1] will become the actual anchor link)
+• CRITICAL - Anchor text format (MANDATORY):
+  •	Every external source must appear as a placeholder INSIDE a natural sentence.
+  •	FORBIDDEN: using the full URL as visible text or anchor text.
+  •	FORBIDDEN: long, technical anchor text that harms readability.
+  •	FORBIDDEN: copying the full page title verbatim if it's too long or clunky.
+  •	REQUIRED: use short, natural anchor text (2-5 words) that fits smoothly into the sentence.
+  •	Anchor text format (REQUIRED):
+    •	Must be a SHORT phrase (2-5 words maximum).
+    •	Can be a brand name ("RouteNote", "Spotify", "TikTok Creator Portal").
+    •	Can be a short descriptive phrase ("recent analysis", "industry report", "platform guidelines").
+    •	Must be a natural part of the sentence describing the source without being verbose.
+• Vary how you introduce sources. You MUST NOT reuse the same lead-in phrase more than once (for example, do not use "According to…" or "Data from…" multiple times).
+• Improvise to fit the context. Examples of different patterns:
+  •	"A recent breakdown from [T1] shows that…"
+  •	"[T1] reports that…"
+  •	"In an analysis published on [T1], …"
+  •	"Research highlighted on [T1] suggests…"
+  •	"Streaming data from [T1] indicates…"
+  •	"As [T1] explains, …"
+  •	"Findings from [T1] reveal that…"
+  •	"A study featured on [T1] demonstrates…"
+• The source should support your point, not distract from it.
+• Place sources in the first half or middle of the article, not only at the end.
+• Each source should add something concrete: a number, a term, a trend, or a guideline.
+• CRITICAL: The source reference must flow naturally inside the sentence and must not break its structure.
 • Placeholders will be replaced with actual anchor links during processing.
+• Examples of CORRECT anchor integration:
+  ✓ "A breakdown on [T1] shows how smaller playlists work better." (where [T1] = "RouteNote" - short brand name)
+  ✓ "Research from [T1] indicates that short form content is gaining traction." (where [T1] = "Spotify's blog" - short descriptive phrase)
+  ✓ "As [T1] explains, algorithmic playlists favor consistency." (where [T1] = "YouTube Creator Academy" - short brand name)
+• Examples of INCORRECT anchor integration:
+  ✗ "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows..." (full URL)
+  ✗ "A breakdown on playlist pitching in 2026 what artists need to know [T1] shows..." (too long, copied from title)
+  ✗ "A breakdown on this article about playlist pitching [T1] shows..." (too generic)
+• The sentence should remain clear even if you remove the placeholder.
+• Do not change or clean the URL - use it EXACTLY as given in [[TRUST_SOURCES_LIST]].
 
 Relevance rules:
 	•	Use a source only if:
@@ -908,9 +999,11 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 	•	Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective. First discuss "strategies", then later refer to "tactics" or "approaches" or "frameworks".
 
 • Minimize Burstiness (reduce word/phrase repetition within short spans):
+	•	CRITICAL: Never repeat the same noun, verb, or adjective within 2-3 consecutive sentences. Use synonyms or referential phrases instead.
+	•	Example: If you mention "strategy" in one sentence, use "approach", "method", "framework", "system", "playbook", or "roadmap" in the next 2-3 sentences instead.
 	•	Allow light repetition of key domain terms (e.g., "release", "playlist", "campaign") as humans naturally do, but avoid mechanical repetition of generic words.
-	•	When discussing the same concept multiple times, you can vary phrasing occasionally, but do not force synonyms if the natural term fits better.
-	•	Avoid repeating entire phrases verbatim: if you wrote "common mistakes" earlier, you can use "frequent pitfalls" or "typical errors" later, but do not over-optimize.
+	•	When discussing the same concept multiple times, vary your phrasing: first mention "content creators", then "artists", then "creators", then "professionals in this field", then "those building an audience".
+	•	Avoid repeating entire phrases verbatim: if you wrote "common mistakes" earlier, use "typical errors", "frequent pitfalls", "regular missteps", "usual traps", or "often-overlooked issues" later.
 	•	Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
 	•	Vary transition words: don't always use "However", "Moreover", "Additionally", "Furthermore". Mix with "That said", "On the flip side", "Here's the thing", "The catch is", "What's interesting", "Now, here's where it gets tricky".
 
@@ -976,7 +1069,13 @@ Technical format:
 	    • "rows": [["...","..."], ["...","..."]]
 	• All texts/items/cells MUST be plain text only (NO HTML tags).
 	• Use **bold** or *italic* markdown-style formatting inside text fields (will be converted to HTML later).
-	• Tables are optional (0-2 per article). Keep cells short and practical.
+	• Tables (CRITICAL - only when topic/brief requires it):
+	  • Tables are OPTIONAL and should be used ONLY when the topic ([[TOPIC_TITLE]]) or brief ([[TOPIC_BRIEF]]) explicitly requires comparison, structured data, or tabular information.
+	  • DO NOT create tables just to fill space or because you think they look professional.
+	  • Examples of when tables make sense: comparing platform features, pricing tiers, step-by-step timelines with dates, side-by-side tool comparisons, structured checklists with multiple columns.
+	  • If the topic is narrative, tutorial, or opinion-based, DO NOT include tables - use paragraphs, lists, or headings instead.
+	  • Maximum: 0-2 tables per article, and only if genuinely needed based on [[TOPIC_BRIEF]].
+	  • Keep cells short and practical.
 	• CRITICAL - Link placeholders:
 	  • Commercial anchor: use [A1] placeholder exactly once (and only once).
 	  • Trust sources: use [T1], [T2], [T3] placeholders (1-3 total) inside natural sentences.

@@ -1521,8 +1521,35 @@ export default function Home() {
   // OLD POST-PROCESSING HUMANIZATION REMOVED
   // Humanization now happens during generation via the "Humanize on write" toggle.
 
+  // Decode HTML entities (&#39; → ', &quot; → ", etc.)
+  const decodeHtmlEntities = (text: string): string => {
+    if (!text) return text;
+    
+    // Use DOM API for proper decoding (works in browser)
+    if (typeof document !== 'undefined') {
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = text;
+      return textarea.value;
+    }
+    
+    // SSR fallback: decode common HTML entities using regex
+    return text
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#8217;/g, "'")  // Right single quotation mark
+      .replace(/&#8216;/g, "'")  // Left single quotation mark
+      .replace(/&#8220;/g, '"')  // Left double quotation mark
+      .replace(/&#8221;/g, '"'); // Right double quotation mark
+  };
+
   const stripHtmlTags = (html: string): string => {
-    return html.replace(/<[^>]*>/g, '').replace(/H[1-3]:\s*/gi, '').trim();
+    const withoutTags = html.replace(/<[^>]*>/g, '').replace(/H[1-3]:\s*/gi, '').trim();
+    // Decode HTML entities after stripping tags
+    return decodeHtmlEntities(withoutTags);
   };
 
   const getWordCount = (text: string): number => {
@@ -3498,17 +3525,13 @@ export default function Home() {
                 {costData?.tokens?.formatted?.openai || '0 tokens'}
               </span>
             </div>
-            {((humanizeWordsUsed > 0 || (costData?.humanizeWords && costData.humanizeWords > 0)) || (costData?.humanize && costData.humanize > 0) || (costData?.formatted?.humanize && costData.formatted.humanize !== '$0.0000')) && (
-              <>
-                <div className="cost-divider"></div>
-                <div className="cost-item">
-                  <span className="cost-label">Humanize:</span>
-                  <span className="cost-value">
-                    {(humanizeWordsUsed || costData?.humanizeWords || 0).toLocaleString()} words ({costData?.formatted?.humanize || '$0.0000'})
-                  </span>
-                </div>
-              </>
-            )}
+            <div className="cost-divider"></div>
+            <div className="cost-item">
+              <span className="cost-label">Humanize:</span>
+              <span className="cost-value">
+                {(humanizeWordsUsed || costData?.humanizeWords || 0).toLocaleString()} words ({costData?.formatted?.humanize || '$0.0000'})
+              </span>
+            </div>
             <div className="cost-divider"></div>
             <div className="cost-item">
               <span className="cost-label">Total:</span>
