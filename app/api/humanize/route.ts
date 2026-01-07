@@ -160,8 +160,7 @@ export async function POST(req: NextRequest) {
       console.log("[humanize-api] Formatting humanized text to HTML structure using OpenAI formatter...");
       formattedHtml = await formatHumanizedHtml({
         originalHtml,
-        humanizedText: restoredText,
-        blockMarkers: true
+        humanizedText: restoredText
       });
       console.log("[humanize-api] OpenAI formatter successful");
     } catch (formatError) {
