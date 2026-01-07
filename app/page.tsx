@@ -79,6 +79,7 @@ export default function Home() {
   const [copyPlainTextStatus, setCopyPlainTextStatus] = useState<"idle" | "copied">("idle");
   const [copyPlainTextStatusByTopic, setCopyPlainTextStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   const [isHumanizing, setIsHumanizing] = useState(false);
+  const [humanizingTopicId, setHumanizingTopicId] = useState<string | null>(null); // Track which article is being humanized
   const [humanizeStatusByTopic, setHumanizeStatusByTopic] = useState<Map<string, "idle" | "humanized">>(new Map());
   const [articleBeforeHumanize, setArticleBeforeHumanize] = useState<Map<string, string>>(new Map()); // topicId -> HTML before humanize
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
@@ -1533,6 +1534,7 @@ export default function Home() {
     });
 
     setIsHumanizing(true);
+    setHumanizingTopicId(topicId);
 
     try {
       // Default settings: Balance model (1), Blog style (stored but not sent to API)
@@ -1632,6 +1634,7 @@ export default function Home() {
       }, 3000);
     } finally {
       setIsHumanizing(false);
+      setHumanizingTopicId(null);
     }
   };
 
@@ -4531,6 +4534,47 @@ export default function Home() {
                                   </svg>
                                   <span>{copyPlainTextStatusByTopic.get(topicId) === "copied" ? "Copied!" : "Copy plain text"}</span>
                                 </button>
+                                {humanizeStatusByTopic.get(topicId) === "humanized" ? (
+                                  <button
+                                    type="button"
+                                    className="btn-outline"
+                                    title="Undo humanization and restore original text"
+                                    onClick={() => undoHumanize(topicId)}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M3 7v6h6M21 17v-6h-6M7 3l4 4-4 4M17 21l-4-4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    <span>Undo Humanize</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn-outline"
+                                    title="Humanize text to reduce AI detection (preserves all links and anchors)"
+                                    onClick={() => humanizeArticle(topicId)}
+                                    disabled={isHumanizing}
+                                  >
+                                    {humanizingTopicId === topicId ? (
+                                      <>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" opacity="0.3"/>
+                                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="8 24" strokeDashoffset="0">
+                                            <animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" values="0 12 12;360 12 12"/>
+                                          </circle>
+                                        </svg>
+                                        <span>Humanizing...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                        <span>Humanize txt</span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
                                 <div className="download-dropdown-wrapper">
                                   <button
                                     type="button"
@@ -4693,7 +4737,7 @@ export default function Home() {
                                             onClick={() => humanizeArticle(topicId)}
                                             disabled={isHumanizing}
                                           >
-                                            {isHumanizing ? (
+                                            {humanizingTopicId === topicId ? (
                                               <>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
                                                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" opacity="0.3"/>
@@ -4709,7 +4753,7 @@ export default function Home() {
                                                   <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                                   <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                                 </svg>
-                                                <span>HUMANIZE TXT</span>
+                                                <span>Humanize txt</span>
                                               </>
                                             )}
                                           </button>
