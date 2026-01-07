@@ -4785,7 +4785,6 @@ export default function Home() {
                                 <div className="article-view-modal">
                                   <div className="article-view-content">
                                     <div className="article-view-header">
-                                      <h1 className="article-view-title">{article.titleTag || topic?.workingTitle || topicId}</h1>
                                       <div className="article-view-header-actions">
                                         <button
                                           type="button"
@@ -5017,6 +5016,7 @@ export default function Home() {
                                           <span>Close</span>
                                         </button>
                                       </div>
+                                      <h1 className="article-view-title">{article.titleTag || topic?.workingTitle || topicId}</h1>
                                     </div>
                                     
                                     <div className="article-view-body">
