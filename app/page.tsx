@@ -4223,7 +4223,19 @@ export default function Home() {
 
                                       {/* Title and Actions */}
                                       <div className="topic-preview-header">
-                                        <h5 className="topic-preview-title">{topic.workingTitle}</h5>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                                          <h5 className="topic-preview-title">{topic.workingTitle}</h5>
+                                          {hasArticle && (
+                                            <span className="topic-completed-badge" title="Article created">
+                                              ✓ Article created
+                                            </span>
+                                          )}
+                                          {isGenerating && !hasArticle && (
+                                            <span className="topic-generating-badge" title="Generating article">
+                                              ⏳ Generating...
+                                            </span>
+                                          )}
+                                        </div>
                                         <div className="topic-preview-actions">
                                           <label className="topic-checkbox-label">
                                             <input
@@ -4365,21 +4377,23 @@ export default function Home() {
                                           )}
                                           
                                           {/* Quick Generate Button */}
-                                          <div className="topic-quick-generate" style={{ marginTop: "1rem" }}>
-                                            <button
-                                              type="button"
-                                              className="btn-quick-generate"
-                                              onClick={async (e) => {
-                                                e.stopPropagation();
-                                                await handleQuickGenerate(topic);
-                                              }}
-                                              disabled={isGeneratingArticles || generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")}
-                                            >
-                                              {generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")
-                                                ? "Generating…"
-                                                : "Generate article"}
-                                            </button>
-                                          </div>
+                                          {!isCompleted && (
+                                            <div className="topic-quick-generate" style={{ marginTop: "1rem" }}>
+                                              <button
+                                                type="button"
+                                                className="btn-quick-generate"
+                                                onClick={async (e) => {
+                                                  e.stopPropagation();
+                                                  await handleQuickGenerate(topic);
+                                                }}
+                                                disabled={isGeneratingArticles || isCompleted || generatedArticles.some(a => a.topicTitle === topic.id && (a.status === "generating" || a.status === "ready"))}
+                                              >
+                                                {generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")
+                                                  ? "Generating…"
+                                                  : "Generate article"}
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
 

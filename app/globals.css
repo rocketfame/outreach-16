@@ -1346,10 +1346,10 @@ body {
 }
 
 .topic-preview-card.topic-completed {
-  opacity: 0.7;
+  opacity: 0.75;
   background: var(--secondary);
   border-color: var(--border);
-  pointer-events: none;
+  /* pointer-events: none; - закоментовано, щоб checkbox та інші елементи залишалися доступними для перегляду */
 }
 
 .topic-preview-card.topic-completed .topic-preview-title {
