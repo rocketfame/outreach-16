@@ -5,6 +5,7 @@ import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle } from "./hooks/usePersistentAppState";
+import { copyArticleAsPlainText, downloadArticleAsTxt, extractPlainTextFromElement } from "@/lib/articlePlainText";
 
 type LoadingStep = "topics" | "outline" | "draft" | null;
 
@@ -1475,12 +1476,11 @@ export default function Home() {
       }
       return; // Exit early for PDF
     } else {
-      // For plain text, strip HTML tags but preserve structure
-      const plainText = content
-        .replace(/<[^>]*>/g, '') // Remove HTML tags
-        .replace(/H[1-3]:\s*/gi, '') // Remove H1:/H2:/H3: prefixes
-        .replace(/\n\s*\n\s*\n/g, '\n\n'); // Normalize line breaks
-      blob = new Blob([plainText], { type: "text/plain" });
+      // For plain text, use structured extraction for better formatting
+      const temp = document.createElement('div');
+      temp.innerHTML = content;
+      const plainText = extractPlainTextFromElement(temp);
+      blob = new Blob([plainText], { type: "text/plain;charset=utf-8" });
       filename = `${title.replace(/[^a-z0-9]/gi, "_")}.txt`;
       mimeType = "text/plain";
     }
@@ -4290,6 +4290,63 @@ export default function Home() {
                                   </svg>
                                   <span>{copyStatusByTopic.get(topicId) === "copied" ? "Copied!" : "Copy text"}</span>
                                 </button>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  title="Copy article text with clean paragraphs for AI checkers"
+                                  onClick={async () => {
+                                    try {
+                                      // Get the article HTML content
+                                      const html = article.articleBodyHtml || article.fullArticleText || articleText;
+                                      
+                                      // Try to find the rendered article in the modal if it's open
+                                      let articleElement: HTMLElement | null = null;
+                                      if (isViewing && viewingArticle === topicId) {
+                                        const modal = document.querySelector('.article-view-modal');
+                                        if (modal) {
+                                          articleElement = modal.querySelector('.article-view-text') as HTMLElement;
+                                        }
+                                      }
+                                      
+                                      // If not found in modal, create a temporary element from HTML
+                                      if (!articleElement) {
+                                        const temp = document.createElement('div');
+                                        temp.innerHTML = html;
+                                        articleElement = temp;
+                                      }
+                                      
+                                      if (articleElement) {
+                                        await copyArticleAsPlainText(articleElement);
+                                        setNotification({
+                                          message: "Plain text copied for AI checkers",
+                                          time: new Date().toLocaleTimeString(),
+                                          visible: true,
+                                        });
+                                        setTimeout(() => {
+                                          setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                        }, 2000);
+                                      } else {
+                                        throw new Error("Could not find article element");
+                                      }
+                                    } catch (err) {
+                                      console.error('Failed to copy plain text:', err);
+                                      setNotification({
+                                        message: "Could not copy text. Please try again.",
+                                        time: new Date().toLocaleTimeString(),
+                                        visible: true,
+                                      });
+                                      setTimeout(() => {
+                                        setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                      }, 2000);
+                                    }
+                                  }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                  <span>Copy plain text</span>
+                                </button>
                                 <div className="download-dropdown-wrapper">
                                   <button
                                     type="button"
@@ -4394,6 +4451,47 @@ export default function Home() {
                                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                           </svg>
                                           <span>{copyStatus === "copied" && viewingArticle === topicId ? "Copied!" : "Copy text"}</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn-outline btn-sm"
+                                          title="Copy article text with clean paragraphs for AI checkers"
+                                          onClick={async () => {
+                                            try {
+                                              // Find the rendered article element in the modal
+                                              const articleElement = document.querySelector('.article-view-text') as HTMLElement;
+                                              
+                                              if (articleElement) {
+                                                await copyArticleAsPlainText(articleElement);
+                                                setNotification({
+                                                  message: "Plain text copied for AI checkers",
+                                                  time: new Date().toLocaleTimeString(),
+                                                  visible: true,
+                                                });
+                                                setTimeout(() => {
+                                                  setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                                }, 2000);
+                                              } else {
+                                                throw new Error("Could not find article element");
+                                              }
+                                            } catch (err) {
+                                              console.error('Failed to copy plain text:', err);
+                                              setNotification({
+                                                message: "Could not copy text. Please try again.",
+                                                time: new Date().toLocaleTimeString(),
+                                                visible: true,
+                                              });
+                                              setTimeout(() => {
+                                                setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                              }, 2000);
+                                            }
+                                          }}
+                                        >
+                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                          <span>Copy plain text</span>
                                         </button>
                                         <button
                                           type="button"
