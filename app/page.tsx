@@ -3490,15 +3490,40 @@ export default function Home() {
             console.log('[cost-tracker] Setting cost data:', data.totals);
             console.log('[cost-tracker] Tokens:', data.tokens);
             console.log('[cost-tracker] Formatted values:', data.totals.formatted);
-            setCostData({
-              ...data.totals,
-              humanize: 0,
-              formatted: {
-                ...data.totals.formatted,
-                humanize: '$0.0000',
-              },
-              tokens: data.tokens,
-              humanizeWords: 0,
+            setCostData(prev => {
+              // Preserve humanize data when updating from API
+              const currentHumanizeWords = prev?.humanizeWords ?? humanizeWordsUsed;
+              const currentHumanize = currentHumanizeWords * HUMANIZE_COST_PER_WORD;
+              const currentHumanizeFormatted = prev?.formatted?.humanize || 
+                new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 4,
+                }).format(currentHumanize);
+              
+              // Calculate new total with preserved humanize cost
+              const baseCost = (data.totals.tavily || 0) + (data.totals.openai || 0);
+              const newTotal = baseCost + currentHumanize;
+              const totalFormatted = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4,
+              }).format(newTotal);
+              
+              return {
+                ...data.totals,
+                humanize: currentHumanize,
+                total: newTotal,
+                formatted: {
+                  ...data.totals.formatted,
+                  humanize: currentHumanizeFormatted,
+                  total: totalFormatted,
+                },
+                tokens: data.tokens,
+                humanizeWords: currentHumanizeWords,
+              };
             });
           } else {
             console.warn('[cost-tracker] Invalid response structure:', data);
@@ -3521,43 +3546,48 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Update costData with humanization costs
+  // Update costData with humanization costs whenever humanizeWordsUsed changes
   useEffect(() => {
-    if (costData && costData.humanizeWords !== humanizeWordsUsed) {
-      const humanizeCost = humanizeWordsUsed * HUMANIZE_COST_PER_WORD;
-      const humanizeFormatted = new Intl.NumberFormat('en-US', {
+    if (!costData) return;
+    
+    // Only update if humanizeWords actually changed
+    if (costData.humanizeWords === humanizeWordsUsed) return;
+    
+    // Always recalculate humanize costs when words change
+    const humanizeCost = humanizeWordsUsed * HUMANIZE_COST_PER_WORD;
+    const humanizeFormatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    }).format(humanizeCost);
+    
+    setCostData(prev => {
+      if (!prev) return prev;
+      
+      // Get base costs from API (tavily + openai)
+      const baseCost = (prev.tavily || 0) + (prev.openai || 0);
+      const newTotal = baseCost + humanizeCost;
+      const totalFormatted = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
         minimumFractionDigits: 4,
         maximumFractionDigits: 4,
-      }).format(humanizeCost);
+      }).format(newTotal);
       
-      setCostData(prev => {
-        if (!prev) return prev;
-        // Calculate total excluding previous humanize cost
-        const baseTotal = prev.total - (prev.humanize || 0);
-        const newTotal = baseTotal + humanizeCost;
-        const totalFormatted = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 4,
-          maximumFractionDigits: 4,
-        }).format(newTotal);
-        
-        return {
-          ...prev,
-          humanize: humanizeCost,
-          total: newTotal,
-          formatted: {
-            ...prev.formatted,
-            humanize: humanizeFormatted,
-            total: totalFormatted,
-          },
-          humanizeWords: humanizeWordsUsed,
-        };
-      });
-    }
-  }, [humanizeWordsUsed]);
+      return {
+        ...prev,
+        humanize: humanizeCost,
+        total: newTotal,
+        formatted: {
+          ...prev.formatted,
+          humanize: humanizeFormatted,
+          total: totalFormatted,
+        },
+        humanizeWords: humanizeWordsUsed,
+      };
+    });
+  }, [humanizeWordsUsed, costData]);
 
   // Prevent hydration mismatch by not rendering until hydrated
   if (!isHydrated) {
@@ -4506,7 +4536,19 @@ export default function Home() {
                                   type="button"
                                   className="btn-outline"
                                   onClick={async () => {
-                                    const html = article.articleBodyHtml || article.fullArticleText || articleText;
+                                    // Use the most up-to-date version (articleBodyHtml is updated after humanization)
+                                    const html = article.articleBodyHtml || article.fullArticleText || article.editedText || "";
+                                    if (!html) {
+                                      setNotification({
+                                        message: "No article content to copy",
+                                        time: new Date().toLocaleTimeString(),
+                                        visible: true,
+                                      });
+                                      setTimeout(() => {
+                                        setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                      }, 2000);
+                                      return;
+                                    }
                                     // Create plain text fallback
                                     const temp = document.createElement('div');
                                     temp.innerHTML = html;
@@ -4571,8 +4613,11 @@ export default function Home() {
                                   title="Copy article text with clean paragraphs for AI checkers"
                                   onClick={async () => {
                                     try {
-                                      // Get the article HTML content
-                                      const html = article.articleBodyHtml || article.fullArticleText || articleText;
+                                      // Get the most up-to-date article HTML content (articleBodyHtml is updated after humanization)
+                                      const html = article.articleBodyHtml || article.fullArticleText || article.editedText || "";
+                                      if (!html) {
+                                        throw new Error("No article content available");
+                                      }
                                       
                                       // Try to find the rendered article in the modal if it's open
                                       let articleElement: HTMLElement | null = null;
@@ -4687,7 +4732,7 @@ export default function Home() {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        downloadArticle(topicId, articleText, "txt");
+                                        downloadArticle(topicId, article.articleBodyHtml || article.fullArticleText || article.editedText || "", "txt");
                                         (document.querySelector(".download-dropdown.show") as HTMLElement)?.classList.remove("show");
                                       }}
                                     >
@@ -4696,7 +4741,7 @@ export default function Home() {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        downloadArticle(topicId, articleText, "html");
+                                        downloadArticle(topicId, article.articleBodyHtml || article.fullArticleText || article.editedText || "", "html");
                                         (document.querySelector(".download-dropdown.show") as HTMLElement)?.classList.remove("show");
                                       }}
                                     >
@@ -4705,7 +4750,7 @@ export default function Home() {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        downloadArticle(topicId, articleText, "pdf");
+                                        downloadArticle(topicId, article.articleBodyHtml || article.fullArticleText || article.editedText || "", "pdf");
                                         (document.querySelector(".download-dropdown.show") as HTMLElement)?.classList.remove("show");
                                       }}
                                     >
@@ -4737,7 +4782,19 @@ export default function Home() {
                                           type="button"
                                           className="btn-outline btn-sm"
                                           onClick={async () => {
-                                            const html = article.articleBodyHtml || article.fullArticleText || articleText;
+                                            // Use the most up-to-date version (articleBodyHtml is updated after humanization)
+                                            const html = article.articleBodyHtml || article.fullArticleText || article.editedText || "";
+                                            if (!html) {
+                                              setNotification({
+                                                message: "No article content to copy",
+                                                time: new Date().toLocaleTimeString(),
+                                                visible: true,
+                                              });
+                                              setTimeout(() => {
+                                                setNotification(prev => prev ? { ...prev, visible: false } : null);
+                                              }, 2000);
+                                              return;
+                                            }
                                             // Create plain text fallback
                                             const temp = document.createElement('div');
                                             temp.innerHTML = html;
@@ -4975,7 +5032,7 @@ export default function Home() {
                                           className="article-view-text" 
                                           dangerouslySetInnerHTML={{ 
                                             __html: (() => {
-                                              const htmlContent = article.articleBodyHtml || article.fullArticleText || articleText;
+                                              const htmlContent = article.articleBodyHtml || article.fullArticleText || article.editedText || "";
                                               // Remove H1/H2/H3 prefixes
                                               let processed = htmlContent.replace(/H[1-3]:\s*/gi, '');
                                               // Add target="_blank" and rel="noopener noreferrer" to all links
@@ -5096,7 +5153,7 @@ export default function Home() {
                                     <span>Article text</span>
                                     <textarea
                                       className="article-textarea"
-                                      value={articleText}
+                                      value={article.articleBodyHtml || article.fullArticleText || article.editedText || ""}
                                       onChange={(e) => {
                                         updateGeneratedArticles(
                                           generatedArticles.map(a =>
