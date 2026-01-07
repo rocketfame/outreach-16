@@ -22,8 +22,8 @@ const PRICING = {
 };
 
 export interface CostEntry {
-  service: 'tavily' | 'openai';
-  type: 'search' | 'image_search' | 'chat' | 'image_generation';
+  service: 'tavily' | 'openai' | 'aihumanize';
+  type: 'search' | 'image_search' | 'chat' | 'image_generation' | 'humanize';
   cost: number;
   details?: {
     queries?: number;
@@ -31,6 +31,7 @@ export interface CostEntry {
     images?: number;
     model?: string;
     size?: string;
+    wordsUsed?: number;
   };
   timestamp: number;
 }
@@ -118,6 +119,23 @@ class CostTracker {
   }
 
   /**
+   * Track AIHumanize API cost
+   */
+  trackHumanize(wordsUsed: number, cost?: number): void {
+    const totalCost = cost !== undefined ? cost : wordsUsed * PRICING.aihumanize.words;
+
+    this.costs.push({
+      service: 'aihumanize',
+      type: 'humanize',
+      cost: totalCost,
+      details: {
+        wordsUsed,
+      },
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
    * Get total tokens for current session
    */
   getTotalTokens(): {
@@ -153,19 +171,23 @@ class CostTracker {
   getTotalCosts(): {
     tavily: number;
     openai: number;
+    aihumanize: number;
     total: number;
     breakdown: {
       tavily: { search: number; image_search: number };
       openai: { chat: number; image_generation: number };
+      aihumanize: { humanize: number };
     };
   } {
     const breakdown = {
       tavily: { search: 0, image_search: 0 },
       openai: { chat: 0, image_generation: 0 },
+      aihumanize: { humanize: 0 },
     };
 
     let tavilyTotal = 0;
     let openaiTotal = 0;
+    let aihumanizeTotal = 0;
 
     this.costs.forEach((entry) => {
       if (entry.service === 'tavily') {
@@ -182,13 +204,19 @@ class CostTracker {
         } else if (entry.type === 'image_generation') {
           breakdown.openai.image_generation += entry.cost;
         }
+      } else if (entry.service === 'aihumanize') {
+        aihumanizeTotal += entry.cost;
+        if (entry.type === 'humanize') {
+          breakdown.aihumanize.humanize += entry.cost;
+        }
       }
     });
 
     return {
       tavily: tavilyTotal,
       openai: openaiTotal,
-      total: tavilyTotal + openaiTotal,
+      aihumanize: aihumanizeTotal,
+      total: tavilyTotal + openaiTotal + aihumanizeTotal,
       breakdown,
     };
   }

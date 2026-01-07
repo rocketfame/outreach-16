@@ -1,4 +1,7 @@
 // app/api/humanize/route.ts
+// DEPRECATED: This endpoint is no longer used.
+// Humanization now happens during generation via humanizeOnWrite toggle.
+// This file is kept for backward compatibility but should not be called.
 // Humanize TXT endpoint: Uses AIHumanize.io API to humanize article text while preserving anchors
 
 import { NextRequest, NextResponse } from "next/server";

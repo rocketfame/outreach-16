@@ -51,6 +51,7 @@ export type GeneratedArticle = {
   editedText?: string;
   editHistory?: EditHistoryEntry[]; // History of edits made to this article
   status: "ready" | "generating" | "error";
+  humanizedOnWrite?: boolean; // Flag indicating if article was humanized during generation
 };
 
 export type AppPersistedState = {
@@ -70,6 +71,7 @@ export type AppPersistedState = {
   referenceImageBase64?: string; // Reference image for style personalization (base64, stored only if small)
   mode: "discovery" | "direct";
   lightHumanEditEnabled: boolean;
+  humanizeOnWriteEnabled?: boolean; // Enable live humanization during generation
   theme: "light" | "dark"; // Theme preference
 };
 

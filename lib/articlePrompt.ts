@@ -79,7 +79,7 @@ You will receive:
 • ANCHOR_TEXT. Anchor text for the backlink, use it EXACTLY as given, do not change the wording: [[ANCHOR_TEXT]]
 • ANCHOR_URL for the backlink (use it EXACTLY as given): [[ANCHOR_URL]]
 • TRUST_SOURCES_LIST: pre validated external sources from Tavily search in the format "Name|URL".
-Each item has at least: title, url, and a short snippet.
+  Each item has at least: title, url, and a short snippet.
 All sources come from the Tavily search API - use only these URLs, do not invent new ones.
 
 Audience:
@@ -176,7 +176,7 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
 • The article MUST be approximately [[WORD_COUNT]] words long. This is NOT a suggestion, it is a HARD REQUIREMENT.
-• Before outputting the final article, count the words in articleBodyHtml (excluding HTML tags).
+• Before outputting the final article, count the words in articleBodyText (as plain text).
 • If the count is far off (more than a 10 percent difference), extend or trim the content until it is close to [[WORD_COUNT]].
 • The final article MUST be within 90-110 percent of the target length (for example, for 1000 words the article must be 900-1100 words).
 • Do NOT write a short article (300-400 words) when a long one is required (1000+ words).
@@ -190,10 +190,10 @@ CRITICAL REQUIREMENTS - READ CAREFULLY:
 Structure:
 • Respect the structure implied by the brief (H1/H2/H3 etc.).
 • Do NOT write things like "H1: …", "H2: …", "H3: …" in the body.
-• Just use normal headings and paragraphs; hierarchy is conveyed by text and HTML tags, not by labels in the copy.
+• Just use normal headings and paragraphs; hierarchy is conveyed by text structure, not by labels in the copy.
 • Write a full article of [[WORD_COUNT]] words in [[LANGUAGE]]. Brand and platform names must always be capitalized correctly.
-• Structure the article with clear H1, H2, H3 headings using proper HTML tags: <h1>, <h2>, <h3>.
-• Use <h1> for the main article title, <h2> for major sections, and <h3> for subsections.
+• Structure the article with clear headings written as plain text on their own lines, followed by double newline.
+• Use plain text headings for the main article title, major sections, and subsections.
 
 Suggested flow:
 • Short intro that hooks the reader and hints at the solution.
@@ -219,12 +219,13 @@ Repetition:
 Commercial anchor link (user's brand/service):
 • The topic brief may already contain anchor phrases that must link to a specific product or service via [[ANCHOR_TEXT]] and [[ANCHOR_URL]].
 • When such anchors are provided, integrate them naturally into the article body as parts of sentences, not as ads or isolated CTAs.
-• In the first 2-3 paragraphs, naturally insert the exact anchor [[ANCHOR_TEXT]] and link it to [[ANCHOR_URL]].
-• CRITICAL: Use this commercial anchor EXACTLY ONCE in the entire article. You MUST NOT use it twice, even if it looks very natural.
-• Do not change or translate the anchor text; keep it exactly as given.
-• Make the sentence around the anchor natural, specific, and relevant to the topic.
-• After using it once, never mention [[ANCHOR_TEXT]] again and never link to [[ANCHOR_URL]] again in the article.
+• In the first 2-3 paragraphs, naturally insert the placeholder [A1] where [[ANCHOR_TEXT]] should appear.
+• CRITICAL: Use the [A1] placeholder EXACTLY ONCE in the entire article. You MUST NOT use it twice, even if it looks very natural.
+• Do not change or translate the anchor text; the placeholder [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
+• Make the sentence around the placeholder natural, specific, and relevant to the topic.
+• After using it once, never mention [A1] or [[ANCHOR_TEXT]] again in the article.
 • Do NOT add any extra links to brands or services beyond what is explicitly requested.
+• Example: "Some teams use [A1] to boost their early signals." (where [A1] will become the actual anchor link)
 
 Brand integration ([[BRAND_NAME]] - OPTIONAL):
 • ONLY if [[BRAND_NAME]] is provided and not empty:
@@ -288,15 +289,18 @@ Examples:
 • Place sources in the first half or middle of the article, not only at the end.
 • Each source should add something concrete: a number, a term, a trend, or a guideline.
 • The source reference must flow naturally inside the sentence and must not break its structure.
-	6.	Link formatting - ANCHOR TEXT RULES (CRITICAL)
-• Every external source must appear as an anchor INSIDE a natural sentence.
-• FORBIDDEN: using the full URL as visible anchor text.
+	6.	Link formatting - PLACEHOLDER RULES (CRITICAL)
+• Every external source must appear as a placeholder INSIDE a natural sentence.
+• Use placeholders [T1], [T2], [T3] for trust sources (in order of appearance).
+• FORBIDDEN: using the full URL as visible text.
 • FORBIDDEN: long, technical anchor text that harms readability.
-• REQUIRED: use short, natural anchor text (2-5 words) that fits smoothly into the sentence.
+• REQUIRED: the placeholder should fit naturally into the sentence where a short anchor text (2-5 words) would appear.
+• The placeholder will be replaced with actual anchor text during processing.
 • Anchor text can be:
 • A brand name ("RouteNote", "Spotify").
 • A short descriptive phrase ("recent analysis", "industry report", "platform guidelines").
-• The sentence should remain clear even if you remove the link and leave only the anchor wording.
+• The sentence should remain clear even if you remove the placeholder.
+• Example: "Research from [T1] shows that..." (where [T1] will become the actual anchor link)
 • Do not change or clean the URL - use it EXACTLY as given in [[TRUST_SOURCES_LIST]].
 	7.	MANDATORY SOURCE USAGE
 • If [[TRUST_SOURCES_LIST]] contains ANY sources, you MUST use 1-3 of them.
@@ -304,41 +308,37 @@ Examples:
 • Write without external links only if [[TRUST_SOURCES_LIST]] is completely empty.
 • If all sources seem slightly off topic, choose the 1-3 closest ones and integrate them as naturally as possible.
 • Focus on strong reasoning, real life style examples, and clear explanations, BUT always add 1-3 external links when the list is not empty.
-	8.	MANDATORY VALIDATION - EXTERNAL LINKS
-• Before final output, verify that you have added EXACTLY 1-3 external links.
-• If you have 0 links and [[TRUST_SOURCES_LIST]] is not empty, you MUST add at least 1.
-• If you have more than 3 links, reduce them to 3 and keep only the most relevant ones.
-• Every external link must be from [[TRUST_SOURCES_LIST]] and be integrated organically in the article body.
+	8.	MANDATORY VALIDATION - EXTERNAL LINK PLACEHOLDERS
+• Before final output, verify that you have added EXACTLY 1-3 trust source placeholders ([T1], [T2], [T3]).
+• If you have 0 placeholders and [[TRUST_SOURCES_LIST]] is not empty, you MUST add at least 1.
+• If you have more than 3 placeholders, reduce them to 3 and keep only the most relevant ones.
+• Every placeholder must correspond to a source from [[TRUST_SOURCES_LIST]] and be integrated organically in the article body.
 
-For each link verify:
-a) "Does this EXACT URL exist in [[TRUST_SOURCES_LIST]]?"
-b) "Is the anchor short (2-5 words) and natural, not a full URL?"
-c) "Does the link fit naturally into the sentence?"
+For each placeholder verify:
+a) "Does the corresponding URL exist in [[TRUST_SOURCES_LIST]]?"
+b) "Does the placeholder fit naturally into the sentence where a short anchor (2-5 words) would appear?"
+c) "Does the sentence remain clear with the placeholder?"
 
-• If any link does not match a record in [[TRUST_SOURCES_LIST]], REMOVE it immediately.
-• If any link uses a full URL as anchor text, REPLACE it with a short natural phrase.
-• If you cannot verify a source, do not use it.
-• CRITICAL: In the final text, count your links. You MUST have 1-3 external links from [[TRUST_SOURCES_LIST]] (if the list is not empty).
+• If any placeholder does not match a record in [[TRUST_SOURCES_LIST]], REMOVE it immediately.
+• CRITICAL: In the final text, count your placeholders. You MUST have 1-3 trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]] (if the list is not empty).
 	9.	EXAMPLES OF CORRECT VS INCORRECT INTEGRATION
 
-CORRECT (natural integration with short anchor):
+CORRECT (natural integration with placeholder):
 "Playlists remain important, but where the power sits has changed. Editorial placements are rare;
 user curated and niche algorithmic playlists are where most indie artists actually gain momentum.
-A breakdown on RouteNote
-shows how smaller, targeted lists often bring more engaged listeners than a single massive playlist."
+A breakdown on [T1] shows how smaller, targeted lists often bring more engaged listeners than a single massive playlist."
 
-INCORRECT (full URL as anchor - FORBIDDEN):
+INCORRECT (full URL as text - FORBIDDEN):
 "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows…"
 
-INCORRECT (link breaks sentence flow - FORBIDDEN):
-"Playlists remain important. RouteNote.
+INCORRECT (placeholder breaks sentence flow - FORBIDDEN):
+"Playlists remain important. [T1].
 Editorial placements are rare."
 
-CORRECT (source integrated naturally):
-"Research from Spotify's blog
-indicates that short form content is gaining traction among independent artists."
+CORRECT (placeholder integrated naturally):
+"Research from [T1] indicates that short form content is gaining traction among independent artists."
 
-REMEMBER: The link should feel like a natural part of the sentence, not like a footnote.
+REMEMBER: The placeholder should feel like a natural part of the sentence, not like a footnote. It will be replaced with the actual anchor link during processing.
 
 ⸻
 
@@ -362,20 +362,24 @@ Technical requirements:
 {
 "titleTag": "…",
 "metaDescription": "…",
-"articleBodyHtml": "…"
+"articleBodyText": "…"
 }
 
-• The articleBodyHtml field must:
-• Use proper HTML heading tags: <h1> for the main title, <h2> for major sections, <h3> for subsections. DO NOT use visible prefixes like "H1:", "H2:", "H3:".
-• Use <b> or <strong> for every bold phrase and any SEO keywords you choose to highlight.
-• Wrap the main commercial anchor [[ANCHOR_TEXT]] in an <a> tag and also in <b> (bold clickable link): <b><a href="[[ANCHOR_URL]]">[[ANCHOR_TEXT]]</a></b>.
-• Wrap each trust source anchor from [[TRUST_SOURCES_LIST]] in <a> and <b> tags, using the exact URL from [[TRUST_SOURCES_LIST]].
-• Use normal HTML paragraphs (<p>…</p>) or <br> for line breaks.
-• Use <ul><li>…</li></ul> for bullet lists and <ol><li>…</li></ol> for numbered lists.
-• Do NOT use Markdown syntax (no **bold**, no [link](url)).
+• The articleBodyText field must contain PLAIN TEXT ONLY (no HTML tags):
+• Use double newlines (\n\n) to separate paragraphs.
+• Use single newlines (\n) for line breaks within paragraphs if needed.
+• For headings, write them as plain text on their own line, followed by double newline.
+• For lists, use "- " prefix for bullet items, each on a new line.
+• Use **bold** or *italic* markdown-style formatting for emphasis (will be converted to HTML later).
+• CRITICAL - Use placeholders for links:
+  • For the commercial anchor, use [A1] placeholder where [[ANCHOR_TEXT]] should appear in the text.
+  • For trust sources, use [T1], [T2], [T3] placeholders where each trust source should appear.
+  • Example: "Some teams use [A1] to boost their results. Research from [T1] shows that..."
+  • DO NOT include actual URLs or HTML <a> tags in the text.
+  • DO NOT write "click here" or similar generic anchor text - use the placeholder directly in context.
+• Do NOT use HTML tags (<h1>, <p>, <a>, etc.) - only plain text with newlines and placeholders.
 • Do NOT wrap the JSON in code fences, backticks, or markdown code blocks.
 • Do NOT include any extra text outside the JSON object.
-• Do not add extra spaces, tabs, or blank lines that create visible gaps.
 
 CRITICAL CHARACTER RULES (prevent AI detection patterns):
 • NEVER use em dash or en dash characters.
@@ -402,19 +406,19 @@ After generating the article, perform a quick human QA:
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
 
 FINAL CHECKLIST BEFORE OUTPUT:
-• Word count is approximately [[WORD_COUNT]] words (counted in articleBodyHtml without HTML tags).
+• Word count is approximately [[WORD_COUNT]] words (counted in articleBodyText as plain text).
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty).
 • The commercial anchor [[ANCHOR_TEXT]] → [[ANCHOR_URL]] is integrated naturally (if provided).
 • The article structure matches the brief requirements.
-• All formatting rules are followed (HTML tags, bold phrases, link rules, character rules).
+• All formatting rules are followed (plain text with newlines, markdown-style bold, placeholder rules, character rules).
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 
 Now generate the response as JSON only, with no explanations:
 {
-"titleTag": "Your SEO title tag here (max 60 characters)",
-"metaDescription": "Your meta description here (150-160 characters)",
+  "titleTag": "Your SEO title tag here (max 60 characters)",
+  "metaDescription": "Your meta description here (150-160 characters)",
 "articleBodyHtml": "Your article heading\n\nFirst paragraph with bold keywords and <a href=\"[[ANCHOR_URL]]\">[[ANCHOR_TEXT]] naturally integrated.\n\nSecond section heading\n\nMore content…"
 }
 `.trim();
@@ -715,8 +719,9 @@ no creator-centric preaching unless [[TOPIC_BRIEF]] explicitly asks for it.
 Any brand mention in list articles is allowed ONLY in the final paragraph,
 and ONLY under the rules in section 3.4.
 	2.	Main list (core content)
-	•	Use <h1> for the main title, <h2>/<h3> if you need internal headings.
-	•	Use <ol> or <ul> with <li> for the items.
+	•	Write the main title as plain text on its own line, followed by double newline.
+	•	Use "- " prefix for bullet list items, each on a new line.
+	•	For numbered lists, use "1. ", "2. ", etc. prefix, each on a new line.
 For festivals / events / platforms / services / tools you MUST:
 • Give each item a clear name.
 • Include location (city + country or region) when relevant.
@@ -728,11 +733,11 @@ clearly asks for a different number.
 	3.	External sources in list articles
 	•	Use 1-3 sources from [[TRUST_SOURCES_LIST]] only if they clearly match the topic.
 	•	Prefer official websites and strong editorial roundups.
-	•	Integrate links inside the relevant item description.
-	•	Link format (always bold + clickable, EXACT format required):
-<b><a href="EXACT_URL_FROM_LIST" target="_blank" rel="noopener noreferrer">short natural anchor</a></b>
+	•	Integrate placeholders ([T1], [T2], [T3]) inside the relevant item description.
+	•	Placeholder format: Use [T1], [T2], [T3] where the anchor text should appear.
+	•	Example: "This festival [T1] attracts thousands of visitors each year."
 	•	Never show raw URLs as visible text.
-	•	Never create links with empty href attributes.
+	•	Placeholders will be replaced with actual anchor links during processing.
 	4.	Brand and growth content in list topics (VERY LIMITED)
 	•	Do NOT create separate H2/H3 sections like
 "How to use these festivals to grow your music",
@@ -750,8 +755,8 @@ you may add ONE very short neutral sentence about the brand in the concluding pa
 	•	For all other content purposes, skip [[BRAND_NAME]] completely in list articles.
 	5.	Conclusion for list topics (STRICT RULES)
 	•	After the main list, you may have:
-a) ONE optional H2 section "Where this list comes from" / "Sources" with external links (if used);
-b) ONE short concluding paragraph as a plain <p> (NO H2/H3 heading).
+a) ONE optional "Where this list comes from" / "Sources" section heading (plain text) with external link placeholders (if used);
+b) ONE short concluding paragraph as plain text (NO heading above it).
 	•	The concluding paragraph should:
 • be one short paragraph (3-5 sentences max);
 • summarize how the reader can use the list (plan travel, discover events, shortlist platforms, test tools, compare options, etc.);
@@ -769,7 +774,7 @@ or when [[CONTENT_PURPOSE]] = "Educational guide" and the brief does not demand 
 	•	Tie the problem clearly to [[NICHE]] and [[MAIN_PLATFORM]].
 	•	If [[TOPIC_BRIEF]] asks for specific angles or examples, reflect them here.
 	2.	Main body
-	•	2-4 <h2> sections with practical steps, frameworks or tips.
+	•	2-4 section headings (written as plain text on their own lines) with practical steps, frameworks or tips.
 	•	Use concrete examples tied to [[NICHE]] and [[MAIN_PLATFORM]]
 (for example: CRM funnel in casino, Spotify release strategy, recruiting flow for HR, VPN user journey, etc.).
 	•	Follow any structural requests in [[TOPIC_BRIEF]] where possible
@@ -796,17 +801,17 @@ or "end with a short checklist"), follow that as long as it stays concise.
 The commercial anchor is independent from [[BRAND_NAME]].
 	1.	If anchor text OR URL are invalid
 (empty, placeholder like "Enter anchor text", or URL is empty / "https://example.com" / whitespace only):
-	•	You MUST NOT insert any commercial anchor at all.
-	•	You MUST NOT create any <a> tag with empty href.
+	•	You MUST NOT insert any commercial anchor placeholder at all.
+	•	You MUST NOT use [A1] placeholder.
 	•	You MUST NOT guess or invent a branded link.
 	•	If you see [[ANCHOR_TEXT]] or [[ANCHOR_URL]] in the prompt but they are empty/invalid,
 treat the article as if no commercial link was requested.
 	2.	If BOTH [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid (non empty, not placeholders):
-	•	Insert the exact anchor once in the first 2-3 paragraphs:
-<b><a href="[[ANCHOR_URL]]" target="_blank" rel="noopener noreferrer">[[ANCHOR_TEXT]]</a></b>
-	•	CRITICAL: href must be exactly [[ANCHOR_URL]] - never empty, never a placeholder.
-	•	Use this commercial anchor only once in the whole article.
-	•	Do not translate or modify the anchor text.
+	•	Insert the [A1] placeholder once in the first 2-3 paragraphs where [[ANCHOR_TEXT]] should appear.
+	•	Example: "Some teams use [A1] to boost their early signals."
+	•	CRITICAL: Use [A1] placeholder only once in the whole article.
+	•	The placeholder will be replaced with the actual anchor link during processing.
+	•	Do not translate or modify the anchor text - the placeholder represents [[ANCHOR_TEXT]].
 
 ================================
 6. EXTERNAL SOURCES (TAVILY)
@@ -814,11 +819,10 @@ treat the article as if no commercial link was requested.
 • Use only URLs from [[TRUST_SOURCES_LIST]].
 • 1-3 sources per article, only if they are truly relevant.
 • Each source must support a specific point (definition, number, trend, guideline, case).
-• Integrate each source naturally inside a sentence with a short anchor
-(brand name or 2-4 word phrase).
-• Link format (EXACT, mandatory):
-<b><a href="URL_FROM_LIST" target="_blank" rel="noopener noreferrer">anchor text</a></b>
-• Never create links with empty href attributes (<a href=""></a> is forbidden).
+• Integrate each source naturally inside a sentence using placeholders [T1], [T2], [T3].
+• Placeholder format: Use [T1] for the first source, [T2] for the second, [T3] for the third.
+• Example: "Research from [T1] shows that..." (where [T1] will become the actual anchor link)
+• Placeholders will be replaced with actual anchor links during processing.
 
 Relevance rules:
 	•	Use a source only if:
@@ -913,7 +917,7 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 	•	Include tangents or asides: brief digressions that a human writer might naturally include (e.g., "This reminds me of a similar situation I saw...", "One thing to watch here is...", "A quick note on this...", "Side note: this is where many creators trip up...").
 	•	Mix declarative and imperative sentences: balance statements ("This works because...") with direct commands ("Try this approach", "Avoid that trap", "Test this first").
 
-Character rules for the FINAL OUTPUT (articleBodyHtml):
+Character rules for the FINAL OUTPUT (articleBodyText):
 	•	NEVER use em dash (—) or en dash (–).
 	•	Use ONLY regular hyphen "-" for ranges (for example "5-10 items") or normal commas/periods for pauses.
 	•	NEVER use smart quotes (" " or ' '). Use ONLY straight quotes (" " and ' ').
@@ -922,7 +926,7 @@ Character rules for the FINAL OUTPUT (articleBodyHtml):
 	•	Use ONLY standard ASCII punctuation characters.
 	•	Avoid putting single words in quotes for emphasis; use quotes only for real speech, titles or clearly marked terms.
 
-Before final output, mentally scan articleBodyHtml and make sure these character rules are respected.
+Before final output, mentally scan articleBodyText and make sure these character rules are respected.
 
 ================================
 8. SEO META AND OUTPUT FORMAT
@@ -946,19 +950,23 @@ Technical format:
 {
 "titleTag": "…",
 "metaDescription": "…",
-"articleBodyHtml": "…"
+"articleBodyText": "…"
 }
 
-• articleBodyHtml must be valid HTML:
-	•	<h1> for the main title, <h2> and <h3> for sections and subsections;
-	•	<p> for paragraphs;
-	•	<ul>/<ol> with <li> for lists;
-	•	<b> for important text;
-	•	all links MUST use this exact format:
-<b><a href="URL" target="_blank" rel="noopener noreferrer">anchor</a></b>
-	•	CRITICAL: target must be "_blank" (with underscore), not "blank".
-	•	NEVER create links with empty href attributes (<a href=""></a> is forbidden).
-	•	Do NOT output Markdown.
+• articleBodyText must contain PLAIN TEXT ONLY (no HTML tags):
+	•	Use double newlines (\n\n) to separate paragraphs.
+	•	Use single newlines (\n) for line breaks within paragraphs if needed.
+	•	For headings, write them as plain text on their own line, followed by double newline.
+	•	For lists, use "- " prefix for bullet items, each on a new line.
+	•	For numbered lists, use "1. ", "2. ", etc. prefix, each on a new line.
+	•	Use **bold** or *italic* markdown-style formatting for emphasis (will be converted to HTML later).
+	•	CRITICAL - Use placeholders for links:
+	  •	For the commercial anchor, use [A1] placeholder where [[ANCHOR_TEXT]] should appear.
+	  •	For trust sources, use [T1], [T2], [T3] placeholders where each trust source should appear.
+	  •	Example: "Some teams use [A1] to boost their results. Research from [T1] shows that..."
+	  •	DO NOT include actual URLs or HTML <a> tags in the text.
+	•	Do NOT use HTML tags (<h1>, <p>, <a>, etc.) - only plain text with newlines and placeholders.
+	•	Do NOT wrap the JSON in code fences, backticks, or markdown code blocks.
 
 PRACTICAL POST-GENERATION CHECK (for human QA):
 
@@ -975,10 +983,10 @@ Note: This check is a reminder for post-processing. Focus on generating naturall
 FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
-• Ensure word count is within 90-110% of [[WORD_COUNT]] (excluding HTML tags).
-• If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the commercial anchor appears exactly once in the first 2-3 paragraphs and uses the correct HTML format.
-• Confirm that you used 0-3 relevant external sources from [[TRUST_SOURCES_LIST]] with correct link formatting.
-• Scan articleBodyHtml for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
+• Ensure word count is within 90-110% of [[WORD_COUNT]] (counted as plain text).
+• If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in the first 2-3 paragraphs.
+• Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
+• Scan articleBodyText for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 • Make sure there is NO extra text outside the JSON object.
 

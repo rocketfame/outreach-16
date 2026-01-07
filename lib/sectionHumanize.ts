@@ -100,3 +100,77 @@ export function chunkTextForHumanization(text: string): string[] {
   return chunks;
 }
 
+/**
+ * Humanizes a single section of plain text using AIHumanize.io.
+ * Includes fallback to original text if humanization fails.
+ * @param text The plain text section to humanize.
+ * @param model The AIHumanize model to use (0: quality, 1: balance, 2: enhanced).
+ * @param registeredEmail The registered email for AIHumanize API.
+ * @param frozenPhrases Phrases to protect from alteration (e.g., brand names, anchor text).
+ *   Note: Currently not used as AIHumanize API doesn't support frozen phrases directly.
+ *   Placeholders like [A1], [T1] are already short tokens that should survive humanization.
+ * @returns The humanized text, or the original text on error.
+ */
+export async function humanizeSectionText(
+  text: string,
+  model: number,
+  registeredEmail: string,
+  frozenPhrases: string[] = []
+): Promise<{ humanizedText: string; wordsUsed: number }> {
+  if (!text || text.trim().length === 0) {
+    return { humanizedText: text, wordsUsed: 0 };
+  }
+
+  // If text is too short, skip humanization (API requires 100+ chars)
+  if (text.length < 100) {
+    return { humanizedText: text, wordsUsed: 0 };
+  }
+
+  const apiKey = process.env.AIHUMANIZE_API_KEY;
+  if (!apiKey) {
+    console.error("[humanizeSectionText] AIHumanize API key not configured");
+    return { humanizedText: text, wordsUsed: 0 };
+  }
+
+  try {
+    // Use the local humanizeText function (which calls AIHumanize API)
+    // For now, send text as-is if it's within limits
+    // Future: implement chunking here if needed for very long sections
+    if (text.length > 10000) {
+      // Chunk the text
+      const chunks = chunkTextForHumanization(text);
+      let totalWordsUsed = 0;
+      const humanizedChunks: string[] = [];
+
+      for (const chunk of chunks) {
+        const result = await humanizeText({
+          text: chunk,
+          model,
+          registeredEmail
+        });
+        humanizedChunks.push(result.text);
+        totalWordsUsed += result.wordsUsed;
+      }
+
+      return { 
+        humanizedText: humanizedChunks.join('\n\n'), 
+        wordsUsed: totalWordsUsed 
+      };
+    } else {
+      const result = await humanizeText({
+        text,
+        model,
+        registeredEmail
+      });
+
+      return { 
+        humanizedText: result.text, 
+        wordsUsed: result.wordsUsed 
+      };
+    }
+  } catch (error) {
+    console.error("[humanizeSectionText] Humanization failed for section, falling back to original text:", error);
+    return { humanizedText: text, wordsUsed: 0 }; // Fallback to original text
+  }
+}
+

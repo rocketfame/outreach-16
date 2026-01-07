@@ -78,21 +78,8 @@ export default function Home() {
   const [copyStatusByTopic, setCopyStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   const [copyPlainTextStatus, setCopyPlainTextStatus] = useState<"idle" | "copied">("idle");
   const [copyPlainTextStatusByTopic, setCopyPlainTextStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
-  const [isHumanizing, setIsHumanizing] = useState(false);
-  const [humanizingTopicId, setHumanizingTopicId] = useState<string | null>(null); // Track which article is being humanized
-  const [humanizeStatusByTopic, setHumanizeStatusByTopic] = useState<Map<string, "idle" | "humanized">>(new Map());
-  const [articleBeforeHumanize, setArticleBeforeHumanize] = useState<Map<string, string>>(new Map()); // topicId -> HTML before humanize
-  
-  // Humanize settings state
-  const [humanizeSettings, setHumanizeSettings] = useState({
-    model: 1, // 0: Quality, 1: Balance (default), 2: Enhanced
-    style: "Blog", // General, Blog, Formal, Informal, Academic, Expand, Simplify
-    mode: "Basic", // Basic (single pass) or Autopilot (multiple iterations)
-    showSettings: false, // Toggle settings panel
-  });
-  
   // Humanize on write toggle (for live humanization during generation)
-  const [humanizeOnWrite, setHumanizeOnWrite] = useState(false);
+  const humanizeOnWriteEnabled = persistedState.humanizeOnWriteEnabled || false;
   
   // Track humanization costs (words used for humanization)
   // AIHumanize pricing: 50,000 words = $25, so $0.0005 per word
@@ -1011,7 +998,7 @@ export default function Home() {
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesList: trustSourcesList,
           lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
-          humanizeOnWrite: humanizeOnWrite, // Pass humanize on write toggle to API
+          humanizeOnWrite: humanizeOnWriteEnabled, // Pass humanize on write toggle to API
         }),
       });
 
@@ -1270,7 +1257,7 @@ export default function Home() {
           keywordList: [directArticleTopic],
           trustSourcesList: trustSourcesList,
           lightHumanEdit: lightHumanEditEnabled,
-          humanizeOnWrite: humanizeOnWrite, // Pass humanize on write toggle to API
+          humanizeOnWrite: humanizeOnWriteEnabled, // Pass humanize on write toggle to API
         }),
       });
 
@@ -1531,8 +1518,10 @@ export default function Home() {
     return article.editedText || article.articleBodyHtml || article.fullArticleText;
   };
 
-  // Humanize article function
-  const humanizeArticle = async (topicId: string) => {
+  // OLD POST-PROCESSING HUMANIZATION REMOVED
+  // Humanization now happens during generation via humanizeOnWrite toggle
+  // Functions humanizeArticle and undoHumanize have been removed
+  const humanizeArticle_DEPRECATED = async (topicId: string) => {
     const article = generatedArticles.find(a => a.topicTitle === topicId);
     if (!article) {
       console.error("[humanize] Article not found", topicId);
@@ -4158,15 +4147,18 @@ export default function Home() {
                       <label className="checkbox-label">
                         <input
                           type="checkbox"
-                          checked={humanizeOnWrite}
+                          checked={humanizeOnWriteEnabled}
                           onChange={(e) => {
-                            setHumanizeOnWrite(e.target.checked);
+                            setPersistedState(prev => ({
+                              ...prev,
+                              humanizeOnWriteEnabled: e.target.checked
+                            }));
                           }}
                           disabled={isGeneratingArticles}
                         />
                         <span className="checkbox-text">
-                          <strong>Humanize on write</strong>
-                          <span className="checkbox-hint">Humanize text during generation (reduces AI detection)</span>
+                          <strong>Humanize on write</strong> (recommended)
+                          <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
                         </span>
                       </label>
                     </div>
@@ -4502,15 +4494,18 @@ export default function Home() {
                             <label className="checkbox-label">
                               <input
                                 type="checkbox"
-                                checked={humanizeOnWrite}
+                                checked={humanizeOnWriteEnabled}
                                 onChange={(e) => {
-                                  setHumanizeOnWrite(e.target.checked);
+                                  setPersistedState(prev => ({
+                                    ...prev,
+                                    humanizeOnWriteEnabled: e.target.checked
+                                  }));
                                 }}
                                 disabled={isGeneratingArticles}
                               />
                               <span className="checkbox-text">
-                                <strong>Humanize on write</strong>
-                                <span className="checkbox-hint">Humanize text during generation (reduces AI detection)</span>
+                                <strong>Humanize on write</strong> (recommended)
+                                <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
                               </span>
                             </label>
                           </div>
@@ -4770,46 +4765,15 @@ export default function Home() {
                                   </svg>
                                   <span>{copyPlainTextStatusByTopic.get(topicId) === "copied" ? "Copied!" : "Copy plain text"}</span>
                                 </button>
-                                {humanizeStatusByTopic.get(topicId) === "humanized" ? (
-                                  <button
-                                    type="button"
-                                    className="btn-outline"
-                                    title="Undo humanization and restore original text"
-                                    onClick={() => undoHumanize(topicId)}
-                                  >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="M3 7v6h6M21 17v-6h-6M7 3l4 4-4 4M17 21l-4-4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                {/* Show badge if article was humanized on write */}
+                                {article.humanizedOnWrite && (
+                                  <span className="humanized-badge" title="This article was humanized during generation">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                     </svg>
-                                    <span>Undo Humanize</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="btn-outline"
-                                    title="Humanize text to reduce AI detection (preserves all links and anchors)"
-                                    onClick={() => humanizeArticle(topicId)}
-                                    disabled={isHumanizing}
-                                  >
-                                    {humanizingTopicId === topicId ? (
-                                      <>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
-                                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" opacity="0.3"/>
-                                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="8 24" strokeDashoffset="0">
-                                            <animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" values="0 12 12;360 12 12"/>
-                                          </circle>
-                                        </svg>
-                                        <span>Humanizing...</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                          <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                          <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                        </svg>
-                                        <span>Humanize txt</span>
-                                      </>
-                                    )}
-                                  </button>
+                                    <span>Humanized on write</span>
+                                  </span>
                                 )}
                                 <div className="download-dropdown-wrapper">
                                   <button
@@ -4964,120 +4928,16 @@ export default function Home() {
                                           </svg>
                                           <span>{copyPlainTextStatus === "copied" && viewingArticle === topicId ? "Copied!" : "Copy plain text"}</span>
                                         </button>
-                                        {humanizeStatusByTopic.get(topicId) === "humanized" ? (
-                                          <button
-                                            type="button"
-                                            className="btn-outline btn-sm"
-                                            title="Undo humanization and restore original text"
-                                            onClick={() => undoHumanize(topicId)}
-                                          >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                              <path d="M3 7v6h6M21 17v-6h-6M7 3l4 4-4 4M17 21l-4-4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        {/* Show badge if article was humanized on write */}
+                                        {article.humanizedOnWrite && (
+                                          <span className="humanized-badge" title="This article was humanized during generation">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                             </svg>
-                                            <span>Undo Humanize</span>
-                                          </button>
-                                        ) : (
-                                          <>
-                                            <div className="humanize-controls" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', position: 'relative' }}>
-                                              <button
-                                                type="button"
-                                                className="btn-outline btn-sm"
-                                                title="Humanize text to reduce AI detection (preserves all links and anchors)"
-                                                onClick={() => humanizeArticle(topicId)}
-                                                disabled={isHumanizing}
-                                              >
-                                                {humanizingTopicId === topicId ? (
-                                                  <>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
-                                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" opacity="0.3"/>
-                                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="8 24" strokeDashoffset="0">
-                                                        <animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" values="0 12 12;360 12 12"/>
-                                                      </circle>
-                                                    </svg>
-                                                    <span>Humanizing...</span>
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                      <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                      <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                    </svg>
-                                                    <span>Humanize txt</span>
-                                                  </>
-                                                )}
-                                              </button>
-                                              <button
-                                                type="button"
-                                                className="btn-outline btn-sm"
-                                                title="Humanize settings"
-                                                onClick={() => setHumanizeSettings(prev => ({ ...prev, showSettings: !prev.showSettings }))}
-                                                style={{ padding: '0.25rem 0.5rem', minWidth: 'auto' }}
-                                              >
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                  <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                </svg>
-                                              </button>
-                                              {humanizeSettings.showSettings && (
-                                                <div className="humanize-settings-panel" style={{
-                                                  position: 'absolute',
-                                                  top: '100%',
-                                                  right: 0,
-                                                  marginTop: '0.5rem',
-                                                  background: 'var(--card)',
-                                                  border: '1px solid var(--border)',
-                                                  borderRadius: '8px',
-                                                  padding: '1rem',
-                                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                                  zIndex: 1000,
-                                                  minWidth: '280px'
-                                                }}>
-                                                  <div style={{ marginBottom: '1rem' }}>
-                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Model Quality</label>
-                                                    <select
-                                                      value={humanizeSettings.model}
-                                                      onChange={(e) => setHumanizeSettings(prev => ({ ...prev, model: parseInt(e.target.value) }))}
-                                                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)' }}
-                                                    >
-                                                      <option value={0}>Quality (Best quality, slower)</option>
-                                                      <option value={1}>Balance (Recommended)</option>
-                                                      <option value={2}>Enhanced (Faster, good quality)</option>
-                                                    </select>
-                                                  </div>
-                                                  <div style={{ marginBottom: '1rem' }}>
-                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Style</label>
-                                                    <select
-                                                      value={humanizeSettings.style}
-                                                      onChange={(e) => setHumanizeSettings(prev => ({ ...prev, style: e.target.value }))}
-                                                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)' }}
-                                                    >
-                                                      <option value="General">General</option>
-                                                      <option value="Blog">Blog (Recommended for outreach)</option>
-                                                      <option value="Formal">Formal</option>
-                                                      <option value="Informal">Informal</option>
-                                                      <option value="Academic">Academic</option>
-                                                      <option value="Expand">Expand</option>
-                                                      <option value="Simplify">Simplify</option>
-                                                    </select>
-                                                  </div>
-                                                  <div style={{ marginBottom: '1rem' }}>
-                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Mode</label>
-                                                    <select
-                                                      value={humanizeSettings.mode}
-                                                      onChange={(e) => setHumanizeSettings(prev => ({ ...prev, mode: e.target.value }))}
-                                                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)' }}
-                                                    >
-                                                      <option value="Basic">Basic (Single pass, faster)</option>
-                                                      <option value="Autopilot">Autopilot (2 passes, better quality)</option>
-                                                    </select>
-                                                    {humanizeSettings.mode === "Autopilot" && (
-                                                      <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                        Autopilot uses 2x more words but provides better quality
-                                                      </p>
-                                                    )}
-                                                  </div>
-                                                  <button
-                                                    type="button"
+                                            <span>Humanized on write</span>
+                                          </span>
+                                        )}
                                                     className="btn-outline btn-sm"
                                                     onClick={() => setHumanizeSettings(prev => ({ ...prev, showSettings: false }))}
                                                     style={{ width: '100%' }}

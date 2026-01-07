@@ -34,6 +34,12 @@ import {
   TOPIC_DISCOVERY_PRESET, 
   applyPreset
 } from "@/lib/llmPresets";
+import { 
+  parsePlainTextToStructure, 
+  blocksToHtml, 
+  ArticleStructure 
+} from "@/lib/articleStructure";
+import { humanizeSectionText } from "@/lib/sectionHumanize";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -73,6 +79,7 @@ export interface ArticleResponse {
   metaDescription: string;
   fullArticleText: string;
   articleBodyHtml?: string; // New field for HTML-formatted body
+  humanizedOnWrite?: boolean; // Flag indicating if article was humanized during generation
 }
 
 export async function POST(req: Request) {
@@ -355,7 +362,7 @@ Language: US English.`;
         // #endregion
 
         // Parse JSON response
-        let parsedResponse: { titleTag?: string; metaDescription?: string; articleBodyHtml?: string };
+        let parsedResponse: { titleTag?: string; metaDescription?: string; articleBodyText?: string; articleBodyHtml?: string };
         let jsonContent = "";
         try {
           // Try to extract JSON from response (remove markdown code fences if present)
@@ -365,9 +372,12 @@ Language: US English.`;
           
           parsedResponse = JSON.parse(jsonContent);
           
-          // Validate required fields
-          if (!parsedResponse.titleTag || !parsedResponse.metaDescription || !parsedResponse.articleBodyHtml) {
-            throw new Error("Missing required fields in JSON response");
+          // Validate required fields - support both old (articleBodyHtml) and new (articleBodyText) formats
+          if (!parsedResponse.titleTag || !parsedResponse.metaDescription) {
+            throw new Error("Missing required fields (titleTag or metaDescription) in JSON response");
+          }
+          if (!parsedResponse.articleBodyText && !parsedResponse.articleBodyHtml) {
+            throw new Error("Missing required field (articleBodyText or articleBodyHtml) in JSON response");
           }
         } catch (parseError) {
           // #region agent log
@@ -380,14 +390,156 @@ Language: US English.`;
           parsedResponse = {
             titleTag: topic.title,
             metaDescription: "",
-            articleBodyHtml: content,
+            articleBodyText: content,
           };
         }
 
         // Post-process the article text: clean invisible chars and normalize
         let cleanedTitleTag = cleanText(parsedResponse.titleTag || topic.title);
         let cleanedMetaDescription = cleanText(parsedResponse.metaDescription || "");
-        let cleanedArticleBodyHtml = cleanText(parsedResponse.articleBodyHtml || content);
+        
+        // Check if we have new format (articleBodyText) or old format (articleBodyHtml)
+        const hasNewFormat = !!parsedResponse.articleBodyText;
+        const hasOldFormat = !!parsedResponse.articleBodyHtml;
+        
+        let articleStructure: ArticleStructure | null = null;
+        let cleanedArticleBodyHtml = "";
+        
+        if (hasNewFormat) {
+          // NEW FORMAT: Parse plain text into ArticleStructure
+          const articleBodyText = cleanText(parsedResponse.articleBodyText || "");
+          
+          // Extract brand name for frozen phrases
+          const brandName = brief.clientSite 
+            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            : "";
+          
+          // Parse plain text to structure
+          articleStructure = parsePlainTextToStructure(
+            articleBodyText,
+            cleanedTitleTag,
+            cleanedMetaDescription,
+            brief.anchorText,
+            brief.anchorUrl || brief.clientSite || "",
+            trustSourcesList
+          );
+          
+          // Apply humanization on write if enabled
+          const enableHumanizeOnWrite = body.humanizeOnWrite || false;
+          let totalHumanizeWordsUsed = 0;
+          
+          if (enableHumanizeOnWrite) {
+            const registeredEmail = process.env.NEXT_PUBLIC_AIHUMANIZE_EMAIL || "";
+            const apiKey = process.env.AIHUMANIZE_API_KEY || "";
+            
+            if (registeredEmail && apiKey) {
+              try {
+                // #region agent log
+                const humanizeStartLog = {location:'articles/route.ts:427',message:'Starting humanization on write',data:{topicTitle:topic.title,blocksCount:articleStructure.blocks.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'humanize-on-write'};
+                debugLog(humanizeStartLog);
+                // #endregion
+                
+                // Humanize each block's text
+                const humanizedBlocks = await Promise.all(
+                  articleStructure.blocks.map(async (block) => {
+                    if (block.type === 'ul' || block.type === 'ol') {
+                      // For lists, humanize each item
+                      const listBlock = block as any;
+                      let listWordsUsed = 0;
+                      const humanizedItems = await Promise.all(
+                        listBlock.items.map(async (item: any) => {
+                          // Skip humanization for very short items
+                          if (item.text.length < 100) {
+                            return item;
+                          }
+                          
+                          try {
+                            const result = await humanizeSectionText(
+                              item.text,
+                              1, // balance model
+                              registeredEmail,
+                              [] // Placeholders [A1], [T1] are already protected by being short tokens
+                            );
+                            listWordsUsed += result.wordsUsed;
+                            return { ...item, text: result.humanizedText };
+                          } catch (itemError) {
+                            console.error('[articles-api] Humanization failed for list item:', itemError);
+                            return item; // Fallback to original
+                          }
+                        })
+                      );
+                      totalHumanizeWordsUsed += listWordsUsed;
+                      return { ...listBlock, items: humanizedItems };
+                    } else {
+                      // For regular blocks, humanize the text
+                      // Skip humanization for headings and very short paragraphs
+                      if (block.type === 'h1' || block.type === 'h2' || block.type === 'h3' || block.type === 'h4') {
+                        return block; // Don't humanize headings
+                      }
+                      
+                      if (block.text.length < 100) {
+                        return block; // Skip very short blocks
+                      }
+                      
+                      try {
+                        const result = await humanizeSectionText(
+                          block.text,
+                          1, // balance model
+                          registeredEmail,
+                          [] // Placeholders [A1], [T1] are already protected by being short tokens
+                        );
+                        totalHumanizeWordsUsed += result.wordsUsed;
+                        return { ...block, text: result.humanizedText };
+                      } catch (blockError) {
+                        console.error('[articles-api] Humanization failed for block:', blockError);
+                        return block; // Fallback to original
+                      }
+                    }
+                  })
+                );
+                
+                articleStructure.blocks = humanizedBlocks;
+                articleStructure.humanizedOnWrite = true;
+                
+                // Track humanization costs
+                if (totalHumanizeWordsUsed > 0) {
+                  const costTracker = getCostTracker();
+                  // AIHumanize pricing: 50,000 words = $25, so 1 word = $0.0005
+                  const humanizeCost = (totalHumanizeWordsUsed * 0.0005);
+                  costTracker.trackHumanize(totalHumanizeWordsUsed, humanizeCost);
+                  console.log(`[articles-api] Humanization tracked: ${totalHumanizeWordsUsed} words, $${humanizeCost.toFixed(4)}`);
+                }
+                
+                // #region agent log
+                const humanizeCompleteLog = {location:'articles/route.ts:427',message:'Humanization on write completed',data:{topicTitle:topic.title,wordsUsed:totalHumanizeWordsUsed},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'humanize-on-write'};
+                debugLog(humanizeCompleteLog);
+                // #endregion
+              } catch (humanizeError) {
+                // #region agent log
+                const humanizeErrorLog = {location:'articles/route.ts:427',message:'Humanization on write failed',data:{error:(humanizeError as Error).message,topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'humanize-on-write'};
+                debugLog(humanizeErrorLog);
+                // #endregion
+                console.error('[articles-api] Humanization on write failed:', humanizeError);
+                // Continue without humanization
+              }
+            } else {
+              console.warn('[articles-api] Humanization on write requested but API key or email not configured');
+            }
+          }
+          
+          // Convert structure to HTML
+          cleanedArticleBodyHtml = blocksToHtml(
+            articleStructure.blocks,
+            articleStructure.anchors,
+            articleStructure.trustSources
+          );
+        } else if (hasOldFormat) {
+          // OLD FORMAT: Use existing HTML processing
+          cleanedArticleBodyHtml = cleanText(parsedResponse.articleBodyHtml || content);
+        } else {
+          // Fallback: use raw content
+          cleanedArticleBodyHtml = cleanText(content);
+        }
 
         // #region agent log
         const cleaningLog = {location:'articles/route.ts:250',message:'Text cleaning applied',data:{titleTagLength:cleanedTitleTag.length,metaDescriptionLength:cleanedMetaDescription.length,articleBodyHtmlLength:cleanedArticleBodyHtml.length,originalLength:(parsedResponse.articleBodyHtml || content).length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'text-cleaning'};
@@ -395,8 +547,9 @@ Language: US English.`;
         // #endregion
 
         // Optional: Light human edit for natural variation
+        // NOTE: Only apply to old format (HTML). New format uses humanizeOnWrite instead.
         const enableLightHumanEdit = body.lightHumanEdit || false;
-        if (enableLightHumanEdit) {
+        if (enableLightHumanEdit && !hasNewFormat) {
           try {
             // #region agent log
             const editStartLog = {location:'articles/route.ts:255',message:'Starting light human edit',data:{topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
@@ -421,6 +574,8 @@ Language: US English.`;
             console.error('[articles-api] Light human edit failed:', editError);
             // Continue with cleaned text if edit fails
           }
+        } else if (enableLightHumanEdit && hasNewFormat) {
+          console.log('[articles-api] Light human edit skipped for new format (using humanizeOnWrite instead)');
         }
 
         const articleResponse = {
