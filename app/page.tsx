@@ -81,6 +81,16 @@ export default function Home() {
   // Humanize on write toggle (for live humanization during generation)
   const humanizeOnWriteEnabled = persistedState.humanizeOnWriteEnabled || false;
   
+  // Humanize settings (stored in persisted state)
+  const [humanizeSettings, setHumanizeSettings] = useState({
+    model: 1, // 0: Quality, 1: Balance (default), 2: Enhanced
+    style: "General", // General, Blog, Formal, Informal, Academic, Expand, Simplify
+    mode: "Basic" as "Basic" | "Autopilot", // Basic or Autopilot
+  });
+  
+  // Track expanded humanize settings for each topic
+  const [expandedHumanizeTopicId, setExpandedHumanizeTopicId] = useState<string | null>(null);
+  
   // Track humanization costs (words used for humanization)
   // AIHumanize pricing: 50,000 words = $25, so $0.0005 per word
   const [humanizeWordsUsed, setHumanizeWordsUsed] = useState(0);
@@ -557,7 +567,9 @@ export default function Home() {
             }],
             keywordList: [articleTopic],
             trustSourcesList: trustSourcesList,
-            lightHumanEdit: lightHumanEditEnabled,
+            lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
+            humanizeOnWrite: humanizeOnWriteEnabled,
+            humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined,
           }),
         });
 
@@ -730,7 +742,9 @@ export default function Home() {
           selectedTopics: selectedTopicsData,
           keywordList: topic.primaryKeyword ? [topic.primaryKeyword] : [],
           trustSourcesList: trustSourcesList, // Only Tavily-validated sources
-          lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
+          lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
+          humanizeOnWrite: humanizeOnWriteEnabled,
+          humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined,
         }),
       });
 
@@ -997,8 +1011,9 @@ export default function Home() {
           selectedTopics: selectedTopicsData,
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesList: trustSourcesList,
-          lightHumanEdit: lightHumanEditEnabled, // Pass UI toggle state to API
+          lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
           humanizeOnWrite: humanizeOnWriteEnabled, // Pass humanize on write toggle to API
+          humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined, // Pass humanize settings only if enabled
         }),
       });
 
@@ -1256,8 +1271,9 @@ export default function Home() {
           }],
           keywordList: [directArticleTopic],
           trustSourcesList: trustSourcesList,
-          lightHumanEdit: lightHumanEditEnabled,
-          humanizeOnWrite: humanizeOnWriteEnabled, // Pass humanize on write toggle to API
+          lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
+          humanizeOnWrite: humanizeOnWriteEnabled, // Pass UI toggle state to API
+          humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined, // Pass humanize settings only if enabled
         }),
       });
 
@@ -3924,29 +3940,8 @@ export default function Home() {
                       </label>
                     </div>
                     
-                    {/* Light Human Edit Toggle */}
-                    <div className="light-human-edit-toggle" style={{ marginTop: "1.25rem" }}>
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={lightHumanEditEnabled}
-                          onChange={(e) => {
-                            setPersistedState(prev => ({
-                              ...prev,
-                              lightHumanEditEnabled: e.target.checked
-                            }));
-                          }}
-                          disabled={isGeneratingArticles}
-                        />
-                        <span className="checkbox-text">
-                          <strong>Light Human Edit</strong> (recommended)
-                          <span className="checkbox-hint">Improves text flow and naturalness</span>
-                        </span>
-                      </label>
-                    </div>
-                    
-                    {/* Humanize on Write Toggle */}
-                    <div className="light-human-edit-toggle" style={{ marginTop: "1rem" }}>
+                    {/* Humanize Settings */}
+                    <div className="humanize-on-write-toggle" style={{ marginTop: "1.25rem" }}>
                       <label className="checkbox-label">
                         <input
                           type="checkbox"
@@ -3965,6 +3960,106 @@ export default function Home() {
                         </span>
                       </label>
                     </div>
+                    
+                    {/* Expanded Humanize Settings */}
+                    {humanizeOnWriteEnabled && (
+                      <div className="humanize-settings-expanded" style={{ marginTop: "0.75rem" }}>
+                        <button
+                          type="button"
+                          className="humanize-settings-toggle-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedHumanizeTopicId(expandedHumanizeTopicId === "direct" ? null : "direct");
+                          }}
+                          style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", cursor: "pointer", fontSize: "0.9rem" }}
+                        >
+                          {expandedHumanizeTopicId === "direct" ? "Hide settings" : "Show settings"}
+                          <span className={`toggle-icon ${expandedHumanizeTopicId === "direct" ? "expanded" : ""}`} style={{ marginLeft: "0.5rem" }}>▼</span>
+                        </button>
+                        
+                        {expandedHumanizeTopicId === "direct" && (
+                          <div className="humanize-settings-panel" style={{ marginTop: "0.75rem", padding: "1rem", background: "var(--secondary)", borderRadius: "10px" }}>
+                            {/* Model Selection */}
+                            <div className="humanize-setting-group" style={{ marginBottom: "1rem" }}>
+                              <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Model Quality</label>
+                              <div className="humanize-setting-options" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  className={`humanize-option-btn ${humanizeSettings.model === 0 ? "active" : ""}`}
+                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 0 }))}
+                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 0 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 0 ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                >
+                                  Quality
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`humanize-option-btn ${humanizeSettings.model === 1 ? "active" : ""}`}
+                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 1 }))}
+                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 1 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 1 ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                >
+                                  Balance
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`humanize-option-btn ${humanizeSettings.model === 2 ? "active" : ""}`}
+                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 2 }))}
+                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 2 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 2 ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                >
+                                  Enhanced
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* Style Selection */}
+                            <div className="humanize-setting-group" style={{ marginBottom: "1rem" }}>
+                              <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Writing Style</label>
+                              <select
+                                className="humanize-style-select"
+                                value={humanizeSettings.style}
+                                onChange={(e) => setHumanizeSettings(prev => ({ ...prev, style: e.target.value }))}
+                                style={{ width: "100%", padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }}
+                              >
+                                <option value="General">General</option>
+                                <option value="Blog">Blog</option>
+                                <option value="Formal">Formal</option>
+                                <option value="Informal">Informal</option>
+                                <option value="Academic">Academic</option>
+                                <option value="Expand">Expand</option>
+                                <option value="Simplify">Simplify</option>
+                              </select>
+                            </div>
+                            
+                            {/* Mode Selection */}
+                            <div className="humanize-setting-group">
+                              <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Mode</label>
+                              <div className="humanize-setting-options" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  className={`humanize-option-btn ${humanizeSettings.mode === "Basic" ? "active" : ""}`}
+                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, mode: "Basic" }))}
+                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.mode === "Basic" ? "var(--primary)" : "var(--card)", color: humanizeSettings.mode === "Basic" ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                >
+                                  Basic
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`humanize-option-btn ${humanizeSettings.mode === "Autopilot" ? "active" : ""}`}
+                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, mode: "Autopilot" }))}
+                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.mode === "Autopilot" ? "var(--primary)" : "var(--card)", color: humanizeSettings.mode === "Autopilot" ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                >
+                                  Autopilot
+                                </button>
+                              </div>
+                              <p className="humanize-setting-hint" style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                                {humanizeSettings.mode === "Basic" 
+                                  ? "Single rewrite per request (70% basic detection bypass)" 
+                                  : "Rewrites multiple times until 0% AI (99% all detection bypass)"}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div style={{ marginTop: "1.25rem" }}>
                       <button
@@ -4147,22 +4242,144 @@ export default function Home() {
                                         </div>
                                       </div>
 
-                                      {/* Quick Generate Button - appears when topic is selected */}
+                                      {/* Humanize Settings - appears when topic is selected */}
                                       {isSelected && !isCompleted && (
-                                        <div className="topic-quick-generate">
-                                          <button
-                                            type="button"
-                                            className="btn-quick-generate"
-                                            onClick={async (e) => {
-                                              e.stopPropagation();
-                                              await handleQuickGenerate(topic);
-                                            }}
-                                            disabled={isGeneratingArticles || generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")}
-                                          >
-                                            {generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")
-                                              ? "Generating…"
-                                              : "Generate article"}
-                                          </button>
+                                        <div className="topic-humanize-settings" style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+                                          <div className="humanize-on-write-toggle">
+                                            <label className="checkbox-label">
+                                              <input
+                                                type="checkbox"
+                                                checked={humanizeOnWriteEnabled}
+                                                onChange={(e) => {
+                                                  setPersistedState(prev => ({
+                                                    ...prev,
+                                                    humanizeOnWriteEnabled: e.target.checked
+                                                  }));
+                                                }}
+                                                disabled={isGeneratingArticles}
+                                              />
+                                              <span className="checkbox-text">
+                                                <strong>Humanize on write</strong> (recommended)
+                                                <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
+                                              </span>
+                                            </label>
+                                          </div>
+                                          
+                                          {/* Expanded Humanize Settings */}
+                                          {humanizeOnWriteEnabled && (
+                                            <div className="humanize-settings-expanded" style={{ marginTop: "0.75rem" }}>
+                                              <button
+                                                type="button"
+                                                className="humanize-settings-toggle-btn"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setExpandedHumanizeTopicId(expandedHumanizeTopicId === topic.id ? null : topic.id);
+                                                }}
+                                              >
+                                                {expandedHumanizeTopicId === topic.id ? "Hide settings" : "Show settings"}
+                                                <span className={`toggle-icon ${expandedHumanizeTopicId === topic.id ? "expanded" : ""}`}>▼</span>
+                                              </button>
+                                              
+                                              {expandedHumanizeTopicId === topic.id && (
+                                                <div className="humanize-settings-panel" style={{ marginTop: "0.75rem", padding: "1rem", background: "var(--secondary)", borderRadius: "10px" }}>
+                                                  {/* Model Selection */}
+                                                  <div className="humanize-setting-group" style={{ marginBottom: "1rem" }}>
+                                                    <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Model Quality</label>
+                                                    <div className="humanize-setting-options" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                                      <button
+                                                        type="button"
+                                                        className={`humanize-option-btn ${humanizeSettings.model === 0 ? "active" : ""}`}
+                                                        onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 0 }))}
+                                                        style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 0 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 0 ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                                      >
+                                                        Quality
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        className={`humanize-option-btn ${humanizeSettings.model === 1 ? "active" : ""}`}
+                                                        onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 1 }))}
+                                                        style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 1 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 1 ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                                      >
+                                                        Balance
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        className={`humanize-option-btn ${humanizeSettings.model === 2 ? "active" : ""}`}
+                                                        onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 2 }))}
+                                                        style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 2 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 2 ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                                      >
+                                                        Enhanced
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  {/* Style Selection */}
+                                                  <div className="humanize-setting-group" style={{ marginBottom: "1rem" }}>
+                                                    <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Writing Style</label>
+                                                    <select
+                                                      className="humanize-style-select"
+                                                      value={humanizeSettings.style}
+                                                      onChange={(e) => setHumanizeSettings(prev => ({ ...prev, style: e.target.value }))}
+                                                      style={{ width: "100%", padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }}
+                                                    >
+                                                      <option value="General">General</option>
+                                                      <option value="Blog">Blog</option>
+                                                      <option value="Formal">Formal</option>
+                                                      <option value="Informal">Informal</option>
+                                                      <option value="Academic">Academic</option>
+                                                      <option value="Expand">Expand</option>
+                                                      <option value="Simplify">Simplify</option>
+                                                    </select>
+                                                  </div>
+                                                  
+                                                  {/* Mode Selection */}
+                                                  <div className="humanize-setting-group">
+                                                    <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Mode</label>
+                                                    <div className="humanize-setting-options" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                                      <button
+                                                        type="button"
+                                                        className={`humanize-option-btn ${humanizeSettings.mode === "Basic" ? "active" : ""}`}
+                                                        onClick={() => setHumanizeSettings(prev => ({ ...prev, mode: "Basic" }))}
+                                                        style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.mode === "Basic" ? "var(--primary)" : "var(--card)", color: humanizeSettings.mode === "Basic" ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                                      >
+                                                        Basic
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        className={`humanize-option-btn ${humanizeSettings.mode === "Autopilot" ? "active" : ""}`}
+                                                        onClick={() => setHumanizeSettings(prev => ({ ...prev, mode: "Autopilot" }))}
+                                                        style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.mode === "Autopilot" ? "var(--primary)" : "var(--card)", color: humanizeSettings.mode === "Autopilot" ? "white" : "var(--foreground)", cursor: "pointer" }}
+                                                      >
+                                                        Autopilot
+                                                      </button>
+                                                    </div>
+                                                    <p className="humanize-setting-hint" style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                                                      {humanizeSettings.mode === "Basic" 
+                                                        ? "Single rewrite per request (70% basic detection bypass)" 
+                                                        : "Rewrites multiple times until 0% AI (99% all detection bypass)"}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                          
+                                          {/* Quick Generate Button */}
+                                          <div className="topic-quick-generate" style={{ marginTop: "1rem" }}>
+                                            <button
+                                              type="button"
+                                              className="btn-quick-generate"
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await handleQuickGenerate(topic);
+                                              }}
+                                              disabled={isGeneratingArticles || generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")}
+                                            >
+                                              {generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")
+                                                ? "Generating…"
+                                                : "Generate article"}
+                                            </button>
+                                          </div>
                                         </div>
                                       )}
 
@@ -4271,48 +4488,6 @@ export default function Home() {
                     ) : (
                       <>
                         <div className="step-actions">
-                          {/* Light Human Edit Toggle */}
-                          <div className="light-human-edit-toggle">
-                            <label className="checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={lightHumanEditEnabled}
-                                onChange={(e) => {
-                                  setPersistedState(prev => ({
-                                    ...prev,
-                                    lightHumanEditEnabled: e.target.checked
-                                  }));
-                                }}
-                                disabled={isGeneratingArticles}
-                              />
-                              <span className="checkbox-text">
-                                <strong>Light Human Edit</strong> (recommended)
-                                <span className="checkbox-hint">Improves text flow and naturalness</span>
-                              </span>
-                            </label>
-                          </div>
-                          
-                          {/* Humanize on Write Toggle */}
-                          <div className="light-human-edit-toggle" style={{ marginTop: "1rem" }}>
-                            <label className="checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={humanizeOnWriteEnabled}
-                                onChange={(e) => {
-                                  setPersistedState(prev => ({
-                                    ...prev,
-                                    humanizeOnWriteEnabled: e.target.checked
-                                  }));
-                                }}
-                                disabled={isGeneratingArticles}
-                              />
-                              <span className="checkbox-text">
-                                <strong>Humanize on write</strong> (recommended)
-                                <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
-                              </span>
-                            </label>
-                          </div>
-
                           <button
                             type="button"
                             className="btn-primary btn-generate-articles"

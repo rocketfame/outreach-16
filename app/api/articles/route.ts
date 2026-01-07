@@ -73,6 +73,11 @@ export interface ArticleRequest {
   trustSourcesList?: string[];
   lightHumanEdit?: boolean; // Optional: enable light human edit post-processing
   humanizeOnWrite?: boolean; // NEW: enable live humanization during generation
+  humanizeSettings?: { // Optional: humanize settings
+    model: number; // 0: Quality, 1: Balance (default), 2: Enhanced
+    style: string; // General, Blog, Formal, Informal, Academic, Expand, Simplify
+    mode: "Basic" | "Autopilot"; // Basic or Autopilot
+  };
 }
 
 export interface ArticleResponse {
@@ -446,6 +451,9 @@ Language: US English.`;
             const registeredEmail = process.env.NEXT_PUBLIC_AIHUMANIZE_EMAIL || "";
             const apiKey = process.env.AIHUMANIZE_API_KEY || "";
             const frozenPlaceholders = ["[A1]", "[T1]", "[T2]", "[T3]"];
+            
+            // Get humanize settings from request (default: Balance model)
+            const humanizeModel = body.humanizeSettings?.model ?? 1; // Default: Balance (1)
 
             if (registeredEmail && apiKey) {
               try {
@@ -459,7 +467,7 @@ Language: US English.`;
                         (listBlock.items || []).map(async (item: any) => {
                           if (!item?.text || item.text.length < 100) return item;
                           try {
-                            const result = await humanizeSectionText(item.text, 1, registeredEmail, frozenPlaceholders);
+                            const result = await humanizeSectionText(item.text, humanizeModel, registeredEmail, frozenPlaceholders);
                             listWordsUsed += result.wordsUsed;
                             return { ...item, text: result.humanizedText };
                           } catch {
@@ -479,7 +487,7 @@ Language: US English.`;
                       let caption = t.caption;
                       if (caption && caption.length >= 100) {
                         try {
-                          const result = await humanizeSectionText(caption, 1, registeredEmail, frozenPlaceholders);
+                          const result = await humanizeSectionText(caption, humanizeModel, registeredEmail, frozenPlaceholders);
                           caption = result.humanizedText;
                           tableWordsUsed += result.wordsUsed;
                         } catch {
@@ -495,7 +503,7 @@ Language: US English.`;
                             cells.map(async (cell) => {
                               if (!cell || cell.length < 100) return cell;
                               try {
-                                const result = await humanizeSectionText(cell, 1, registeredEmail, frozenPlaceholders);
+                                const result = await humanizeSectionText(cell, humanizeModel, registeredEmail, frozenPlaceholders);
                                 tableWordsUsed += result.wordsUsed;
                                 return result.humanizedText;
                               } catch {
@@ -519,7 +527,7 @@ Language: US English.`;
                     // Paragraphs: humanize if long enough
                     if (!block.text || block.text.length < 100) return block;
                     try {
-                      const result = await humanizeSectionText(block.text, 1, registeredEmail, frozenPlaceholders);
+                      const result = await humanizeSectionText(block.text, humanizeModel, registeredEmail, frozenPlaceholders);
                       totalHumanizeWordsUsed += result.wordsUsed;
                       return { ...block, text: result.humanizedText };
                     } catch {
