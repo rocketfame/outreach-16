@@ -1,7 +1,7 @@
 // lib/articleStructure.ts
 // Block-based article structure for live humanization
 
-export type BlockType = 'h1' | 'h2' | 'h3' | 'h4' | 'p' | 'li' | 'ul' | 'ol';
+export type BlockType = 'h1' | 'h2' | 'h3' | 'h4' | 'p' | 'li' | 'ul' | 'ol' | 'table';
 
 export interface ArticleBlockBase {
   id: string;          // unique ID per block
@@ -14,7 +14,22 @@ export interface ListBlock extends ArticleBlockBase {
   items: ArticleBlockBase[]; // type 'li'
 }
 
-export type ArticleBlock = ArticleBlockBase | ListBlock;
+export interface TableBlock extends ArticleBlockBase {
+  type: 'table';
+  caption?: string;
+  headers: string[];
+  rows: string[][];
+}
+
+export type ArticleBlock = ArticleBlockBase | ListBlock | TableBlock;
+
+/**
+ * Model-friendly block format (NO HTML). Used to avoid heuristic parsing and produce stable HTML.
+ */
+export type ModelArticleBlock =
+  | { type: 'h1' | 'h2' | 'h3' | 'h4' | 'p'; text: string }
+  | { type: 'ul' | 'ol'; items: string[] }
+  | { type: 'table'; caption?: string; headers: string[]; rows: string[][] };
 
 export interface AnchorSpec {
   id: string;           // e.g. "A1"
@@ -42,6 +57,20 @@ export interface ArticleStructure {
   humanizedOnWrite?: boolean; // flag indicating if article was humanized during generation
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeHtmlAttr(text: string): string {
+  // Minimal escaping for attribute context
+  return escapeHtml(text);
+}
+
 /**
  * Injects anchor and trust source links into text by replacing placeholders
  * Also converts markdown-style bold (**text**) to HTML <b> tags
@@ -51,27 +80,32 @@ export function injectAnchorsIntoText(
   anchors: AnchorSpec[], 
   trusts: TrustSourceSpec[]
 ): string {
-  let result = text;
+  // Escape any model-provided text first to avoid HTML injection.
+  let result = escapeHtml(text || '');
+
+  // Convert markdown-style bold (**text**) to HTML <b> tags
+  result = result.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+
+  // Convert markdown-style italic (*text*) to HTML <i> tags (if not already bold)
+  result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
 
   // Replace anchor placeholders [A1], [A2], etc.
   anchors.forEach(a => {
     const placeholder = `[${a.id}]`;
-    const anchorHtml = `<b><a href="${a.url}">${a.text}</a></b>`;
+    const safeUrl = escapeHtmlAttr(a.url);
+    const safeText = escapeHtml(a.text);
+    const anchorHtml = `<a href="${safeUrl}">${safeText}</a>`;
     result = result.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), anchorHtml);
   });
 
   // Replace trust source placeholders [T1], [T2], etc.
   trusts.forEach(t => {
     const placeholder = `[${t.id}]`;
-    const trustHtml = `<b><a href="${t.url}">${t.text}</a></b>`;
+    const safeUrl = escapeHtmlAttr(t.url);
+    const safeText = escapeHtml(t.text);
+    const trustHtml = `<a href="${safeUrl}">${safeText}</a>`;
     result = result.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), trustHtml);
   });
-
-  // Convert markdown-style bold (**text**) to HTML <b> tags
-  result = result.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-  
-  // Convert markdown-style italic (*text*) to HTML <i> tags (if not already bold)
-  result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
 
   return result;
 }
@@ -85,6 +119,22 @@ export function blocksToHtml(
   trusts: TrustSourceSpec[]
 ): string {
   return blocks.map(block => {
+    if (block.type === 'table') {
+      const tableBlock = block as TableBlock;
+      const captionHtml = tableBlock.caption
+        ? `<caption>${injectAnchorsIntoText(tableBlock.caption, anchors, trusts)}</caption>`
+        : '';
+      const theadHtml = `<thead><tr>${(tableBlock.headers || [])
+        .map((h) => `<th>${injectAnchorsIntoText(h, anchors, trusts)}</th>`)
+        .join('')}</tr></thead>`;
+      const tbodyHtml = `<tbody>${(tableBlock.rows || [])
+        .map((row) => `<tr>${(row || [])
+          .map((cell) => `<td>${injectAnchorsIntoText(cell, anchors, trusts)}</td>`)
+          .join('')}</tr>`)
+        .join('')}</tbody>`;
+      return `<table>${captionHtml}${theadHtml}${tbodyHtml}</table>`;
+    }
+
     if (block.type === 'ul' || block.type === 'ol') {
       const listBlock = block as ListBlock;
       const tag = listBlock.type;
@@ -99,6 +149,94 @@ export function blocksToHtml(
     const tag = block.type;
     return `<${tag}>${textWithLinks}</${tag}>`;
   }).join('\n');
+}
+
+/**
+ * Converts model-provided articleBlocks into ArticleStructure deterministically.
+ * This avoids heuristic parsing and ensures stable HTML structure (headings, lists, tables).
+ */
+export function modelBlocksToArticleStructure(
+  modelBlocks: unknown,
+  titleTag: string,
+  metaDescription: string,
+  anchorText?: string,
+  anchorUrl?: string,
+  trustSourcesList?: string[]
+): ArticleStructure {
+  const blocks: ArticleBlock[] = [];
+  const anchors: AnchorSpec[] = [];
+  const trustSources: TrustSourceSpec[] = [];
+
+  const inputBlocks = Array.isArray(modelBlocks) ? (modelBlocks as ModelArticleBlock[]) : [];
+
+  for (const b of inputBlocks) {
+    if (!b || typeof (b as any).type !== 'string') continue;
+    const type = (b as any).type as BlockType;
+
+    if (type === 'ul' || type === 'ol') {
+      const items = Array.isArray((b as any).items) ? (b as any).items : [];
+      blocks.push({
+        id: crypto.randomUUID(),
+        type,
+        text: '',
+        items: items
+          .filter((x: any) => typeof x === 'string' && x.trim().length > 0)
+          .map((x: string) => ({ id: crypto.randomUUID(), type: 'li', text: x.trim() })),
+      } as ListBlock);
+      continue;
+    }
+
+    if (type === 'table') {
+      const headers = Array.isArray((b as any).headers) ? (b as any).headers : [];
+      const rows = Array.isArray((b as any).rows) ? (b as any).rows : [];
+      const caption = typeof (b as any).caption === 'string' ? (b as any).caption : undefined;
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'table',
+        text: '',
+        caption: caption?.trim() || undefined,
+        headers: headers.filter((x: any) => typeof x === 'string').map((x: string) => x.trim()).filter(Boolean),
+        rows: rows
+          .filter((r: any) => Array.isArray(r))
+          .map((r: any[]) => r.filter((c) => typeof c === 'string').map((c) => (c as string).trim())),
+      } as TableBlock);
+      continue;
+    }
+
+    // Regular text blocks
+    const text = typeof (b as any).text === 'string' ? (b as any).text.trim() : '';
+    if (!text) continue;
+    if (type === 'h1' || type === 'h2' || type === 'h3' || type === 'h4' || type === 'p') {
+      blocks.push({ id: crypto.randomUUID(), type, text });
+    }
+  }
+
+  // Ensure first block is H1
+  const first = blocks[0];
+  const h1Text = first && first.type === 'h1' ? (first as ArticleBlockBase).text : (titleTag || '').trim();
+  if (!first || first.type !== 'h1') {
+    blocks.unshift({ id: crypto.randomUUID(), type: 'h1', text: h1Text || 'Article' });
+  }
+
+  if (anchorText && anchorUrl) {
+    anchors.push({ id: 'A1', text: anchorText, url: anchorUrl });
+  }
+
+  if (trustSourcesList && trustSourcesList.length > 0) {
+    trustSourcesList.forEach((source, index) => {
+      const parts = source.split('|');
+      const url = parts.length > 1 ? parts[1] : parts[0];
+      const name = parts.length > 1 ? parts[0] : `Source ${index + 1}`;
+      trustSources.push({ id: `T${index + 1}`, text: name, url });
+    });
+  }
+
+  return {
+    blocks,
+    meta: { titleTag, metaDescription, h1: h1Text || titleTag },
+    anchors,
+    trustSources,
+  };
 }
 
 /**

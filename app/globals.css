@@ -3429,6 +3429,38 @@ body {
   color: #d0d0d0;
 }
 
+/* Tables inside article HTML */
+.article-view-text table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.95rem;
+}
+
+.article-view-text caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 0.5rem;
+}
+
+.article-view-text th,
+.article-view-text td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.75rem;
+  vertical-align: top;
+}
+
+.article-view-text th {
+  background: var(--secondary);
+  font-weight: 700;
+}
+
+[data-theme="dark"] .article-view-text th {
+  background: #2a2a2a;
+}
+
 .article-view-text li {
   margin: 0.5rem 0;
   line-height: 1.6;

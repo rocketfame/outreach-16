@@ -360,25 +360,32 @@ Language protocol:
 Technical requirements:
 • Output must be valid JSON with this exact structure:
 {
-"titleTag": "…",
-"metaDescription": "…",
-"articleBodyText": "…"
+  "titleTag": "…",
+  "metaDescription": "…",
+  "articleBlocks": [
+    { "type": "h1", "text": "…" },
+    { "type": "p", "text": "…" },
+    { "type": "h2", "text": "…" },
+    { "type": "ul", "items": ["…", "…"] },
+    { "type": "table", "caption": "optional", "headers": ["…", "…"], "rows": [["…","…"], ["…","…"]] }
+  ]
 }
 
-• The articleBodyText field must contain PLAIN TEXT ONLY (no HTML tags):
-• Use double newlines (\n\n) to separate paragraphs.
-• Use single newlines (\n) for line breaks within paragraphs if needed.
-• For headings, write them as plain text on their own line, followed by double newline.
-• For lists, use "- " prefix for bullet items, each on a new line.
-• Use **bold** or *italic* markdown-style formatting for emphasis (will be converted to HTML later).
-• CRITICAL - Use placeholders for links:
-  • For the commercial anchor, use [A1] placeholder where [[ANCHOR_TEXT]] should appear in the text.
-  • For trust sources, use [T1], [T2], [T3] placeholders where each trust source should appear.
-  • Example: "Some teams use [A1] to boost their results. Research from [T1] shows that..."
+• articleBlocks is REQUIRED and must start with { "type": "h1", ... }.
+• All text fields MUST be PLAIN TEXT ONLY (no HTML tags). GPT must NEVER output HTML.
+• Use **bold** or *italic* markdown-style formatting inside text fields (will be converted to HTML later).
+• Lists:
+  • Use { "type": "ul" } or { "type": "ol" } with "items": ["..."].
+  • Each item is plain text (no HTML).
+• Tables (optional, 0-2 per article):
+  • Use { "type": "table" } with "headers": [...] and "rows": [[...], ...].
+  • Keep cell text short and practical. No HTML. No markdown tables. Only JSON arrays.
+• CRITICAL - Use placeholders for links INSIDE any text/items/cells:
+  • Commercial anchor: use [A1] placeholder exactly once where [[ANCHOR_TEXT]] should appear.
+  • Trust sources: use [T1], [T2], [T3] placeholders (1-3 total) where sources should appear.
   • DO NOT include actual URLs or HTML <a> tags in the text.
   • DO NOT write "click here" or similar generic anchor text - use the placeholder directly in context.
-• Do NOT use HTML tags (<h1>, <p>, <a>, etc.) - only plain text with newlines and placeholders.
-• Do NOT wrap the JSON in code fences, backticks, or markdown code blocks.
+• Do NOT wrap the JSON in code fences/backticks.
 • Do NOT include any extra text outside the JSON object.
 
 CRITICAL CHARACTER RULES (prevent AI detection patterns):
@@ -406,7 +413,7 @@ After generating the article, perform a quick human QA:
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
 
 FINAL CHECKLIST BEFORE OUTPUT:
-• Word count is approximately [[WORD_COUNT]] words (counted in articleBodyText as plain text).
+• Word count is approximately [[WORD_COUNT]] words (counted across all text in articleBlocks as plain text).
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty).
@@ -419,7 +426,12 @@ Now generate the response as JSON only, with no explanations:
 {
   "titleTag": "Your SEO title tag here (max 60 characters)",
   "metaDescription": "Your meta description here (150-160 characters)",
-"articleBodyHtml": "Your article heading\n\nFirst paragraph with bold keywords and <a href=\"[[ANCHOR_URL]]\">[[ANCHOR_TEXT]] naturally integrated.\n\nSecond section heading\n\nMore content…"
+  "articleBlocks": [
+    { "type": "h1", "text": "Your article title" },
+    { "type": "p", "text": "First paragraph with **bold** keywords and [A1] naturally integrated." },
+    { "type": "h2", "text": "Second section heading" },
+    { "type": "p", "text": "More content with a trust source like [T1] inside a sentence." }
+  ]
 }
 `.trim();
 
@@ -950,23 +962,26 @@ Technical format:
 {
 "titleTag": "…",
 "metaDescription": "…",
-"articleBodyText": "…"
+"articleBlocks": [ ... ]
 }
 
-• articleBodyText must contain PLAIN TEXT ONLY (no HTML tags):
-	•	Use double newlines (\n\n) to separate paragraphs.
-	•	Use single newlines (\n) for line breaks within paragraphs if needed.
-	•	For headings, write them as plain text on their own line, followed by double newline.
-	•	For lists, use "- " prefix for bullet items, each on a new line.
-	•	For numbered lists, use "1. ", "2. ", etc. prefix, each on a new line.
-	•	Use **bold** or *italic* markdown-style formatting for emphasis (will be converted to HTML later).
-	•	CRITICAL - Use placeholders for links:
-	  •	For the commercial anchor, use [A1] placeholder where [[ANCHOR_TEXT]] should appear.
-	  •	For trust sources, use [T1], [T2], [T3] placeholders where each trust source should appear.
-	  •	Example: "Some teams use [A1] to boost their results. Research from [T1] shows that..."
-	  •	DO NOT include actual URLs or HTML <a> tags in the text.
-	•	Do NOT use HTML tags (<h1>, <p>, <a>, etc.) - only plain text with newlines and placeholders.
-	•	Do NOT wrap the JSON in code fences, backticks, or markdown code blocks.
+• articleBlocks rules (CRITICAL):
+	• articleBlocks MUST be an array and MUST start with { "type": "h1", "text": "..." }.
+	• Allowed block types:
+	  • "h1","h2","h3","h4","p" with field "text"
+	  • "ul","ol" with field "items": ["..."]
+	  • "table" with fields:
+	    • optional "caption": "..."
+	    • "headers": ["...","..."]
+	    • "rows": [["...","..."], ["...","..."]]
+	• All texts/items/cells MUST be plain text only (NO HTML tags).
+	• Use **bold** or *italic* markdown-style formatting inside text fields (will be converted to HTML later).
+	• Tables are optional (0-2 per article). Keep cells short and practical.
+	• CRITICAL - Link placeholders:
+	  • Commercial anchor: use [A1] placeholder exactly once (and only once).
+	  • Trust sources: use [T1], [T2], [T3] placeholders (1-3 total) inside natural sentences.
+	  • DO NOT include actual URLs or HTML <a> tags anywhere.
+	• Do NOT wrap the JSON in code fences/backticks/markdown.
 
 PRACTICAL POST-GENERATION CHECK (for human QA):
 
@@ -983,10 +998,10 @@ Note: This check is a reminder for post-processing. Focus on generating naturall
 FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
-• Ensure word count is within 90-110% of [[WORD_COUNT]] (counted as plain text).
+• Ensure word count is within 90-110% of [[WORD_COUNT]] (counted as plain text across all text in articleBlocks).
 • If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in the first 2-3 paragraphs.
 • Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
-• Scan articleBodyText for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
+• Scan all block texts/items/cells for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 • Make sure there is NO extra text outside the JSON object.
 
