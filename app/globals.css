@@ -1393,6 +1393,55 @@ body {
   }
 }
 
+/* Humanize settings panel */
+.humanize-controls {
+  position: relative;
+}
+
+.humanize-settings-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 280px;
+}
+
+.humanize-settings-panel label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.humanize-settings-panel select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.humanize-settings-panel select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.humanize-settings-panel p {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 1;

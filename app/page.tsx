@@ -82,6 +82,14 @@ export default function Home() {
   const [humanizingTopicId, setHumanizingTopicId] = useState<string | null>(null); // Track which article is being humanized
   const [humanizeStatusByTopic, setHumanizeStatusByTopic] = useState<Map<string, "idle" | "humanized">>(new Map());
   const [articleBeforeHumanize, setArticleBeforeHumanize] = useState<Map<string, string>>(new Map()); // topicId -> HTML before humanize
+  
+  // Humanize settings state
+  const [humanizeSettings, setHumanizeSettings] = useState({
+    model: 1, // 0: Quality, 1: Balance (default), 2: Enhanced
+    style: "Blog", // General, Blog, Formal, Informal, Academic, Expand, Simplify
+    mode: "Basic", // Basic (single pass) or Autopilot (multiple iterations)
+    showSettings: false, // Toggle settings panel
+  });
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<{
     message: string;
@@ -1537,8 +1545,10 @@ export default function Home() {
     setHumanizingTopicId(topicId);
 
     try {
-      // Default settings: Balance model (1), Blog style (stored but not sent to API)
-      const model = 1; // Balance (default and recommended)
+      // Use user settings
+      const model = humanizeSettings.model;
+      const style = humanizeSettings.style;
+      const mode = humanizeSettings.mode;
       const registeredEmail = process.env.NEXT_PUBLIC_AIHUMANIZE_EMAIL || "";
 
       if (!registeredEmail) {
@@ -1573,23 +1583,41 @@ export default function Home() {
         frozenPhrases.push(brief.anchorText.trim());
       }
 
-      const response = await fetch("/api/humanize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          html: currentHtml,
-          model,
-          registeredEmail,
-          frozenPhrases,
-        }),
-      });
+      // Autopilot mode: multiple iterations for better quality
+      let finalHtml = currentHtml;
+      let totalWordsUsed = 0;
+      let remainingWords = 0;
+      const iterations = mode === "Autopilot" ? 2 : 1; // Autopilot does 2 passes
+      
+      for (let iteration = 0; iteration < iterations; iteration++) {
+        const response = await fetch("/api/humanize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            html: finalHtml,
+            model,
+            registeredEmail,
+            frozenPhrases,
+            style, // Pass style for analytics/logging
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!data.ok) {
-        throw new Error(data.userMessage || data.error || "Humanization failed");
+        if (!data.ok) {
+          throw new Error(data.userMessage || data.error || "Humanization failed");
+        }
+
+        finalHtml = data.html;
+        totalWordsUsed += data.wordsUsed || 0;
+        remainingWords = data.remainingWords || 0;
+        
+        // Small delay between iterations for Autopilot
+        if (iteration < iterations - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
 
       // Update article with humanized HTML
@@ -1598,7 +1626,7 @@ export default function Home() {
           if (a.topicTitle === topicId) {
             return {
               ...a,
-              articleBodyHtml: data.html,
+              articleBodyHtml: finalHtml,
               // Keep other fields intact
             };
           }
@@ -4730,33 +4758,117 @@ export default function Home() {
                                             <span>Undo Humanize</span>
                                           </button>
                                         ) : (
-                                          <button
-                                            type="button"
-                                            className="btn-outline btn-sm"
-                                            title="Humanize text to reduce AI detection (preserves all links and anchors)"
-                                            onClick={() => humanizeArticle(topicId)}
-                                            disabled={isHumanizing}
-                                          >
-                                            {humanizingTopicId === topicId ? (
-                                              <>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
-                                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" opacity="0.3"/>
-                                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="8 24" strokeDashoffset="0">
-                                                    <animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" values="0 12 12;360 12 12"/>
-                                                  </circle>
+                                          <>
+                                            <div className="humanize-controls" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', position: 'relative' }}>
+                                              <button
+                                                type="button"
+                                                className="btn-outline btn-sm"
+                                                title="Humanize text to reduce AI detection (preserves all links and anchors)"
+                                                onClick={() => humanizeArticle(topicId)}
+                                                disabled={isHumanizing}
+                                              >
+                                                {humanizingTopicId === topicId ? (
+                                                  <>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
+                                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="32" opacity="0.3"/>
+                                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="8 24" strokeDashoffset="0">
+                                                        <animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" values="0 12 12;360 12 12"/>
+                                                      </circle>
+                                                    </svg>
+                                                    <span>Humanizing...</span>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                      <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                      <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                    </svg>
+                                                    <span>Humanize txt</span>
+                                                  </>
+                                                )}
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="btn-outline btn-sm"
+                                                title="Humanize settings"
+                                                onClick={() => setHumanizeSettings(prev => ({ ...prev, showSettings: !prev.showSettings }))}
+                                                style={{ padding: '0.25rem 0.5rem', minWidth: 'auto' }}
+                                              >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                  <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                                 </svg>
-                                                <span>Humanizing...</span>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                  <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                  <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                </svg>
-                                                <span>Humanize txt</span>
-                                              </>
-                                            )}
-                                          </button>
+                                              </button>
+                                              {humanizeSettings.showSettings && (
+                                                <div className="humanize-settings-panel" style={{
+                                                  position: 'absolute',
+                                                  top: '100%',
+                                                  right: 0,
+                                                  marginTop: '0.5rem',
+                                                  background: 'var(--card)',
+                                                  border: '1px solid var(--border)',
+                                                  borderRadius: '8px',
+                                                  padding: '1rem',
+                                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                                  zIndex: 1000,
+                                                  minWidth: '280px'
+                                                }}>
+                                                  <div style={{ marginBottom: '1rem' }}>
+                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Model Quality</label>
+                                                    <select
+                                                      value={humanizeSettings.model}
+                                                      onChange={(e) => setHumanizeSettings(prev => ({ ...prev, model: parseInt(e.target.value) }))}
+                                                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)' }}
+                                                    >
+                                                      <option value={0}>Quality (Best quality, slower)</option>
+                                                      <option value={1}>Balance (Recommended)</option>
+                                                      <option value={2}>Enhanced (Faster, good quality)</option>
+                                                    </select>
+                                                  </div>
+                                                  <div style={{ marginBottom: '1rem' }}>
+                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Style</label>
+                                                    <select
+                                                      value={humanizeSettings.style}
+                                                      onChange={(e) => setHumanizeSettings(prev => ({ ...prev, style: e.target.value }))}
+                                                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)' }}
+                                                    >
+                                                      <option value="General">General</option>
+                                                      <option value="Blog">Blog (Recommended for outreach)</option>
+                                                      <option value="Formal">Formal</option>
+                                                      <option value="Informal">Informal</option>
+                                                      <option value="Academic">Academic</option>
+                                                      <option value="Expand">Expand</option>
+                                                      <option value="Simplify">Simplify</option>
+                                                    </select>
+                                                  </div>
+                                                  <div style={{ marginBottom: '1rem' }}>
+                                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Mode</label>
+                                                    <select
+                                                      value={humanizeSettings.mode}
+                                                      onChange={(e) => setHumanizeSettings(prev => ({ ...prev, mode: e.target.value }))}
+                                                      style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)' }}
+                                                    >
+                                                      <option value="Basic">Basic (Single pass, faster)</option>
+                                                      <option value="Autopilot">Autopilot (2 passes, better quality)</option>
+                                                    </select>
+                                                    {humanizeSettings.mode === "Autopilot" && (
+                                                      <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                        Autopilot uses 2x more words but provides better quality
+                                                      </p>
+                                                    )}
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    className="btn-outline btn-sm"
+                                                    onClick={() => setHumanizeSettings(prev => ({ ...prev, showSettings: false }))}
+                                                    style={{ width: '100%' }}
+                                                  >
+                                                    Close
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </>
                                         )}
                                         <button
                                           type="button"

@@ -19,6 +19,7 @@ export interface HumanizeArticleRequest {
   model: number; // 0: quality, 1: balance, 2: enhanced
   registeredEmail: string;
   frozenPhrases?: string[]; // Optional: brand names, exact anchor texts to preserve
+  style?: string; // Optional: style hint (General, Blog, Formal, Informal, Academic, Expand, Simplify) - for analytics/logging
 }
 
 export interface HumanizeArticleResponse {
