@@ -845,15 +845,17 @@ body {
 }
 
 .checkbox-label input[type="checkbox"]:checked::after {
-  content: "✓";
+  content: "";
   position: absolute;
-  top: 50%;
+  top: 45%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  color: #1a1a1a;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 5px;
+  height: 9px;
+  /* Жирна рівна галочка без вигинів - створена через border для прямолінійної форми */
+  border-right: 3px solid #1a1a1a;
+  border-bottom: 3px solid #1a1a1a;
+  box-sizing: border-box;
 }
 
 .checkbox-label input[type="checkbox"]:disabled {
@@ -1812,15 +1814,17 @@ body {
 }
 
 .topic-checkbox-label input[type="checkbox"]:checked::after {
-  content: "✓";
+  content: "";
   position: absolute;
-  top: 50%;
+  top: 45%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  color: #1a1a1a;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 5px;
+  height: 9px;
+  /* Жирна рівна галочка без вигинів - створена через border для прямолінійної форми */
+  border-right: 3px solid #1a1a1a;
+  border-bottom: 3px solid #1a1a1a;
+  box-sizing: border-box;
 }
 
 .topic-quick-generate {
