@@ -4938,17 +4938,7 @@ export default function Home() {
                                             <span>Humanized on write</span>
                                           </span>
                                         )}
-                                                    className="btn-outline btn-sm"
-                                                    onClick={() => setHumanizeSettings(prev => ({ ...prev, showSettings: false }))}
-                                                    style={{ width: '100%' }}
-                                                  >
-                                                    Close
-                                                  </button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </>
-                                        )}
+                                        
                                         <button
                                           type="button"
                                           className="close-modal-btn"
