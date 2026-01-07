@@ -553,6 +553,21 @@ export default function Home() {
         // Step 2: Regenerate article
         // CRITICAL: For Direct Article Creation Mode, do NOT include shortAngle, whyNonGeneric, howAnchorFits
         // These fields are used by API to detect Topic Discovery Mode
+        
+        // CRITICAL: Use saved humanization settings from existing article if available
+        // This ensures regeneration uses the same settings as the original generation
+        const savedHumanizeSettings = article?.humanizeSettingsUsed;
+        
+        // Use saved settings if available, otherwise fall back to global settings
+        const regenerateHumanizeOnWrite = savedHumanizeSettings?.humanizeOnWrite ?? humanizeOnWriteEnabled;
+        const regenerateHumanizeSettings = savedHumanizeSettings 
+          ? {
+              model: savedHumanizeSettings.model,
+              style: savedHumanizeSettings.style,
+              mode: savedHumanizeSettings.mode,
+            }
+          : humanizeSettings;
+        
         const response = await fetch("/api/articles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -568,9 +583,9 @@ export default function Home() {
             }],
             keywordList: [articleTopic],
             trustSourcesList: trustSourcesList,
-            lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
-            humanizeOnWrite: humanizeOnWriteEnabled,
-            humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined,
+            lightHumanEdit: !regenerateHumanizeOnWrite, // Automatically enable lightHumanEdit if humanization is disabled
+            humanizeOnWrite: regenerateHumanizeOnWrite,
+            humanizeSettings: regenerateHumanizeOnWrite ? regenerateHumanizeSettings : undefined,
           }),
         });
 
@@ -584,6 +599,7 @@ export default function Home() {
           titleTag: string;
           metaDescription: string;
           fullArticleText: string;
+          articleBodyHtml?: string;
         }> };
 
         if (data.articles.length > 0) {
@@ -731,8 +747,23 @@ export default function Home() {
       // Use only Tavily-validated sources (empty array if none found, but still proceed)
       const trustSourcesList = Array.from(allTrustSources);
 
+      // CRITICAL: Use saved humanization settings from existing article if available
+      // This ensures regeneration uses the same settings as the original generation
+      const existingArticle = generatedArticles.find(a => a.topicTitle === topicId);
+      const savedHumanizeSettings = existingArticle?.humanizeSettingsUsed;
+      
+      // Use saved settings if available, otherwise fall back to global settings
+      const regenerateHumanizeOnWrite = savedHumanizeSettings?.humanizeOnWrite ?? humanizeOnWriteEnabled;
+      const regenerateHumanizeSettings = savedHumanizeSettings 
+        ? {
+            model: savedHumanizeSettings.model,
+            style: savedHumanizeSettings.style,
+            mode: savedHumanizeSettings.mode,
+          }
+        : humanizeSettings;
+
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:365',message:'[regenerate] Calling /api/articles with Tavily sources',data:{topicTitle:topic.workingTitle,trustSourcesCount:trustSourcesList.length},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'articles-flow'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:365',message:'[regenerate] Calling /api/articles with Tavily sources',data:{topicTitle:topic.workingTitle,trustSourcesCount:trustSourcesList.length,humanizeOnWrite:regenerateHumanizeOnWrite,usingSavedSettings:!!savedHumanizeSettings},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'articles-flow'})}).catch(()=>{});
       // #endregion
 
       const response = await fetch("/api/articles", {
@@ -743,9 +774,9 @@ export default function Home() {
           selectedTopics: selectedTopicsData,
           keywordList: topic.primaryKeyword ? [topic.primaryKeyword] : [],
           trustSourcesList: trustSourcesList, // Only Tavily-validated sources
-          lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
-          humanizeOnWrite: humanizeOnWriteEnabled,
-          humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined,
+          lightHumanEdit: !regenerateHumanizeOnWrite, // Automatically enable lightHumanEdit if humanization is disabled
+          humanizeOnWrite: regenerateHumanizeOnWrite,
+          humanizeSettings: regenerateHumanizeOnWrite ? regenerateHumanizeSettings : undefined,
         }),
       });
 
@@ -759,6 +790,7 @@ export default function Home() {
         titleTag: string;
         metaDescription: string;
         fullArticleText: string;
+        articleBodyHtml?: string;
       }> };
 
       if (data.articles.length > 0) {
@@ -773,6 +805,14 @@ export default function Home() {
           metaDescription: cleanText(newArticle.metaDescription || ''),
           fullArticleText: cleanText(newArticle.fullArticleText || ''),
           articleBodyHtml: cleanText(newArticle.articleBodyHtml || newArticle.fullArticleText || ''),
+          // CRITICAL: Preserve humanization settings used for regeneration
+          // This allows future regenerations to use the same settings
+          humanizeSettingsUsed: savedHumanizeSettings ?? {
+            humanizeOnWrite: regenerateHumanizeOnWrite,
+            model: regenerateHumanizeSettings.model,
+            style: regenerateHumanizeSettings.style,
+            mode: regenerateHumanizeSettings.mode,
+          },
         };
         
         updateGeneratedArticles(
@@ -1040,6 +1080,7 @@ export default function Home() {
         titleTag: string;
         metaDescription: string;
         fullArticleText: string;
+        articleBodyHtml?: string;
       }> };
 
       // #region agent log
@@ -1060,6 +1101,14 @@ export default function Home() {
           articleBodyHtml: cleanText(article.articleBodyHtml || article.fullArticleText || ''),
           topicTitle: topics[index]?.id || article.topicTitle,
           status: "ready" as const,
+          // CRITICAL: Save humanization settings used for this article
+          // This allows regeneration to use the same settings
+          humanizeSettingsUsed: {
+            humanizeOnWrite: humanizeOnWriteEnabled,
+            model: humanizeSettings.model,
+            style: humanizeSettings.style,
+            mode: humanizeSettings.mode,
+          },
         }))
       ]);
       
@@ -1307,6 +1356,7 @@ export default function Home() {
         titleTag: string;
         metaDescription: string;
         fullArticleText: string;
+        articleBodyHtml?: string;
       }> };
 
       console.log("[generateDirectArticle] Response received:", {
@@ -1348,6 +1398,14 @@ export default function Home() {
           metaDescription: cleanText(data.articles[0]?.metaDescription || ''),
           fullArticleText: cleanText(data.articles[0]?.fullArticleText || ''),
           articleBodyHtml: cleanText(data.articles[0]?.articleBodyHtml || data.articles[0]?.fullArticleText || ''),
+          // CRITICAL: Save humanization settings used for this article
+          // This allows regeneration to use the same settings
+          humanizeSettingsUsed: {
+            humanizeOnWrite: humanizeOnWriteEnabled,
+            model: humanizeSettings.model,
+            style: humanizeSettings.style,
+            mode: humanizeSettings.mode,
+          },
         };
         
         const updated = [

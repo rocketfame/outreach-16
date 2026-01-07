@@ -52,6 +52,12 @@ export type GeneratedArticle = {
   editHistory?: EditHistoryEntry[]; // History of edits made to this article
   status: "ready" | "generating" | "error";
   humanizedOnWrite?: boolean; // Flag indicating if article was humanized during generation
+  humanizeSettingsUsed?: { // Settings used when generating this article (for regeneration)
+    humanizeOnWrite: boolean;
+    model: number; // 0: Quality, 1: Balance, 2: Enhanced
+    style: string; // General, Blog, Formal, Informal, Academic, Expand, Simplify
+    mode: "Basic" | "Autopilot";
+  };
 };
 
 export type AppPersistedState = {
