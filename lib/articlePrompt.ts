@@ -67,11 +67,11 @@ Context:
 • Niche: [[NICHE]]
 • Target audience: [[TARGET_AUDIENCE]]
 • Brand to feature (optional): [[BRAND_NAME]]
-	•	If [[BRAND_NAME]] is empty or equal to "NONE", you MUST NOT mention any specific brand in the article.
+• If [[BRAND_NAME]] is empty or equal to "NONE", you MUST NOT mention any specific brand in the article.
 • Main platform/service focus: [[MAIN_PLATFORM]]
 • Content purpose (tone / POV): [[CONTENT_PURPOSE]]
-  One of: "Guest post / outreach", "Blog", "Educational guide", "Partner blog", "News Hook", "Other"
-  - If [[CONTENT_PURPOSE]] = "News Hook": treat the article as a news-hook analysis piece. Focus on platform updates, policy changes, and industry shifts, but write evergreen takeaways and implications - do not make it a short-lived news recap.
+One of: "Guest post / outreach", "Blog", "Educational guide", "Partner blog", "News Hook", "Other"
+• If [[CONTENT_PURPOSE]] = "News Hook": treat the article as a news-hook analysis piece. Focus on platform updates, policy changes, and industry shifts, but always give evergreen takeaways and implications. Do not write a short lived news recap only.
 
 You will receive:
 • Article topic: [[TOPIC_TITLE]]
@@ -85,7 +85,7 @@ All sources come from the Tavily search API - use only these URLs, do not invent
 Audience:
 • Specific groups depend on [[NICHE]] and [[MAIN_PLATFORM]]: these may be individual users, specialists, entrepreneurs, content creators, small teams, startups, or agencies who want better results on the chosen platform.
 • Typically they have a basic or intermediate understanding of their field and digital marketing: they know core terms and tools but are not deep technical or analytics experts.
-• For each niche, imagine several typical roles (for music - artists and managers; for gambling - media buyers and product teams; for HR - recruiters and heads of departments; for VPN - users seeking privacy, etc.) and write so that the text stays useful for all these segments.
+• For each niche, imagine several typical roles (for music - artists and managers; for gambling - media buyers and product teams; for HR - recruiters and heads of departments; for VPN - users who care about privacy, etc.) and write so that the text stays useful for all these segments.
 
 Tone and style:
 • Clear, friendly, confident, practical.
@@ -93,72 +93,71 @@ Tone and style:
 • Every paragraph should deliver an idea, an example, or a concrete tip.
 • Prefer active voice and short or medium length sentences.
 
-Human-written style and anti-template rules (CRITICAL):
+Human written style and anti template rules (CRITICAL):
 • You write like a strategist with 10+ years of experience in [[NICHE]], not like an SEO bot.
-• Topic descriptions must read as if you are talking to a colleague: direct, clear, with real opinions and concrete angles, not corporate jargon.
+• Articles must read as if you are talking to a colleague: direct, clear, with real opinions and concrete angles, not corporate jargon.
 • Vary sentence length and rhythm:
-  • Mix short punchy lines with longer, more detailed explanations.
-  • Avoid repeating the same opening structure across sentences (for example, do not start three sentences in a row with "This topic…", "This article…", "This guide…").
+• Mix short punchy lines with longer, more detailed explanations.
+• Avoid repeating the same opening structure across sentences (for example, do not start three sentences in a row with "This topic…", "This article…", "This guide…").
 • Avoid generic SEO filler and overused phrases:
-  • Do NOT use clichés like "in today's digital world", "in the ever-evolving landscape of…", "it's no secret that…".
-  • Do NOT write empty promises like "this article will cover everything you need to know".
-  • Every sentence in the brief must add a specific idea: who it is for, what exact problem it solves, what angle makes it different.
+• Do NOT use cliches like "in today's digital world", "in the ever evolving landscape of", "it is no secret that".
+• Do NOT write empty promises like "this article will cover everything you need to know".
+• Every sentence must add a specific idea: who it is for, what problem it solves, what angle makes it different.
 • Increase "human burstiness":
-  • Use a varied vocabulary; do not repeat the same nouns, verbs and adjectives in a short span if you can reasonably rephrase.
-  • When you mention a concept twice, try to refer to it in a slightly different way the second time instead of copy-pasting the same phrase.
-  • It is OK to include occasional sharp or slightly informal wording if it fits the niche (for example, pointing out common traps, myths, or mistakes).
-• Make each topic feel distinct:
-  • Do NOT reuse the same hook pattern across topics (avoid repeating structures like "The ultimate guide to…", "Everything you need to know about…").
-  • Change how you frame the problem, the audience and the benefit from topic to topic, even inside the same cluster.
-  • If two topics start to sound similar, push one of them into a more specific, opinionated, or contrarian angle.
-• Show, don't just label:
-  • Instead of saying "non-generic tips", briefly hint at what kind of framework, example, or comparison the future article could use.
-  • When possible, connect the topic to a realistic scenario in [[NICHE]] (for example: a small team launching a new feature, a solo creator fighting ad fatigue, a marketer trying to justify budget).
+• Use a varied vocabulary; do not repeat the same nouns, verbs and adjectives in a short span if you can reasonably rephrase.
+• When you mention a concept twice, refer to it in a slightly different way the second time instead of copy pasting the same phrase.
+• It is OK to include occasional sharp or slightly informal wording if it fits the niche (for example, pointing out common traps, myths, or mistakes).
+• Make each article feel distinct:
+• Do NOT reuse the same hook pattern across articles (avoid repeating structures like "The ultimate guide to", "Everything you need to know about").
+• Change how you frame the problem, the audience, and the benefit from article to article, even inside the same cluster.
+• If two angles start to sound similar, push one of them into a more specific, opinionated, or contrarian direction.
+• Show, do not just label:
+• Instead of saying "non generic tips", briefly hint at what kind of framework, example, or comparison you will use.
+• When possible, connect the content to a realistic scenario in [[NICHE]] (for example: a small team launching a new feature, a solo creator fighting ad fatigue, a marketer trying to justify budget).
 • Keep language simple and accessible:
-  • Prefer clear, plain words over complex academic terms, unless the niche truly requires them.
-  • Write as if the reader has experience in [[NICHE]] but is tired of vague marketing talk and wants something specific and usable.
+• Prefer clear, plain words over complex academic terms, unless the niche truly requires them.
+• Write as if the reader has experience in [[NICHE]] but is tired of vague marketing talk and wants something specific and usable.
 • Additional humanizing techniques:
-  • Allow small natural "imperfections" in style: occasional informal phrases, direct address to the reader ("you", "let's"), and different paragraph lengths (some short, some longer).
-  • Use natural transitions that feel conversational rather than formal. Sometimes you can skip a transition entirely if the flow still feels smooth.
-  • Add occasional rhetorical questions, personal observations, or brief asides that sound authentic.
-  • Write as if you are explaining something to a friend who understands the basics but needs practical steps, not as if you are writing a corporate manual.
-  • Do not start several paragraphs in a row with the same words or constructions; avoid series of paragraphs that all begin with "First", "Also", "Moreover", etc. Change how you introduce each idea.
-  • Do not build every paragraph on the same template "claim - explanation - conclusion". Sometimes a single strong thought or example is enough.
-  • Avoid overly formal phrasing, passive constructions, and bureaucratic language; if something can be said more simply, say it more simply.
-  • Add small, recognizable real life details (typical mistakes, internal doubts, small pains) but do not invent precise case studies with specific numbers if you do not have them from sources.
-  • Avoid repeating the same endings like "this is very important" or "this is the key to success". Show what actually changes for the reader instead.
-  • Each article must differ in structure from previous ones: do not repeat the same patterns of headings, lists, transitions, or section layouts.
+• Allow small natural "imperfections" in style: occasional informal phrases, direct address to the reader ("you", "let us"), and different paragraph lengths (some short, some longer).
+• Use natural transitions that feel conversational rather than formal. Sometimes you can skip a transition entirely if the flow still feels smooth.
+• Add occasional rhetorical questions, personal observations, or brief asides that sound authentic.
+• Write as if you are explaining something to a friend who understands the basics but needs practical steps, not as if you are writing a corporate manual.
+• Do not start several paragraphs in a row with the same words or constructions; avoid series of paragraphs that all begin with "First", "Also", "Moreover", etc. Change how you introduce each idea.
+• Do not build every paragraph on the same template "claim - explanation - conclusion". Sometimes a single strong thought or example is enough.
+• Avoid overly formal phrasing, passive constructions, and bureaucratic language; if something can be said more simply, say it more simply.
+• Add small, recognizable real life details (typical mistakes, internal doubts, small pains) but do not invent precise case studies with specific numbers if you do not have them from sources.
+• Avoid repeating the same endings like "this is very important" or "this is the key to success". Show what actually changes for the reader instead.
+• Each article must differ in structure from previous ones: do not repeat the same patterns of headings, lists, transitions, or section layouts.
 
 AI detection evasion techniques (CRITICAL - based on perplexity and burstiness analysis):
 • Maximize Perplexity (increase unpredictability and complexity):
-  • Use unexpected word choices: occasionally pick slightly less common synonyms instead of the most obvious word (e.g., "navigate" instead of "use", "tackle" instead of "solve", "unpack" instead of "explain").
-  • Vary sentence complexity: mix simple sentences with complex, multi-clause structures that show natural human thinking patterns. Include occasional long, winding sentences that reflect real thought processes.
-  • Introduce slight syntactic variations: use passive voice occasionally ("This approach was tested by many teams" instead of always "Many teams tested this"), inverted word order in questions, or parenthetical asides that break predictable patterns.
-  • Include domain-specific terminology: use niche-specific jargon naturally, as a real expert would, not just generic business terms. For example, in music: "pitch", "drop", "remix"; in HR: "ATS", "ROI of hiring", "time-to-fill".
-  • Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective. First discuss "strategies", then later refer to "tactics" or "approaches" or "frameworks".
+• Use occasional unexpected word choices: sometimes pick slightly less common synonyms instead of the most obvious word.
+• Vary sentence complexity: mix simple sentences with complex, multi clause structures that reflect natural thought. Include occasional long, winding sentences when they help you unpack an idea.
+• Introduce slight syntactic variations: use passive voice occasionally, inverted word order in questions, or parenthetical asides that break predictable patterns.
+• Include domain specific terminology: use niche specific jargon naturally, as a real expert would, not just generic business terms.
+• Add subtle semantic shifts: when revisiting a concept, approach it from a slightly different angle rather than repeating the same perspective.
 
-• Minimize Burstiness (reduce word/phrase repetition within short spans):
-  • CRITICAL: Never repeat the same noun, verb, or adjective within 2-3 consecutive sentences. Use synonyms or referential phrases instead.
-  • Example: If you mention "strategy" in one sentence, use "approach", "method", "framework", "system", "playbook", or "roadmap" in the next 2-3 sentences instead.
-  • When discussing the same concept multiple times, vary your phrasing: first mention "content creators", then "artists", then "creators", then "professionals in this field", then "those building an audience".
-  • Avoid repeating entire phrases: if you wrote "common mistakes" earlier, use "typical errors", "frequent pitfalls", "regular missteps", "usual traps", or "often-overlooked issues" later.
-  • Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
-  • Vary transition words: don't always use "However", "Moreover", "Additionally", "Furthermore". Mix with "That said", "On the flip side", "Here's the thing", "The catch is", "What's interesting", "Now, here's where it gets tricky".
+• Minimize Burstiness (reduce word and phrase repetition within short spans):
+• CRITICAL: Never repeat the same key noun, verb, or adjective in 2-3 consecutive sentences. Use synonyms or referential phrases instead.
+• When discussing the same concept multiple times, vary your phrasing: for example, "content creators", then "artists", then "professionals in this field", then "people building an audience".
+• Avoid repeating entire phrases: if you wrote "common mistakes" earlier, use "frequent pitfalls", "typical errors", "usual traps", or "often overlooked issues" later.
+• Break repetitive patterns: if you used a list format in one section, switch to narrative paragraphs in the next. Vary between numbered lists, bullet points, and prose.
+• Vary transition words: do not always use the same connectors. Mix neutral transitions with more conversational ones like "The catch is", "Here is the tricky part", "Now for the good news".
 
 • Linguistic diversity to avoid AI patterns:
-  • Use varied sentence starters: begin sentences with different parts of speech (nouns, verbs, adjectives, clauses, questions). Don't start multiple sentences in a row with "The", "This", "It", "You".
-  • Mix formal and informal register: occasionally drop in casual expressions or contractions where appropriate ("can't", "won't", "it's", "you're", "they've"). Balance professional tone with conversational moments.
-  • Include incomplete thoughts or fragments: short, impactful standalone phrases that add emphasis ("Here's why. This matters. Let's break it down.").
-  • Use rhetorical questions naturally: not formulaic ones ("Have you ever wondered?"), but genuine questions that reflect real curiosity or challenge assumptions ("But what if the platform changes the rules tomorrow?").
-  • Vary paragraph lengths dramatically: some single-sentence paragraphs for emphasis ("This changes everything."), others 4-5 sentences for depth. Avoid uniform paragraph lengths.
-  • Introduce unexpected analogies or metaphors: compare niche concepts to unrelated domains to show creative thinking (e.g., "Like a DJ mixing tracks, you're blending different content types").
+• Use varied sentence starters: begin sentences with different parts of speech (nouns, verbs, adjectives, clauses, questions). Do not start multiple sentences in a row with "The", "This", "It", "You".
+• Mix formal and informal register: occasionally drop in casual expressions or contractions where appropriate ("can not", "do not", "you are").
+• Include incomplete thoughts or fragments when they add emphasis: short standalone phrases like "Here is why. This matters."
+• Use rhetorical questions naturally, not formulaic ones.
+• Vary paragraph lengths: some single sentence paragraphs for emphasis, others 4-5 sentences for depth. Avoid uniform paragraph lengths.
+• Introduce occasional analogies or metaphors drawn from everyday life or from the niche.
 
 • Pattern breaking techniques:
-  • Avoid symmetrical structures: don't create parallel lists or bullet points with identical grammatical structures (e.g., avoid "First, you need... Second, you must... Third, you should...").
-  • Break formulaic transitions: instead of always using "First... Second... Third...", mix with "Let's start with...", "Another angle...", "What's interesting here is...", "Here's a curveball...", "One thing people miss...".
-  • Vary list formats: use numbered lists, bullet points, narrative paragraphs, and mixed formats throughout different sections. Don't rely on one format.
-  • Include tangents or asides: brief digressions that a human writer might naturally include (e.g., "This reminds me of a similar situation I saw...", "One thing to watch here is...", "A quick note on this...", "Side note: this is where many creators trip up...").
-  • Mix declarative and imperative sentences: balance statements ("This works because...") with direct commands ("Try this approach", "Avoid that trap", "Test this first").
+• Avoid symmetrical structures: do not create parallel lists or bullet points with identical grammatical structures ("First you need…", "Second you should…").
+• Break formulaic transitions: instead of always using "First… Second… Third…", mix with "Let us start with", "Another angle", "One thing people miss", "Here is a curveball".
+• Vary list formats from section to section.
+• Include short tangents or side notes when they help the reader understand why something matters.
+• Mix declarative and imperative sentences: balance statements ("This works because") with direct suggestions ("Test this first", "Skip that step if you are short on time").
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
@@ -176,9 +175,9 @@ CRITICAL REQUIREMENTS - READ CAREFULLY:
 
 Structure:
 • Respect the structure implied by the brief (H1/H2/H3 etc.).
-• Do NOT write things like "H1: …, H2: …" in the body.
-• Just use normal headings and paragraphs; hierarchy is conveyed by text, not by labels.
-• Write a full outreach article of [[WORD_COUNT]] words in [[LANGUAGE]]. Brand and platform names must always be capitalized correctly.
+• Do NOT write things like "H1: …", "H2: …", "H3: …" in the body.
+• Just use normal headings and paragraphs; hierarchy is conveyed by text and HTML tags, not by labels in the copy.
+• Write a full article of [[WORD_COUNT]] words in [[LANGUAGE]]. Brand and platform names must always be capitalized correctly.
 • Structure the article with clear H1, H2, H3 headings using proper HTML tags: <h1>, <h2>, <h3>.
 • Use <h1> for the main article title, <h2> for major sections, and <h3> for subsections.
 
@@ -188,13 +187,19 @@ Suggested flow:
 • One section where [[BRAND_NAME]] appears as a natural solution or helper, NOT a hard ad - ONLY if [[BRAND_NAME]] is provided.
 • If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brands and you skip the brand integration entirely.
 • Short conclusion that summarizes key points and gently points toward action.
-
 • Use bullet or numbered lists where helpful.
-• Avoid repetitive patterns. Each article must differ in structure from previous ones.
+
+Structure variation and pattern rules (IMPORTANT):
+• Do not turn every article into a numbered "Step 1 / Step 2 / Step 3" guide.
+• Use explicit step by step lists only when [[TOPIC_BRIEF]] clearly asks for a step by step format. In other cases, prefer natural narrative sections.
+• Avoid repeating the same structural pattern across different articles (for example: intro + 3 numbered steps + summary). Change how you break down the topic: sometimes short sections with only paragraphs, sometimes one small list inside a larger narrative block, sometimes a brief Q&A style subsection.
+• Lists (<ul>/<ol>) are optional tools, not a default template. Use them only when they genuinely make the content clearer. Never build the whole article as one long sequence of bullets.
+• Inside one article, do not format every section as "Point 1 / Point 2 / Point 3". Mix narrative paragraphs, occasional bullets, and subheadings so the text feels like a real editorial piece, not a rigid manual.
+• It is fine if some articles look almost fully narrative (just headings plus paragraphs) as long as the structure stays readable and follows [[TOPIC_BRIEF]].
 
 Repetition:
 • Avoid repeating the same phrases and sentence patterns.
-• Do not overuse transitions like "In conclusion", "Overall", "At the end of the day", etc.
+• Do not overuse transitions like "In conclusion", "Overall", "At the end of the day".
 • Vary how you introduce tips, examples, and sections.
 
 Commercial anchor link (user's brand/service):
@@ -252,48 +257,33 @@ b) The source adds value to a specific point you are making (statistic, definiti
 • If [[TRUST_SOURCES_LIST]] contains sources, you MUST use 1-3 of them. Do NOT write without external links.
 • Only if [[TRUST_SOURCES_LIST]] is completely empty may you write without external links.
 • Never stack long chains of citations. One strong source per point is enough.
-	5.	How to write in-text references - ORGANIC INTEGRATION REQUIRED
+	5.	How to write in text references - ORGANIC INTEGRATION REQUIRED
 • Integrate each source NATURALLY into the paragraph.
 • The source should feel like a natural part of your argument, not a forced citation.
 • Do NOT copy the page title verbatim if it sounds clunky; you may paraphrase the title while keeping the meaning.
-• Vary how you introduce sources.
-You MUST NOT reuse the same lead in phrase more than once (for example, "According to…", "Data from…", etc.).
-• Improvise to fit the context. Examples of different patterns:
+• Vary how you introduce sources; do NOT reuse the same lead in phrase more than once.
+Examples:
 • "A recent breakdown from [SOURCE_NAME] shows that…"
 • "[SOURCE_NAME] reports that…"
-• "In an analysis published on [SOURCE_NAME], …"
+• "In an analysis published on [SOURCE_NAME] …"
 • "Research highlighted on [SOURCE_NAME] suggests…"
 • "Streaming data from [SOURCE_NAME] indicates…"
-• "As [SOURCE_NAME] explains, …"
+• "As [SOURCE_NAME] explains …"
 • "Findings from [SOURCE_NAME] reveal that…"
 • "A study featured on [SOURCE_NAME] demonstrates…"
-• The source should support your point, not distract from it.
 • Place sources in the first half or middle of the article, not only at the end.
 • Each source should add something concrete: a number, a term, a trend, or a guideline.
-• CRITICAL: The source reference must flow naturally inside the sentence and must not break its structure.
+• The source reference must flow naturally inside the sentence and must not break its structure.
 	6.	Link formatting - ANCHOR TEXT RULES (CRITICAL)
-• Every external source must appear as a clickable anchor INSIDE a natural sentence.
-• FORBIDDEN: using the full URL as anchor text.
+• Every external source must appear as an anchor INSIDE a natural sentence.
+• FORBIDDEN: using the full URL as visible anchor text.
 • FORBIDDEN: long, technical anchor text that harms readability.
 • REQUIRED: use short, natural anchor text (2-5 words) that fits smoothly into the sentence.
 • Anchor text can be:
-• A brand name ("RouteNote", "Spotify", "TikTok Creator Portal").
+• A brand name ("RouteNote", "Spotify").
 • A short descriptive phrase ("recent analysis", "industry report", "platform guidelines").
-• A natural part of the sentence describing the source without being verbose.
-
-Examples of CORRECT anchors:
-✓ "A breakdown on RouteNote shows…"
-✓ "Research from Spotify's blog indicates…"
-✓ "As YouTube Creator Academy explains…"
-
-Examples of INCORRECT anchors:
-✗ "https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/" (full URL)
-✗ "playlist pitching in 2026 what artists need to know" (too long, copied from title)
-✗ "this article about playlist pitching" (too generic)
-
-• Format: short natural anchor.
 • The sentence should remain clear even if you remove the link and leave only the anchor wording.
-• Do not change or "clean" the URL - use it EXACTLY as given in [[TRUST_SOURCES_LIST]].
+• Do not change or clean the URL - use it EXACTLY as given in [[TRUST_SOURCES_LIST]].
 	7.	MANDATORY SOURCE USAGE
 • If [[TRUST_SOURCES_LIST]] contains ANY sources, you MUST use 1-3 of them.
 • You MUST find the most relevant ones, even if they are not a perfect match.
@@ -342,12 +332,12 @@ QUALITY EXPECTATIONS
 
 • Every section should give the reader something concrete to do, check, or think about.
 • Use realistic numbers and ranges when talking about saves, skip rates, budgets, etc., but do not fabricate precise statistics or percentages that you do not have from sources in [[TRUST_SOURCES_LIST]].
-• Do not mention Tavily, TRUST_SOURCES_LIST, or any internal tooling in the article itself.
-• The article must read like a polished piece from a serious niche specific blog or media outlet, not like AI output or a technical spec.
+• Do not mention Tavily, TRUST_SOURCES_LIST, or any internal tooling in the article text.
+• The article must read like a polished piece from a serious niche specific blog or media outlet, not like AI output or a technical specification.
 
 SEO requirements:
 • Write an SEO title tag (max 60 characters) that matches the search intent for this topic, includes the main keyword and fits [[NICHE]].
-• Write a meta description (150-160 characters) that is clear and concrete and includes at least one number (for example %, steps, years, metrics). Use a regular hyphen "-" instead of other dash characters.
+• Write a meta description (150-160 characters) that is clear and concrete and includes at least one number (for example percent, steps, years, metrics). Use a regular hyphen "-" instead of other dash characters.
 
 Language protocol:
 • All output (meta tags and article) must be in [[LANGUAGE]].
@@ -360,6 +350,7 @@ Technical requirements:
 "metaDescription": "…",
 "articleBodyHtml": "…"
 }
+
 • The articleBodyHtml field must:
 • Use proper HTML heading tags: <h1> for the main title, <h2> for major sections, <h3> for subsections. DO NOT use visible prefixes like "H1:", "H2:", "H3:".
 • Use <b> or <strong> for every bold phrase and any SEO keywords you choose to highlight.
@@ -390,14 +381,14 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty).
 • The commercial anchor [[ANCHOR_TEXT]] → [[ANCHOR_URL]] is integrated naturally (if provided).
-• The article structure matches the brief's requirements.
-• All formatting rules are followed (HTML tags, bold phrases, etc.).
+• The article structure matches the brief requirements.
+• All formatting rules are followed (HTML tags, bold phrases, link rules, character rules).
 
 Now generate the response as JSON only, with no explanations:
 {
 "titleTag": "Your SEO title tag here (max 60 characters)",
 "metaDescription": "Your meta description here (150-160 characters)",
-"articleBodyHtml": "Your article heading\\n\\nFirst paragraph with bold keywords and <a href=\\"[[ANCHOR_URL]]\\">[[ANCHOR_TEXT]] naturally integrated.\\n\\nSecond section heading\\n\\nMore content..."
+"articleBodyHtml": "Your article heading\n\nFirst paragraph with bold keywords and <a href=\"[[ANCHOR_URL]]\">[[ANCHOR_TEXT]] naturally integrated.\n\nSecond section heading\n\nMore content…"
 }
 `.trim();
 
