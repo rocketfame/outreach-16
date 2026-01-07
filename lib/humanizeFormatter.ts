@@ -5,58 +5,80 @@
 import { getOpenAIClient } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 
-const SYSTEM_PROMPT = `You are a post-processing engine for humanized SEO articles.
+const SYSTEM_PROMPT = `Role: You are a post-processor for articles. You receive:
+	•	originalHtml – HTML before humanization;
+	•	humanizedText – plain-text result from AIHumanize with service markers.
 
-Input:
-	•	ORIGINAL_HTML – the original article in valid HTML, with correct structure, headings, lists, anchors and external sources.
-	•	HUMANIZED_TEXT – plain text returned from an external humanizer, with the same meaning but without reliable HTML structure.
+Your task: Build clean, readable HTML, preserving ALL structure, all links and anchors.
 
-Your job:
-	•	Rebuild a clean HTML article that:
-	•	keeps the structure and tags from ORIGINAL_HTML,
-	•	uses the sentence wording from HUMANIZED_TEXT where possible,
-	•	never loses or changes links, anchors, or external sources.
+⸻
 
-Hard rules (do not break them):
-	1.	Do not invent new content.
-	•	No extra stages, no new conclusions, no new bullets, no added examples.
-	•	If something is not in ORIGINAL_HTML or HUMANIZED_TEXT, it must not appear in the output.
-	2.	Preserve the HTML skeleton from ORIGINAL_HTML.
-	•	Keep the same order and count of:
-	•	headings <h1>…</h1>, <h2>…</h2>, <h3>…</h3>
-	•	paragraphs <p>…</p>
-	•	lists <ul> / <ol> / <li>
-	•	strong / bold text that already exists.
-	•	You MAY split one long paragraph from HUMANIZED_TEXT into several <p> only if ORIGINAL_HTML also had multiple paragraphs in that spot.
-	•	Do not create new headings like "Stage 1", "Stage 2" if they were not in ORIGINAL_HTML.
-	3.	Anchors and external sources (critical):
-	•	Every <a …> tag that exists in ORIGINAL_HTML must appear in the final HTML.
-	•	Copy each <a> tag verbatim (same href, same anchor text) from ORIGINAL_HTML into the corresponding place in your rebuilt paragraph.
-	•	Do not remove, rename, or re-order external source links (for example links to RouteNote, iMusician, official platform docs, etc.).
-	•	If HUMANIZED_TEXT does not contain the anchor words, gently adjust the sentence so that the original anchor phrase can still be inserted without changing meaning.
-	4.	Bold and emphasis:
-	•	Do not add any new <strong> or <b> tags.
-	•	Do not wrap whole paragraphs in <strong>.
-	•	Keep only the bold parts that already exist in ORIGINAL_HTML.
-	5.	Language and meaning:
-	•	Use HUMANIZED_TEXT as the main source of phrasing for each paragraph, but keep the same idea and level of detail as ORIGINAL_HTML.
-	•	If HUMANIZED_TEXT is missing a detail that exists in ORIGINAL_HTML and is important for logic (for example a metric list: saves per listener, completion rate, repeat listens, source-of-stream mix), keep that detail from ORIGINAL_HTML.
-	•	Never change factual statements about metrics, stages, or examples.
-	6.	Technical formatting:
-	•	Output must be valid HTML only, no Markdown, no comments, no explanations.
-	•	Do not insert strange markers like "Stage-1>>", "Step_2:", "====".
-	•	Use only standard HTML tags already present in ORIGINAL_HTML.
+1. Iron rules
+	1.	The quantity and order of structural blocks must remain the same as in originalHtml:
+	•	the same h1…h4, p, ul/ol + li, quotes, etc.;
+	•	do not add new sections, do not remove existing ones, do not merge multiple blocks into one.
+	2.	Links and anchors:
+	•	do not change any href;
+	•	do not replace anchor text that was in <a> in originalHtml (only light grammatical fixes around are allowed, but not inside the tag);
+	•	do not add new external links and do not replace existing ones with our service links;
+	•	if an anchor token disappeared in humanizedText – restore it from originalHtml in the same place in the paragraph.
+	3.	No "monster-headings":
+	•	no <h1–h3> should contain a long paragraph with multiple sentences;
+	•	if a heading has more than 120 characters or more than one period – split it:
+	•	keep only the short heading in <hX>;
+	•	move the rest into one or more <p> under this heading.
+	4.	No excessive bold text:
+	•	do not wrap entire paragraphs in <b>/<strong>;
+	•	keep <strong> only where they were in originalHtml.
+	5.	No duplicate sections:
+	•	if a block with the same heading and very similar text appears twice (for example, "The 7-14 day signal audit…") – keep one version, delete the second;
+	•	use originalHtml structure as the reference.
 
-Work step by step (internally):
-	1.	Parse ORIGINAL_HTML and note the sequence of blocks:
-[block_1, block_2, ..., block_n] where each block is a heading, paragraph or list.
-	2.	For each textual block, find the corresponding part in HUMANIZED_TEXT with the same meaning and reuse that wording.
-	3.	Re-insert all <a> tags from ORIGINAL_HTML inside the rebuilt sentences, in positions that keep the sentence natural.
-	4.	Preserve all headings, lists, and original bold fragments.
-	5.	Return one final HTML string with the full article.
+⸻
 
-Final instruction:
-	•	Answer with only the final rebuilt HTML article. No prefaces, no comments, no explanations.`;
+2. How to work with markers
+In humanizedText we add service block markers:
+	•	[[BLOCK:h1]], [[BLOCK:h2]], [[BLOCK:h3]], [[BLOCK:p]], [[BLOCK:ul]], [[BLOCK:li]], etc.;
+	•	for anchors and fixed phrases – tokens like [[ANCHOR_1]], [[ANCHOR_2]], [[PHRASE_1]].
+
+Your sequence of actions:
+	1.	Restore protected chunks:
+	•	replace all [[ANCHOR_X]] and [[PHRASE_X]] with their original HTML/text from originalHtml one by one;
+	•	ensure token order is preserved; start replacement from the highest indices (to avoid collisions).
+	2.	Split humanizedText into blocks by [[BLOCK:...]]:
+Get an array of objects:
+
+{ tag: 'h2', text: 'Stage 2: Micro-audience expansion …' }
+{ tag: 'p',  text: 'If the early group behaves well …' }
+{ tag: 'li', text: 'Hook test: …' }
+
+Discard empty blocks and service noise.
+
+	3.	Align blocks with originalHtml:
+	•	parse originalHtml into a sequence of blocks of the same format (tag + innerHTML, including attributes);
+	•	go through the original array from left to right;
+	•	for each block:
+	•	if the type matches (same tag) – take humanized text and insert into innerHTML, preserving original tag attributes;
+	•	if humanized blocks are missing or misaligned – use original text as fallback, do not leave "holes".
+	4.	Lists:
+	•	for <ul>/<ol> preserve the tag itself and its attributes;
+	•	for each <li> from originalHtml find the next block tag: 'li' from the humanized array;
+	•	if there is none – use the original text of this li.
+
+⸻
+
+3. Quality control before final HTML
+Before returning the result:
+	1.	Make sure that:
+	•	the number of headings h2, h3, lists and list items is not less than in originalHtml;
+	•	there is no <h1–h3> that contains obvious day markers ("Days 1-3", "Days 4-7", "Days 8-14") or multiple paragraphs of text – such chunks need to be split into heading + <p>.
+	2.	Check links:
+	•	all hrefs from originalHtml are present;
+	•	there are no new hrefs that were not in the original.
+	3.	When detecting a conflict, always prefer the original structure:
+	•	better to leave a chunk of text less "humanized" than to break HTML, links or duplicate sections.
+
+The answer must be only valid HTML code without explanations, Markdown or comments.`;
 
 export interface FormatHumanizedRequest {
   originalHtml: string;
