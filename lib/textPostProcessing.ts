@@ -3,54 +3,128 @@
 
 /**
  * Cleans invisible Unicode characters and normalizes whitespace
- * This is essential text sanitization, not a "detector bypass"
+ * Based on Originality.ai's Invisible Text Detector & Remover tool
+ * This is essential text sanitization to remove AI-generated hidden characters
  * Preserves HTML structure while cleaning text content
+ * 
+ * Reference: https://originality.ai/blog/invisible-text-detector-remover
  */
 export function cleanInvisibleChars(text: string): string {
   if (!text) return text;
 
   let cleaned = text;
 
-  // Remove zero-width characters (safe to remove everywhere)
-  cleaned = cleaned.replace(/[\u200B-\u200F\uFEFF]/g, ''); // Zero-width space, joiner, non-joiner, etc.
+  // ========================================
+  // 1. REMOVE all invisible characters (completely invisible)
+  // ========================================
   
-  // Replace non-breaking space with regular space (safe for HTML)
-  cleaned = cleaned.replace(/\u00A0/g, ' ');
+  // Zero-width characters
+  cleaned = cleaned.replace(/[\u200B-\u200F]/g, ''); // Zero-width space, joiner, non-joiner, LTR/RTL marks
+  cleaned = cleaned.replace(/\uFEFF/g, ''); // Zero-width NBSP / BOM
   
-  // Remove other control characters (except newlines, tabs, and HTML-safe chars)
-  // Be careful: don't remove characters that might be part of HTML entities or structure
+  // Directional formatting characters (invisible)
+  cleaned = cleaned.replace(/[\u202A-\u202E]/g, ''); // LTR/RTL embedding, override, pop
+  cleaned = cleaned.replace(/[\u2066-\u2069]/g, ''); // LTR/RTL isolates
+  cleaned = cleaned.replace(/[\u206A-\u206F]/g, ''); // Symmetric swap, Arabic shaping, digit shapes
+  
+  // Word joiner and invisible operators
+  cleaned = cleaned.replace(/\u2060/g, ''); // Word joiner
+  cleaned = cleaned.replace(/[\u2061\u2063-\u2064]/g, ''); // Function application, invisible separator/plus
+  cleaned = cleaned.replace(/\u2062/g, ''); // Invisible times (will be replaced separately)
+  
+  // Mongolian variation selectors
+  cleaned = cleaned.replace(/[\u180B-\u180D]/g, ''); // Mongolian VS-1, VS-2, VS-3
+  
+  // Variation selectors (Unicode)
+  cleaned = cleaned.replace(/[\uFE00-\uFE0F]/g, ''); // Variation Selector-1 through Variation Selector-16
+  
+  // Grapheme joiner
+  cleaned = cleaned.replace(/\u034F/g, ''); // Grapheme joiner
+  
+  // Soft hyphen
+  cleaned = cleaned.replace(/\u00AD/g, ''); // Soft hyphen
+  
+  // Line and paragraph separators (invisible - convert to newlines)
+  cleaned = cleaned.replace(/\u2028/g, '\n'); // Line separator
+  cleaned = cleaned.replace(/\u2029/g, '\n\n'); // Paragraph separator
+  
+  // Control characters (except newline U+000A which we keep)
   cleaned = cleaned.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
   
-  // Normalize tabs to spaces (safe for HTML - tabs are whitespace)
-  cleaned = cleaned.replace(/\t+/g, ' ');
+  // File/Group/Record/Unit separators
+  cleaned = cleaned.replace(/[\u001C-\u001F]/g, ''); // File, Group, Record, Unit separators
   
-  // Remove multiple consecutive spaces, but preserve HTML structure
-  // Strategy: process text content between HTML tags separately
-  // This regex finds text between tags and normalizes spaces there
+  // Carriage return (keep only Line Feed for consistency)
+  cleaned = cleaned.replace(/\u000D/g, '');
+  
+  // ========================================
+  // 2. REPLACE various space types with regular space (U+0020)
+  // ========================================
+  
+  // Non-breaking space and related
+  cleaned = cleaned.replace(/\u00A0/g, ' '); // No-Break Space
+  
+  // Unicode space variations
+  cleaned = cleaned.replace(/[\u2000-\u200A]/g, ' '); // En Quad, Em Quad, En Space, Em Space, etc.
+  cleaned = cleaned.replace(/\u202F/g, ' '); // Narrow NBSP
+  cleaned = cleaned.replace(/\u205F/g, ' '); // Math Space
+  cleaned = cleaned.replace(/\u3000/g, ' '); // Ideographic Space
+  cleaned = cleaned.replace(/\u1680/g, ' '); // Ogham Space Mark
+  cleaned = cleaned.replace(/\u180E/g, ' '); // Mongolian Vowel Separator
+  cleaned = cleaned.replace(/[\u3164\uFFA0]/g, ' '); // Hangul Filler, Half-width Hangul Filler
+  cleaned = cleaned.replace(/\u2800/g, ' '); // Braille Blank
+  
+  // ========================================
+  // 3. REPLACE invisible operators with visible equivalents
+  // ========================================
+  
+  cleaned = cleaned.replace(/\u2062/g, 'x'); // Invisible Times → "x"
+  cleaned = cleaned.replace(/\u2063/g, ','); // Invisible Separator → ","
+  cleaned = cleaned.replace(/\u2064/g, '+'); // Invisible Plus → "+"
+  
+  // ========================================
+  // 4. REMOVE filler characters
+  // ========================================
+  
+  cleaned = cleaned.replace(/[\u115F\u1160\u17B4\u17B5]/g, ''); // Hangul Choseong/Jungseong Fillers, Khmer Vowels
+  
+  // ========================================
+  // 5. REPLACE special characters
+  // ========================================
+  
+  cleaned = cleaned.replace(/\uFFFC/g, '[OBJECT]'); // Object Replacement → "[OBJECT]"
+  
+  // ========================================
+  // 6. NORMALIZE tabs to spaces
+  // ========================================
+  
+  cleaned = cleaned.replace(/\u0009/g, '    '); // Tab → 4 spaces
+  
+  // ========================================
+  // 7. NORMALIZE whitespace (preserve HTML structure)
+  // ========================================
+  
+  // Normalize spaces in text content between HTML tags
   cleaned = cleaned.replace(/>([^<]+)</g, (match, textContent) => {
-    // Normalize spaces in text content (between tags)
     const normalized = textContent.replace(/\s{2,}/g, ' ');
     return '>' + normalized + '<';
   });
   
-  // Also normalize spaces at the start/end of text (outside tags)
+  // Normalize spaces outside tags
   cleaned = cleaned.replace(/([^>])\s{2,}([^<])/g, '$1 $2');
   
-  // Remove leading/trailing whitespace from lines, but preserve HTML tags
+  // Remove leading/trailing whitespace from lines, preserving HTML tags
   const lines = cleaned.split('\n');
   cleaned = lines.map(line => {
     const trimmed = line.trim();
-    // If line is just whitespace or empty, return empty string
     if (!trimmed) return '';
-    // If line is an HTML tag, preserve it as-is (but trim whitespace around it)
     if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
       return trimmed;
     }
-    // Otherwise, trim the line
     return trimmed;
   }).filter(line => line.length > 0).join('\n');
   
-  // Remove excessive empty lines (more than 2 consecutive newlines)
+  // Remove excessive empty lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
   return cleaned;
@@ -59,19 +133,39 @@ export function cleanInvisibleChars(text: string): string {
 /**
  * Normalizes quotes and dashes to standard ASCII equivalents
  * Converts fancy Unicode quotes/dashes to standard ones
+ * Based on Originality.ai's Invisible Text Detector & Remover tool
+ * 
+ * Reference: https://originality.ai/blog/invisible-text-detector-remover
  */
 export function normalizeQuotesAndDashes(text: string): string {
   if (!text) return text;
 
   let normalized = text;
 
-  // Normalize quotes
-  normalized = normalized.replace(/[""]/g, '"'); // Left/right double quotes → standard double quote
-  normalized = normalized.replace(/['']/g, "'"); // Left/right single quotes → standard single quote
+  // ========================================
+  // SMART QUOTES → STRAIGHT QUOTES
+  // ========================================
   
-  // Normalize dashes
-  normalized = normalized.replace(/[—–]/g, '-'); // Em dash, en dash → hyphen
-  normalized = normalized.replace(/…/g, '...'); // Ellipsis → three dots
+  // Double quotes
+  normalized = normalized.replace(/\u201C/g, '"'); // Left double quote (U+201C) → "
+  normalized = normalized.replace(/\u201D/g, '"'); // Right double quote (U+201D) → "
+  
+  // Single quotes
+  normalized = normalized.replace(/\u2018/g, "'"); // Left single quote (U+2018) → '
+  normalized = normalized.replace(/\u2019/g, "'"); // Right single quote (U+2019) → '
+  
+  // ========================================
+  // DASHES → HYPHEN
+  // ========================================
+  
+  normalized = normalized.replace(/\u2014/g, '-'); // Em dash (U+2014) → hyphen
+  normalized = normalized.replace(/\u2013/g, '-'); // En dash (U+2013) → hyphen
+  
+  // ========================================
+  // ELLIPSIS → THREE DOTS
+  // ========================================
+  
+  normalized = normalized.replace(/\u2026/g, '...'); // Horizontal ellipsis (U+2026) → ...
 
   return normalized;
 }

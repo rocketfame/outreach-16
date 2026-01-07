@@ -443,6 +443,34 @@ Language: US English.`;
         }
 
         if (articleStructure) {
+          // Clean invisible characters from all block text (regardless of humanization)
+          // This removes AI-generated hidden Unicode characters from GPT output
+          articleStructure.blocks = articleStructure.blocks.map(block => {
+            if (block.type === 'ul' || block.type === 'ol') {
+              const listBlock = block as any;
+              return {
+                ...listBlock,
+                items: (listBlock.items || []).map((item: any) => ({
+                  ...item,
+                  text: cleanText(item.text || '')
+                }))
+              };
+            }
+            if (block.type === 'table') {
+              const t = block as TableBlock;
+              return {
+                ...t,
+                caption: t.caption ? cleanText(t.caption) : undefined,
+                headers: (t.headers || []).map(h => cleanText(h)),
+                rows: (t.rows || []).map(row => row.map(cell => cleanText(cell)))
+              };
+            }
+            return {
+              ...block,
+              text: cleanText(block.text || '')
+            };
+          });
+
           // Apply humanization on write if enabled
           const enableHumanizeOnWrite = body.humanizeOnWrite || false;
           let totalHumanizeWordsUsed = 0;
@@ -467,9 +495,13 @@ Language: US English.`;
                         (listBlock.items || []).map(async (item: any) => {
                           if (!item?.text || item.text.length < 100) return item;
                           try {
-                            const result = await humanizeSectionText(item.text, humanizeModel, registeredEmail, frozenPlaceholders);
+                            // Clean invisible characters BEFORE humanization
+                            const cleanedText = cleanText(item.text);
+                            const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders);
                             listWordsUsed += result.wordsUsed;
-                            return { ...item, text: result.humanizedText };
+                            // Clean invisible characters AFTER humanization (in case API returns them)
+                            const finalText = cleanText(result.humanizedText);
+                            return { ...item, text: finalText };
                           } catch {
                             return item;
                           }
@@ -487,8 +519,11 @@ Language: US English.`;
                       let caption = t.caption;
                       if (caption && caption.length >= 100) {
                         try {
-                          const result = await humanizeSectionText(caption, humanizeModel, registeredEmail, frozenPlaceholders);
-                          caption = result.humanizedText;
+                          // Clean invisible characters BEFORE humanization
+                          const cleanedCaption = cleanText(caption);
+                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, registeredEmail, frozenPlaceholders);
+                          // Clean invisible characters AFTER humanization
+                          caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
                         } catch {
                           // keep original
@@ -503,9 +538,12 @@ Language: US English.`;
                             cells.map(async (cell) => {
                               if (!cell || cell.length < 100) return cell;
                               try {
-                                const result = await humanizeSectionText(cell, humanizeModel, registeredEmail, frozenPlaceholders);
+                                // Clean invisible characters BEFORE humanization
+                                const cleanedCell = cleanText(cell);
+                                const result = await humanizeSectionText(cleanedCell, humanizeModel, registeredEmail, frozenPlaceholders);
                                 tableWordsUsed += result.wordsUsed;
-                                return result.humanizedText;
+                                // Clean invisible characters AFTER humanization
+                                return cleanText(result.humanizedText);
                               } catch {
                                 return cell;
                               }
@@ -527,9 +565,13 @@ Language: US English.`;
                     // Paragraphs: humanize if long enough
                     if (!block.text || block.text.length < 100) return block;
                     try {
-                      const result = await humanizeSectionText(block.text, humanizeModel, registeredEmail, frozenPlaceholders);
+                      // Clean invisible characters BEFORE humanization
+                      const cleanedText = cleanText(block.text);
+                      const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders);
                       totalHumanizeWordsUsed += result.wordsUsed;
-                      return { ...block, text: result.humanizedText };
+                      // Clean invisible characters AFTER humanization (in case API returns them)
+                      const finalText = cleanText(result.humanizedText);
+                      return { ...block, text: finalText };
                     } catch {
                       return block;
                     }
@@ -552,10 +594,13 @@ Language: US English.`;
             }
           }
 
-          cleanedArticleBodyHtml = blocksToHtml(
-            articleStructure.blocks,
-            articleStructure.anchors,
-            articleStructure.trustSources
+          // Convert blocks to HTML, then clean invisible characters
+          cleanedArticleBodyHtml = cleanText(
+            blocksToHtml(
+              articleStructure.blocks,
+              articleStructure.anchors,
+              articleStructure.trustSources
+            )
           );
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
