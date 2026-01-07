@@ -3724,7 +3724,7 @@ export default function Home() {
                 {costData?.tokens?.formatted?.openai || '0 tokens'}
               </span>
             </div>
-            {(humanizeWordsUsed > 0 || (costData?.humanizeWords && costData.humanizeWords > 0)) && (
+            {((humanizeWordsUsed > 0 || (costData?.humanizeWords && costData.humanizeWords > 0)) || (costData?.humanize && costData.humanize > 0) || (costData?.formatted?.humanize && costData.formatted.humanize !== '$0.0000')) && (
               <>
                 <div className="cost-divider"></div>
                 <div className="cost-item">
