@@ -90,6 +90,11 @@ export default function Home() {
     mode: "Basic", // Basic (single pass) or Autopilot (multiple iterations)
     showSettings: false, // Toggle settings panel
   });
+  
+  // Track humanization costs (words used for humanization)
+  // AIHumanize pricing: 50,000 words = $25, so $0.0005 per word
+  const [humanizeWordsUsed, setHumanizeWordsUsed] = useState(0);
+  const HUMANIZE_COST_PER_WORD = 0.0005; // $0.0005 per word (50k words = $25)
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<{
     message: string;
@@ -149,13 +154,15 @@ export default function Home() {
   const [costData, setCostData] = useState<{
     tavily: number;
     openai: number;
+    humanize: number;
     total: number;
-    formatted: { tavily: string; openai: string; total: string };
+    formatted: { tavily: string; openai: string; humanize: string; total: string };
     tokens?: {
       tavily: number;
       openai: { input: number; output: number; total: number };
       formatted: { tavily: string; openai: string };
     };
+    humanizeWords?: number;
   } | null>(null);
 
   // Helper functions to update persisted state
@@ -1613,6 +1620,9 @@ export default function Home() {
         finalHtml = data.html;
         totalWordsUsed += data.wordsUsed || 0;
         remainingWords = data.remainingWords || 0;
+        
+        // Track humanization words used for cost calculation
+        setHumanizeWordsUsed(prev => prev + (data.wordsUsed || 0));
         
         // Small delay between iterations for Autopilot
         if (iteration < iterations - 1) {
@@ -3482,7 +3492,13 @@ export default function Home() {
             console.log('[cost-tracker] Formatted values:', data.totals.formatted);
             setCostData({
               ...data.totals,
+              humanize: 0,
+              formatted: {
+                ...data.totals.formatted,
+                humanize: '$0.0000',
+              },
               tokens: data.tokens,
+              humanizeWords: 0,
             });
           } else {
             console.warn('[cost-tracker] Invalid response structure:', data);
@@ -3504,6 +3520,44 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Update costData with humanization costs
+  useEffect(() => {
+    if (costData && costData.humanizeWords !== humanizeWordsUsed) {
+      const humanizeCost = humanizeWordsUsed * HUMANIZE_COST_PER_WORD;
+      const humanizeFormatted = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      }).format(humanizeCost);
+      
+      setCostData(prev => {
+        if (!prev) return prev;
+        // Calculate total excluding previous humanize cost
+        const baseTotal = prev.total - (prev.humanize || 0);
+        const newTotal = baseTotal + humanizeCost;
+        const totalFormatted = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        }).format(newTotal);
+        
+        return {
+          ...prev,
+          humanize: humanizeCost,
+          total: newTotal,
+          formatted: {
+            ...prev.formatted,
+            humanize: humanizeFormatted,
+            total: totalFormatted,
+          },
+          humanizeWords: humanizeWordsUsed,
+        };
+      });
+    }
+  }, [humanizeWordsUsed]);
 
   // Prevent hydration mismatch by not rendering until hydrated
   if (!isHydrated) {
@@ -3561,15 +3615,14 @@ export default function Home() {
         
         {/* Header Controls: Cost Tracker + Theme Toggle */}
         <div className="header-controls">
-          {/* HIDDEN: Cost Tracker Component - Usage Statistics Display
+          {/* Cost Tracker Component - Usage Statistics Display
               This component displays:
               - Tavily API usage (queries count)
               - OpenAI API usage (tokens count)
+              - AIHumanize usage (words used)
               - Total cost calculation
-              
-              To re-enable: uncomment the cost-display div below
           */}
-          {/* <div className="cost-display">
+          <div className="cost-display">
             <div className="cost-item">
               <span className="cost-label">Tavily:</span>
               <span className="cost-value">
@@ -3583,6 +3636,17 @@ export default function Home() {
                 {costData?.tokens?.formatted?.openai || '0 tokens'}
               </span>
             </div>
+            {humanizeWordsUsed > 0 && (
+              <>
+                <div className="cost-divider"></div>
+                <div className="cost-item">
+                  <span className="cost-label">Humanize:</span>
+                  <span className="cost-value">
+                    {humanizeWordsUsed.toLocaleString()} words ({costData?.formatted?.humanize || '$0.0000'})
+                  </span>
+                </div>
+              </>
+            )}
             <div className="cost-divider"></div>
             <div className="cost-item">
               <span className="cost-label">Total:</span>
@@ -3590,7 +3654,7 @@ export default function Home() {
                 {costData?.formatted?.total || '$0.0000'}
               </span>
             </div>
-          </div> */}
+          </div>
           <div className="theme-switch-container">
             <button
               type="button"
