@@ -48,13 +48,31 @@ export function cleanInvisibleChars(text: string): string {
   cleaned = cleaned.replace(/\u2028/g, '\n'); // Line separator
   cleaned = cleaned.replace(/\u2029/g, '\n\n'); // Paragraph separator
   
-  // Control characters (except newline U+000A which we keep)
+  // CRITICAL: Replace Line Feed (U+000A) with space inside text content
+  // According to Originality.ai: Line Feed should be replaced with space
+  // We preserve HTML structure by only replacing LF in text between tags
+  // Strategy: Replace LF with space in text content, but preserve HTML structure
+  cleaned = cleaned.replace(/>([^<]*?)\n([^<]*?)</g, (match, before, after) => {
+    // Replace LF with space in text content between tags
+    return '>' + before.replace(/\n/g, ' ') + ' ' + after.replace(/\n/g, ' ') + '<';
+  });
+  
+  // Also replace standalone LF characters (not part of HTML structure)
+  // Replace multiple consecutive LFs with single space, but preserve intentional line breaks in HTML
+  cleaned = cleaned.replace(/([^>])\n([^<])/g, '$1 $2'); // LF between text characters
+  cleaned = cleaned.replace(/\n{2,}/g, ' '); // Multiple LFs → single space
+  
+  // FINAL PASS: Replace any remaining LF characters (U+000A) with space
+  // This ensures ALL Line Feed characters are replaced according to Originality.ai recommendation
+  cleaned = cleaned.replace(/\n/g, ' '); // All remaining LF → space
+  
+  // Control characters (LF is already handled above, now remove other control chars)
   cleaned = cleaned.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
   
   // File/Group/Record/Unit separators
   cleaned = cleaned.replace(/[\u001C-\u001F]/g, ''); // File, Group, Record, Unit separators
   
-  // Carriage return (keep only Line Feed for consistency)
+  // Carriage return (remove - we've already handled LF)
   cleaned = cleaned.replace(/\u000D/g, '');
   
   // ========================================
@@ -105,27 +123,26 @@ export function cleanInvisibleChars(text: string): string {
   // ========================================
   
   // Normalize spaces in text content between HTML tags
+  // This handles any remaining Line Feeds that might be in text content
   cleaned = cleaned.replace(/>([^<]+)</g, (match, textContent) => {
-    const normalized = textContent.replace(/\s{2,}/g, ' ');
+    // Replace any remaining LF characters with space (in case some were missed)
+    let normalized = textContent.replace(/\n/g, ' ');
+    // Normalize multiple spaces to single space
+    normalized = normalized.replace(/\s{2,}/g, ' ');
     return '>' + normalized + '<';
   });
   
   // Normalize spaces outside tags
   cleaned = cleaned.replace(/([^>])\s{2,}([^<])/g, '$1 $2');
   
-  // Remove leading/trailing whitespace from lines, preserving HTML tags
-  const lines = cleaned.split('\n');
-  cleaned = lines.map(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
-      return trimmed;
-    }
-    return trimmed;
-  }).filter(line => line.length > 0).join('\n');
+  // Since we've replaced all LFs with spaces, we now clean up HTML structure
+  // Remove spaces between tags (but preserve text content)
+  cleaned = cleaned.replace(/>\s+</g, '><'); // Remove spaces between consecutive tags
+  cleaned = cleaned.replace(/>\s+/g, '>'); // Remove leading spaces after opening tags
+  cleaned = cleaned.replace(/\s+</g, '<'); // Remove trailing spaces before closing tags
   
-  // Remove excessive empty lines
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  // Remove excessive consecutive spaces (more than 2)
+  cleaned = cleaned.replace(/ {3,}/g, ' '); // Max 1 space (multiple spaces collapsed)
 
   return cleaned;
 }

@@ -6,6 +6,7 @@ import Notification from "./components/Notification";
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle } from "./hooks/usePersistentAppState";
 import { copyArticleAsPlainText, downloadArticleAsTxt, extractPlainTextFromElement } from "@/lib/articlePlainText";
+import { cleanText } from "@/lib/textPostProcessing";
 
 type LoadingStep = "topics" | "outline" | "draft" | null;
 
@@ -762,11 +763,23 @@ export default function Home() {
 
       if (data.articles.length > 0) {
         const newArticle = data.articles[0];
+        
+        // CRITICAL: Clean invisible Unicode characters before saving
+        // This ensures all hidden characters are removed even if they come from API
+        const cleanedArticle = {
+          ...newArticle,
+          // Clean all text fields that might contain hidden characters
+          titleTag: cleanText(newArticle.titleTag || ''),
+          metaDescription: cleanText(newArticle.metaDescription || ''),
+          fullArticleText: cleanText(newArticle.fullArticleText || ''),
+          articleBodyHtml: cleanText(newArticle.articleBodyHtml || newArticle.fullArticleText || ''),
+        };
+        
         updateGeneratedArticles(
           generatedArticles.map(a =>
             a.topicTitle === topicId
               ? {
-                  ...newArticle,
+                  ...cleanedArticle,
                   topicTitle: topicId,
                   status: "ready" as const,
                 }
@@ -1034,10 +1047,17 @@ export default function Home() {
       // #endregion
 
       // Update generated articles with results
+      // CRITICAL: Clean invisible Unicode characters before saving
+      // This ensures all hidden characters are removed even if they come from API
       updateGeneratedArticles([
         ...generatedArticles.filter(a => !topicIds.includes(a.topicTitle)),
         ...data.articles.map((article, index) => ({
           ...article,
+          // Clean all text fields that might contain hidden characters
+          titleTag: cleanText(article.titleTag || ''),
+          metaDescription: cleanText(article.metaDescription || ''),
+          fullArticleText: cleanText(article.fullArticleText || ''),
+          articleBodyHtml: cleanText(article.articleBodyHtml || article.fullArticleText || ''),
           topicTitle: topics[index]?.id || article.topicTitle,
           status: "ready" as const,
         }))
@@ -1318,12 +1338,23 @@ export default function Home() {
       
       updateGeneratedArticles(prev => {
         const filtered = prev.filter(a => a.topicTitle !== articleId);
+        
+        // CRITICAL: Clean invisible Unicode characters before saving
+        // This ensures all hidden characters are removed even if they come from API
+        const cleanedArticle = {
+          ...data.articles[0],
+          // Clean all text fields that might contain hidden characters
+          titleTag: cleanText(preservedTitleTag || ''),
+          metaDescription: cleanText(data.articles[0]?.metaDescription || ''),
+          fullArticleText: cleanText(data.articles[0]?.fullArticleText || ''),
+          articleBodyHtml: cleanText(data.articles[0]?.articleBodyHtml || data.articles[0]?.fullArticleText || ''),
+        };
+        
         const updated = [
           ...filtered,
           {
-            ...data.articles[0],
+            ...cleanedArticle,
             topicTitle: articleId,
-            titleTag: preservedTitleTag, // Preserve titleTag from directArticleTopic
             status: "ready" as const,
           }
         ];
@@ -2575,6 +2606,12 @@ export default function Home() {
           }
         }
       }
+
+      // CRITICAL: Clean invisible Unicode characters before saving
+      // This ensures all hidden characters (em-dash, smart quotes, zero-width spaces, etc.)
+      // are removed even if they come from API or other sources
+      setEditingArticleStatus("Cleaning text from hidden characters...");
+      finalHtml = cleanText(finalHtml);
 
       console.log("[editArticleWithAI] Updating article:", {
         articleId,
