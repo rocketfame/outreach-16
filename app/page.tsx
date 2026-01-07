@@ -94,7 +94,13 @@ export default function Home() {
   // Track humanization costs (words used for humanization)
   // AIHumanize pricing: 50,000 words = $25, so $0.0005 per word
   const [humanizeWordsUsed, setHumanizeWordsUsed] = useState(0);
+  const humanizeWordsUsedRef = useRef(0); // Keep ref for access in intervals
   const HUMANIZE_COST_PER_WORD = 0.0005; // $0.0005 per word (50k words = $25)
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    humanizeWordsUsedRef.current = humanizeWordsUsed;
+  }, [humanizeWordsUsed]);
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const [notification, setNotification] = useState<{
     message: string;
@@ -1618,11 +1624,21 @@ export default function Home() {
         }
 
         finalHtml = data.html;
-        totalWordsUsed += data.wordsUsed || 0;
+        const wordsUsedThisIteration = data.wordsUsed || 0;
+        totalWordsUsed += wordsUsedThisIteration;
         remainingWords = data.remainingWords || 0;
         
         // Track humanization words used for cost calculation
-        setHumanizeWordsUsed(prev => prev + (data.wordsUsed || 0));
+        setHumanizeWordsUsed(prev => {
+          const newTotal = prev + wordsUsedThisIteration;
+          console.log(`[humanize] Iteration ${iteration + 1}/${iterations}:`, {
+            wordsUsedThisIteration,
+            cumulativeTotal: newTotal,
+            remainingWords,
+            mode
+          });
+          return newTotal;
+        });
         
         // Small delay between iterations for Autopilot
         if (iteration < iterations - 1) {
@@ -1651,14 +1667,25 @@ export default function Home() {
         return next;
       });
 
+      // Play success sound after humanization completes
+      playSuccessSound();
+
       setNotification({
-        message: "Text humanized. AI detection should be lower now.",
+        message: `Text humanized successfully. Used ${totalWordsUsed.toLocaleString()} words (${remainingWords.toLocaleString()} remaining).`,
         time: new Date().toLocaleTimeString(),
         visible: true,
       });
       setTimeout(() => {
         setNotification(prev => prev ? { ...prev, visible: false } : null);
       }, 3000);
+      
+      console.log('[humanize] Humanization completed:', {
+        topicId,
+        totalWordsUsed,
+        remainingWords,
+        iterations,
+        mode
+      });
 
     } catch (error: any) {
       console.error("[humanize] Error:", error);
@@ -3491,8 +3518,8 @@ export default function Home() {
             console.log('[cost-tracker] Tokens:', data.tokens);
             console.log('[cost-tracker] Formatted values:', data.totals.formatted);
             setCostData(prev => {
-              // Always use current humanizeWordsUsed from state, not from prev
-              const currentHumanizeWords = humanizeWordsUsed;
+              // Always use current humanizeWordsUsed from ref (always up-to-date)
+              const currentHumanizeWords = humanizeWordsUsedRef.current;
               const currentHumanize = currentHumanizeWords * HUMANIZE_COST_PER_WORD;
               const currentHumanizeFormatted = new Intl.NumberFormat('en-US', {
                 style: 'currency',
@@ -3547,8 +3574,6 @@ export default function Home() {
 
   // Update costData with humanization costs whenever humanizeWordsUsed changes
   useEffect(() => {
-    if (!costData) return;
-    
     // Always recalculate humanize costs when words change
     const humanizeCost = humanizeWordsUsed * HUMANIZE_COST_PER_WORD;
     const humanizeFormatted = new Intl.NumberFormat('en-US', {
@@ -3559,7 +3584,31 @@ export default function Home() {
     }).format(humanizeCost);
     
     setCostData(prev => {
-      if (!prev) return prev;
+      // If costData is not initialized yet, initialize it with humanize costs
+      if (!prev) {
+        const baseCost = 0;
+        const newTotal = baseCost + humanizeCost;
+        const totalFormatted = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        }).format(newTotal);
+        
+        return {
+          tavily: 0,
+          openai: 0,
+          humanize: humanizeCost,
+          total: newTotal,
+          formatted: {
+            tavily: '$0.0000',
+            openai: '$0.0000',
+            humanize: humanizeFormatted,
+            total: totalFormatted,
+          },
+          humanizeWords: humanizeWordsUsed,
+        };
+      }
       
       // Only update if humanizeWords or cost actually changed
       if (prev.humanizeWords === humanizeWordsUsed && Math.abs((prev.humanize || 0) - humanizeCost) < 0.0001) {
@@ -3596,7 +3645,7 @@ export default function Home() {
         humanizeWords: humanizeWordsUsed,
       };
     });
-  }, [humanizeWordsUsed]);
+  }, [humanizeWordsUsed, costData]);
 
   // Prevent hydration mismatch by not rendering until hydrated
   if (!isHydrated) {
