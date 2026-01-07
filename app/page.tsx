@@ -3491,16 +3491,15 @@ export default function Home() {
             console.log('[cost-tracker] Tokens:', data.tokens);
             console.log('[cost-tracker] Formatted values:', data.totals.formatted);
             setCostData(prev => {
-              // Preserve humanize data when updating from API
-              const currentHumanizeWords = prev?.humanizeWords ?? humanizeWordsUsed;
+              // Always use current humanizeWordsUsed from state, not from prev
+              const currentHumanizeWords = humanizeWordsUsed;
               const currentHumanize = currentHumanizeWords * HUMANIZE_COST_PER_WORD;
-              const currentHumanizeFormatted = prev?.formatted?.humanize || 
-                new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: 'USD',
-                  minimumFractionDigits: 4,
-                  maximumFractionDigits: 4,
-                }).format(currentHumanize);
+              const currentHumanizeFormatted = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4,
+              }).format(currentHumanize);
               
               // Calculate new total with preserved humanize cost
               const baseCost = (data.totals.tavily || 0) + (data.totals.openai || 0);
@@ -3550,9 +3549,6 @@ export default function Home() {
   useEffect(() => {
     if (!costData) return;
     
-    // Only update if humanizeWords actually changed
-    if (costData.humanizeWords === humanizeWordsUsed) return;
-    
     // Always recalculate humanize costs when words change
     const humanizeCost = humanizeWordsUsed * HUMANIZE_COST_PER_WORD;
     const humanizeFormatted = new Intl.NumberFormat('en-US', {
@@ -3565,6 +3561,11 @@ export default function Home() {
     setCostData(prev => {
       if (!prev) return prev;
       
+      // Only update if humanizeWords or cost actually changed
+      if (prev.humanizeWords === humanizeWordsUsed && Math.abs((prev.humanize || 0) - humanizeCost) < 0.0001) {
+        return prev;
+      }
+      
       // Get base costs from API (tavily + openai)
       const baseCost = (prev.tavily || 0) + (prev.openai || 0);
       const newTotal = baseCost + humanizeCost;
@@ -3574,6 +3575,14 @@ export default function Home() {
         minimumFractionDigits: 4,
         maximumFractionDigits: 4,
       }).format(newTotal);
+      
+      console.log('[cost-tracker] Updating humanize costs:', {
+        humanizeWordsUsed,
+        humanizeCost,
+        humanizeFormatted,
+        newTotal,
+        totalFormatted
+      });
       
       return {
         ...prev,

@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   prepareForHumanization,
+  restoreProtectedChunks,
   restoreFromHumanization,
   type ProtectedChunk
 } from "@/lib/humanizeProtection";
@@ -13,6 +14,7 @@ import {
   chunkTextForHumanization,
   type HumanizeRequest
 } from "@/lib/aiHumanizeClient";
+import { formatHumanizedHtml } from "@/lib/humanizeFormatter";
 
 export interface HumanizeArticleRequest {
   html: string;
@@ -148,15 +150,32 @@ export async function POST(req: NextRequest) {
 
     console.log(`[humanize-api] Humanization complete. Words used: ${totalWordsUsed}, Remaining: ${remainingWords}`);
 
-    // Step 3: Restore protected chunks (anchors and phrases) back into HTML with structure
-    console.log("[humanize-api] Restoring protected chunks and structure...");
-    const restoredHtml = restoreFromHumanization(humanizedText, protectedChunks, originalHtml, structure);
+    // Step 3: Restore protected chunks (anchors and phrases) first
+    console.log("[humanize-api] Restoring protected chunks (anchors and phrases)...");
+    let restoredText = restoreProtectedChunks(humanizedText, protectedChunks);
+    
+    // Step 4: Format humanized text back to HTML using OpenAI formatter
+    let formattedHtml: string;
+    try {
+      console.log("[humanize-api] Formatting humanized text to HTML structure using OpenAI formatter...");
+      formattedHtml = await formatHumanizedHtml({
+        originalHtml,
+        humanizedText: restoredText,
+        blockMarkers: true
+      });
+      console.log("[humanize-api] OpenAI formatter successful");
+    } catch (formatError) {
+      console.error("[humanize-api] OpenAI formatter failed, falling back to rule-based formatter:", formatError);
+      // Fallback to old rule-based formatter
+      formattedHtml = restoreFromHumanization(restoredText, [], originalHtml, structure);
+      console.log("[humanize-api] Using fallback formatter");
+    }
 
-    console.log("[humanize-api] Humanization successful");
+    console.log("[humanize-api] Humanization and formatting successful");
 
     return NextResponse.json({
       ok: true,
-      html: restoredHtml,
+      html: formattedHtml,
       wordsUsed: totalWordsUsed,
       remainingWords
     } as HumanizeArticleResponse);
