@@ -205,11 +205,12 @@ export async function POST(req: Request) {
             topicBriefForFilter
           );
           // Convert to TrustedSource format for compatibility
+          // Use "independent_media" as default type since old filter doesn't provide classification
           trustedSources = filteredTrustSources.map(ts => ({
             id: ts.id as "T1" | "T2" | "T3",
             url: ts.url,
             title: ts.text,
-            type: "other" as const, // Old filter doesn't provide type
+            type: "independent_media" as const, // Default type for fallback (old filter doesn't provide type)
             relevance_score: 7, // Default score
           }));
         }
