@@ -1138,11 +1138,14 @@ export default function Home() {
       // #endregion
 
       // Step 2: Generate articles with found trust sources
+      // CRITICAL: Use current brief from Project Basics (may have been updated after topics were generated)
+      // This ensures that if user changed Brand, Anchor, or other Project Basics settings,
+      // those changes will be reflected in the generated article
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          brief,
+          brief, // Current Project Basics (always up-to-date, even if changed after topic generation)
           selectedTopics: selectedTopicsData,
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesList: trustSourcesList,
