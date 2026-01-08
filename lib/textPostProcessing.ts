@@ -190,14 +190,16 @@ export function fixHtmlTagSpacing(text: string): string {
   
   let fixed = text;
   
-  // Add space after closing tags (</strong>, </b>, </a>, </span>, etc.) if followed by letter/number
+  // CRITICAL: Add space after closing tags (</strong>, </b>, </a>, </span>, etc.) if followed by letter/number
   // Pattern: </tag>letter → </tag> letter
   // This handles: word</tag>word → word</tag> word
+  // IMPORTANT: This must handle <a> tags especially to prevent anchor merging
   fixed = fixed.replace(/(<\/(strong|b|a|span|em|i|u|mark|code|kbd|samp|var)[^>]*>)([A-Za-z0-9])/g, '$1 $3');
   
-  // Add space before opening tags (<strong>, <b>, <a>, etc.) if preceded by letter/number
+  // CRITICAL: Add space before opening tags (<strong>, <b>, <a>, etc.) if preceded by letter/number
   // Pattern: letter<tag> → letter <tag>
   // This handles: word<tag>word → word <tag>word
+  // IMPORTANT: This must handle <a> tags especially to prevent anchor merging
   fixed = fixed.replace(/([A-Za-z0-9])(<(strong|b|a|span|em|i|u|mark|code|kbd|samp|var)[^>]*>)/g, '$1 $2');
   
   // Special case: handle anchors that might be adjacent to punctuation
@@ -205,6 +207,12 @@ export function fixHtmlTagSpacing(text: string): string {
   // This ensures anchors don't merge with punctuation marks
   fixed = fixed.replace(/([.,;:!?])(<(a|strong|b)[^>]*>)/g, '$1 $2');
   fixed = fixed.replace(/(<\/(a|strong|b)[^>]*>)([.,;:!?])/g, '$1 $3');
+  
+  // CRITICAL: Additional check for <a> tags that might still be merged
+  // Handle cases like: word<a href="...">text</a>word → word <a href="...">text</a> word
+  // This is a safety net in case previous patterns missed something
+  fixed = fixed.replace(/([A-Za-z0-9])(<a\s+[^>]*>)/g, '$1 $2');
+  fixed = fixed.replace(/(<\/a>)([A-Za-z0-9])/g, '$1 $2');
   
   // Normalize multiple spaces back to single space (in case we added spaces that were already there)
   fixed = fixed.replace(/\s{2,}/g, ' ');

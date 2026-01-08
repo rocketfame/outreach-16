@@ -289,20 +289,59 @@ Your rules:
 - Avoid putting all references in one paragraph. Spread them naturally across the body.
 - Do NOT place [T1]–[T3] in the introduction or final conclusion section.
 
-4. Anchor text & placeholders
-- For each reference, first choose a short, natural anchor (2–5 words), for example:
-  - "Spotify's official guidance"
-  - "a recent industry report"
-  - "RouteNote's breakdown"
-- Then attach the placeholder [T1], [T2], or [T3] after the anchor, matching the correct source from [[TRUST_SOURCES_LIST]].
-- Do NOT use bare URLs as text.
-- Do NOT copy the full page title as anchor.
-- Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+4. Anchor text & placeholders (CRITICAL - UNIVERSAL RULES)
+- EXTERNAL LINKS – ANCHOR LOGIC (UNIVERSAL RULES):
+  Goal: Any external link must look natural: 1–3 words that logically describe the source (platform / report / guide / blog), NOT a long phrase or full article title.
 
-Examples of correct usage:
-- "According to Spotify's official guidance [T1], saves and completion now drive most recommendation surfaces."
-- "A recent industry report [T2] shows how independent artists benefit from algorithmic playlists."
-- "Streaming data from a niche analytics platform [T3] highlights how repeat listens predict long-tail growth."
+- WHERE TO PLACE THE LINK:
+  When referencing an external source, first formulate a short mention:
+  - platform name or brand; OR
+  - short descriptor like "official guide", "recent report", "industry research".
+  The clickable part must be THIS 1–3 word formulation, NOT the entire phrase around it.
+
+- ANCHOR LENGTH:
+  - Anchor = maximum 3 words.
+  - FORBIDDEN to make anchor:
+    - full article title;
+    - long sentences;
+    - half a paragraph.
+
+- ATTACHING PLACEHOLDERS:
+  - After the anchor, immediately place the source placeholder: [T1], [T2], or [T3].
+  - Between anchor and placeholder — exactly ONE space.
+  - Do NOT merge anchor with previous/next word: no gluing like wordanchor[T1].
+
+- Format examples:
+  - "... according to official guide [T1] the platform continues ..." (anchor = "official guide")
+  - "... as recent report [T2] shows, the data indicates ..." (anchor = "recent report")
+  - "... Spotify [T3] explains that ..." (anchor = "Spotify" - single word)
+
+- WHAT NOT TO DO:
+  ❌ Do NOT make anchor the full article title.
+  ❌ Do NOT duplicate full title after anchor.
+  ❌ Do NOT put link on entire phrase like:
+     "in the overview of new platform tools <long article title> [T1]..."
+     Instead, rephrase and attach link to short source descriptor.
+
+- For each reference:
+  - Choose a short, natural anchor (1–3 words MAXIMUM), for example:
+    - "Spotify" (single word)
+    - "official guide" (2 words)
+    - "recent industry report" (3 words)
+  - Then attach the placeholder [T1], [T2], or [T3] IMMEDIATELY after the anchor with ONE space.
+  - Do NOT use bare URLs as text.
+  - Do NOT copy the full page title as anchor.
+  - Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+
+Examples of CORRECT usage:
+- "According to official guide [T1], saves and completion now drive most recommendation surfaces."
+- "Recent report [T2] shows how independent artists benefit from algorithmic playlists."
+- "Spotify [T3] highlights how repeat listens predict long-tail growth."
+
+Examples of INCORRECT usage:
+- "According to Spotify's official guidance for artists in 2026 [T1]..." (too long - 6 words)
+- "According to official Spotify fan engagement guide published in 2025 [T1]..." (full title - FORBIDDEN)
+- "According toofficial guide [T1]..." (no spaces - FORBIDDEN)
 
 5. Consistency check before final answer
 Before you output the final article, verify:
@@ -328,7 +367,28 @@ Before you output the final article, verify:
 • Place sources in the first half or middle of the article, not only at the end.
 • Each source should add something concrete: a number, a term, a trend, or a guideline.
 • CRITICAL: The source reference must flow naturally inside the sentence and must not break its structure.
-	6.	Link formatting - ANCHOR TEXT RULES (CRITICAL)
+	6.	Link formatting - ANCHOR TEXT RULES (CRITICAL - UNIVERSAL RULES)
+• EXTERNAL LINKS – ANCHOR LOGIC (UNIVERSAL RULES):
+  Goal: Any external link must look natural: 1–3 words that logically describe the source (platform / report / guide / blog), NOT a long phrase or full article title.
+
+• WHERE TO PLACE THE LINK:
+  When referencing an external source, first formulate a short mention:
+  - platform name or brand; OR
+  - short descriptor like "official guide", "recent report", "industry research".
+  The clickable part must be THIS 1–3 word formulation, NOT the entire phrase around it.
+
+• ANCHOR LENGTH:
+  - Anchor = maximum 3 words.
+  - FORBIDDEN to make anchor:
+    - full article title;
+    - long sentences;
+    - half a paragraph.
+
+• ATTACHING PLACEHOLDERS:
+  - After the anchor, immediately place the source placeholder: [T1], [T2], or [T3].
+  - Between anchor and placeholder — exactly ONE space.
+  - Do NOT merge anchor with previous/next word: no gluing like wordanchor[T1].
+
 • Every external source must appear as a placeholder INSIDE a natural sentence.
 • Use placeholders [T1], [T2], [T3] for trust sources (in order of appearance).
 • FORBIDDEN: using the full URL as visible text or anchor text.
@@ -337,21 +397,32 @@ Before you output the final article, verify:
 • REQUIRED: use natural anchor text that fits smoothly into the sentence.
 • The placeholder will be replaced with actual anchor text during processing.
 • Anchor text format (REQUIRED - VARIABLE LENGTH):
-  • Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+  • Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words (MAXIMUM 3 words).
   • Can be a single brand name ("RouteNote", "Spotify", "TikTok").
-  • Can be a short phrase with 2-3 words ("recent analysis", "industry report", "platform guidelines", "Spotify's blog", "this study").
+  • Can be a short phrase with 2-3 words ("recent analysis", "industry report", "platform guidelines", "official guide").
   • Must be a natural part of the sentence describing the source without being verbose.
   • DO NOT always use the same length - mix single words with 2-3 word phrases naturally.
 • Examples of CORRECT anchor integration:
-  ✓ "A breakdown on [T1] shows how smaller playlists work better." (where [T1] = "RouteNote")
-  ✓ "Research from [T1] indicates that short form content is gaining traction." (where [T1] = "Spotify's blog")
-  ✓ "As [T1] explains, algorithmic playlists favor consistency." (where [T1] = "YouTube Creator Academy")
+  ✓ "A breakdown on [T1] shows how smaller playlists work better." (where [T1] = "RouteNote" - 1 word)
+  ✓ "Research from [T1] indicates that short form content is gaining traction." (where [T1] = "official guide" - 2 words)
+  ✓ "As [T1] explains, algorithmic playlists favor consistency." (where [T1] = "Spotify" - 1 word)
 • Examples of INCORRECT anchor integration:
-  ✗ "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows..." (full URL)
-  ✗ "A breakdown on playlist pitching in 2026 what artists need to know [T1] shows..." (too long, copied from title)
-  ✗ "A breakdown on this article about playlist pitching [T1] shows..." (too generic)
+  ✗ "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows..." (full URL - FORBIDDEN)
+  ✗ "A breakdown on playlist pitching in 2026 what artists need to know [T1] shows..." (too long, copied from title - FORBIDDEN)
+  ✗ "A breakdown on this article about playlist pitching [T1] shows..." (too generic - FORBIDDEN)
+  ✗ "A breakdown onofficial guide[T1] shows..." (no spaces - FORBIDDEN)
 • The sentence should remain clear even if you remove the placeholder.
 • Do not change or clean the URL - use it EXACTLY as given in [[TRUST_SOURCES_LIST]].
+
+• FINAL SELF-CHECK:
+  Before returning the article:
+  - Check all [T1]/[T2]/[T3];
+  - Make sure that:
+    - each placeholder is attached to an anchor with 1–3 words;
+    - anchor logically describes the source (platform/report/guide/research);
+    - there are no long blue "sausages" with dozens of words;
+    - there are no glued words like brandreport[T1].
+  If any link violates these rules — REWRITE that sentence so the link looks natural and consists of 1–3 words, logically attached to the external source.
 	7.	MANDATORY SOURCE USAGE
 • If [[TRUST_SOURCES_LIST]] contains ANY sources, you MUST use 1-3 of them.
 • You MUST find the most relevant ones, even if they are not a perfect match.
@@ -1020,20 +1091,59 @@ Your rules:
 - Avoid putting all references in one paragraph. Spread them naturally across the body.
 - Do NOT place [T1]–[T3] in the introduction or final conclusion section.
 
-4. Anchor text & placeholders
-- For each reference, first choose a short, natural anchor (2–5 words), for example:
-  - "Spotify's official guidance"
-  - "a recent industry report"
-  - "RouteNote's breakdown"
-- Then attach the placeholder [T1], [T2], or [T3] after the anchor, matching the correct source from [[TRUST_SOURCES_LIST]].
-- Do NOT use bare URLs as text.
-- Do NOT copy the full page title as anchor.
-- Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+4. Anchor text & placeholders (CRITICAL - UNIVERSAL RULES)
+- EXTERNAL LINKS – ANCHOR LOGIC (UNIVERSAL RULES):
+  Goal: Any external link must look natural: 1–3 words that logically describe the source (platform / report / guide / blog), NOT a long phrase or full article title.
 
-Examples of correct usage:
-- "According to Spotify's official guidance [T1], saves and completion now drive most recommendation surfaces."
-- "A recent industry report [T2] shows how independent artists benefit from algorithmic playlists."
-- "Streaming data from a niche analytics platform [T3] highlights how repeat listens predict long-tail growth."
+- WHERE TO PLACE THE LINK:
+  When referencing an external source, first formulate a short mention:
+  - platform name or brand; OR
+  - short descriptor like "official guide", "recent report", "industry research".
+  The clickable part must be THIS 1–3 word formulation, NOT the entire phrase around it.
+
+- ANCHOR LENGTH:
+  - Anchor = maximum 3 words.
+  - FORBIDDEN to make anchor:
+    - full article title;
+    - long sentences;
+    - half a paragraph.
+
+- ATTACHING PLACEHOLDERS:
+  - After the anchor, immediately place the source placeholder: [T1], [T2], or [T3].
+  - Between anchor and placeholder — exactly ONE space.
+  - Do NOT merge anchor with previous/next word: no gluing like wordanchor[T1].
+
+- Format examples:
+  - "... according to official guide [T1] the platform continues ..." (anchor = "official guide")
+  - "... as recent report [T2] shows, the data indicates ..." (anchor = "recent report")
+  - "... Spotify [T3] explains that ..." (anchor = "Spotify" - single word)
+
+- WHAT NOT TO DO:
+  ❌ Do NOT make anchor the full article title.
+  ❌ Do NOT duplicate full title after anchor.
+  ❌ Do NOT put link on entire phrase like:
+     "in the overview of new platform tools <long article title> [T1]..."
+     Instead, rephrase and attach link to short source descriptor.
+
+- For each reference:
+  - Choose a short, natural anchor (1–3 words MAXIMUM), for example:
+    - "Spotify" (single word)
+    - "official guide" (2 words)
+    - "recent industry report" (3 words)
+  - Then attach the placeholder [T1], [T2], or [T3] IMMEDIATELY after the anchor with ONE space.
+  - Do NOT use bare URLs as text.
+  - Do NOT copy the full page title as anchor.
+  - Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+
+Examples of CORRECT usage:
+- "According to official guide [T1], saves and completion now drive most recommendation surfaces."
+- "Recent report [T2] shows how independent artists benefit from algorithmic playlists."
+- "Spotify [T3] highlights how repeat listens predict long-tail growth."
+
+Examples of INCORRECT usage:
+- "According to Spotify's official guidance for artists in 2026 [T1]..." (too long - 6 words)
+- "According to official Spotify fan engagement guide published in 2025 [T1]..." (full title - FORBIDDEN)
+- "According toofficial guide [T1]..." (no spaces - FORBIDDEN)
 
 5. Consistency check before final answer
 Before you output the final article, verify:
