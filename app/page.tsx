@@ -4471,7 +4471,6 @@ export default function Home() {
                                       <div className="topic-preview-header">
                                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                                           <h5 className="topic-preview-title">{topic.workingTitle}</h5>
-                                          {hasArticle && (
                                           {isGenerating && !hasArticle && (
                                             <span className="topic-generating-badge" title="Generating article">
                                               ⏳ Generating...
