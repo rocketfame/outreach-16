@@ -90,21 +90,65 @@ export function injectAnchorsIntoText(
   result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
 
   // Replace anchor placeholders [A1], [A2], etc.
+  // Add spaces around anchors to prevent them from merging with adjacent text
   anchors.forEach(a => {
     const placeholder = `[${a.id}]`;
+    const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safeUrl = escapeHtmlAttr(a.url);
     const safeText = escapeHtml(a.text);
     const anchorHtml = `<a href="${safeUrl}">${safeText}</a>`;
-    result = result.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), anchorHtml);
+    // Replace placeholder with anchor, ensuring spaces on both sides if not already present
+    // Pattern: (non-space)(placeholder)(non-space) -> $1 space anchor space $2
+    result = result.replace(
+      new RegExp(`([^\\s])${escapedPlaceholder}([^\\s])`, 'g'),
+      `$1 ${anchorHtml} $2`
+    );
+    // Pattern: (non-space)(placeholder)(space or end) -> $1 space anchor $2
+    result = result.replace(
+      new RegExp(`([^\\s])${escapedPlaceholder}(\\s|$)`, 'g'),
+      `$1 ${anchorHtml}$2`
+    );
+    // Pattern: (space or start)(placeholder)(non-space) -> $1 anchor space $2
+    result = result.replace(
+      new RegExp(`(^|\\s)${escapedPlaceholder}([^\\s])`, 'g'),
+      `$1${anchorHtml} $2`
+    );
+    // Pattern: (space or start)(placeholder)(space or end) -> $1 anchor $2 (already has spaces)
+    result = result.replace(
+      new RegExp(`(^|\\s)${escapedPlaceholder}(\\s|$)`, 'g'),
+      `$1${anchorHtml}$2`
+    );
   });
 
   // Replace trust source placeholders [T1], [T2], etc.
+  // Add spaces around anchors to prevent them from merging with adjacent text
   trusts.forEach(t => {
     const placeholder = `[${t.id}]`;
+    const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safeUrl = escapeHtmlAttr(t.url);
     const safeText = escapeHtml(t.text);
     const trustHtml = `<a href="${safeUrl}">${safeText}</a>`;
-    result = result.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), trustHtml);
+    // Replace placeholder with anchor, ensuring spaces on both sides if not already present
+    // Pattern: (non-space)(placeholder)(non-space) -> $1 space anchor space $2
+    result = result.replace(
+      new RegExp(`([^\\s])${escapedPlaceholder}([^\\s])`, 'g'),
+      `$1 ${trustHtml} $2`
+    );
+    // Pattern: (non-space)(placeholder)(space or end) -> $1 space anchor $2
+    result = result.replace(
+      new RegExp(`([^\\s])${escapedPlaceholder}(\\s|$)`, 'g'),
+      `$1 ${trustHtml}$2`
+    );
+    // Pattern: (space or start)(placeholder)(non-space) -> $1 anchor space $2
+    result = result.replace(
+      new RegExp(`(^|\\s)${escapedPlaceholder}([^\\s])`, 'g'),
+      `$1${trustHtml} $2`
+    );
+    // Pattern: (space or start)(placeholder)(space or end) -> $1 anchor $2 (already has spaces)
+    result = result.replace(
+      new RegExp(`(^|\\s)${escapedPlaceholder}(\\s|$)`, 'g'),
+      `$1${trustHtml}$2`
+    );
   });
 
   return result;
@@ -148,7 +192,7 @@ export function blocksToHtml(
     const textWithLinks = injectAnchorsIntoText(block.text, anchors, trusts);
     const tag = block.type;
     return `<${tag}>${textWithLinks}</${tag}>`;
-  }).join('\n');
+  }).join(''); // Join without newlines - cleanText will handle any whitespace normalization
 }
 
 /**

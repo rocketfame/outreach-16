@@ -77,6 +77,7 @@ export default function Home() {
   const [isGeneratingArticles, setIsGeneratingArticles] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [copyStatusByTopic, setCopyStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
+  const [copyImageStatusByTopic, setCopyImageStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   const [copyPlainTextStatus, setCopyPlainTextStatus] = useState<"idle" | "copied">("idle");
   const [copyPlainTextStatusByTopic, setCopyPlainTextStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   // Humanize on write toggle (for live humanization during generation)
@@ -2967,6 +2968,64 @@ export default function Home() {
     }
   };
 
+  // Copy image to clipboard
+  const copyImageToClipboard = async (topicId: string) => {
+    const imageData = articleImages.get(topicId);
+    if (!imageData) {
+      setNotification({
+        message: "Image not found",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+      return;
+    }
+
+    try {
+      // Convert base64 to blob
+      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/png' });
+
+      // Copy to clipboard using Clipboard API
+      const clipboardItem = new ClipboardItem({ 'image/png': blob });
+      await navigator.clipboard.write([clipboardItem]);
+
+      // Update status
+      setCopyImageStatusByTopic(prev => {
+        const next = new Map(prev);
+        next.set(topicId, "copied");
+        return next;
+      });
+
+      // Reset status after 2 seconds
+      setTimeout(() => {
+        setCopyImageStatusByTopic(prev => {
+          const next = new Map(prev);
+          next.set(topicId, "idle");
+          return next;
+        });
+      }, 2000);
+
+      setNotification({
+        message: "Image copied to clipboard!",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+    } catch (error) {
+      console.error("[copyImageToClipboard] Error:", error);
+      setNotification({
+        message: "Failed to copy image to clipboard",
+        time: new Date().toLocaleTimeString(),
+        visible: true,
+      });
+    }
+  };
+
   // Generate hero image for an article
   const generateArticleImage = async (topicId: string) => {
     const article = generatedArticles.find(a => a.topicTitle === topicId);
@@ -3647,6 +3706,32 @@ export default function Home() {
               alt="Hero image preview"
               className="image-preview-full"
             />
+            <div className="image-preview-actions">
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => copyImageToClipboard(viewingImage)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>{copyImageStatusByTopic.get(viewingImage) === "copied" ? "Copied!" : "Copy Image"}</span>
+              </button>
+              <a
+                href={`data:image/png;base64,${articleImages.get(viewingImage)}`}
+                download={`${viewingImage}-hero.png`}
+                className="btn-outline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Download</span>
+              </a>
+            </div>
           </div>
         </div>
       )}
@@ -4377,10 +4462,6 @@ export default function Home() {
                                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                                           <h5 className="topic-preview-title">{topic.workingTitle}</h5>
                                           {hasArticle && (
-                                            <span className="topic-completed-badge" title={article?.createdAt ? `Article created: ${new Date(article.createdAt).toLocaleString()}` : "Article created"}>
-                                              ✓ Article created{article?.createdAt ? ` · ${new Date(article.createdAt).toLocaleString()}` : ""}
-                                            </span>
-                                          )}
                                           {isGenerating && !hasArticle && (
                                             <span className="topic-generating-badge" title="Generating article">
                                               ⏳ Generating...
@@ -5456,6 +5537,17 @@ export default function Home() {
                                         </svg>
                                         <span>Download</span>
                                       </a>
+                                      <button
+                                        type="button"
+                                        className="btn-outline"
+                                        onClick={() => copyImageToClipboard(topicId)}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                        <span>{copyImageStatusByTopic.get(topicId) === "copied" ? "Copied!" : "Copy Image"}</span>
+                                      </button>
                                       <button
                                         type="button"
                                         className="btn-outline"

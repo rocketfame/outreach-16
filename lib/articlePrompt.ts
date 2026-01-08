@@ -316,13 +316,14 @@ b) The source adds value to a specific point you are making (statistic, definiti
 • FORBIDDEN: using the full URL as visible text or anchor text.
 • FORBIDDEN: long, technical anchor text that harms readability.
 • FORBIDDEN: copying the full page title verbatim if it's too long or clunky.
-• REQUIRED: use short, natural anchor text (2-5 words) that fits smoothly into the sentence.
+• REQUIRED: use natural anchor text that fits smoothly into the sentence.
 • The placeholder will be replaced with actual anchor text during processing.
-• Anchor text format (REQUIRED):
-  • Must be a SHORT phrase (2-5 words maximum).
-  • Can be a brand name ("RouteNote", "Spotify", "TikTok Creator Portal").
-  • Can be a short descriptive phrase ("recent analysis", "industry report", "platform guidelines").
+• Anchor text format (REQUIRED - VARIABLE LENGTH):
+  • Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+  • Can be a single brand name ("RouteNote", "Spotify", "TikTok").
+  • Can be a short phrase with 2-3 words ("recent analysis", "industry report", "platform guidelines", "Spotify's blog", "this study").
   • Must be a natural part of the sentence describing the source without being verbose.
+  • DO NOT always use the same length - mix single words with 2-3 word phrases naturally.
 • Examples of CORRECT anchor integration:
   ✓ "A breakdown on [T1] shows how smaller playlists work better." (where [T1] = "RouteNote")
   ✓ "Research from [T1] indicates that short form content is gaining traction." (where [T1] = "Spotify's blog")
@@ -347,7 +348,7 @@ b) The source adds value to a specific point you are making (statistic, definiti
 
 For each placeholder verify:
 a) "Does the corresponding URL exist in [[TRUST_SOURCES_LIST]]?"
-b) "Does the placeholder fit naturally into the sentence where a short anchor (2-5 words) would appear?"
+b) "Does the placeholder fit naturally into the sentence where an anchor (1-3 words, varying randomly) would appear?"
 c) "Does the sentence remain clear with the placeholder?"
 
 • If any placeholder does not match a record in [[TRUST_SOURCES_LIST]], REMOVE it immediately.
@@ -378,7 +379,7 @@ CORRECT (short anchor with brand name):
 "As [T1] explains, algorithmic playlists favor consistency over volume."
 (where [T1] = "YouTube Creator Academy" - short brand name)
 
-REMEMBER: The placeholder should feel like a natural part of the sentence with a SHORT anchor (2-5 words), not like a footnote or a long URL. It will be replaced with the actual anchor link during processing.
+REMEMBER: The placeholder should feel like a natural part of the sentence with an anchor that varies in length (sometimes 1 word, sometimes 2-3 words), not like a footnote or a long URL. It will be replaced with the actual anchor link during processing.
 
 ⸻
 
@@ -919,12 +920,13 @@ treat the article as if no commercial link was requested.
   •	FORBIDDEN: using the full URL as visible text or anchor text.
   •	FORBIDDEN: long, technical anchor text that harms readability.
   •	FORBIDDEN: copying the full page title verbatim if it's too long or clunky.
-  •	REQUIRED: use short, natural anchor text (2-5 words) that fits smoothly into the sentence.
-  •	Anchor text format (REQUIRED):
-    •	Must be a SHORT phrase (2-5 words maximum).
-    •	Can be a brand name ("RouteNote", "Spotify", "TikTok Creator Portal").
-    •	Can be a short descriptive phrase ("recent analysis", "industry report", "platform guidelines").
+  •	REQUIRED: use natural anchor text that fits smoothly into the sentence.
+  •	Anchor text format (REQUIRED - VARIABLE LENGTH):
+    •	Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+    •	Can be a single brand name ("RouteNote", "Spotify", "TikTok").
+    •	Can be a short phrase with 2-3 words ("recent analysis", "industry report", "platform guidelines", "Spotify's blog", "this study").
     •	Must be a natural part of the sentence describing the source without being verbose.
+    •	DO NOT always use the same length - mix single words with 2-3 word phrases naturally.
 • Vary how you introduce sources. You MUST NOT reuse the same lead-in phrase more than once (for example, do not use "According to…" or "Data from…" multiple times).
 • Improvise to fit the context. Examples of different patterns:
   •	"A recent breakdown from [T1] shows that…"
