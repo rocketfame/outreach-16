@@ -801,11 +801,62 @@ Language: US English.`;
         let cleanedArticleBodyHtml = "";
         
         // Convert trustedSources to TrustSourceSpec format for article structure
-        const trustSourcesForStructure: TrustSourceSpec[] = trustedSources.map(ts => ({
-          id: ts.id,
-          text: ts.title, // Use title as anchor text
-          url: ts.url,
-        }));
+        // CRITICAL: Trim anchor text to 1-3 words (as per prompt rules)
+        const trustSourcesForStructure: TrustSourceSpec[] = trustedSources.map(ts => {
+          // Extract short anchor text from title (1-3 words max)
+          const words = ts.title.trim().split(/\s+/);
+          let anchorText = ts.title;
+          
+          if (words.length > 3) {
+            // Try to extract brand name from URL first
+            try {
+              const urlObj = new URL(ts.url);
+              const domain = urlObj.hostname.replace('www.', '');
+              const domainName = domain.split('.')[0];
+              
+              // Use domain name if it's a recognizable brand (1-2 words max)
+              if (domainName.length > 2 && domainName.length < 20) {
+                // Capitalize first letter
+                anchorText = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+              } else {
+                // Fallback: use first 1-3 words from title
+                // Prefer shorter (1-2 words) if it makes sense
+                const shortWords = words.slice(0, 2).join(' ');
+                // If first 2 words are too generic, try to find brand name
+                if (shortWords.length < 5 || /^(the|a|an|this|that|how|what|why|when|where)\s/i.test(shortWords)) {
+                  anchorText = words.slice(0, 3).join(' ');
+                } else {
+                  anchorText = shortWords;
+                }
+              }
+            } catch {
+              // If URL parsing fails, use first 1-3 words from title
+              // Prefer shorter if it makes sense
+              if (words.length >= 3) {
+                const shortWords = words.slice(0, 2).join(' ');
+                if (shortWords.length < 5 || /^(the|a|an|this|that)\s/i.test(shortWords)) {
+                  anchorText = words.slice(0, 3).join(' ');
+                } else {
+                  anchorText = shortWords;
+                }
+              } else {
+                anchorText = words.slice(0, Math.min(3, words.length)).join(' ');
+              }
+            }
+          } else if (words.length > 2) {
+            // If 3 words, keep as is (within limit)
+            anchorText = words.slice(0, 3).join(' ');
+          } else {
+            // If 1-2 words, keep as is
+            anchorText = ts.title;
+          }
+          
+          return {
+            id: ts.id,
+            text: anchorText, // Short anchor text (1-3 words)
+            url: ts.url,
+          };
+        });
 
         if (hasBlocksFormat) {
           // BLOCK FORMAT (preferred): deterministic structure -> HTML

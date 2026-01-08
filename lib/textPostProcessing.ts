@@ -211,8 +211,16 @@ export function fixHtmlTagSpacing(text: string): string {
   // CRITICAL: Additional check for <a> tags that might still be merged
   // Handle cases like: word<a href="...">text</a>word → word <a href="...">text</a> word
   // This is a safety net in case previous patterns missed something
+  // More aggressive pattern: ensure space before opening <a> tag
   fixed = fixed.replace(/([A-Za-z0-9])(<a\s+[^>]*>)/g, '$1 $2');
+  // More aggressive pattern: ensure space after closing </a> tag
   fixed = fixed.replace(/(<\/a>)([A-Za-z0-9])/g, '$1 $2');
+  
+  // CRITICAL: Handle punctuation before/after links
+  // Pattern: punctuation<a> -> punctuation <a> (unless it's part of the anchor)
+  fixed = fixed.replace(/([.,;:!?])(<a\s+[^>]*>)/g, '$1 $2');
+  // Pattern: </a>punctuation -> </a> punctuation
+  fixed = fixed.replace(/(<\/a>)([.,;:!?])/g, '$1 $2');
   
   // Normalize multiple spaces back to single space (in case we added spaces that were already there)
   fixed = fixed.replace(/\s{2,}/g, ' ');

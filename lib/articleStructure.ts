@@ -99,36 +99,26 @@ export function injectAnchorsIntoText(
     const safeText = escapeHtml(a.text);
     const anchorHtml = `<a href="${safeUrl}">${safeText}</a>`;
     
-    // CRITICAL: Always ensure spaces around anchors
-    // Pattern 1: (non-space)(placeholder)(non-space) -> $1 space anchor space $2
+    // CRITICAL: Always ensure spaces around anchors BEFORE replacing
+    // First, add spaces around placeholder if needed
+    // Pattern: word[placeholder]word -> word [placeholder] word
     result = result.replace(
-      new RegExp(`([^\\s\\[\\]])${escapedPlaceholder}([^\\s\\[\\]])`, 'g'),
-      `$1 ${anchorHtml} $2`
+      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
+      `$1 ${placeholder} $2`
     );
-    // Pattern 2: (non-space)(placeholder)(space or end) -> $1 space anchor $2
+    // Pattern: word[placeholder] -> word [placeholder]
     result = result.replace(
-      new RegExp(`([^\\s\\[\\]])${escapedPlaceholder}(\\s|$)`, 'g'),
-      `$1 ${anchorHtml}$2`
+      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}(\\s|$)`, 'g'),
+      `$1 ${placeholder}$2`
     );
-    // Pattern 3: (space or start)(placeholder)(non-space) -> $1 anchor space $2
+    // Pattern: [placeholder]word -> [placeholder] word
     result = result.replace(
-      new RegExp(`(^|\\s)${escapedPlaceholder}([^\\s\\[\\]])`, 'g'),
-      `$1${anchorHtml} $2`
+      new RegExp(`(^|\\s)${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
+      `$1${placeholder} $2`
     );
-    // Pattern 4: (space or start)(placeholder)(space or end) -> $1 anchor $2 (already has spaces)
-    result = result.replace(
-      new RegExp(`(^|\\s)${escapedPlaceholder}(\\s|$)`, 'g'),
-      `$1${anchorHtml}$2`
-    );
-    // Pattern 5: Handle case where placeholder is at the very beginning or end
-    result = result.replace(
-      new RegExp(`^${escapedPlaceholder}([^\\s])`, 'g'),
-      `${anchorHtml} $1`
-    );
-    result = result.replace(
-      new RegExp(`([^\\s])${escapedPlaceholder}$`, 'g'),
-      `$1 ${anchorHtml}`
-    );
+    
+    // Now replace placeholder with HTML anchor (already has spaces)
+    result = result.replace(new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), anchorHtml);
   });
 
   // Replace trust source placeholders [T1], [T2], etc.
@@ -138,39 +128,67 @@ export function injectAnchorsIntoText(
     const placeholder = `[${t.id}]`;
     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safeUrl = escapeHtmlAttr(t.url);
-    const safeText = escapeHtml(t.text);
+    
+    // CRITICAL: Trim anchor text to 1-3 words (enforce maximum)
+    // This ensures short, natural anchor text instead of long article titles
+    const words = t.text.trim().split(/\s+/);
+    let anchorText = t.text;
+    if (words.length > 3) {
+      // Take first 1-3 words, preferring shorter if it makes sense
+      // Try to extract brand name from URL if possible
+      try {
+        const urlObj = new URL(t.url);
+        const domain = urlObj.hostname.replace('www.', '');
+        const domainName = domain.split('.')[0];
+        // Use domain name if it's a recognizable brand (1-2 words max)
+        if (domainName.length > 2 && domainName.length < 20) {
+          anchorText = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+        } else {
+          // Fallback: use first 1-2 words from title (prefer shorter)
+          const shortWords = words.slice(0, 2).join(' ');
+          if (shortWords.length < 5 || /^(the|a|an|this|that|how|what|why|when|where)\s/i.test(shortWords)) {
+            anchorText = words.slice(0, 3).join(' ');
+          } else {
+            anchorText = shortWords;
+          }
+        }
+      } catch {
+        // If URL parsing fails, use first 1-2 words (prefer shorter)
+        const shortWords = words.slice(0, 2).join(' ');
+        if (shortWords.length < 5 || /^(the|a|an|this|that)\s/i.test(shortWords)) {
+          anchorText = words.slice(0, 3).join(' ');
+        } else {
+          anchorText = shortWords;
+        }
+      }
+    } else if (words.length > 2) {
+      // If 3 words, keep as is (within limit)
+      anchorText = words.slice(0, 3).join(' ');
+    }
+    
+    const safeText = escapeHtml(anchorText);
     const trustHtml = `<a href="${safeUrl}">${safeText}</a>`;
     
-    // CRITICAL: Always ensure spaces around anchors
-    // Pattern 1: (non-space)(placeholder)(non-space) -> $1 space anchor space $2
+    // CRITICAL: Always ensure spaces around anchors BEFORE replacing
+    // First, add spaces around placeholder if needed
+    // Pattern: word[placeholder]word -> word [placeholder] word
     result = result.replace(
-      new RegExp(`([^\\s\\[\\]])${escapedPlaceholder}([^\\s\\[\\]])`, 'g'),
-      `$1 ${trustHtml} $2`
+      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
+      `$1 ${placeholder} $2`
     );
-    // Pattern 2: (non-space)(placeholder)(space or end) -> $1 space anchor $2
+    // Pattern: word[placeholder] -> word [placeholder]
     result = result.replace(
-      new RegExp(`([^\\s\\[\\]])${escapedPlaceholder}(\\s|$)`, 'g'),
-      `$1 ${trustHtml}$2`
+      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}(\\s|$)`, 'g'),
+      `$1 ${placeholder}$2`
     );
-    // Pattern 3: (space or start)(placeholder)(non-space) -> $1 anchor space $2
+    // Pattern: [placeholder]word -> [placeholder] word
     result = result.replace(
-      new RegExp(`(^|\\s)${escapedPlaceholder}([^\\s\\[\\]])`, 'g'),
-      `$1${trustHtml} $2`
+      new RegExp(`(^|\\s)${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
+      `$1${placeholder} $2`
     );
-    // Pattern 4: (space or start)(placeholder)(space or end) -> $1 anchor $2 (already has spaces)
-    result = result.replace(
-      new RegExp(`(^|\\s)${escapedPlaceholder}(\\s|$)`, 'g'),
-      `$1${trustHtml}$2`
-    );
-    // Pattern 5: Handle case where placeholder is at the very beginning or end
-    result = result.replace(
-      new RegExp(`^${escapedPlaceholder}([^\\s])`, 'g'),
-      `${trustHtml} $1`
-    );
-    result = result.replace(
-      new RegExp(`([^\\s])${escapedPlaceholder}$`, 'g'),
-      `$1 ${trustHtml}`
-    );
+    
+    // Now replace placeholder with HTML anchor (already has spaces)
+    result = result.replace(new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), trustHtml);
   });
 
   return result;
@@ -294,30 +312,41 @@ export function modelBlocksToArticleStructure(
       const url = parts.length > 1 ? parts[1] : parts[0];
       let name = parts.length > 1 ? parts[0] : `Source ${index + 1}`;
       
-      // CRITICAL: Trim anchor text to 2-5 words maximum (as per prompt rules)
+      // CRITICAL: Trim anchor text to 1-3 words maximum (as per prompt rules)
       // This ensures short, natural anchor text instead of long article titles
       const words = name.trim().split(/\s+/);
-      if (words.length > 5) {
-        // Take first 2-5 words, preferring shorter if it makes sense
+      if (words.length > 3) {
+        // Take first 1-3 words, preferring shorter if it makes sense
         // Try to extract brand name from URL if possible
         try {
           const urlObj = new URL(url);
           const domain = urlObj.hostname.replace('www.', '');
           const domainName = domain.split('.')[0];
-          // Use domain name if it's a recognizable brand (2-3 words max)
+          // Use domain name if it's a recognizable brand (1-2 words max)
           if (domainName.length > 2 && domainName.length < 20) {
             name = domainName.charAt(0).toUpperCase() + domainName.slice(1);
           } else {
-            // Fallback: use first 2-3 words from title
-            name = words.slice(0, 3).join(' ');
+            // Fallback: use first 1-2 words from title (prefer shorter)
+            const shortWords = words.slice(0, 2).join(' ');
+            // If first 2 words are too generic or short, use first 3
+            if (shortWords.length < 5 || /^(the|a|an|this|that|how|what|why|when|where)\s/i.test(shortWords)) {
+              name = words.slice(0, 3).join(' ');
+            } else {
+              name = shortWords;
+            }
           }
         } catch {
-          // If URL parsing fails, use first 2-3 words from title
-          name = words.slice(0, 3).join(' ');
+          // If URL parsing fails, use first 1-2 words (prefer shorter)
+          const shortWords = words.slice(0, 2).join(' ');
+          if (shortWords.length < 5 || /^(the|a|an|this|that)\s/i.test(shortWords)) {
+            name = words.slice(0, 3).join(' ');
+          } else {
+            name = shortWords;
+          }
         }
       } else if (words.length > 2) {
-        // If 3-5 words, keep as is (within limit)
-        name = words.slice(0, 5).join(' ');
+        // If 3 words, keep as is (within limit)
+        name = words.slice(0, 3).join(' ');
       }
       
       trustSources.push({ id: `T${index + 1}`, text: name, url });
