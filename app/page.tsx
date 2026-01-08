@@ -604,11 +604,27 @@ export default function Home() {
 
         if (data.articles.length > 0) {
           const newArticle = data.articles[0];
+          
+          // CRITICAL: Clean invisible Unicode characters before saving
+          const cleanedArticle = {
+            ...newArticle,
+            titleTag: cleanText(articleTopic || newArticle.titleTag || ''),
+            metaDescription: cleanText(newArticle.metaDescription || ''),
+            fullArticleText: cleanText(newArticle.fullArticleText || ''),
+            articleBodyHtml: cleanText(newArticle.articleBodyHtml || newArticle.fullArticleText || ''),
+            humanizeSettingsUsed: savedHumanizeSettings ?? {
+              humanizeOnWrite: regenerateHumanizeOnWrite,
+              model: regenerateHumanizeSettings.model,
+              style: regenerateHumanizeSettings.style,
+              mode: regenerateHumanizeSettings.mode,
+            },
+          };
+          
           updateGeneratedArticles(
             generatedArticles.map(a =>
               a.topicTitle === topicId
                 ? {
-                    ...newArticle,
+                    ...cleanedArticle,
                     topicTitle: topicId,
                     titleTag: articleTopic, // Preserve original topic
                     status: "ready" as const,
@@ -616,6 +632,12 @@ export default function Home() {
                 : a
             )
           );
+          
+          // CRITICAL: Auto-collapse humanize settings after successful regeneration
+          // Close expanded humanize settings if it was for direct mode
+          if (expandedHumanizeTopicId === "direct") {
+            setExpandedHumanizeTopicId(null);
+          }
 
           setNotification({
             message: "Article successfully regenerated",
@@ -826,6 +848,16 @@ export default function Home() {
               : a
           )
         );
+        
+        // CRITICAL: Auto-collapse topic block after successful regeneration
+        // Remove topic from selectedTopicIds to automatically collapse the expanded topic card
+        updateSelectedTopicIds(prev => prev.filter(id => id !== topicId));
+        
+        // Also close expanded humanize settings for this topic
+        if (expandedHumanizeTopicId === topicId) {
+          setExpandedHumanizeTopicId(null);
+        }
+        
         // Play success sound after article regeneration
         playSuccessSound();
       }
@@ -1112,8 +1144,17 @@ export default function Home() {
         }))
       ]);
       
-      // Clear selected topics after successful generation to make Step 2 inactive
-      updateSelectedTopicIds([]);
+      // CRITICAL: Auto-collapse topic blocks after successful generation
+      // Remove topics from selectedTopicIds to automatically collapse the expanded topic cards
+      updateSelectedTopicIds(prev => prev.filter(id => !topicIds.includes(id)));
+      
+      // Also close expanded humanize settings for these topics
+      setExpandedHumanizeTopicId(prev => {
+        if (prev && topicIds.includes(prev)) {
+          return null; // Close if it was one of the generated topics
+        }
+        return prev;
+      });
       
       // Show notification with elapsed time
       if (generationStartTime) {
@@ -1423,6 +1464,12 @@ export default function Home() {
         });
         return updated;
       });
+      
+      // CRITICAL: Auto-collapse humanize settings after successful generation
+      // Close expanded humanize settings if it was for direct mode
+      if (expandedHumanizeTopicId === "direct") {
+        setExpandedHumanizeTopicId(null);
+      }
       
       // Clear topic input
       updateDirectArticleTopic("");

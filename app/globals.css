@@ -847,14 +847,15 @@ body {
 .checkbox-label input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
-  top: 45%;
+  top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  width: 5px;
-  height: 9px;
+  transform: translate(-50%, -60%) rotate(45deg);
+  width: 4px;
+  height: 8px;
   /* Жирна рівна галочка без вигинів - створена через border для прямолінійної форми */
-  border-right: 3px solid #1a1a1a;
-  border-bottom: 3px solid #1a1a1a;
+  border: solid #1a1a1a;
+  border-width: 0 3px 3px 0;
+  box-shadow: 0.5px 0 0 0 #1a1a1a, 0 0.5px 0 0 #1a1a1a;
   box-sizing: border-box;
 }
 
@@ -1816,14 +1817,15 @@ body {
 .topic-checkbox-label input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
-  top: 45%;
+  top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  width: 5px;
-  height: 9px;
+  transform: translate(-50%, -60%) rotate(45deg);
+  width: 4px;
+  height: 8px;
   /* Жирна рівна галочка без вигинів - створена через border для прямолінійної форми */
-  border-right: 3px solid #1a1a1a;
-  border-bottom: 3px solid #1a1a1a;
+  border: solid #1a1a1a;
+  border-width: 0 3px 3px 0;
+  box-shadow: 0.5px 0 0 0 #1a1a1a, 0 0.5px 0 0 #1a1a1a;
   box-sizing: border-box;
 }
 
