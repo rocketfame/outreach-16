@@ -116,6 +116,25 @@ export async function POST(req: Request) {
   try {
     const body: ArticleRequest = await req.json();
     const { brief, selectedTopics, keywordList = [], trustSourcesList = [] } = body;
+    
+    // #region agent log
+    const requestLog = {
+      location: 'articles/route.ts:117',
+      message: 'Article request received',
+      data: {
+        topicsCount: selectedTopics?.length || 0,
+        trustSourcesCount: trustSourcesList?.length || 0,
+        humanizeOnWrite: body.humanizeOnWrite,
+        humanizeSettings: body.humanizeSettings,
+        lightHumanEdit: body.lightHumanEdit,
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'articles-api',
+      hypothesisId: 'request-received'
+    };
+    debugLog(requestLog);
+    // #endregion
 
     // Validate that trust sources are provided (mandatory for article generation)
     if (!trustSourcesList || trustSourcesList.length === 0) {
@@ -182,6 +201,39 @@ export async function POST(req: Request) {
             topic.title,
             brief.niche || ""
           );
+          
+          // If classification returned empty, fall back to old filter
+          if (trustedSources.length === 0) {
+            console.warn("[articles/route] LLM classification returned no sources, falling back to old filter");
+            const trustSourcesInput: TrustSourceInput[] = rawSources.map(s => ({
+              title: s.title,
+              url: s.url,
+              snippet: s.snippet || "",
+            }));
+            const topicBriefForFilter = isDirectMode
+              ? (topic.brief || topic.title)
+              : [
+                  topic.brief || "",
+                  topic.shortAngle || "",
+                  topic.whyNonGeneric || "",
+                  topic.howAnchorFits || "",
+                ].filter(Boolean).join("\n\n") || topic.title;
+            const filteredTrustSources: TrustSourceSpec[] = filterAndSelectTrustSources(
+              trustSourcesInput,
+              brief.niche || "",
+              topic.title,
+              topicBriefForFilter
+            );
+            // Convert to TrustedSource format for compatibility
+            // Use "independent_media" as default type since old filter doesn't provide classification
+            trustedSources = filteredTrustSources.map(ts => ({
+              id: ts.id as "T1" | "T2" | "T3",
+              url: ts.url,
+              title: ts.text,
+              type: "independent_media" as const, // Default type for fallback (old filter doesn't provide type)
+              relevance_score: 7, // Default score
+            }));
+          }
         } catch (error) {
           console.error("[articles/route] LLM classification failed, falling back to old filter:", error);
           // Fallback to old filter if LLM classification fails
@@ -212,6 +264,20 @@ export async function POST(req: Request) {
             title: ts.text,
             type: "independent_media" as const, // Default type for fallback (old filter doesn't provide type)
             relevance_score: 7, // Default score
+          }));
+        }
+        
+        // Final fallback: if still no sources, use first 3 raw sources
+        // This ensures we always have at least some sources to work with
+        if (trustedSources.length === 0 && rawSources.length > 0) {
+          console.warn("[articles/route] All filtering failed, using raw sources as final fallback");
+          const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
+          trustedSources = rawSources.slice(0, 3).map((source, i) => ({
+            id: ids[i],
+            url: source.url,
+            title: source.title,
+            type: "independent_media" as const,
+            relevance_score: 5, // Default score
           }));
         }
 
@@ -600,6 +666,25 @@ Language: US English.`;
           const enableHumanizeOnWrite = body.humanizeOnWrite || false;
           let totalHumanizeWordsUsed = 0;
 
+          // #region agent log
+          const humanizeCheckLog = {
+            location: 'articles/route.ts:647',
+            message: 'Humanization check',
+            data: {
+              enableHumanizeOnWrite,
+              bodyHumanizeOnWrite: body.humanizeOnWrite,
+              hasArticleStructure: !!articleStructure,
+              blocksCount: articleStructure?.blocks?.length || 0,
+              humanizeSettings: body.humanizeSettings,
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'humanization-check'
+          };
+          debugLog(humanizeCheckLog);
+          // #endregion
+
           if (enableHumanizeOnWrite) {
             const registeredEmail = process.env.NEXT_PUBLIC_AIHUMANIZE_EMAIL || "";
             const apiKey = process.env.AIHUMANIZE_API_KEY || "";
@@ -609,6 +694,26 @@ Language: US English.`;
             const humanizeModel = body.humanizeSettings?.model ?? 1; // Default: Balance (1)
             const humanizeStyle = body.humanizeSettings?.style; // Optional: Writing style
             const humanizeMode = body.humanizeSettings?.mode; // Optional: Basic or Autopilot
+
+            // #region agent log
+            const humanizeConfigLog = {
+              location: 'articles/route.ts:660',
+              message: 'Humanization configuration',
+              data: {
+                hasEmail: !!registeredEmail,
+                hasApiKey: !!apiKey,
+                humanizeModel,
+                humanizeStyle,
+                humanizeMode,
+                blocksToHumanize: articleStructure?.blocks?.length || 0,
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'articles-api',
+              hypothesisId: 'humanization-config'
+            };
+            debugLog(humanizeConfigLog);
+            // #endregion
 
             if (registeredEmail && apiKey) {
               try {
@@ -713,12 +818,83 @@ Language: US English.`;
                   const humanizeCost = totalHumanizeWordsUsed * 0.0005;
                   costTracker.trackHumanize(totalHumanizeWordsUsed, humanizeCost);
                 }
+                // #region agent log
+                const humanizeSuccessLog = {
+                  location: 'articles/route.ts:794',
+                  message: 'Humanization completed successfully',
+                  data: {
+                    totalWordsUsed: totalHumanizeWordsUsed,
+                    blocksHumanized: humanizedBlocks.length,
+                    originalBlocksCount: articleStructure.blocks.length,
+                  },
+                  timestamp: Date.now(),
+                  sessionId: 'debug-session',
+                  runId: 'articles-api',
+                  hypothesisId: 'humanization-success'
+                };
+                debugLog(humanizeSuccessLog);
+                // #endregion
+
+                if (totalHumanizeWordsUsed > 0) {
+                  const costTracker = getCostTracker();
+                  const humanizeCost = totalHumanizeWordsUsed * 0.0005;
+                  costTracker.trackHumanize(totalHumanizeWordsUsed, humanizeCost);
+                }
               } catch (humanizeError) {
+                // #region agent log
+                const humanizeErrorLog = {
+                  location: 'articles/route.ts:802',
+                  message: 'Humanization on write failed',
+                  data: {
+                    error: (humanizeError as Error).message,
+                    errorName: (humanizeError as Error).name,
+                    stack: (humanizeError as Error).stack?.substring(0, 500),
+                  },
+                  timestamp: Date.now(),
+                  sessionId: 'debug-session',
+                  runId: 'articles-api',
+                  hypothesisId: 'humanization-error'
+                };
+                debugLog(humanizeErrorLog);
+                // #endregion
                 console.error('[articles-api] Humanization on write failed:', humanizeError);
               }
             } else {
+              // #region agent log
+              const humanizeConfigErrorLog = {
+                location: 'articles/route.ts:805',
+                message: 'Humanization requested but not configured',
+                data: {
+                  hasEmail: !!registeredEmail,
+                  hasApiKey: !!apiKey,
+                  enableHumanizeOnWrite,
+                },
+                timestamp: Date.now(),
+                sessionId: 'debug-session',
+                runId: 'articles-api',
+                hypothesisId: 'humanization-config-error'
+              };
+              debugLog(humanizeConfigErrorLog);
+              // #endregion
               console.warn('[articles-api] Humanization on write requested but API key or email not configured');
             }
+          } else {
+            // #region agent log
+            const humanizeDisabledLog = {
+              location: 'articles/route.ts:650',
+              message: 'Humanization disabled',
+              data: {
+                enableHumanizeOnWrite,
+                bodyHumanizeOnWrite: body.humanizeOnWrite,
+                hasArticleStructure: !!articleStructure,
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'articles-api',
+              hypothesisId: 'humanization-disabled'
+            };
+            debugLog(humanizeDisabledLog);
+            // #endregion
           }
 
           // ========================================================================

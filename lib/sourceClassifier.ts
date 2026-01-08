@@ -181,15 +181,48 @@ export function filterAndRankTrustedSources(
   classified: ClassifiedSource[]
 ): TrustedSource[] {
   // Step 1: Filter out competitors and low-relevance sources
-  const allowed = classified.filter(
+  // Lower threshold from 6 to 4 to allow more sources through
+  let allowed = classified.filter(
     s =>
       s.type !== "service_or_promo" &&
       !s.is_competitor &&
-      s.relevance_score >= 6
+      s.relevance_score >= 4
   );
 
+  // If no sources pass with score >= 4, try with score >= 3 (more lenient)
   if (allowed.length === 0) {
-    console.warn("[sourceClassifier] No trusted sources after filtering");
+    console.warn("[sourceClassifier] No sources with score >= 4, trying with score >= 3");
+    allowed = classified.filter(
+      s =>
+        s.type !== "service_or_promo" &&
+        !s.is_competitor &&
+        s.relevance_score >= 3
+    );
+  }
+
+  // If still no sources, try with score >= 2 (very lenient, but still filter competitors)
+  if (allowed.length === 0) {
+    console.warn("[sourceClassifier] No sources with score >= 3, trying with score >= 2");
+    allowed = classified.filter(
+      s =>
+        s.type !== "service_or_promo" &&
+        !s.is_competitor &&
+        s.relevance_score >= 2
+    );
+  }
+
+  // Final fallback: if still no sources, accept any non-competitor source
+  if (allowed.length === 0) {
+    console.warn("[sourceClassifier] No sources after strict filtering, using lenient fallback");
+    allowed = classified.filter(
+      s =>
+        s.type !== "service_or_promo" &&
+        !s.is_competitor
+    );
+  }
+
+  if (allowed.length === 0) {
+    console.warn("[sourceClassifier] No trusted sources after all filtering attempts");
     return [];
   }
 
@@ -245,13 +278,42 @@ export async function getTrustedSourcesFromTavily(
 
   if (classified.length === 0) {
     console.warn("[sourceClassifier] No sources successfully classified");
-    return [];
+    // Fallback: if classification fails completely, return first 3 sources as trusted
+    // This ensures we don't lose all sources due to classification errors
+    console.warn("[sourceClassifier] Using fallback: returning first 3 sources without classification");
+    const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
+    return tavilyResults.slice(0, 3).map((source, i) => ({
+      id: ids[i],
+      url: source.url,
+      title: source.title,
+      type: "independent_media" as const, // Default type
+      relevance_score: 5, // Default score
+    }));
   }
 
   // Filter and rank
   const trusted = filterAndRankTrustedSources(classified);
 
   console.log(`[sourceClassifier] Selected ${trusted.length} trusted sources from ${tavilyResults.length} total sources`);
+
+  // If filtering removed all sources, use fallback: return first 3 classified sources
+  // (even if they have lower scores, as long as they're not competitors)
+  if (trusted.length === 0 && classified.length > 0) {
+    console.warn("[sourceClassifier] All sources filtered out, using fallback: returning top classified sources");
+    const nonCompetitorSources = classified.filter(s => !s.is_competitor && s.type !== "service_or_promo");
+    if (nonCompetitorSources.length > 0) {
+      const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
+      return nonCompetitorSources.slice(0, 3).map((source, i) => ({
+        id: ids[i],
+        url: source.url,
+        title: source.title,
+        type: (source.type === "official_platform" || source.type === "stats_or_research" || source.type === "independent_media")
+          ? source.type
+          : "independent_media" as const,
+        relevance_score: source.relevance_score,
+      }));
+    }
+  }
 
   return trusted;
 }
