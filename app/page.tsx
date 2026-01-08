@@ -851,7 +851,7 @@ export default function Home() {
         
         // CRITICAL: Auto-collapse topic block after successful regeneration
         // Remove topic from selectedTopicIds to automatically collapse the expanded topic card
-        updateSelectedTopicIds(prev => prev.filter(id => id !== topicId));
+        updateSelectedTopicIds(selectedTopicIds.filter(id => id !== topicId));
         
         // Also close expanded humanize settings for this topic
         if (expandedHumanizeTopicId === topicId) {
@@ -1146,7 +1146,7 @@ export default function Home() {
       
       // CRITICAL: Auto-collapse topic blocks after successful generation
       // Remove topics from selectedTopicIds to automatically collapse the expanded topic cards
-      updateSelectedTopicIds(prev => prev.filter(id => !topicIds.includes(id)));
+      updateSelectedTopicIds(selectedTopicIds.filter(id => !topicIds.includes(id)));
       
       // Also close expanded humanize settings for these topics
       setExpandedHumanizeTopicId(prev => {
