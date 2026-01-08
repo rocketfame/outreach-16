@@ -51,21 +51,19 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
     modelString = String(modelNum); // Convert to string: "0", "1", or "2"
   }
   
+  // Build request body according to AIHumanize API documentation
+  // API only supports: model (string), mail (string), data (string)
+  // NOTE: style and mode parameters are NOT supported by the API according to official documentation
+  // These were added in our updates but are not part of the official API spec
   const requestBody: any = {
     model: modelString, // CRITICAL: Must be string "0", "1", or "2", not number!
     mail: String(registeredEmail).trim(),
     data: String(text)
   };
 
-  // Add style if provided
-  if (style) {
-    requestBody.style = style.toLowerCase(); // AIHumanize expects lowercase
-  }
-
-  // Add mode if provided (Autopilot mode)
-  if (mode === "Autopilot") {
-    requestBody.mode = "autopilot";
-  }
+  // NOTE: According to official AIHumanize API documentation, only model, mail, and data are supported
+  // style and mode parameters are NOT part of the official API and may cause "Missing required parameters" errors
+  // Removed style and mode to match the working version from this morning
 
   // Log request details for debugging (without sensitive data)
   console.log("[humanizeText] Calling AIHumanize API", {
