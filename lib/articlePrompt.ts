@@ -52,6 +52,7 @@ export interface ArticlePromptParams {
   language: string;
   targetAudience: string;
   wordCount?: string;
+  writingMode?: "seo" | "human"; // Writing mode: "seo" (default) or "human" (editorial style)
 }
 
 /**
@@ -178,6 +179,53 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 • Vary list formats from section to section.
 • Include short tangents or side notes when they help the reader understand why something matters.
 • Mix declarative and imperative sentences: balance statements ("This works because") with direct suggestions ("Test this first", "Skip that step if you are short on time").
+
+WRITING MODE LOGIC
+
+WritingMode can be:
+- "seo" → use the existing strict SEO article behavior (headings, subheadings, lists, strong structure).
+- "human" → write in Human Mode (editorial / founder-style) as described below.
+
+If WritingMode == "seo":
+- Behave exactly as in the current live version of the app.
+- Do NOT change tone, structure rules, or article templates.
+
+If WritingMode == "human":
+You are writing like a real human editor, strategist, or founder, not like an SEO template.
+
+Core principles:
+- Content must stay accurate, useful, and on-topic.
+- SEO is allowed but secondary: focus on voice and flow first, structure second.
+
+STRUCTURE (HUMAN MODE)
+- Use one H1 for the title.
+- Use a small number of H2s (2–5), only when they genuinely help the flow.
+- Avoid rigid patterns where every H2 has the same internal layout.
+- Paragraph length should vary: some 1–2 sentence paragraphs, some longer.
+- Lists are allowed, but use them rarely and irregularly. Prefer narrative text over big bullet checklists.
+- Do NOT force a classic 'Intro → 3 sections → Conclusion' skeleton. Let the article breathe.
+
+STYLE & VOICE (HUMAN MODE)
+- Mix long, flowing sentences with very short ones.
+- Allow light subjectivity and opinions (e.g. 'I keep seeing…', 'Honestly…', 'What usually happens is…').
+- It's okay to leave some thoughts slightly open-ended instead of explaining everything step by step.
+- Avoid ultra-formal, neutral tone. Sound like a smart peer explaining their view, not a tutorial.
+
+AVOID THESE PATTERNS (HUMAN MODE)
+- 'In this article, we will discuss…', 'This guide will explain…', 'The key takeaway is…', 'In conclusion'.
+- Repeating the same section pattern ('First, we will…', 'Second, we will…').
+- Perfectly parallel H2 sections.
+
+TOPIC DISCOVERY MODE + HUMAN
+- When WritingMode == 'human' in Topic Discovery, suggest angles and perspectives,
+  not rigid step-by-step outlines.
+- Focus on framing, tension, and narrative hooks.
+
+GENERAL (HUMAN MODE)
+- Never mention 'writing mode', 'SEO Mode', 'Human Mode', AI, prompts, or detectors in the article itself.
+- Prioritize clarity for a human reader over perfect formal structure.
+
+Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
@@ -715,6 +763,10 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   // Replace WORD_COUNT with the actual value
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   
+  // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
+  const writingModeTopicDiscovery = params.writingMode || "seo";
+  prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeTopicDiscovery);
+  
   // Format trust sources - prefer JSON format if available, otherwise use old format
   let trustSourcesFormatted = "";
   if (params.trustSourcesJSON) {
@@ -783,6 +835,7 @@ export interface DirectArticlePromptParams {
   language: string;
   targetAudience: string;
   wordCount?: string;
+  writingMode?: "seo" | "human"; // Writing mode: "seo" (default) or "human" (editorial style)
 }
 
 /**
@@ -802,6 +855,53 @@ take a prepared topic brief and generate a clean, human article that:
 	2.	respects the project context,
 	3.	follows the chosen content purpose [[CONTENT_PURPOSE]],
 	4.	always chooses the correct structural format (list or guide) according to the rules below.
+
+WRITING MODE LOGIC
+
+WritingMode can be:
+- "seo" → use the existing strict SEO article behavior (headings, subheadings, lists, strong structure).
+- "human" → write in Human Mode (editorial / founder-style) as described below.
+
+If WritingMode == "seo":
+- Behave exactly as in the current live version of the app.
+- Do NOT change tone, structure rules, or article templates.
+
+If WritingMode == "human":
+You are writing like a real human editor, strategist, or founder, not like an SEO template.
+
+Core principles:
+- Content must stay accurate, useful, and on-topic.
+- SEO is allowed but secondary: focus on voice and flow first, structure second.
+
+STRUCTURE (HUMAN MODE)
+- Use one H1 for the title.
+- Use a small number of H2s (2–5), only when they genuinely help the flow.
+- Avoid rigid patterns where every H2 has the same internal layout.
+- Paragraph length should vary: some 1–2 sentence paragraphs, some longer.
+- Lists are allowed, but use them rarely and irregularly. Prefer narrative text over big bullet checklists.
+- Do NOT force a classic 'Intro → 3 sections → Conclusion' skeleton. Let the article breathe.
+
+STYLE & VOICE (HUMAN MODE)
+- Mix long, flowing sentences with very short ones.
+- Allow light subjectivity and opinions (e.g. 'I keep seeing…', 'Honestly…', 'What usually happens is…').
+- It's okay to leave some thoughts slightly open-ended instead of explaining everything step by step.
+- Avoid ultra-formal, neutral tone. Sound like a smart peer explaining their view, not a tutorial.
+
+AVOID THESE PATTERNS (HUMAN MODE)
+- 'In this article, we will discuss…', 'This guide will explain…', 'The key takeaway is…', 'In conclusion'.
+- Repeating the same section pattern ('First, we will…', 'Second, we will…').
+- Perfectly parallel H2 sections.
+
+DIRECT ARTICLE CREATION + HUMAN
+- When WritingMode == 'human', generate a draft that feels like a blog column or
+  thought-leadership piece that could be published with light editing.
+- Keep it readable and logically coherent, but let it feel slightly imperfect and personal.
+
+GENERAL (HUMAN MODE)
+- Never mention 'writing mode', 'SEO Mode', 'Human Mode', AI, prompts, or detectors in the article itself.
+- Prioritize clarity for a human reader over perfect formal structure.
+
+Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
@@ -1538,6 +1638,10 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   }
   
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
+  
+  // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt
+  const writingModeDirect = params.writingMode || "seo";
+  prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeDirect);
   
   // Format trust sources - prefer JSON format if available, otherwise use old format
   let trustSourcesFormatted = "";

@@ -62,6 +62,8 @@ export type GeneratedArticle = {
   createdAt?: string; // ISO timestamp when article was created
 };
 
+export type WritingMode = "seo" | "human";
+
 export type AppPersistedState = {
   projectBasics: Brief; // Legacy, kept for backward compatibility - maps to discoveryProjectBasics
   discoveryProjectBasics: Brief; // Project Basics for Topic Discovery Mode
@@ -80,6 +82,7 @@ export type AppPersistedState = {
   mode: "discovery" | "direct";
   lightHumanEditEnabled: boolean;
   humanizeOnWriteEnabled?: boolean; // Enable live humanization during generation
+  writingMode?: WritingMode; // Writing mode: "seo" (default) or "human" (feature flag controlled)
   theme: "light" | "dark"; // Theme preference
 };
 
@@ -112,6 +115,7 @@ const defaultState: AppPersistedState = {
   referenceImageBase64: undefined, // Reference image for style personalization
   mode: "discovery",
   lightHumanEditEnabled: true, // Default to enabled (recommended)
+  writingMode: "seo", // Default to SEO Mode
   theme: "light", // Default to light theme
 };
 
@@ -150,6 +154,7 @@ export function usePersistentAppState() {
             discoveryProjectBasics: parsed.discoveryProjectBasics || legacyProjectBasics,
             directProjectBasics: parsed.directProjectBasics || defaultBrief,
             lightHumanEditEnabled: parsed.lightHumanEditEnabled !== undefined ? parsed.lightHumanEditEnabled : true,
+            writingMode: (parsed.writingMode === "seo" || parsed.writingMode === "human") ? parsed.writingMode : "seo", // Default to "seo" if invalid
             theme: parsed.theme || "light", // Default to light if not set
           };
           setState(validatedState);

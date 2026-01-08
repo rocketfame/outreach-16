@@ -4,7 +4,8 @@ import { ChangeEvent, useState, useEffect, useRef, useMemo } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
 import { TagPill } from "./components/TagPill";
-import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle } from "./hooks/usePersistentAppState";
+import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
+import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
 import { copyArticleAsPlainText, downloadArticleAsTxt, extractPlainTextFromElement } from "@/lib/articlePlainText";
 import { cleanText } from "@/lib/textPostProcessing";
 
@@ -21,6 +22,7 @@ export default function Home() {
   const directArticleTopic = persistedState.directArticleTopic || "";
   const directArticleBrief = persistedState.directArticleBrief || "";
   const theme = persistedState.theme || "light";
+  const writingMode = persistedState.writingMode || "seo"; // Default to "seo"
   
   // Get the correct brief based on current mode with proper fallback
   const defaultBrief: Brief = {
@@ -241,6 +243,13 @@ export default function Home() {
     setPersistedState(prev => ({
       ...prev,
       selectedTopicIds: ids,
+    }));
+  };
+
+  const updateWritingMode = (newMode: WritingMode) => {
+    setPersistedState(prev => ({
+      ...prev,
+      writingMode: newMode,
     }));
   };
 
@@ -613,6 +622,7 @@ export default function Home() {
             lightHumanEdit: !regenerateHumanizeOnWrite, // Automatically enable lightHumanEdit if humanization is disabled
             humanizeOnWrite: regenerateHumanizeOnWrite,
             humanizeSettings: regenerateHumanizeOnWrite ? regenerateHumanizeSettings : undefined,
+            writingMode: writingMode, // Pass writing mode from UI
           }),
         });
 
@@ -853,6 +863,7 @@ export default function Home() {
           lightHumanEdit: !regenerateHumanizeOnWrite, // Automatically enable lightHumanEdit if humanization is disabled
           humanizeOnWrite: regenerateHumanizeOnWrite,
           humanizeSettings: regenerateHumanizeOnWrite ? regenerateHumanizeSettings : undefined,
+          writingMode: writingMode, // Pass writing mode from UI
         }),
       });
 
@@ -1158,6 +1169,10 @@ export default function Home() {
       // CRITICAL: Use current brief from Project Basics (may have been updated after topics were generated)
       // This ensures that if user changed Brand, Anchor, or other Project Basics settings,
       // those changes will be reflected in the generated article
+      // CRITICAL: For Human Mode, humanization is ALWAYS enabled (force ON)
+      // The API will automatically enable humanization for Human Mode regardless of UI toggle
+      const effectiveHumanizeForRequest = writingMode === "human" ? true : humanizeOnWriteEnabled;
+      
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1166,9 +1181,10 @@ export default function Home() {
           selectedTopics: selectedTopicsData,
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesList: trustSourcesList,
-          lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
-          humanizeOnWrite: humanizeOnWriteEnabled, // Pass humanize on write toggle to API
-          humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined, // Pass humanize settings only if enabled
+          lightHumanEdit: !effectiveHumanizeForRequest, // Automatically enable lightHumanEdit if humanization is disabled
+          humanizeOnWrite: effectiveHumanizeForRequest, // Pass effective humanize state (forced ON for Human Mode)
+          humanizeSettings: effectiveHumanizeForRequest ? humanizeSettings : undefined, // Pass humanize settings only if enabled
+          writingMode: writingMode, // Pass writing mode from UI
         }),
       });
 
@@ -1454,6 +1470,10 @@ export default function Home() {
       // CRITICAL: For Direct Article Creation Mode, do NOT include shortAngle, whyNonGeneric, howAnchorFits
       // These fields are used by API to detect Topic Discovery Mode
       // IMPORTANT: Pass articleId in the topic title so we can match it on response
+      // CRITICAL: For Human Mode, humanization is ALWAYS enabled (force ON)
+      // The API will automatically enable humanization for Human Mode regardless of UI toggle
+      const effectiveHumanizeForRequest = writingMode === "human" ? true : humanizeOnWriteEnabled;
+      
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1469,9 +1489,10 @@ export default function Home() {
           }],
           keywordList: [directArticleTopic],
           trustSourcesList: trustSourcesList,
-          lightHumanEdit: !humanizeOnWriteEnabled, // Automatically enable lightHumanEdit if humanization is disabled
-          humanizeOnWrite: humanizeOnWriteEnabled, // Pass UI toggle state to API
-          humanizeSettings: humanizeOnWriteEnabled ? humanizeSettings : undefined, // Pass humanize settings only if enabled
+          lightHumanEdit: !effectiveHumanizeForRequest, // Automatically enable lightHumanEdit if humanization is disabled
+          humanizeOnWrite: effectiveHumanizeForRequest, // Pass effective humanize state (forced ON for Human Mode)
+          humanizeSettings: effectiveHumanizeForRequest ? humanizeSettings : undefined, // Pass humanize settings only if enabled
+          writingMode: writingMode, // Pass writing mode from UI
         }),
       });
 
@@ -4111,6 +4132,60 @@ export default function Home() {
               />
             </label>
 
+            {/* Writing Mode Toggle - Only shown if feature flag is enabled */}
+            {HUMAN_MODE_EXPERIMENT && (
+              <label style={{ marginTop: "1.25rem" }}>
+                <span>Writing mode</span>
+                <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => updateWritingMode("seo")}
+                    className={`writing-mode-btn ${writingMode === "seo" ? "active" : ""}`}
+                    style={{
+                      flex: 1,
+                      padding: "0.75rem 1rem",
+                      borderRadius: "8px",
+                      border: "2px solid",
+                      borderColor: writingMode === "seo" ? "var(--primary)" : "var(--border)",
+                      background: writingMode === "seo" ? "var(--primary)" : "var(--card)",
+                      color: writingMode === "seo" ? "white" : "var(--foreground)",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
+                      fontWeight: writingMode === "seo" ? 600 : 400,
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    SEO Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(recommended)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateWritingMode("human")}
+                    className={`writing-mode-btn ${writingMode === "human" ? "active" : ""}`}
+                    style={{
+                      flex: 1,
+                      padding: "0.75rem 1rem",
+                      borderRadius: "8px",
+                      border: "2px solid",
+                      borderColor: writingMode === "human" ? "var(--primary)" : "var(--border)",
+                      background: writingMode === "human" ? "var(--primary)" : "var(--card)",
+                      color: writingMode === "human" ? "white" : "var(--foreground)",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
+                      fontWeight: writingMode === "human" ? 600 : 400,
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    Human Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(editorial)</span>
+                  </button>
+                </div>
+                <small style={{ display: "block", marginTop: "0.5rem", color: "var(--text-muted)" }}>
+                  {writingMode === "seo" 
+                    ? "Optimized structure with clear headings and SEO-friendly format" 
+                    : "Editorial, founder-style writing with natural flow and varied structure"}
+                </small>
+              </label>
+            )}
+
           </div>
 
               {/* Branded link details */}
@@ -4268,29 +4343,87 @@ export default function Home() {
                       </label>
                     </div>
                     
-                    {/* Humanize Settings */}
-                    <div className="humanize-on-write-toggle" style={{ marginTop: "1.25rem" }}>
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={humanizeOnWriteEnabled}
-                          onChange={(e) => {
-                            setPersistedState(prev => ({
-                              ...prev,
-                              humanizeOnWriteEnabled: e.target.checked
-                            }));
-                          }}
-                          disabled={isGeneratingArticles.size > 0}
-                        />
-                        <span className="checkbox-text">
-                          <strong>Humanize on write</strong> (recommended)
-                          <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
-                        </span>
-                      </label>
-                    </div>
+                    {/* Writing Mode Toggle - Only shown if feature flag is enabled */}
+                    {HUMAN_MODE_EXPERIMENT && (
+                      <div className="writing-mode-toggle" style={{ marginTop: "1.25rem" }}>
+                        <label>
+                          <span>Writing mode</span>
+                          <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                            <button
+                              type="button"
+                              onClick={() => updateWritingMode("seo")}
+                              className={`writing-mode-btn ${writingMode === "seo" ? "active" : ""}`}
+                              style={{
+                                flex: 1,
+                                padding: "0.75rem 1rem",
+                                borderRadius: "8px",
+                                border: "2px solid",
+                                borderColor: writingMode === "seo" ? "var(--primary)" : "var(--border)",
+                                background: writingMode === "seo" ? "var(--primary)" : "var(--card)",
+                                color: writingMode === "seo" ? "white" : "var(--foreground)",
+                                cursor: "pointer",
+                                fontSize: "0.9rem",
+                                fontWeight: writingMode === "seo" ? 600 : 400,
+                                transition: "all 0.2s ease",
+                              }}
+                            >
+                              SEO Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(recommended)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateWritingMode("human")}
+                              className={`writing-mode-btn ${writingMode === "human" ? "active" : ""}`}
+                              style={{
+                                flex: 1,
+                                padding: "0.75rem 1rem",
+                                borderRadius: "8px",
+                                border: "2px solid",
+                                borderColor: writingMode === "human" ? "var(--primary)" : "var(--border)",
+                                background: writingMode === "human" ? "var(--primary)" : "var(--card)",
+                                color: writingMode === "human" ? "white" : "var(--foreground)",
+                                cursor: "pointer",
+                                fontSize: "0.9rem",
+                                fontWeight: writingMode === "human" ? 600 : 400,
+                                transition: "all 0.2s ease",
+                              }}
+                            >
+                              Human Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(editorial)</span>
+                            </button>
+                          </div>
+                          <small style={{ display: "block", marginTop: "0.5rem", color: "var(--text-muted)" }}>
+                            {writingMode === "seo" 
+                              ? "Optimized structure with clear headings and SEO-friendly format" 
+                              : "Editorial, founder-style writing with natural flow and varied structure. Humanization is automatically enabled."}
+                          </small>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Humanize Settings - Only shown in SEO Mode (or if feature flag is disabled) */}
+                    {(writingMode === "seo" || !HUMAN_MODE_EXPERIMENT) && (
+                      <div className="humanize-on-write-toggle" style={{ marginTop: "1.25rem" }}>
+                        <label className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={humanizeOnWriteEnabled}
+                            onChange={(e) => {
+                              setPersistedState(prev => ({
+                                ...prev,
+                                humanizeOnWriteEnabled: e.target.checked
+                              }));
+                            }}
+                            disabled={isGeneratingArticles.size > 0}
+                          />
+                          <span className="checkbox-text">
+                            <strong>Humanize on write</strong> (recommended)
+                            <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
+                          </span>
+                        </label>
+                      </div>
+                    )}
                     
-                    {/* Expanded Humanize Settings */}
-                    {humanizeOnWriteEnabled && (
+                    {/* Expanded Humanize Settings - Only shown in SEO Mode when humanizer is enabled */}
+                    {((writingMode === "seo" || !HUMAN_MODE_EXPERIMENT) && humanizeOnWriteEnabled) && (
                       <div className="humanize-settings-expanded" style={{ marginTop: "0.75rem" }}>
                         <button
                           type="button"
@@ -4582,28 +4715,38 @@ export default function Home() {
                                       {/* Humanize Settings - appears when topic is selected */}
                                       {isSelected && !isCompleted && (
                                         <div className="topic-humanize-settings" style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
-                                          <div className="humanize-on-write-toggle">
-                                            <label className="checkbox-label">
-                                              <input
-                                                type="checkbox"
-                                                checked={humanizeOnWriteEnabled}
-                                                onChange={(e) => {
-                                                  setPersistedState(prev => ({
-                                                    ...prev,
-                                                    humanizeOnWriteEnabled: e.target.checked
-                                                  }));
-                                                }}
-                                                disabled={isGeneratingArticles.has(topic.id)}
-                                              />
-                                              <span className="checkbox-text">
-                                                <strong>Humanize on write</strong> (recommended)
-                                                <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
-                                              </span>
-                                            </label>
-                                          </div>
+                                          {/* Humanize Settings - Only shown in SEO Mode (or if feature flag is disabled) */}
+                                          {(writingMode === "seo" || !HUMAN_MODE_EXPERIMENT) && (
+                                            <div className="humanize-on-write-toggle">
+                                              <label className="checkbox-label">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={humanizeOnWriteEnabled}
+                                                  onChange={(e) => {
+                                                    setPersistedState(prev => ({
+                                                      ...prev,
+                                                      humanizeOnWriteEnabled: e.target.checked
+                                                    }));
+                                                  }}
+                                                  disabled={isGeneratingArticles.has(topic.id)}
+                                                />
+                                                <span className="checkbox-text">
+                                                  <strong>Humanize on write</strong> (recommended)
+                                                  <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
+                                                </span>
+                                              </label>
+                                            </div>
+                                          )}
                                           
-                                          {/* Expanded Humanize Settings */}
-                                          {humanizeOnWriteEnabled && (
+                                          {/* Show info message in Human Mode */}
+                                          {HUMAN_MODE_EXPERIMENT && writingMode === "human" && (
+                                            <div style={{ padding: "0.75rem", background: "var(--secondary)", borderRadius: "8px", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                                              <strong style={{ color: "var(--foreground)" }}>Human Mode:</strong> Humanization is automatically enabled for all generated articles.
+                                            </div>
+                                          )}
+                                          
+                                          {/* Expanded Humanize Settings - Only shown in SEO Mode when humanizer is enabled */}
+                                          {(writingMode === "seo" || !HUMAN_MODE_EXPERIMENT) && humanizeOnWriteEnabled && (
                                             <div className="humanize-settings-expanded" style={{ marginTop: "0.75rem" }}>
                                               <button
                                                 type="button"

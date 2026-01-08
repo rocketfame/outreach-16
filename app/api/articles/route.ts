@@ -80,6 +80,7 @@ export interface ArticleRequest {
     style: string; // General, Blog, Formal, Informal, Academic, Expand, Simplify
     mode: "Basic" | "Autopilot"; // Basic or Autopilot
   };
+  writingMode?: "seo" | "human"; // Writing mode: "seo" (default) or "human" (editorial style)
 }
 
 export interface ArticleResponse {
@@ -115,7 +116,11 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleRequest = await req.json();
-    const { brief, selectedTopics, keywordList = [], trustSourcesList = [] } = body;
+    const { brief, selectedTopics, keywordList = [], trustSourcesList = [], writingMode = "seo" } = body;
+    
+    // CRITICAL: For Human Mode, force humanization ON
+    // In Human Mode, humanization is always enabled (integrated into the mode)
+    const effectiveHumanizeOnWrite = writingMode === "human" ? true : (body.humanizeOnWrite || false);
     
     // #region agent log
     const requestLog = {
@@ -124,7 +129,9 @@ export async function POST(req: Request) {
       data: {
         topicsCount: selectedTopics?.length || 0,
         trustSourcesCount: trustSourcesList?.length || 0,
+        writingMode: writingMode,
         humanizeOnWrite: body.humanizeOnWrite,
+        effectiveHumanizeOnWrite: effectiveHumanizeOnWrite, // May be forced to true for Human Mode
         humanizeSettings: body.humanizeSettings,
         lightHumanEdit: body.lightHumanEdit,
       },
@@ -412,6 +419,7 @@ export async function POST(req: Request) {
             language: brief.language || "English",
             targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
             wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
+            writingMode: writingMode, // Pass writing mode from request
           });
         } else {
           // ========================================================================
@@ -485,6 +493,7 @@ export async function POST(req: Request) {
           language: brief.language || "English",
           targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
           wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
+          writingMode: writingMode, // Pass writing mode from request
         });
         }
         
@@ -859,7 +868,9 @@ Language: US English.`;
           });
 
           // Apply humanization on write if enabled
-          const enableHumanizeOnWrite = body.humanizeOnWrite || false;
+          // CRITICAL: For Human Mode, humanization is ALWAYS enabled (force ON)
+          // effectiveHumanizeOnWrite is already set to true for Human Mode earlier in the function
+          const enableHumanizeOnWrite = effectiveHumanizeOnWrite;
           let totalHumanizeWordsUsed = 0;
 
           // #region agent log
