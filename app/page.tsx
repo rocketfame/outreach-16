@@ -427,9 +427,15 @@ export default function Home() {
           visible: true,
         });
         setGenerationStartTime(null);
+      } else {
+        setNotification({
+          message: "We searched for article topics",
+          time: new Date().toLocaleTimeString(),
+          visible: true,
+        });
       }
       
-      // Play success sound after topic generation
+      // Play success sound after topic generation (always, regardless of timing)
       playSuccessSound();
     } catch (error) {
       // #region agent log
@@ -1230,9 +1236,16 @@ export default function Home() {
           visible: true,
         });
         setGenerationStartTime(null);
-        // Play success sound after article generation
-        playSuccessSound();
+      } else {
+        setNotification({
+          message: "We generated and created the best article",
+          time: new Date().toLocaleTimeString(),
+          visible: true,
+        });
       }
+      
+      // Play success sound after article generation (always, regardless of timing)
+      playSuccessSound();
       
       // Auto-scroll to the first article that is currently generating (from top to bottom)
       setTimeout(() => {
