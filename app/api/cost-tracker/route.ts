@@ -17,15 +17,27 @@ export async function GET() {
     console.log("[cost-tracker] All cost entries:", allCosts.length);
     console.log("[cost-tracker] Session duration:", sessionDuration, "seconds");
 
+    // Calculate total humanize words used from all cost entries
+    let humanizeWordsTotal = 0;
+    allCosts.forEach((entry) => {
+      if (entry.service === 'aihumanize' && entry.type === 'humanize') {
+        humanizeWordsTotal += entry.details?.wordsUsed || 0;
+      }
+    });
+
     return NextResponse.json({
       success: true,
       totals: {
         tavily: totals.tavily,
         openai: totals.openai,
+        aihumanize: totals.aihumanize, // CRITICAL: Include aihumanize in totals
+        humanize: totals.aihumanize, // Also include as 'humanize' for backward compatibility
         total: totals.total,
         formatted: {
           tavily: formatCost(totals.tavily),
           openai: formatCost(totals.openai),
+          aihumanize: formatCost(totals.aihumanize), // CRITICAL: Include formatted aihumanize
+          humanize: formatCost(totals.aihumanize), // Also include as 'humanize' for backward compatibility
           total: formatCost(totals.total),
         },
       },
@@ -41,6 +53,7 @@ export async function GET() {
           openai: `${formatTokens(tokens.openai.total)} tokens`,
         },
       },
+      humanizeWords: humanizeWordsTotal, // CRITICAL: Include total humanize words used
       breakdown: totals.breakdown,
       sessionDuration,
       entries: allCosts.length,

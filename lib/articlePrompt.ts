@@ -639,8 +639,50 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl);
   // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
   const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
-  console.log("[buildArticlePrompt] Brand name:", { original: params.brandName, processed: brandNameValue });
+  console.log("[buildArticlePrompt] Brand name processing:", {
+    original: params.brandName,
+    processed: brandNameValue,
+    isEmpty: !params.brandName || params.brandName.trim().length === 0,
+    willReplaceWith: brandNameValue,
+  });
+  
+  // Count occurrences of [[BRAND_NAME]] in prompt BEFORE replacement
+  const brandPlaceholderCountBefore = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
+  console.log("[buildArticlePrompt] Brand placeholder count BEFORE replacement:", brandPlaceholderCountBefore);
+  
   prompt = prompt.replaceAll("[[BRAND_NAME]]", brandNameValue);
+  
+  // Count occurrences of [[BRAND_NAME]] in prompt AFTER replacement (should be 0)
+  const brandPlaceholderCountAfter = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
+  const brandValueCountAfter = (prompt.match(new RegExp(brandNameValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+  
+  console.log("[buildArticlePrompt] Brand replacement verification:", {
+    placeholderCountAfter: brandPlaceholderCountAfter,
+    brandValueCountAfter: brandValueCountAfter,
+    allReplaced: brandPlaceholderCountAfter === 0,
+    brandValueAppearsInPrompt: brandValueCountAfter > 0,
+    brandValueUsed: brandNameValue !== "NONE" ? `${brandNameValue} appears ${brandValueCountAfter} times` : "Brand set to NONE (no brand mentioned)",
+  });
+  
+  // Log a sample of prompt to verify brand integration instructions are present (before replacement)
+  // After replacement, check for brand instructions that mention the brand value or NONE
+  const brandInstructionsAfter = prompt.match(/Brand.*?integration/i) || prompt.match(/Client.*?brand/i) || prompt.match(/brand.*?presence/i);
+  if (brandInstructionsAfter) {
+    console.log("[buildArticlePrompt] Brand integration instructions found (after replacement, sample):", brandInstructionsAfter[0].substring(0, 500));
+    
+    // Check if brand value appears in brand-related sections
+    const brandMentionSections = prompt.match(/Brand[\s\S]{0,500}/gi) || [];
+    const brandMentionCount = brandMentionSections.reduce((count, section) => {
+      return count + (section.includes(brandNameValue) ? 1 : 0);
+    }, 0);
+    console.log("[buildArticlePrompt] Brand value appears in brand-related sections:", {
+      brandMentionCount: brandMentionCount,
+      brandValue: brandNameValue,
+      sectionsFound: brandMentionSections.length,
+    });
+  } else {
+    console.warn("[buildArticlePrompt] WARNING: Brand integration instructions not found in prompt!");
+  }
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
@@ -1411,8 +1453,50 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl || "");
   // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
   const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
-  console.log("[buildDirectArticlePrompt] Brand name:", { original: params.brandName, processed: brandNameValue });
+  console.log("[buildDirectArticlePrompt] Brand name processing:", {
+    original: params.brandName,
+    processed: brandNameValue,
+    isEmpty: !params.brandName || params.brandName.trim().length === 0,
+    willReplaceWith: brandNameValue,
+  });
+  
+  // Count occurrences of [[BRAND_NAME]] in prompt BEFORE replacement
+  const brandPlaceholderCountBefore = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
+  console.log("[buildDirectArticlePrompt] Brand placeholder count BEFORE replacement:", brandPlaceholderCountBefore);
+  
   prompt = prompt.replaceAll("[[BRAND_NAME]]", brandNameValue);
+  
+  // Count occurrences of [[BRAND_NAME]] in prompt AFTER replacement (should be 0)
+  const brandPlaceholderCountAfter = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
+  const brandValueCountAfter = (prompt.match(new RegExp(brandNameValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+  
+  console.log("[buildDirectArticlePrompt] Brand replacement verification:", {
+    placeholderCountAfter: brandPlaceholderCountAfter,
+    brandValueCountAfter: brandValueCountAfter,
+    allReplaced: brandPlaceholderCountAfter === 0,
+    brandValueAppearsInPrompt: brandValueCountAfter > 0,
+    brandValueUsed: brandNameValue !== "NONE" ? `${brandNameValue} appears ${brandValueCountAfter} times` : "Brand set to NONE (no brand mentioned)",
+  });
+  
+  // Log a sample of prompt to verify brand integration instructions are present (before replacement)
+  // After replacement, check for brand instructions that mention the brand value or NONE
+  const brandInstructionsAfter = prompt.match(/Brand.*?integration/i) || prompt.match(/Client.*?brand/i) || prompt.match(/brand.*?presence/i);
+  if (brandInstructionsAfter) {
+    console.log("[buildDirectArticlePrompt] Brand integration instructions found (after replacement, sample):", brandInstructionsAfter[0].substring(0, 500));
+    
+    // Check if brand value appears in brand-related sections
+    const brandMentionSections = prompt.match(/Brand[\s\S]{0,500}/gi) || [];
+    const brandMentionCount = brandMentionSections.reduce((count, section) => {
+      return count + (section.includes(brandNameValue) ? 1 : 0);
+    }, 0);
+    console.log("[buildDirectArticlePrompt] Brand value appears in brand-related sections:", {
+      brandMentionCount: brandMentionCount,
+      brandValue: brandNameValue,
+      sectionsFound: brandMentionSections.length,
+    });
+  } else {
+    console.warn("[buildDirectArticlePrompt] WARNING: Brand integration instructions not found in prompt!");
+  }
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));

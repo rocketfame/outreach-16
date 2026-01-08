@@ -365,6 +365,36 @@ export async function POST(req: Request) {
               : brief.clientSite.trim()
             : "";
 
+          // #region agent log - Brand extraction for Direct Mode
+          const brandExtractionLog = {
+            location: 'articles/route.ts:360',
+            message: '[direct-mode] Brand name extraction',
+            data: {
+              clientSite: brief.clientSite,
+              clientSiteType: brief.clientSite 
+                ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
+                  ? 'URL'
+                  : 'text'
+                : 'empty',
+              brandName: brandName,
+              brandNameLength: brandName?.length || 0,
+              isBrandNameEmpty: !brandName || brandName.trim().length === 0,
+              willBeReplacedWith: brandName && brandName.trim() ? brandName.trim() : "NONE",
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'brand-extraction'
+          };
+          console.log("[articles/route] Direct mode - Brand name extraction:", {
+            clientSite: brief.clientSite,
+            brandName: brandName,
+            isEmpty: !brandName || brandName.trim().length === 0,
+            willBeUsedAs: brandName && brandName.trim() ? brandName.trim() : "NONE",
+          });
+          debugLog(brandExtractionLog);
+          // #endregion
+
           prompt = buildDirectArticlePrompt({
             topicTitle: topic.title,
             topicBrief: topic.brief || topic.title, // Can be topic.title or custom brief from user
@@ -415,7 +445,35 @@ export async function POST(req: Request) {
               : brief.clientSite.trim()
             : "";
 
-          console.log("[articles/route] Topic Discovery mode - Brand name extraction:", { clientSite: brief.clientSite, brandName });
+          // #region agent log - Brand extraction for Topic Discovery Mode
+          const brandExtractionLog = {
+            location: 'articles/route.ts:410',
+            message: '[topic-discovery-mode] Brand name extraction',
+            data: {
+              clientSite: brief.clientSite,
+              clientSiteType: brief.clientSite 
+                ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
+                  ? 'URL'
+                  : 'text'
+                : 'empty',
+              brandName: brandName,
+              brandNameLength: brandName?.length || 0,
+              isBrandNameEmpty: !brandName || brandName.trim().length === 0,
+              willBeReplacedWith: brandName && brandName.trim() ? brandName.trim() : "NONE",
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'brand-extraction'
+          };
+          console.log("[articles/route] Topic Discovery mode - Brand name extraction:", {
+            clientSite: brief.clientSite,
+            brandName: brandName,
+            isEmpty: !brandName || brandName.trim().length === 0,
+            willBeUsedAs: brandName && brandName.trim() ? brandName.trim() : "NONE",
+          });
+          debugLog(brandExtractionLog);
+          // #endregion
 
           prompt = buildArticlePrompt({
           topicTitle: topic.title,
@@ -469,6 +527,43 @@ Language: US English.`;
         };
 
         // Call OpenAI API with system + user messages
+        // #region agent log - Brand verification before API call
+        // Check if brand is present in prompt before sending to OpenAI
+        // brandNameValue will be set after prompt is built, so we calculate it here
+        const brandNameValueForLog = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
+        const brandPlaceholderInPrompt = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
+        const brandValueInPrompt = brandNameValueForLog !== "NONE" ? (prompt.match(new RegExp(brandNameValueForLog.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length : 0;
+        
+        const brandVerificationLog = {
+          location: 'articles/route.ts:535',
+          message: '[brand-verification] Brand verification before API call',
+          data: {
+            brandName: brandName,
+            brandNameValue: brandNameValueForLog,
+            brandPlaceholderInPrompt: brandPlaceholderInPrompt,
+            brandValueInPrompt: brandValueInPrompt,
+            hasBrandPlaceholder: brandPlaceholderInPrompt > 0,
+            hasBrandValue: brandValueInPrompt > 0,
+            brandShouldBeUsed: brandNameValueForLog !== "NONE",
+            promptContainsBrandInstructions: /Brand.*?integration/i.test(prompt) || /Client.*?brand/i.test(prompt),
+            promptBrandSample: prompt.match(/Brand[\s\S]{0,300}/gi)?.[0]?.substring(0, 300) || "Not found",
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'articles-api',
+          hypothesisId: 'brand-verification'
+        };
+        console.log("[articles-api] Brand verification before API call:", {
+          brandName: brandName,
+          brandNameValue: brandNameValueForLog,
+          placeholderCount: brandPlaceholderInPrompt,
+          valueAppears: brandValueInPrompt,
+          shouldBeUsed: brandNameValueForLog !== "NONE",
+          hasInstructions: /Brand.*?integration/i.test(prompt) || /Client.*?brand/i.test(prompt),
+        });
+        debugLog(brandVerificationLog);
+        // #endregion
+        
         // #region agent log
         const beforeApiLog = {
           location: 'articles/route.ts:103',
@@ -481,6 +576,8 @@ Language: US English.`;
             promptLength: prompt.length,
             maxTokens: 8000,
             apiParams,
+            brandName: brandName, // Include brand in log
+            brandNameValue: brandNameValueForLog, // Include processed brand value
           },
           timestamp: Date.now(),
           sessionId: 'debug-session',
@@ -539,6 +636,26 @@ Language: US English.`;
         }
 
         const content = completion.choices[0]?.message?.content ?? "";
+        
+        // #region agent log - Brand check in raw content
+        // Check if brand placeholder or value appears in raw content (before parsing)
+        const brandNameValueForCheck = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
+        if (brandNameValueForCheck !== "NONE") {
+          const brandInRawContent = {
+            brandValue: brandNameValueForCheck,
+            appearsInRawContent: content.includes(brandNameValueForCheck),
+            occurrencesInRawContent: (content.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
+            placeholderStillPresent: (content.match(/\[\[BRAND_NAME\]\]/g) || []).length,
+          };
+          console.log("[articles-api] Brand check in raw OpenAI response:", brandInRawContent);
+        } else {
+          // If brand should be NONE, check if placeholder wasn't replaced
+          const placeholderStillPresent = (content.match(/\[\[BRAND_NAME\]\]/g) || []).length;
+          if (placeholderStillPresent > 0) {
+            console.warn("[articles-api] WARNING: Brand placeholder [[BRAND_NAME]] still present in response even though brand should be NONE!");
+          }
+        }
+        // #endregion
 
         // Track cost
         const costTracker = getCostTracker();
@@ -577,7 +694,7 @@ Language: US English.`;
         const apiLog = {location:'articles/route.ts:135',message:'OpenAI API success',data:{contentLength:content.length,topicTitle:topic.title,hasContent:!!content,contentPreview:content.substring(0,100),usage:{inputTokens,outputTokens,reasoningTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
         debugLog(apiLog);
         // #endregion
-
+        
         // Parse JSON response
         let parsedResponse: {
           titleTag?: string;
@@ -616,6 +733,57 @@ Language: US English.`;
             articleBodyText: content,
           };
         }
+        
+        // #region agent log - Brand presence check in parsed JSON response
+        // Check if brand appears in the parsed JSON response (after parsing, before HTML conversion)
+        const brandNameValueForCheck = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
+        if (brandNameValueForCheck !== "NONE") {
+          // Check in all possible fields
+          const articleBodyTextForCheck = parsedResponse.articleBodyText || "";
+          const articleBodyHtmlForCheck = parsedResponse.articleBodyHtml || "";
+          const articleBlocksForCheck = parsedResponse.articleBlocks ? JSON.stringify(parsedResponse.articleBlocks) : "";
+          const allContent = articleBodyTextForCheck + articleBodyHtmlForCheck + articleBlocksForCheck;
+          
+          const brandInParsedResponse = {
+            brandValue: brandNameValueForCheck,
+            appearsInArticleBodyText: articleBodyTextForCheck.includes(brandNameValueForCheck),
+            appearsInArticleBodyHtml: articleBodyHtmlForCheck.includes(brandNameValueForCheck),
+            appearsInArticleBlocks: articleBlocksForCheck.includes(brandNameValueForCheck),
+            appearsInAnyField: allContent.includes(brandNameValueForCheck),
+            occurrencesInArticleBodyText: (articleBodyTextForCheck.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
+            occurrencesInArticleBodyHtml: (articleBodyHtmlForCheck.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
+            occurrencesInArticleBlocks: (articleBlocksForCheck.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
+            placeholderStillPresent: allContent.includes("[[BRAND_NAME]]"),
+          };
+          
+          console.log("[articles-api] Brand presence check in parsed JSON response:", brandInParsedResponse);
+          
+          if (!brandInParsedResponse.appearsInAnyField) {
+            console.warn("[articles-api] WARNING: Brand was expected but NOT FOUND in parsed JSON response!", {
+              brandExpected: brandNameValueForCheck,
+              articleBodyTextPreview: articleBodyTextForCheck.substring(0, 500),
+              articleBodyHtmlPreview: articleBodyHtmlForCheck.substring(0, 500),
+              articleBlocksPreview: articleBlocksForCheck.substring(0, 500),
+            });
+          }
+          
+          // #region agent log
+          const brandInParsedResponseLog = {
+            location: 'articles/route.ts:740',
+            message: '[brand-verification] Brand presence check in parsed JSON response',
+            data: {
+              brandExpected: brandNameValueForCheck,
+              ...brandInParsedResponse,
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'brand-verification-parsed'
+          };
+          debugLog(brandInParsedResponseLog);
+          // #endregion
+        }
+        // #endregion
 
         // Post-process the article text: clean invisible chars and normalize
         let cleanedTitleTag = cleanText(parsedResponse.titleTag || topic.title);
