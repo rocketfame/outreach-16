@@ -1856,9 +1856,9 @@ export default function Home() {
         const anchorText = match[2] || "";
         // Only include external URLs (not anchor links or brand domain links)
         // Filter out the brand's domain if it's provided in brief.clientSite
-        const brandDomain = currentBrief.clientSite 
-          ? (currentBrief.clientSite.includes("://") || (currentBrief.clientSite.includes(".") && currentBrief.clientSite.includes("/")))
-            ? currentBrief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+        const brandDomain = brief.clientSite 
+          ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
+            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
             : null
           : null;
         
