@@ -31,11 +31,30 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
     throw new Error("AIHumanize API key is not configured");
   }
 
+  // Validate that email is not empty
+  if (!registeredEmail || registeredEmail.trim().length === 0) {
+    throw new Error("Registered email is required for humanization");
+  }
+
   // Build request body with optional style and mode parameters
+  // CRITICAL: According to AIHumanize API documentation, model must be a STRING ("0", "1", or "2"), not a number!
+  // API expects: { model: "0" | "1" | "2", mail: string, data: string }
+  // This was working this morning before our updates - the issue is that we changed model to number instead of string!
+  
+  // Validate and convert model to string
+  const modelNum = Number(model);
+  let modelString: string;
+  if (isNaN(modelNum) || modelNum < 0 || modelNum > 2) {
+    console.warn(`[humanizeText] Invalid model value: ${model}, defaulting to "1" (Balance)`);
+    modelString = "1"; // Default to Balance model as string
+  } else {
+    modelString = String(modelNum); // Convert to string: "0", "1", or "2"
+  }
+  
   const requestBody: any = {
-    model,
-    mail: registeredEmail,
-    data: text
+    model: modelString, // CRITICAL: Must be string "0", "1", or "2", not number!
+    mail: String(registeredEmail).trim(),
+    data: String(text)
   };
 
   // Add style if provided
@@ -52,12 +71,35 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
   console.log("[humanizeText] Calling AIHumanize API", {
     hasEmail: !!registeredEmail,
     emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
+    emailLength: registeredEmail?.length || 0,
     hasApiKey: !!apiKey,
+    apiKeyLength: apiKey?.length || 0,
     textLength: text.length,
     model,
     style,
     mode,
+    requestBodyKeys: Object.keys(requestBody),
+    hasModel: 'model' in requestBody,
+    hasMail: 'mail' in requestBody,
+    hasData: 'data' in requestBody,
   });
+
+  // Log the actual request body structure (without sensitive data)
+  const logRequestBody = {
+    hasModel: 'model' in requestBody,
+    modelValue: requestBody.model,
+    hasMail: 'mail' in requestBody,
+    mailValue: requestBody.mail ? (requestBody.mail.substring(0, 3) + "***") : null,
+    mailLength: requestBody.mail?.length || 0,
+    hasData: 'data' in requestBody,
+    dataLength: requestBody.data?.length || 0,
+    hasStyle: 'style' in requestBody,
+    styleValue: requestBody.style,
+    hasMode: 'mode' in requestBody,
+    modeValue: requestBody.mode,
+    allKeys: Object.keys(requestBody),
+  };
+  console.log("[humanizeText] Request body structure:", logRequestBody);
 
   const response = await fetch("https://aihumanize.io/api/v1/rewrite", {
     method: "POST",
@@ -81,17 +123,27 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
 
   if (json.code !== 200) {
     // Map error codes to user-friendly messages
+    // NOTE: Code 1004 can mean different things - check the actual message
+    let errorMessage: string;
+    
+    // Map error codes according to AIHumanize API documentation
     const errorMessages: Record<number, string> = {
-      1001: "API key not configured",
-      1002: "Invalid API key",
-      1003: "Email not registered - please check NEXT_PUBLIC_AIHUMANIZE_EMAIL in .env.local",
-      1004: "Insufficient balance - please check your AIHumanize account balance",
-      1005: "Text too short (minimum 100 characters)",
-      1006: "Text too long (maximum 10000 characters)",
-      1007: "Invalid model parameter",
+      1001: "Missing API key - please check AIHUMANIZE_API_KEY in .env.local",
+      1002: "Rate limit exceeded - try again in a few minutes",
+      1003: "Invalid API Key - please check AIHUMANIZE_API_KEY in .env.local",
+      1004: "Request parameter error - please check that model, mail, and data are correctly formatted",
+      1005: "Text language not supported - humanization works only for English text",
+      1006: "You don't have enough words - please check your AIHumanize account balance",
+      1007: "Server Error - AIHumanize service is temporarily unavailable, try again later",
+      1008: "Wrong email address - please check NEXT_PUBLIC_AIHUMANIZE_EMAIL in .env.local",
     };
     
-    const errorMessage = errorMessages[json.code] || json.msg || "Humanization failed";
+    errorMessage = errorMessages[json.code] || json.msg || "Humanization failed";
+    
+    // Add more context for parameter errors
+    if (json.code === 1004) {
+      errorMessage += `. Check that model is a string ("0", "1", or "2"), mail is a valid email, and data is between 100-10000 characters.`;
+    }
     
     // Log detailed error for debugging
     console.error("[humanizeText] AIHumanize API error", {
@@ -99,7 +151,13 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
       message: errorMessage,
       apiMsg: json.msg,
       emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
+      emailLength: registeredEmail?.length || 0,
       hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,
+      requestBodyKeys: Object.keys(requestBody),
+      requestBodyHasModel: 'model' in requestBody,
+      requestBodyHasMail: 'mail' in requestBody,
+      requestBodyHasData: 'data' in requestBody,
     });
     
     throw new Error(errorMessage);
