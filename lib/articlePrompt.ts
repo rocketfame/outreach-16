@@ -203,10 +203,12 @@ Structure:
 
 Suggested flow:
 • Short intro that hooks the reader and hints at the solution.
+  - CRITICAL: Do NOT mention [[BRAND_NAME]] in the intro, even if provided. Brand mentions belong in the main body sections only.
 • 2-4 main sections (H2/H3) with practical advice and examples.
-• CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST mention [[BRAND_NAME]] 1-2 times in the article (see detailed brand integration rules below). The brand should appear as a natural solution or helper, NOT a hard ad. You may use the brand in one H2/H3 subheading if it feels natural.
-• If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brands and you skip the brand integration entirely.
+  - CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST mention [[BRAND_NAME]] 1-2 times in these main body sections (see detailed brand integration rules below). The brand should appear as a natural solution or helper within the main content, NOT as a separate promotional section. You may use the brand in one H2/H3 subheading if it feels natural.
+  - If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brands and you skip the brand integration entirely.
 • Short conclusion that summarizes key points and gently points toward action.
+  - CRITICAL: Do NOT add brand mentions in the conclusion unless they naturally fit the summary. Brand should primarily appear in main body sections.
 • Use bullet or numbered lists where helpful.
 
 Structure variation and pattern rules (IMPORTANT):
@@ -255,14 +257,14 @@ BRAND INTEGRATION ([[BRAND_NAME]] - CRITICAL IF PROVIDED)
 CRITICAL RULE: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST integrate it into the article. This is NOT optional when a brand is specified.
 
 IF [[BRAND_NAME]] IS PROVIDED AND NOT EMPTY/NONE:
-• You MUST mention [[BRAND_NAME]] 1-2 times in the article (2 maximum, minimum 1 if brand is provided).
+• CRITICAL: You MUST mention [[BRAND_NAME]] 1-2 times in the article (2 maximum, minimum 1 if brand is provided). This is NOT optional when a brand is provided.
 • Tie the brand to concrete benefits that make sense in [[NICHE]] and on [[MAIN_PLATFORM]].
 • You may use the brand in one H2/H3 subheading if it feels natural (e.g., "How [[BRAND_NAME]] helps with...").
-• Place brand mentions in the main body sections (not in intro or conclusion only) - they should feel like natural solutions to the problems discussed.
+• CRITICAL - Placement: Brand mentions MUST appear in the MAIN BODY sections of the article (middle sections with H2/H3 headings), NOT just in the intro or conclusion. The brand should appear where it naturally helps solve problems discussed in those sections.
 • Avoid aggressive sales tone. Focus on "how this helps" or "how some teams use [[BRAND_NAME]] to solve..." rather than "buy now" or direct promotion.
-• Example natural integration: "When you need to scale your reach, some teams use [[BRAND_NAME]] to automate their distribution process."
+• Example natural integration in body: "When you need to scale your reach, some teams use [[BRAND_NAME]] to automate their distribution process."
 • Example natural integration in heading: "How [[BRAND_NAME]] Streamlines Your Workflow"
-• The brand should feel like a helpful tool or solution, not like advertising.
+• The brand should feel like a helpful tool or solution mentioned in context, not like advertising inserted at the end.
 
 IF [[BRAND_NAME]] IS EMPTY OR "NONE":
 • Ignore all brand integration instructions.
@@ -605,6 +607,7 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • Word count is approximately [[WORD_COUNT]] words (counted across all text in articleBlocks as plain text).
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
+• CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned 1-2 times in the article body (main sections, not just intro/conclusion). The brand should appear as a natural solution or helper, NOT as advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
 • EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty).
 • The commercial anchor [[ANCHOR_TEXT]] → [[ANCHOR_URL]] is integrated naturally (if provided).
 • The article structure matches the brief requirements.
@@ -921,33 +924,39 @@ If [[BRAND_NAME]] is empty / "NONE" / placeholder:
 
 If [[BRAND_NAME]] is non empty:
 
+CRITICAL - Brand placement rules (apply to ALL content purposes):
+• Brand mentions MUST appear in the MAIN BODY sections of the article (middle sections with H2/H3 headings and practical content).
+• Do NOT mention [[BRAND_NAME]] in the intro paragraph, even for "Blog" or "Partner blog".
+• Brand should appear where it naturally helps solve problems discussed in the main body sections, not as advertising inserted at the end.
+• Exception: For LIST topics, brand may appear ONLY in the final paragraph (see specific rules below).
+
 A) "Blog"
 	•	Voice: brand or close expert voice ("we" is allowed).
-	•	Guide topics: mention [[BRAND_NAME]] up to 2-3 times maximum.
+	•	Guide topics: mention [[BRAND_NAME]] up to 2-3 times maximum in main body sections.
 	•	List topics: at most one very short neutral mention in the final paragraph ONLY,
-no separate section about the brand, no mention in the intro.
+no separate section about the brand, no mention in the intro or main list.
 
 B) "Guest post / outreach"
 	•	Voice: neutral external expert, no "we".
-	•	Mention [[BRAND_NAME]] 1-2 times, lightly and naturally in context.
+	•	Mention [[BRAND_NAME]] 1-2 times, lightly and naturally in context within main body sections (not intro/conclusion only).
 
 C) "Educational guide"
 	•	Voice: teacher / strategist, neutral.
-	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally.
+	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally in main body sections.
 
 D) "Partner blog"
 	•	Voice: friendly expert who respects both the host blog and [[BRAND_NAME]].
-	•	Guide topics: up to 2-3 mentions.
-	•	List topics: one very short mention in the final paragraph ONLY (max 1 sentence).
+	•	Guide topics: up to 2-3 mentions in main body sections.
+	•	List topics: one very short mention in the final paragraph ONLY (max 1 sentence), no mention in intro or main list.
 
 E) "News Hook"
 	•	Voice: neutral analyst / strategist, no "we".
 	•	Focus on platform updates, policy changes, and industry shifts, but always turn them into evergreen implications and action steps.
-	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally. No sales tone.
+	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally in main body sections. No sales tone.
 
 F) "Other"
 	•	Voice: neutral editorial.
-	•	[[BRAND_NAME]] may be skipped, or mentioned once very lightly if it feels natural.
+	•	[[BRAND_NAME]] may be skipped, or mentioned once very lightly if it feels natural in main body sections.
 
 ================================
 2. CHOOSING FORMAT: LIST OR GUIDE
@@ -1067,14 +1076,11 @@ or when [[CONTENT_PURPOSE]] = "Educational guide" and the brief does not demand 
 (required sections, important points, regional focus, risk section, etc.).
 	•	Avoid vague advice with no detail. Every section should give the reader something to do, check, or decide.
 	3.	Brand integration in guide topics
-	•	If [[BRAND_NAME]] is empty / "NONE" / placeholder:
-• Do NOT mention any client brand as the owner or solution.
-	•	If [[BRAND_NAME]] is non empty:
-• Blog / Partner blog: up to 2-3 mentions overall,
-optionally one very short subsection showing how the brand helps (not a hard ad).
-• Guest post / outreach: 1-2 light mentions.
-• Educational guide / Other: 0-1 very subtle mention if it feels natural.
-	•	Always focus on how the brand helps the reader solve a concrete problem, not on "buy now" copy.
+	•	CRITICAL: Follow the brand integration rules from section "1. CONTENT PURPOSE & BRAND VOICE" above. These rules are MANDATORY and apply to guide topics.
+	•	All brand placement rules and frequency rules from section "1. CONTENT PURPOSE & BRAND VOICE" apply to guide topics.
+	•	For guide topics specifically: You may optionally create one very short subsection (within the main body) showing how [[BRAND_NAME]] helps solve a specific problem discussed in that section (not a hard ad, just a natural mention as part of the solution discussion).
+	•	Always focus on how the brand helps the reader solve a concrete problem discussed in the article, not on "buy now" copy.
+	•	Brand mentions should feel like natural solutions to problems, not like advertising inserted at the end.
 	4.	Conclusion
 	•	Short, concrete recap with 1-3 key takeaways or next steps.
 	•	Avoid clichés like "in conclusion", "in today's digital world", "at the end of the day".
@@ -1429,6 +1435,14 @@ FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
 • Ensure word count is within 90-110% of [[WORD_COUNT]] (counted as plain text across all text in articleBlocks).
+• CRITICAL - Brand integration verification: 
+  - If [[BRAND_NAME]] is provided and NOT empty/NONE: Verify that [[BRAND_NAME]] is mentioned according to the brand integration rules for your content purpose (see section "1. CONTENT PURPOSE & BRAND VOICE"):
+    * "Blog": Guide topics - 2-3 mentions max; List topics - one short mention in final paragraph ONLY.
+    * "Guest post / outreach": 1-2 light mentions in main body sections.
+    * "Partner blog": Guide topics - 2-3 mentions; List topics - one short mention in final paragraph ONLY.
+    * "Educational guide" / "News Hook" / "Other": 0-1 subtle mention if natural.
+  - Brand mentions should appear in MAIN BODY sections (not just intro/conclusion) and feel natural, not like advertising.
+  - If [[BRAND_NAME]] is empty/NONE/placeholder: Verify that NO client brands are mentioned (only generic platforms like Spotify, YouTube, TikTok when part of factual topic).
 • If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in the first 2-3 paragraphs.
 • Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
 • Scan all block texts/items/cells for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
