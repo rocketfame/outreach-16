@@ -180,6 +180,30 @@ export function normalizeQuotesAndDashes(text: string): string {
 }
 
 /**
+ * Fixes spacing around HTML tags to prevent words from merging
+ * Adds spaces after closing tags and before opening tags if they're adjacent to letters/numbers
+ * Example: "but<strong>completion</strong>is" → "but <strong>completion</strong> is"
+ */
+export function fixHtmlTagSpacing(text: string): string {
+  if (!text) return text;
+  
+  let fixed = text;
+  
+  // Add space after closing tags (</strong>, </b>, </a>, </span>, etc.) if followed by letter/number
+  // Pattern: </tag>letter → </tag> letter
+  fixed = fixed.replace(/(<\/(strong|b|a|span|em|i|u|mark|code|kbd|samp|var)[^>]*>)([A-Za-z0-9])/g, '$1 $3');
+  
+  // Add space before opening tags (<strong>, <b>, <a>, etc.) if preceded by letter/number
+  // Pattern: letter<tag> → letter <tag>
+  fixed = fixed.replace(/([A-Za-z0-9])(<(strong|b|a|span|em|i|u|mark|code|kbd|samp|var)[^>]*>)/g, '$1 $2');
+  
+  // Normalize multiple spaces back to single space (in case we added spaces that were already there)
+  fixed = fixed.replace(/\s{2,}/g, ' ');
+  
+  return fixed;
+}
+
+/**
  * Applies all text cleaning functions
  */
 export function cleanText(text: string): string {

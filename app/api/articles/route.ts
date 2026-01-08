@@ -26,7 +26,7 @@
  */
 
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
-import { cleanText, lightHumanEdit } from "@/lib/textPostProcessing";
+import { cleanText, lightHumanEdit, fixHtmlTagSpacing } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { 
@@ -217,8 +217,11 @@ export async function POST(req: Request) {
           // #endregion
 
           // Extract brand name from clientSite if available, otherwise use empty string (will be handled as "NONE" in prompt)
+          // If clientSite is a URL, extract domain; if it's plain text, use it as-is
           const brandName = brief.clientSite 
-            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
+              ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+              : brief.clientSite.trim()
             : "";
 
           prompt = buildDirectArticlePrompt({
@@ -263,9 +266,14 @@ export async function POST(req: Request) {
         // #endregion
 
           // Extract brand name from clientSite if available, otherwise use empty string (will be handled as "NONE" in prompt)
+          // If clientSite is a URL, extract domain; if it's plain text, use it as-is
           const brandName = brief.clientSite 
-            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
+              ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+              : brief.clientSite.trim()
             : "";
+
+          console.log("[articles/route] Topic Discovery mode - Brand name extraction:", { clientSite: brief.clientSite, brandName });
 
           prompt = buildArticlePrompt({
           topicTitle: topic.title,
@@ -296,8 +304,12 @@ export async function POST(req: Request) {
         // #endregion
 
         // Extract brand name for system message
+        // Extract brand name from clientSite if available, otherwise use empty string
+        // If clientSite is a URL, extract domain; if it's plain text, use it as-is
         const brandNameForSystem = brief.clientSite 
-          ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+          ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
+            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            : brief.clientSite.trim()
           : "";
 
         // Build system message
@@ -725,20 +737,26 @@ Language: US English.`;
             // #endregion
           }
 
-          // Convert blocks to HTML, then clean invisible characters
+          // Convert blocks to HTML, fix spacing around tags, then clean invisible characters
           cleanedArticleBodyHtml = cleanText(
-            blocksToHtml(
-              articleStructure.blocks,
-              articleStructure.anchors,
-              articleStructure.trustSources
+            fixHtmlTagSpacing(
+              blocksToHtml(
+                articleStructure.blocks,
+                articleStructure.anchors,
+                articleStructure.trustSources
+              )
             )
           );
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
-          cleanedArticleBodyHtml = cleanText(parsedResponse.articleBodyHtml || content);
+          cleanedArticleBodyHtml = cleanText(
+            fixHtmlTagSpacing(parsedResponse.articleBodyHtml || content)
+          );
         } else {
           // Fallback: use raw content
-          cleanedArticleBodyHtml = cleanText(content);
+          cleanedArticleBodyHtml = cleanText(
+            fixHtmlTagSpacing(content)
+          );
         }
 
         // #region agent log
@@ -760,7 +778,10 @@ Language: US English.`;
 
             // CRITICAL: Clean text again after Light Human Edit
             // GPT-5.2 can re-introduce em-dashes, smart quotes, and other AI indicators during rewrite
-            cleanedArticleBodyHtml = cleanText(cleanedArticleBodyHtml);
+            // Also fix spacing around HTML tags that might have been lost during processing
+            cleanedArticleBodyHtml = cleanText(
+              fixHtmlTagSpacing(cleanedArticleBodyHtml)
+            );
 
             // #region agent log
             const editCompleteLog = {location:'articles/route.ts:260',message:'Light human edit completed and re-cleaned',data:{topicTitle:topic.title,newLength:cleanedArticleBodyHtml.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};

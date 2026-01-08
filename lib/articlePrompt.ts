@@ -542,7 +542,10 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
   prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText);
   prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl);
-  prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "NONE");
+  // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
+  const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
+  console.log("[buildArticlePrompt] Brand name:", { original: params.brandName, processed: brandNameValue });
+  prompt = prompt.replaceAll("[[BRAND_NAME]]", brandNameValue);
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
@@ -728,7 +731,6 @@ Check [[BRAND_NAME]]:
   - Treat this article as a fully neutral editorial piece.  
   - You MUST completely ignore all brand-voice and brand-integration rules.  
   - You MUST NOT invent or mention any client-like brand or service  
-    (for example PromosoundGroup or any other promotion service)  
     as the owner of the article or as a featured solution.  
   - You may still mention big generic platforms like Spotify, YouTube, TikTok  
     only when they are part of the factual topic, not as "our service".
@@ -1230,7 +1232,10 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
   prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText || "");
   prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl || "");
-  prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "NONE");
+  // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
+  const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
+  console.log("[buildDirectArticlePrompt] Brand name:", { original: params.brandName, processed: brandNameValue });
+  prompt = prompt.replaceAll("[[BRAND_NAME]]", brandNameValue);
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));

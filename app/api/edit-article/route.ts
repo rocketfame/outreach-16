@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { getOpenAIApiKey } from "@/lib/config";
-import { cleanText } from "@/lib/textPostProcessing";
+import { cleanText, fixHtmlTagSpacing } from "@/lib/textPostProcessing";
 import { getCostTracker } from "@/lib/costTracker";
 import { ARTICLE_EDIT_PRESET, applyPreset } from "@/lib/llmPresets";
 
@@ -222,7 +222,8 @@ export async function POST(req: NextRequest) {
       }
 
       // Apply text cleaning to remove em-dash, smart quotes, and other AI indicators
-      cleanedHtml = cleanText(cleanedHtml);
+      // Also fix spacing around HTML tags to prevent words from merging
+      cleanedHtml = cleanText(fixHtmlTagSpacing(cleanedHtml));
 
       console.log("[edit-article] Cleaned HTML length:", cleanedHtml.trim().length);
 
@@ -242,7 +243,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Apply text cleaning to remove em-dash, smart quotes, and other AI indicators
-    let cleanedHtml = cleanText(parsedResponse.articleUpdatedHtml);
+    // Also fix spacing around HTML tags to prevent words from merging
+    let cleanedHtml = cleanText(fixHtmlTagSpacing(parsedResponse.articleUpdatedHtml));
 
     // Replace image placeholders with actual HTML
     if (parsedResponse.images && parsedResponse.images.length > 0) {

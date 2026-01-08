@@ -1802,9 +1802,16 @@ export default function Home() {
       while ((match = urlRegex.exec(currentHtml)) !== null) {
         const url = match[1];
         const anchorText = match[2] || "";
-        // Only include external URLs (not anchor links or promosoundgroup links)
+        // Only include external URLs (not anchor links or brand domain links)
+        // Filter out the brand's domain if it's provided in brief.clientSite
+        const brandDomain = currentBrief.clientSite 
+          ? (currentBrief.clientSite.includes("://") || (currentBrief.clientSite.includes(".") && currentBrief.clientSite.includes("/")))
+            ? currentBrief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            : null
+          : null;
+        
         if ((url.startsWith('http://') || url.startsWith('https://')) && 
-            !url.includes('promosoundgroup.net')) {
+            (!brandDomain || !url.includes(brandDomain))) {
           existingUrls.set(url, anchorText);
           // Add to trust sources list in format "Title|URL"
           const title = anchorText.trim() || new URL(url).hostname;
@@ -3100,10 +3107,13 @@ export default function Home() {
       const niche = currentBrief.niche || "";
       const mainPlatform = currentBrief.platform || "Multi-platform";
       const contentPurpose = currentBrief.contentPurpose || "Guest post / outreach";
-      // Extract brand name from clientSite if available, otherwise use default
+      // Extract brand name from clientSite if available, otherwise use empty string
+      // If clientSite is a URL, extract domain; if it's plain text, use it as-is
       const brandName = currentBrief.clientSite 
-        ? currentBrief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "") || "PromosoundGroup"
-        : "PromosoundGroup";
+        ? (currentBrief.clientSite.includes("://") || (currentBrief.clientSite.includes(".") && currentBrief.clientSite.includes("/")))
+          ? currentBrief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+          : currentBrief.clientSite.trim()
+        : "";
 
       console.log("[generateArticleImage] Data collected", { 
         mode: currentMode,
@@ -3892,12 +3902,12 @@ export default function Home() {
             </label>
 
             <label>
-              <span>Client site URL</span>
+              <span>Brand</span>
               <input
                 type="text"
                 value={brief.clientSite}
                 onChange={handleBriefChange("clientSite")}
-                placeholder="https://client-site.com"
+                placeholder="Enter brand name"
               />
             </label>
 
