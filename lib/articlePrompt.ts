@@ -204,7 +204,7 @@ Structure:
 Suggested flow:
 • Short intro that hooks the reader and hints at the solution.
 • 2-4 main sections (H2/H3) with practical advice and examples.
-• One section where [[BRAND_NAME]] appears as a natural solution or helper, NOT a hard ad - ONLY if [[BRAND_NAME]] is provided.
+• CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST mention [[BRAND_NAME]] 1-2 times in the article (see detailed brand integration rules below). The brand should appear as a natural solution or helper, NOT a hard ad. You may use the brand in one H2/H3 subheading if it feels natural.
 • If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brands and you skip the brand integration entirely.
 • Short conclusion that summarizes key points and gently points toward action.
 • Use bullet or numbered lists where helpful.
@@ -248,15 +248,26 @@ Commercial anchor link (user's brand/service):
   ✗ "To learn more about how some teams boost their early signals, you can read about it [A1]." (anchor at end, too long)
   ✗ "Click here [A1] to discover more." (generic phrase, not natural)
 
-Brand integration ([[BRAND_NAME]] - OPTIONAL):
-• ONLY if [[BRAND_NAME]] is provided and not empty:
-• Mention [[BRAND_NAME]] 1-2 times in the article (2 maximum).
+================================
+BRAND INTEGRATION ([[BRAND_NAME]] - CRITICAL IF PROVIDED)
+================================
+
+CRITICAL RULE: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST integrate it into the article. This is NOT optional when a brand is specified.
+
+IF [[BRAND_NAME]] IS PROVIDED AND NOT EMPTY/NONE:
+• You MUST mention [[BRAND_NAME]] 1-2 times in the article (2 maximum, minimum 1 if brand is provided).
 • Tie the brand to concrete benefits that make sense in [[NICHE]] and on [[MAIN_PLATFORM]].
-• You may use the brand in one H2/H3 subheading if it feels natural.
-• Avoid aggressive sales tone. Focus on "how this helps" rather than "buy now".
-• If [[BRAND_NAME]] is empty or "NONE":
+• You may use the brand in one H2/H3 subheading if it feels natural (e.g., "How [[BRAND_NAME]] helps with...").
+• Place brand mentions in the main body sections (not in intro or conclusion only) - they should feel like natural solutions to the problems discussed.
+• Avoid aggressive sales tone. Focus on "how this helps" or "how some teams use [[BRAND_NAME]] to solve..." rather than "buy now" or direct promotion.
+• Example natural integration: "When you need to scale your reach, some teams use [[BRAND_NAME]] to automate their distribution process."
+• Example natural integration in heading: "How [[BRAND_NAME]] Streamlines Your Workflow"
+• The brand should feel like a helpful tool or solution, not like advertising.
+
+IF [[BRAND_NAME]] IS EMPTY OR "NONE":
 • Ignore all brand integration instructions.
-• Do NOT mention [[BRAND_NAME]] or any other brand at all.
+• Do NOT mention [[BRAND_NAME]] or any other client brand at all.
+• You may still mention big generic platforms like Spotify, YouTube, TikTok only when they are part of the factual topic, not as "our service".
 
 ⸻
 
