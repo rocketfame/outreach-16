@@ -547,6 +547,8 @@ Language: US English.`;
             
             // Get humanize settings from request (default: Balance model)
             const humanizeModel = body.humanizeSettings?.model ?? 1; // Default: Balance (1)
+            const humanizeStyle = body.humanizeSettings?.style; // Optional: Writing style
+            const humanizeMode = body.humanizeSettings?.mode; // Optional: Basic or Autopilot
 
             if (registeredEmail && apiKey) {
               try {
@@ -562,7 +564,7 @@ Language: US English.`;
                           try {
                             // Clean invisible characters BEFORE humanization
                             const cleanedText = cleanText(item.text);
-                            const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders);
+                            const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                             listWordsUsed += result.wordsUsed;
                             // Clean invisible characters AFTER humanization (in case API returns them)
                             const finalText = cleanText(result.humanizedText);
@@ -586,7 +588,7 @@ Language: US English.`;
                         try {
                           // Clean invisible characters BEFORE humanization
                           const cleanedCaption = cleanText(caption);
-                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, registeredEmail, frozenPlaceholders);
+                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                           // Clean invisible characters AFTER humanization
                           caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
@@ -605,7 +607,7 @@ Language: US English.`;
                               try {
                                 // Clean invisible characters BEFORE humanization
                                 const cleanedCell = cleanText(cell);
-                                const result = await humanizeSectionText(cleanedCell, humanizeModel, registeredEmail, frozenPlaceholders);
+                                const result = await humanizeSectionText(cleanedCell, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                                 tableWordsUsed += result.wordsUsed;
                                 // Clean invisible characters AFTER humanization
                                 return cleanText(result.humanizedText);
@@ -632,7 +634,7 @@ Language: US English.`;
                     try {
                       // Clean invisible characters BEFORE humanization
                       const cleanedText = cleanText(block.text);
-                      const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders);
+                      const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                       totalHumanizeWordsUsed += result.wordsUsed;
                       // Clean invisible characters AFTER humanization (in case API returns them)
                       const finalText = cleanText(result.humanizedText);

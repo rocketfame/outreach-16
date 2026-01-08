@@ -4,6 +4,8 @@
 export interface HumanizeTextRequest {
   text: string;
   model?: number; // 0: quality, 1: balance (default), 2: enhanced
+  style?: string; // General, Blog, Formal, Informal, Academic, Expand, Simplify
+  mode?: "Basic" | "Autopilot"; // Basic or Autopilot
   registeredEmail: string;
 }
 
@@ -18,7 +20,7 @@ export interface HumanizeTextResponse {
  * Text must be between 100 and 10000 characters
  */
 export async function humanizeText(request: HumanizeTextRequest): Promise<HumanizeTextResponse> {
-  const { text, model = 1, registeredEmail } = request;
+  const { text, model = 1, style, mode, registeredEmail } = request;
 
   if (text.length < 100 || text.length > 10000) {
     throw new Error("Text must be between 100 and 10000 characters for humanization.");
@@ -29,17 +31,30 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
     throw new Error("AIHumanize API key is not configured");
   }
 
+  // Build request body with optional style and mode parameters
+  const requestBody: any = {
+    model,
+    mail: registeredEmail,
+    data: text
+  };
+
+  // Add style if provided
+  if (style) {
+    requestBody.style = style.toLowerCase(); // AIHumanize expects lowercase
+  }
+
+  // Add mode if provided (Autopilot mode)
+  if (mode === "Autopilot") {
+    requestBody.mode = "autopilot";
+  }
+
   const response = await fetch("https://aihumanize.io/api/v1/rewrite", {
     method: "POST",
     headers: {
       "Authorization": apiKey,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      model,
-      mail: registeredEmail,
-      data: text
-    })
+    body: JSON.stringify(requestBody)
   });
 
   const json = await response.json();
@@ -109,13 +124,17 @@ export function chunkTextForHumanization(text: string): string[] {
  * @param frozenPhrases Phrases to protect from alteration (e.g., brand names, anchor text).
  *   Note: Currently not used as AIHumanize API doesn't support frozen phrases directly.
  *   Placeholders like [A1], [T1] are already short tokens that should survive humanization.
+ * @param style Optional writing style (General, Blog, Formal, Informal, Academic, Expand, Simplify).
+ * @param mode Optional mode (Basic or Autopilot).
  * @returns The humanized text, or the original text on error.
  */
 export async function humanizeSectionText(
   text: string,
   model: number,
   registeredEmail: string,
-  frozenPhrases: string[] = []
+  frozenPhrases: string[] = [],
+  style?: string,
+  mode?: "Basic" | "Autopilot"
 ): Promise<{ humanizedText: string; wordsUsed: number }> {
   if (!text || text.trim().length === 0) {
     return { humanizedText: text, wordsUsed: 0 };
@@ -146,6 +165,8 @@ export async function humanizeSectionText(
         const result = await humanizeText({
           text: chunk,
           model,
+          style,
+          mode,
           registeredEmail
         });
         humanizedChunks.push(result.text);
@@ -160,6 +181,8 @@ export async function humanizeSectionText(
       const result = await humanizeText({
         text,
         model,
+        style,
+        mode,
         registeredEmail
       });
 
