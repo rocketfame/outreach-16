@@ -3621,37 +3621,32 @@ export default function Home() {
             console.log('[cost-tracker] Tokens:', data.tokens);
             console.log('[cost-tracker] Formatted values:', data.totals.formatted);
             setCostData(prev => {
-              // Always use current humanizeWordsUsed from ref (always up-to-date)
-              const currentHumanizeWords = humanizeWordsUsedRef.current;
-              const currentHumanize = currentHumanizeWords * HUMANIZE_COST_PER_WORD;
-              const currentHumanizeFormatted = new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 4,
-                maximumFractionDigits: 4,
-              }).format(currentHumanize);
+              // CRITICAL: Use humanizeWords from backend if available, otherwise use local state
+              // Backend is the source of truth for humanize costs
+              const backendHumanizeWords = data.humanizeWords || 0;
+              const backendHumanizeCost = data.totals.aihumanize || data.totals.humanize || 0;
+              const backendHumanizeFormatted = data.totals.formatted?.aihumanize || data.totals.formatted?.humanize || '$0.0000';
               
-              // Calculate new total with preserved humanize cost
-              const baseCost = (data.totals.tavily || 0) + (data.totals.openai || 0);
-              const newTotal = baseCost + currentHumanize;
-              const totalFormatted = new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 4,
-                maximumFractionDigits: 4,
-              }).format(newTotal);
+              // Update local state to match backend (for backward compatibility with old code)
+              if (backendHumanizeWords !== humanizeWordsUsedRef.current) {
+                humanizeWordsUsedRef.current = backendHumanizeWords;
+                setHumanizeWordsUsed(backendHumanizeWords);
+              }
               
+              // Use backend totals directly - backend is the source of truth
               return {
-                ...data.totals,
-                humanize: currentHumanize,
-                total: newTotal,
+                tavily: data.totals.tavily || 0,
+                openai: data.totals.openai || 0,
+                humanize: backendHumanizeCost,
+                total: data.totals.total || 0,
                 formatted: {
-                  ...data.totals.formatted,
-                  humanize: currentHumanizeFormatted,
-                  total: totalFormatted,
+                  tavily: data.totals.formatted?.tavily || '$0.0000',
+                  openai: data.totals.formatted?.openai || '$0.0000',
+                  humanize: backendHumanizeFormatted,
+                  total: data.totals.formatted?.total || '$0.0000',
                 },
                 tokens: data.tokens,
-                humanizeWords: currentHumanizeWords,
+                humanizeWords: backendHumanizeWords,
               };
             });
           } else {
