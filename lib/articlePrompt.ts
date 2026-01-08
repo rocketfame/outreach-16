@@ -390,6 +390,43 @@ QUALITY EXPECTATIONS
 • Do not mention Tavily, TRUST_SOURCES_LIST, or any internal tooling in the article text.
 • The article must read like a polished piece from a serious niche specific blog or media outlet, not like AI output or a technical specification.
 
+⸻
+
+OUTREACH-SPECIFIC REQUIREMENTS (CRITICAL - Only if [[CONTENT_PURPOSE]] = "Guest post / outreach"):
+
+If [[CONTENT_PURPOSE]] is "Guest post / outreach", you MUST follow these additional requirements to maximize acceptance rate:
+
+1. AUTHORITATIVE QUOTES AND INDUSTRY STATISTICS (MANDATORY):
+• Add 2-4 external authoritative quotes or industry statistics throughout the article where they naturally fit.
+• These should come from [[TRUST_SOURCES_LIST]] or be referenced naturally (e.g., "According to [T1], 68% of creators report...").
+• Include at least one strong data-point (percentage, number, research finding) in the first half of the article - this significantly increases acceptance rate.
+• Examples of strong data-points:
+  - "A 2024 study from [T1] found that 73% of independent artists..."
+  - "Research shows that playlists with fewer than 1,000 followers generate 40% more engagement..."
+  - "Industry data indicates that creators who post consistently see a 2.5x increase in reach..."
+• These statistics and quotes make the article more credible and link-worthy for outreach campaigns.
+• DO NOT fabricate statistics - only use data from [[TRUST_SOURCES_LIST]] or reference them naturally if the source provides such data.
+
+2. LINKABLE H2 HEADINGS (IMPORTANT):
+• Keep H2 headings concise and "linkable" - aim for 4-8 words maximum.
+• Avoid overly long H2 headings that are hard to reference or link to.
+• Make 1-2 H2 headings shorter and more punchy to increase their linkability.
+• Examples of good linkable H2s:
+  ✓ "Platform Algorithm Changes"
+  ✓ "Content Strategy Framework"
+  ✓ "2026 Pricing Impact"
+• Examples of H2s that are too long (avoid):
+  ✗ "How Platform Algorithm Changes Affect Your Content Strategy in 2026"
+  ✗ "Understanding the Impact of Pricing Changes on Independent Creators"
+
+3. STRATEGIC DATA-POINT PLACEMENT:
+• Place at least one strong data-point (percentage, statistic, research finding) in the introduction or first major section.
+• This immediately establishes credibility and increases the likelihood of article acceptance.
+• The data-point should be relevant to the topic and support your main argument.
+• If [[TRUST_SOURCES_LIST]] contains research, studies, or reports, prioritize referencing their key findings as data-points.
+
+Remember: For outreach articles, authoritative quotes, industry statistics, and strong data-points are not optional - they are essential for link-building success and higher acceptance rates.
+
 SEO requirements:
 • Write an SEO title tag (max 60 characters) that matches the search intent for this topic, includes the main keyword and fits [[NICHE]].
 • Write a meta description (150-160 characters) that is clear and concrete and includes at least one number (for example percent, steps, years, metrics). Use a regular hyphen "-" instead of other dash characters.
@@ -961,6 +998,42 @@ b) it adds clear value to the paragraph.
 you MUST NOT use it, unless it supports a universal principle that genuinely fits your point.
 
 If no source in [[TRUST_SOURCES_LIST]] fits the topic, write the article without external links.
+
+================================
+6.5. OUTREACH-SPECIFIC REQUIREMENTS (CRITICAL - Only if [[CONTENT_PURPOSE]] = "Guest post / outreach"):
+
+If [[CONTENT_PURPOSE]] is "Guest post / outreach", you MUST follow these additional requirements to maximize acceptance rate:
+
+1. AUTHORITATIVE QUOTES AND INDUSTRY STATISTICS (MANDATORY):
+	•	Add 2-4 external authoritative quotes or industry statistics throughout the article where they naturally fit.
+	•	These should come from [[TRUST_SOURCES_LIST]] or be referenced naturally (e.g., "According to [T1], 68% of creators report...").
+	•	Include at least one strong data-point (percentage, number, research finding) in the first half of the article - this significantly increases acceptance rate.
+	•	Examples of strong data-points:
+	  - "A 2024 study from [T1] found that 73% of independent artists..."
+	  - "Research shows that playlists with fewer than 1,000 followers generate 40% more engagement..."
+	  - "Industry data indicates that creators who post consistently see a 2.5x increase in reach..."
+	•	These statistics and quotes make the article more credible and link-worthy for outreach campaigns.
+	•	DO NOT fabricate statistics - only use data from [[TRUST_SOURCES_LIST]] or reference them naturally if the source provides such data.
+
+2. LINKABLE H2 HEADINGS (IMPORTANT):
+	•	Keep H2 headings concise and "linkable" - aim for 4-8 words maximum.
+	•	Avoid overly long H2 headings that are hard to reference or link to.
+	•	Make 1-2 H2 headings shorter and more punchy to increase their linkability.
+	•	Examples of good linkable H2s:
+	  ✓ "Platform Algorithm Changes"
+	  ✓ "Content Strategy Framework"
+	  ✓ "2026 Pricing Impact"
+	•	Examples of H2s that are too long (avoid):
+	  ✗ "How Platform Algorithm Changes Affect Your Content Strategy in 2026"
+	  ✗ "Understanding the Impact of Pricing Changes on Independent Creators"
+
+3. STRATEGIC DATA-POINT PLACEMENT:
+	•	Place at least one strong data-point (percentage, statistic, research finding) in the introduction or first major section.
+	•	This immediately establishes credibility and increases the likelihood of article acceptance.
+	•	The data-point should be relevant to the topic and support your main argument.
+	•	If [[TRUST_SOURCES_LIST]] contains research, studies, or reports, prioritize referencing their key findings as data-points.
+
+Remember: For outreach articles, authoritative quotes, industry statistics, and strong data-points are not optional - they are essential for link-building success and higher acceptance rates.
 
 ================================
 7. HUMAN-WRITTEN STYLE AND ANTI-AI-SIGNATURE RULES (v2 – CRITICAL)
