@@ -339,7 +339,7 @@ export async function POST(req: Request) {
         }
         
         // #region agent log
-        const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{filteredCount:filteredTrustSources.length,filteredSources:filteredTrustSources.map(ts => ({ id: ts.id, text: ts.text })),hasTrustSources:filteredTrustSources.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
+        const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{filteredCount:trustedSources.length,filteredSources:trustedSources.map(ts => ({ id: ts.id, title: ts.title, type: ts.type })),hasTrustSources:trustedSources.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
         debugLog(trustSourcesLog);
         // #endregion
 
