@@ -100,8 +100,10 @@ export function validateApiKeys(): boolean {
  * Feature flag for Writing Mode (SEO Mode + Human Mode)
  * When false: Only SEO Mode is available, system behaves exactly as current production
  * When true: UI shows SEO/Human toggle and backend supports Human Mode
+ * 
+ * Now enabled by default - Human Mode is always available
  */
-export const HUMAN_MODE_EXPERIMENT = process.env.NEXT_PUBLIC_HUMAN_MODE_EXPERIMENT === "true" || false;
+export const HUMAN_MODE_EXPERIMENT = true;
 
 
 
