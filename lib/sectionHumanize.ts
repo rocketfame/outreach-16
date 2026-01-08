@@ -48,6 +48,17 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
     requestBody.mode = "autopilot";
   }
 
+  // Log request details for debugging (without sensitive data)
+  console.log("[humanizeText] Calling AIHumanize API", {
+    hasEmail: !!registeredEmail,
+    emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
+    hasApiKey: !!apiKey,
+    textLength: text.length,
+    model,
+    style,
+    mode,
+  });
+
   const response = await fetch("https://aihumanize.io/api/v1/rewrite", {
     method: "POST",
     headers: {
@@ -59,19 +70,38 @@ export async function humanizeText(request: HumanizeTextRequest): Promise<Humani
 
   const json = await response.json();
 
+  // Log response for debugging
+  console.log("[humanizeText] AIHumanize API response", {
+    code: json.code,
+    msg: json.msg,
+    hasData: !!json.data,
+    wordsUsed: json.words_used,
+    remainingWords: json.remaining_words,
+  });
+
   if (json.code !== 200) {
     // Map error codes to user-friendly messages
     const errorMessages: Record<number, string> = {
       1001: "API key not configured",
       1002: "Invalid API key",
-      1003: "Email not registered",
-      1004: "Insufficient balance",
+      1003: "Email not registered - please check NEXT_PUBLIC_AIHUMANIZE_EMAIL in .env.local",
+      1004: "Insufficient balance - please check your AIHumanize account balance",
       1005: "Text too short (minimum 100 characters)",
       1006: "Text too long (maximum 10000 characters)",
       1007: "Invalid model parameter",
     };
     
     const errorMessage = errorMessages[json.code] || json.msg || "Humanization failed";
+    
+    // Log detailed error for debugging
+    console.error("[humanizeText] AIHumanize API error", {
+      code: json.code,
+      message: errorMessage,
+      apiMsg: json.msg,
+      emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
+      hasApiKey: !!apiKey,
+    });
+    
     throw new Error(errorMessage);
   }
 

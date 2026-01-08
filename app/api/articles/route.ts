@@ -271,6 +271,21 @@ export async function POST(req: Request) {
         // This ensures we always have at least some sources to work with
         if (trustedSources.length === 0 && rawSources.length > 0) {
           console.warn("[articles/route] All filtering failed, using raw sources as final fallback");
+          // #region agent log
+          const fallbackLog = {
+            location: 'articles/route.ts:270',
+            message: 'Using raw sources fallback',
+            data: {
+              rawSourcesCount: rawSources.length,
+              rawSources: rawSources.slice(0, 3).map(s => ({ title: s.title, url: s.url })),
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'raw-sources-fallback'
+          };
+          debugLog(fallbackLog);
+          // #endregion
           const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
           trustedSources = rawSources.slice(0, 3).map((source, i) => ({
             id: ids[i],
@@ -280,6 +295,23 @@ export async function POST(req: Request) {
             relevance_score: 5, // Default score
           }));
         }
+        
+        // #region agent log
+        const finalSourcesLog = {
+          location: 'articles/route.ts:290',
+          message: 'Final trusted sources after all filtering',
+          data: {
+            finalCount: trustedSources.length,
+            sources: trustedSources.map(ts => ({ id: ts.id, title: ts.title, url: ts.url, type: ts.type })),
+            rawSourcesCount: rawSources.length,
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'articles-api',
+          hypothesisId: 'final-trusted-sources'
+        };
+        debugLog(finalSourcesLog);
+        // #endregion
 
         // Convert to format expected by prompt builders
         // Format: JSON array with id, url, title, type for the prompt
@@ -701,7 +733,9 @@ Language: US English.`;
               message: 'Humanization configuration',
               data: {
                 hasEmail: !!registeredEmail,
+                emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
                 hasApiKey: !!apiKey,
+                apiKeyPrefix: apiKey ? apiKey.substring(0, 5) + "***" : "none",
                 humanizeModel,
                 humanizeStyle,
                 humanizeMode,
@@ -714,6 +748,17 @@ Language: US English.`;
             };
             debugLog(humanizeConfigLog);
             // #endregion
+            
+            // Validate email and API key before proceeding
+            if (!registeredEmail) {
+              console.error("[articles-api] NEXT_PUBLIC_AIHUMANIZE_EMAIL is not set in environment variables");
+              throw new Error("AIHumanize email is not configured. Please set NEXT_PUBLIC_AIHUMANIZE_EMAIL in .env.local");
+            }
+            
+            if (!apiKey) {
+              console.error("[articles-api] AIHUMANIZE_API_KEY is not set in environment variables");
+              throw new Error("AIHumanize API key is not configured. Please set AIHUMANIZE_API_KEY in .env.local");
+            }
 
             if (registeredEmail && apiKey) {
               try {
@@ -810,13 +855,55 @@ Language: US English.`;
                   })
                 );
 
+                // Check if any blocks were actually humanized (not all failed)
+                const anyHumanized = totalHumanizeWordsUsed > 0 || humanizedBlocks.some((block, i) => {
+                  const original = articleStructure.blocks[i];
+                  if (!original) return false;
+                  // Compare text for paragraphs
+                  if (block.text !== original.text) return true;
+                  // Compare items for lists
+                  if ((block.type === 'ul' || block.type === 'ol') && (original.type === 'ul' || original.type === 'ol')) {
+                    const blockItems = (block as any).items || [];
+                    const originalItems = (original as any).items || [];
+                    return JSON.stringify(blockItems) !== JSON.stringify(originalItems);
+                  }
+                  // Compare rows for tables
+                  if (block.type === 'table' && original.type === 'table') {
+                    const blockRows = (block as any).rows || [];
+                    const originalRows = (original as any).rows || [];
+                    return JSON.stringify(blockRows) !== JSON.stringify(originalRows);
+                  }
+                  return false;
+                });
+
                 articleStructure.blocks = humanizedBlocks;
-                articleStructure.humanizedOnWrite = true;
+                articleStructure.humanizedOnWrite = anyHumanized; // Only mark as humanized if at least one block was changed
+
+                // #region agent log
+                const humanizeResultLog = {
+                  location: 'articles/route.ts:845',
+                  message: 'Humanization result',
+                  data: {
+                    totalWordsUsed: totalHumanizeWordsUsed,
+                    blocksHumanized: humanizedBlocks.length,
+                    anyHumanized,
+                    originalBlocksCount: articleStructure.blocks.length,
+                  },
+                  timestamp: Date.now(),
+                  sessionId: 'debug-session',
+                  runId: 'articles-api',
+                  hypothesisId: 'humanization-result'
+                };
+                debugLog(humanizeResultLog);
+                // #endregion
 
                 if (totalHumanizeWordsUsed > 0) {
                   const costTracker = getCostTracker();
                   const humanizeCost = totalHumanizeWordsUsed * 0.0005;
                   costTracker.trackHumanize(totalHumanizeWordsUsed, humanizeCost);
+                } else if (enableHumanizeOnWrite) {
+                  // Log warning if humanization was enabled but no words were used
+                  console.warn('[articles-api] Humanization was enabled but no words were processed. This may indicate API errors (e.g., insufficient balance) or all blocks were too short.');
                 }
                 // #region agent log
                 const humanizeSuccessLog = {

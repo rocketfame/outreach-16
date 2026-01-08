@@ -315,6 +315,20 @@ export async function getTrustedSourcesFromTavily(
     }
   }
 
+  // Final fallback: if still no sources, return first 3 raw sources from Tavily
+  // This ensures we always have sources even if classification completely fails
+  if (trusted.length === 0 && tavilyResults.length > 0) {
+    console.warn("[sourceClassifier] All classification and filtering failed, using final fallback: returning first 3 raw sources");
+    const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
+    return tavilyResults.slice(0, 3).map((source, i) => ({
+      id: ids[i],
+      url: source.url,
+      title: source.title,
+      type: "independent_media" as const,
+      relevance_score: 5, // Default score
+    }));
+  }
+
   return trusted;
 }
 
