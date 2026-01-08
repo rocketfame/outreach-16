@@ -569,11 +569,31 @@ export default function Home() {
             }
           : humanizeSettings;
         
+        // CRITICAL: Check if Project Basics have changed since article creation
+        // Use current brief (which may have been updated) instead of saved briefUsed
+        const previousBrief = article?.briefUsed;
+        const briefChanged = previousBrief ? (
+          previousBrief.anchorText !== brief.anchorText ||
+          previousBrief.anchorUrl !== brief.anchorUrl ||
+          previousBrief.clientSite !== brief.clientSite ||
+          previousBrief.niche !== brief.niche ||
+          previousBrief.platform !== brief.platform ||
+          previousBrief.wordCount !== brief.wordCount ||
+          previousBrief.contentPurpose !== brief.contentPurpose
+        ) : false;
+        
+        if (briefChanged) {
+          console.log("[regenerateArticleForTopic] Project Basics changed, using updated settings:", {
+            previous: previousBrief,
+            current: brief,
+          });
+        }
+        
         const response = await fetch("/api/articles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            brief,
+            brief, // Use current brief (may have been updated)
             selectedTopics: [{
               title: articleTopic,
               // For Direct Mode: if directArticleBrief is provided, use it; otherwise use topic title
@@ -619,6 +639,9 @@ export default function Home() {
               style: regenerateHumanizeSettings.style,
               mode: regenerateHumanizeSettings.mode,
             },
+            // CRITICAL: Save current Project Basics used for regeneration
+            // This ensures future regenerations will use the latest settings
+            briefUsed: { ...brief },
           };
           
           updateGeneratedArticles(
@@ -785,15 +808,35 @@ export default function Home() {
           }
         : humanizeSettings;
 
+      // CRITICAL: Check if Project Basics have changed since article creation
+      // Use current brief (which may have been updated) instead of saved briefUsed
+      const previousBrief = existingArticle?.briefUsed;
+      const briefChanged = previousBrief ? (
+        previousBrief.anchorText !== brief.anchorText ||
+        previousBrief.anchorUrl !== brief.anchorUrl ||
+        previousBrief.clientSite !== brief.clientSite ||
+        previousBrief.niche !== brief.niche ||
+        previousBrief.platform !== brief.platform ||
+        previousBrief.wordCount !== brief.wordCount ||
+        previousBrief.contentPurpose !== brief.contentPurpose
+      ) : false;
+      
+      if (briefChanged) {
+        console.log("[regenerateArticleForTopic] Project Basics changed, using updated settings:", {
+          previous: previousBrief,
+          current: brief,
+        });
+      }
+
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:365',message:'[regenerate] Calling /api/articles with Tavily sources',data:{topicTitle:topic.workingTitle,trustSourcesCount:trustSourcesList.length,humanizeOnWrite:regenerateHumanizeOnWrite,usingSavedSettings:!!savedHumanizeSettings},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'articles-flow'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:365',message:'[regenerate] Calling /api/articles with Tavily sources',data:{topicTitle:topic.workingTitle,trustSourcesCount:trustSourcesList.length,humanizeOnWrite:regenerateHumanizeOnWrite,usingSavedSettings:!!savedHumanizeSettings,briefChanged},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'articles-flow'})}).catch(()=>{});
       // #endregion
 
       const response = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          brief,
+          brief, // Use current brief (may have been updated)
           selectedTopics: selectedTopicsData,
           keywordList: topic.primaryKeyword ? [topic.primaryKeyword] : [],
           trustSourcesList: trustSourcesList, // Only Tavily-validated sources
@@ -836,6 +879,9 @@ export default function Home() {
             style: regenerateHumanizeSettings.style,
             mode: regenerateHumanizeSettings.mode,
           },
+          // CRITICAL: Save current Project Basics used for regeneration
+          // This ensures future regenerations will use the latest settings
+          briefUsed: { ...brief },
         };
         
         const now = new Date().toISOString();
@@ -1147,6 +1193,9 @@ export default function Home() {
             style: humanizeSettings.style,
             mode: humanizeSettings.mode,
           },
+          // CRITICAL: Save Project Basics used when creating this article
+          // This allows tracking changes and using updated settings on regeneration
+          briefUsed: { ...brief },
         }))
       ]);
       
@@ -1453,6 +1502,9 @@ export default function Home() {
             style: humanizeSettings.style,
             mode: humanizeSettings.mode,
           },
+          // CRITICAL: Save Project Basics used when creating this article
+          // This allows tracking changes and using updated settings on regeneration
+          briefUsed: { ...brief },
         };
         
         const now = new Date().toISOString();

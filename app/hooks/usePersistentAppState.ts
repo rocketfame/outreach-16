@@ -58,6 +58,7 @@ export type GeneratedArticle = {
     style: string; // General, Blog, Formal, Informal, Academic, Expand, Simplify
     mode: "Basic" | "Autopilot";
   };
+  briefUsed?: Brief; // Project Basics settings used when creating this article (for regeneration with updated settings)
   createdAt?: string; // ISO timestamp when article was created
 };
 
