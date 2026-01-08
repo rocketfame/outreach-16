@@ -183,6 +183,7 @@ export function normalizeQuotesAndDashes(text: string): string {
  * Fixes spacing around HTML tags to prevent words from merging
  * Adds spaces after closing tags and before opening tags if they're adjacent to letters/numbers
  * Example: "but<strong>completion</strong>is" → "but <strong>completion</strong> is"
+ * Also handles anchors and other inline tags to prevent merging with text
  */
 export function fixHtmlTagSpacing(text: string): string {
   if (!text) return text;
@@ -191,16 +192,78 @@ export function fixHtmlTagSpacing(text: string): string {
   
   // Add space after closing tags (</strong>, </b>, </a>, </span>, etc.) if followed by letter/number
   // Pattern: </tag>letter → </tag> letter
+  // This handles: word</tag>word → word</tag> word
   fixed = fixed.replace(/(<\/(strong|b|a|span|em|i|u|mark|code|kbd|samp|var)[^>]*>)([A-Za-z0-9])/g, '$1 $3');
   
   // Add space before opening tags (<strong>, <b>, <a>, etc.) if preceded by letter/number
   // Pattern: letter<tag> → letter <tag>
+  // This handles: word<tag>word → word <tag>word
   fixed = fixed.replace(/([A-Za-z0-9])(<(strong|b|a|span|em|i|u|mark|code|kbd|samp|var)[^>]*>)/g, '$1 $2');
+  
+  // Special case: handle anchors that might be adjacent to punctuation
+  // Pattern: punctuation<tag> or </tag>punctuation (but not if it's already spaced)
+  // This ensures anchors don't merge with punctuation marks
+  fixed = fixed.replace(/([.,;:!?])(<(a|strong|b)[^>]*>)/g, '$1 $2');
+  fixed = fixed.replace(/(<\/(a|strong|b)[^>]*>)([.,;:!?])/g, '$1 $3');
   
   // Normalize multiple spaces back to single space (in case we added spaces that were already there)
   fixed = fixed.replace(/\s{2,}/g, ' ');
   
   return fixed;
+}
+
+/**
+ * Removes excessive bold formatting from text
+ * Limits bold tags to prevent spammy appearance
+ * Rules:
+ * - Maximum 3 bold tags per paragraph
+ * - No consecutive bold tags (avoid <b>word</b><b>word</b>)
+ * - Remove bold from very short words (1-2 characters) unless they're technical terms
+ */
+export function removeExcessiveBold(text: string): string {
+  if (!text) return text;
+  
+  let cleaned = text;
+  
+  // Split by paragraph-like boundaries (</p>, </h2>, </h3>, etc.)
+  // For simplicity, we'll process the whole text but limit bold per "block"
+  const blocks = cleaned.split(/(<\/p>|<\/h[1-6]>|<\/li>)/);
+  
+  cleaned = blocks.map(block => {
+    // Count bold tags in this block
+    const boldMatches = block.match(/<b[^>]*>.*?<\/b>/gi) || [];
+    
+    // If more than 3 bold tags, remove excess (keep first 3)
+    if (boldMatches.length > 3) {
+      let count = 0;
+      block = block.replace(/<b[^>]*>(.*?)<\/b>/gi, (match, content) => {
+        count++;
+        if (count <= 3) {
+          return match; // Keep first 3
+        } else {
+          return content; // Remove bold, keep content
+        }
+      });
+    }
+    
+    // Remove consecutive bold tags (merge them)
+    // Pattern: </b><b> → </b> <b> (add space) or merge if same content
+    block = block.replace(/<\/b>\s*<b[^>]*>/gi, ' ');
+    
+    // Remove bold from very short words (1-2 chars) that aren't likely to be technical terms
+    // Keep common short technical terms like "AI", "API", "UI", "UX", "IT", "HR", "VPN"
+    const shortTechTerms = /\b(AI|API|UI|UX|IT|HR|VPN|SEO|SMM|CTR|CPC|CPA|ROI|KPI)\b/i;
+    block = block.replace(/<b[^>]*>([A-Za-z]{1,2})<\/b>/gi, (match, word) => {
+      if (shortTechTerms.test(word)) {
+        return match; // Keep bold for technical terms
+      }
+      return word; // Remove bold for other short words
+    });
+    
+    return block;
+  }).join('');
+  
+  return cleaned;
 }
 
 /**

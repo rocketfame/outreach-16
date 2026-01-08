@@ -470,6 +470,12 @@ Technical requirements:
 • articleBlocks is REQUIRED and must start with { "type": "h1", ... }.
 • All text fields MUST be PLAIN TEXT ONLY (no HTML tags). GPT must NEVER output HTML.
 • Use **bold** or *italic* markdown-style formatting inside text fields (will be converted to HTML later).
+• CRITICAL - Bold formatting rules:
+  • Use bold (**text**) SPARINGLY - only for key terms, important concepts, or emphasis where it adds real value.
+  • DO NOT overuse bold formatting in regular paragraphs - it should appear in 1-3 places maximum per paragraph.
+  • Avoid making entire sentences or multiple consecutive words bold - this looks unprofessional and spammy.
+  • Bold is best used for: technical terms on first mention, key metrics/numbers, or important warnings.
+  • In normal body text, prefer natural emphasis through sentence structure rather than excessive bold formatting.
 • Lists:
   • Use { "type": "ul" } or { "type": "ol" } with "items": ["..."].
   • Each item is plain text (no HTML).
@@ -1225,6 +1231,12 @@ Technical format:
 	    • "rows": [["...","..."], ["...","..."]]
 	• All texts/items/cells MUST be plain text only (NO HTML tags).
 	• Use **bold** or *italic* markdown-style formatting inside text fields (will be converted to HTML later).
+	• CRITICAL - Bold formatting rules:
+	  • Use bold (**text**) SPARINGLY - only for key terms, important concepts, or emphasis where it adds real value.
+	  • DO NOT overuse bold formatting in regular paragraphs - it should appear in 1-3 places maximum per paragraph.
+	  • Avoid making entire sentences or multiple consecutive words bold - this looks unprofessional and spammy.
+	  • Bold is best used for: technical terms on first mention, key metrics/numbers, or important warnings.
+	  • In normal body text, prefer natural emphasis through sentence structure rather than excessive bold formatting.
 	• Tables (CRITICAL - only when topic/brief requires it):
 	  • Tables are OPTIONAL and should be used ONLY when the topic ([[TOPIC_TITLE]]) or brief ([[TOPIC_BRIEF]]) explicitly requires comparison, structured data, or tabular information.
 	  • DO NOT create tables just to fill space or because you think they look professional.

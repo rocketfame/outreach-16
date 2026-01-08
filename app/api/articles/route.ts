@@ -26,7 +26,7 @@
  */
 
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
-import { cleanText, lightHumanEdit, fixHtmlTagSpacing } from "@/lib/textPostProcessing";
+import { cleanText, lightHumanEdit, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { 
@@ -784,25 +784,31 @@ Language: US English.`;
             // #endregion
           }
 
-          // Convert blocks to HTML, fix spacing around tags, then clean invisible characters
+          // Convert blocks to HTML, fix spacing around tags, remove excessive bold, then clean invisible characters
           cleanedArticleBodyHtml = cleanText(
-            fixHtmlTagSpacing(
-              blocksToHtml(
-                articleStructure.blocks,
-                articleStructure.anchors,
-                articleStructure.trustSources
+            removeExcessiveBold(
+              fixHtmlTagSpacing(
+                blocksToHtml(
+                  articleStructure.blocks,
+                  articleStructure.anchors,
+                  articleStructure.trustSources
+                )
               )
             )
           );
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
           cleanedArticleBodyHtml = cleanText(
-            fixHtmlTagSpacing(parsedResponse.articleBodyHtml || content)
+            removeExcessiveBold(
+              fixHtmlTagSpacing(parsedResponse.articleBodyHtml || content)
+            )
           );
         } else {
           // Fallback: use raw content
           cleanedArticleBodyHtml = cleanText(
-            fixHtmlTagSpacing(content)
+            removeExcessiveBold(
+              fixHtmlTagSpacing(content)
+            )
           );
         }
 
@@ -826,8 +832,11 @@ Language: US English.`;
             // CRITICAL: Clean text again after Light Human Edit
             // GPT-5.2 can re-introduce em-dashes, smart quotes, and other AI indicators during rewrite
             // Also fix spacing around HTML tags that might have been lost during processing
+            // Remove excessive bold formatting that might have been introduced
             cleanedArticleBodyHtml = cleanText(
-              fixHtmlTagSpacing(cleanedArticleBodyHtml)
+              removeExcessiveBold(
+                fixHtmlTagSpacing(cleanedArticleBodyHtml)
+              )
             );
 
             // #region agent log
