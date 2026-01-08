@@ -74,7 +74,7 @@ export default function Home() {
   const [editingArticleStatus, setEditingArticleStatus] = useState<string | null>(null);
   const [loadingStep, setLoadingStep] = useState<LoadingStep>(null);
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
-  const [isGeneratingArticles, setIsGeneratingArticles] = useState(false);
+  const [isGeneratingArticles, setIsGeneratingArticles] = useState<Set<string>>(new Set()); // Track which topicIds are being generated
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [copyStatusByTopic, setCopyStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
   const [copyImageStatusByTopic, setCopyImageStatusByTopic] = useState<Map<string, "idle" | "copied">>(new Map());
@@ -517,8 +517,8 @@ export default function Home() {
         return;
       }
 
-      // Mark as generating
-      setIsGeneratingArticles(true);
+      // Mark this topic as generating
+      setIsGeneratingArticles(prev => new Set(prev).add(topicId));
       updateGeneratedArticles(
         generatedArticles.map(a =>
           a.topicTitle === topicId
@@ -691,7 +691,11 @@ export default function Home() {
           )
         );
       } finally {
-        setIsGeneratingArticles(false);
+        setIsGeneratingArticles(prev => {
+          const next = new Set(prev);
+          next.delete(topicId);
+          return next;
+        });
       }
       return;
     }
@@ -703,8 +707,8 @@ export default function Home() {
     
     if (!topic) return;
 
-    // Mark as generating
-    setIsGeneratingArticles(true);
+    // Mark this topic as generating
+    setIsGeneratingArticles(prev => new Set(prev).add(topicId));
     updateGeneratedArticles(
       generatedArticles.map(a =>
         a.topicTitle === topicId
@@ -935,7 +939,11 @@ export default function Home() {
         )
       );
     } finally {
-      setIsGeneratingArticles(false);
+      setIsGeneratingArticles(prev => {
+        const next = new Set(prev);
+        next.delete(topicId);
+        return next;
+      });
     }
   };
 
@@ -988,11 +996,14 @@ export default function Home() {
     }
 
     setLoadingStep("draft");
-    setIsGeneratingArticles(true);
-    setGenerationStartTime(Date.now());
-    
-    // Mark all topics as generating
     const topicIds = topics.map(t => t.id);
+    // Mark all topics as generating
+    setIsGeneratingArticles(prev => {
+      const next = new Set(prev);
+      topicIds.forEach(id => next.add(id));
+      return next;
+    });
+    setGenerationStartTime(Date.now());
     updateGeneratedArticles([
       ...generatedArticles.filter(a => !topicIds.includes(a.topicTitle)),
       ...topics.map(topic => ({
@@ -1302,7 +1313,11 @@ export default function Home() {
       );
     } finally {
       setLoadingStep(null);
-      setIsGeneratingArticles(false);
+      setIsGeneratingArticles(prev => {
+        const next = new Set(prev);
+        topicIds.forEach(id => next.delete(id));
+        return next;
+      });
       if (generationStartTime) {
         setGenerationStartTime(null);
       }
@@ -1349,11 +1364,13 @@ export default function Home() {
       return;
     }
     setLoadingStep("draft");
-    setIsGeneratingArticles(true);
     setGenerationStartTime(Date.now());
     
     // Create a unique ID for this direct article
     const articleId = `direct-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Mark this direct article as generating
+    setIsGeneratingArticles(prev => new Set(prev).add(articleId));
     
     // Mark as generating - use functional update to ensure we get the latest state
     // Set titleTag immediately from directArticleTopic for Direct Article Creation mode
@@ -1595,7 +1612,11 @@ export default function Home() {
       ));
     } finally {
       setLoadingStep(null);
-      setIsGeneratingArticles(false);
+      setIsGeneratingArticles(prev => {
+        const next = new Set(prev);
+        next.delete(articleId);
+        return next;
+      });
       if (generationStartTime) {
         setGenerationStartTime(null);
       }
@@ -4259,7 +4280,7 @@ export default function Home() {
                               humanizeOnWriteEnabled: e.target.checked
                             }));
                           }}
-                          disabled={isGeneratingArticles}
+                          disabled={isGeneratingArticles.size > 0}
                         />
                         <span className="checkbox-text">
                           <strong>Humanize on write</strong> (recommended)
@@ -4382,9 +4403,9 @@ export default function Home() {
                           });
                           generateDirectArticle();
                         }}
-                        disabled={isGeneratingArticles || !directArticleTopic?.trim() || !briefWithDefaults?.niche?.trim() || !briefWithDefaults?.language?.trim()}
+                        disabled={isGeneratingArticles.size > 0 || !directArticleTopic?.trim() || !briefWithDefaults?.niche?.trim() || !briefWithDefaults?.language?.trim()}
                         title={
-                          isGeneratingArticles 
+                          isGeneratingArticles.size > 0 
                             ? "Generating article..." 
                             : !directArticleTopic?.trim() 
                             ? "Please enter article topic"
@@ -4395,7 +4416,7 @@ export default function Home() {
                             : "Generate article"
                         }
                       >
-                        {isGeneratingArticles ? "Generating Article…" : "Generate Article"}
+                        {isGeneratingArticles.size > 0 ? "Generating Article…" : "Generate Article"}
                       </button>
                     </div>
                   </>
@@ -4572,7 +4593,7 @@ export default function Home() {
                                                     humanizeOnWriteEnabled: e.target.checked
                                                   }));
                                                 }}
-                                                disabled={isGeneratingArticles}
+                                                disabled={isGeneratingArticles.has(topic.id)}
                                               />
                                               <span className="checkbox-text">
                                                 <strong>Humanize on write</strong> (recommended)
@@ -4690,9 +4711,9 @@ export default function Home() {
                                                   e.stopPropagation();
                                                   await handleQuickGenerate(topic);
                                                 }}
-                                                disabled={isGeneratingArticles || isCompleted || generatedArticles.some(a => a.topicTitle === topic.id && (a.status === "generating" || a.status === "ready"))}
+                                                disabled={isGeneratingArticles.has(topic.id) || isCompleted || generatedArticles.some(a => a.topicTitle === topic.id && (a.status === "generating" || a.status === "ready"))}
                                               >
-                                                {generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")
+                                                {isGeneratingArticles.has(topic.id) || generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating")
                                                   ? "Generating…"
                                                   : "Generate article"}
                                               </button>
@@ -4810,10 +4831,10 @@ export default function Home() {
                             type="button"
                             className="btn-primary btn-generate-articles"
                             onClick={generateArticlesForSelected}
-                            disabled={isGeneratingArticles}
+                            disabled={selectedTopicIds.some(id => isGeneratingArticles.has(id))}
                           >
-                            {isGeneratingArticles 
-                              ? "Generating…" 
+                            {selectedTopicIds.some(id => isGeneratingArticles.has(id))
+                              ? "Generating…"
                               : selectedTopicIds.length === 1
                                 ? "Generate article"
                                 : `Generate articles (${selectedTopicIds.length} selected)`
@@ -5190,12 +5211,12 @@ export default function Home() {
                                   type="button"
                                   className="btn-outline"
                                   onClick={() => regenerateArticleForTopic(topicId)}
-                                  disabled={isGeneratingArticles}
+                                  disabled={isGeneratingArticles.has(topicId)}
                                 >
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.48L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
-                                  <span>Regenerate</span>
+                                  <span>{isGeneratingArticles.has(topicId) ? "Regenerating…" : "Regenerate"}</span>
                                 </button>
                               </div>
 
