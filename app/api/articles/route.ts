@@ -734,60 +734,6 @@ Language: US English.`;
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
           cleanedArticleBodyHtml = cleanText(parsedResponse.articleBodyHtml || content);
-          
-          // ========================================================================
-          // VALIDATION: Check and enforce word count for old HTML format (90-110% tolerance)
-          // ========================================================================
-          const targetWordCount = brief.wordCount 
-            ? (() => {
-                const match = String(brief.wordCount).match(/^(\d+)(?:-(\d+))?$/);
-                if (match) {
-                  return match[2] ? Math.floor((parseInt(match[1]) + parseInt(match[2])) / 2) : parseInt(match[1]);
-                }
-                return 1500; // Default
-              })()
-            : 1500;
-          
-          const wordCountValidator = await import("@/lib/wordCountValidator");
-          const currentWordCount = wordCountValidator.countWords(cleanedArticleBodyHtml);
-          const minAllowed = Math.floor(targetWordCount * 0.9);
-          const maxAllowed = Math.floor(targetWordCount * 1.1);
-          const difference = currentWordCount - targetWordCount;
-          const differencePercent = targetWordCount > 0 ? (difference / targetWordCount) * 100 : 0;
-          
-          if (currentWordCount > maxAllowed) {
-            console.warn(`[articles-api] Old format article too long: ${currentWordCount} words (target: ${targetWordCount}, max: ${maxAllowed})`);
-            console.warn(`[articles-api] Difference: +${differencePercent.toFixed(1)}%`);
-            // For old HTML format, we can't easily trim, so just warn
-            // The prompt should handle this, but we log it for monitoring
-          } else if (currentWordCount < minAllowed) {
-            console.warn(`[articles-api] Old format article too short: ${currentWordCount} words (target: ${targetWordCount}, min: ${minAllowed})`);
-            console.warn(`[articles-api] Difference: ${differencePercent.toFixed(1)}%`);
-          } else {
-            console.log(`[articles-api] Old format word count OK: ${currentWordCount} words (target: ${targetWordCount}, ${differencePercent > 0 ? '+' : ''}${differencePercent.toFixed(1)}%)`);
-          }
-          
-          // #region agent log
-          const wordCountLogOld = {
-            location: 'articles/route.ts:740',
-            message: 'Word count validation (old format)',
-            data: {
-              targetWordCount,
-              currentWordCount,
-              minAllowed,
-              maxAllowed,
-              difference,
-              differencePercent,
-              isValid: currentWordCount >= minAllowed && currentWordCount <= maxAllowed,
-              topicTitle: topic.title
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'word-count-validation-old-format'
-          };
-          debugLog(wordCountLogOld);
-          // #endregion
         } else {
           // Fallback: use raw content
           cleanedArticleBodyHtml = cleanText(content);
