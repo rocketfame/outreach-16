@@ -837,6 +837,8 @@ export default function Home() {
           },
         };
         
+        const now = new Date().toISOString();
+        const existingArticle = generatedArticles.find(a => a.topicTitle === topicId);
         updateGeneratedArticles(
           generatedArticles.map(a =>
             a.topicTitle === topicId
@@ -844,6 +846,7 @@ export default function Home() {
                   ...cleanedArticle,
                   topicTitle: topicId,
                   status: "ready" as const,
+                  createdAt: existingArticle?.createdAt || new Date().toISOString(), // Preserve existing createdAt or set new one
                 }
               : a
           )
@@ -1122,6 +1125,7 @@ export default function Home() {
       // Update generated articles with results
       // CRITICAL: Clean invisible Unicode characters before saving
       // This ensures all hidden characters are removed even if they come from API
+      const now = new Date().toISOString();
       updateGeneratedArticles([
         ...generatedArticles.filter(a => !topicIds.includes(a.topicTitle)),
         ...data.articles.map((article, index) => ({
@@ -1133,6 +1137,7 @@ export default function Home() {
           articleBodyHtml: cleanText(article.articleBodyHtml || article.fullArticleText || ''),
           topicTitle: topics[index]?.id || article.topicTitle,
           status: "ready" as const,
+          createdAt: now, // Save creation timestamp
           // CRITICAL: Save humanization settings used for this article
           // This allows regeneration to use the same settings
           humanizeSettingsUsed: {
@@ -1449,12 +1454,14 @@ export default function Home() {
           },
         };
         
+        const now = new Date().toISOString();
         const updated = [
           ...filtered,
           {
             ...cleanedArticle,
             topicTitle: articleId,
             status: "ready" as const,
+            createdAt: now, // Save creation timestamp
           }
         ];
         console.log("[generateDirectArticle] Updated articles:", {
@@ -4265,6 +4272,7 @@ export default function Home() {
                         const hasArticle = firstTopic ? generatedArticles.some(a => a.topicTitle === firstTopic.id && a.status === "ready") : false;
                         const isGenerating = firstTopic ? generatedArticles.some(a => a.topicTitle === firstTopic.id && a.status === "generating") : false;
                         const isCompleted = hasArticle || isGenerating;
+                        const headerArticle = firstTopic ? generatedArticles.find(a => a.topicTitle === firstTopic.id && a.status === "ready") : undefined;
                         
                         return (
                           <div key={clusterName} className="topic-collapsible-wrapper">
@@ -4281,8 +4289,8 @@ export default function Home() {
                                     <span className="cluster-number-badge">{clusterNumber}</span>
                                     {clusterName}
                                     {hasArticle && (
-                                      <span className="topic-completed-badge-header" title="Article created">
-                                        ✓ Article created
+                                      <span className="topic-completed-badge-header" title={headerArticle?.createdAt ? `Article created: ${new Date(headerArticle.createdAt).toLocaleString()}` : "Article created"}>
+                                        ✓ Article created{headerArticle?.createdAt ? ` · ${new Date(headerArticle.createdAt).toLocaleString()}` : ""}
                                       </span>
                                     )}
                                     {isGenerating && (
@@ -4353,6 +4361,7 @@ export default function Home() {
                                   const hasArticle = generatedArticles.some(a => a.topicTitle === topic.id && a.status === "ready");
                                   const isGenerating = generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating");
                                   const isCompleted = hasArticle || isGenerating;
+                                  const article = generatedArticles.find(a => a.topicTitle === topic.id && a.status === "ready");
                                   
                                   return (
                                     <div key={topic.id} className={`topic-preview-card ${isSelected ? "selected" : ""} ${isCompleted ? "topic-completed" : ""}`}>
@@ -4368,8 +4377,8 @@ export default function Home() {
                                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                                           <h5 className="topic-preview-title">{topic.workingTitle}</h5>
                                           {hasArticle && (
-                                            <span className="topic-completed-badge" title="Article created">
-                                              ✓ Article created
+                                            <span className="topic-completed-badge" title={article?.createdAt ? `Article created: ${new Date(article.createdAt).toLocaleString()}` : "Article created"}>
+                                              ✓ Article created{article?.createdAt ? ` · ${new Date(article.createdAt).toLocaleString()}` : ""}
                                             </span>
                                           )}
                                           {isGenerating && !hasArticle && (
@@ -4718,6 +4727,12 @@ export default function Home() {
                                   <span>Word count: {formattedWordCount} words</span>
                                   <span>·</span>
                                   <span>Anchor included</span>
+                                  {article.createdAt && (
+                                    <>
+                                      <span>·</span>
+                                      <span>Created: {new Date(article.createdAt).toLocaleString()}</span>
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -5091,6 +5106,11 @@ export default function Home() {
                                         </button>
                                       </div>
                                       <h1 className="article-view-title">{article.titleTag || topic?.workingTitle || topicId}</h1>
+                                      {article.createdAt && (
+                                        <div className="article-created-date" style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                                          Created: {new Date(article.createdAt).toLocaleString()}
+                                        </div>
+                                      )}
                                     </div>
                                     
                                     <div className="article-view-body">

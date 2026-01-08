@@ -58,6 +58,7 @@ export type GeneratedArticle = {
     style: string; // General, Blog, Formal, Informal, Academic, Expand, Simplify
     mode: "Basic" | "Autopilot";
   };
+  createdAt?: string; // ISO timestamp when article was created
 };
 
 export type AppPersistedState = {

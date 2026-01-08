@@ -226,7 +226,34 @@ export function modelBlocksToArticleStructure(
     trustSourcesList.forEach((source, index) => {
       const parts = source.split('|');
       const url = parts.length > 1 ? parts[1] : parts[0];
-      const name = parts.length > 1 ? parts[0] : `Source ${index + 1}`;
+      let name = parts.length > 1 ? parts[0] : `Source ${index + 1}`;
+      
+      // CRITICAL: Trim anchor text to 2-5 words maximum (as per prompt rules)
+      // This ensures short, natural anchor text instead of long article titles
+      const words = name.trim().split(/\s+/);
+      if (words.length > 5) {
+        // Take first 2-5 words, preferring shorter if it makes sense
+        // Try to extract brand name from URL if possible
+        try {
+          const urlObj = new URL(url);
+          const domain = urlObj.hostname.replace('www.', '');
+          const domainName = domain.split('.')[0];
+          // Use domain name if it's a recognizable brand (2-3 words max)
+          if (domainName.length > 2 && domainName.length < 20) {
+            name = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+          } else {
+            // Fallback: use first 2-3 words from title
+            name = words.slice(0, 3).join(' ');
+          }
+        } catch {
+          // If URL parsing fails, use first 2-3 words from title
+          name = words.slice(0, 3).join(' ');
+        }
+      } else if (words.length > 2) {
+        // If 3-5 words, keep as is (within limit)
+        name = words.slice(0, 5).join(' ');
+      }
+      
       trustSources.push({ id: `T${index + 1}`, text: name, url });
     });
   }
@@ -376,7 +403,33 @@ export function parsePlainTextToStructure(
     trustSourcesList.forEach((source, index) => {
       const parts = source.split('|');
       const url = parts.length > 1 ? parts[1] : parts[0];
-      const name = parts.length > 1 ? parts[0] : `Source ${index + 1}`;
+      let name = parts.length > 1 ? parts[0] : `Source ${index + 1}`;
+      
+      // CRITICAL: Trim anchor text to 2-5 words maximum (as per prompt rules)
+      // This ensures short, natural anchor text instead of long article titles
+      const words = name.trim().split(/\s+/);
+      if (words.length > 5) {
+        // Take first 2-5 words, preferring shorter if it makes sense
+        // Try to extract brand name from URL if possible
+        try {
+          const urlObj = new URL(url);
+          const domain = urlObj.hostname.replace('www.', '');
+          const domainName = domain.split('.')[0];
+          // Use domain name if it's a recognizable brand (2-3 words max)
+          if (domainName.length > 2 && domainName.length < 20) {
+            name = domainName.charAt(0).toUpperCase() + domainName.slice(1);
+          } else {
+            // Fallback: use first 2-3 words from title
+            name = words.slice(0, 3).join(' ');
+          }
+        } catch {
+          // If URL parsing fails, use first 2-3 words from title
+          name = words.slice(0, 3).join(' ');
+        }
+      } else if (words.length > 2) {
+        // If 3-5 words, keep as is (within limit)
+        name = words.slice(0, 5).join(' ');
+      }
       
       trustSources.push({
         id: `T${index + 1}`,
