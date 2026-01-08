@@ -344,6 +344,14 @@ export async function POST(req: Request) {
         debugLog(filterLog);
         // #endregion
 
+        // Extract brand name from clientSite before building prompt (used in both modes)
+        // If clientSite is a URL, extract domain; if it's plain text, use it as-is
+        const brandName = brief.clientSite 
+          ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
+            ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
+            : brief.clientSite.trim()
+          : "";
+
         let prompt: string;
 
         if (isDirectMode) {
@@ -357,15 +365,8 @@ export async function POST(req: Request) {
           debugLog(promptBuildLog);
           // #endregion
 
-          // Extract brand name from clientSite if available, otherwise use empty string (will be handled as "NONE" in prompt)
-          // If clientSite is a URL, extract domain; if it's plain text, use it as-is
-          const brandName = brief.clientSite 
-            ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
-              ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
-              : brief.clientSite.trim()
-            : "";
-
           // #region agent log - Brand extraction for Direct Mode
+          // Note: brandName is already extracted before this block
           const brandExtractionLog = {
             location: 'articles/route.ts:360',
             message: '[direct-mode] Brand name extraction',
@@ -437,15 +438,8 @@ export async function POST(req: Request) {
         debugLog(promptBuildLog);
         // #endregion
 
-          // Extract brand name from clientSite if available, otherwise use empty string (will be handled as "NONE" in prompt)
-          // If clientSite is a URL, extract domain; if it's plain text, use it as-is
-          const brandName = brief.clientSite 
-            ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
-              ? brief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
-              : brief.clientSite.trim()
-            : "";
-
           // #region agent log - Brand extraction for Topic Discovery Mode
+          // Note: brandName is already extracted before this block
           const brandExtractionLog = {
             location: 'articles/route.ts:410',
             message: '[topic-discovery-mode] Brand name extraction',

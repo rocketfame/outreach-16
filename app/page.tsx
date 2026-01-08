@@ -5222,14 +5222,48 @@ export default function Home() {
                                               }, 2000);
                                               return;
                                             }
-                                            // Create plain text fallback
+                                            
+                                            // Get title and meta description
+                                            const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
+                                            const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
+                                            
+                                            // Build complete HTML with title and meta description
+                                            let fullHtml = '';
+                                            if (titleTag) {
+                                              fullHtml += `<h1>${titleTag}</h1>\n`;
+                                            }
+                                            if (metaDescription) {
+                                              fullHtml += `<p><em>${metaDescription}</em></p>\n`;
+                                            }
+                                            fullHtml += html;
+                                            
+                                            // Create plain text fallback with title and meta description
                                             const temp = document.createElement('div');
-                                            temp.innerHTML = html;
-                                            const plain = temp.textContent ?? temp.innerText ?? '';
+                                            temp.innerHTML = fullHtml;
+                                            let plain = temp.textContent ?? temp.innerText ?? '';
+                                            
+                                            // Also build plain text manually to ensure proper formatting
+                                            if (titleTag || metaDescription) {
+                                              const plainParts: string[] = [];
+                                              if (titleTag) {
+                                                plainParts.push(titleTag);
+                                                plainParts.push('');
+                                              }
+                                              if (metaDescription) {
+                                                plainParts.push(metaDescription);
+                                                plainParts.push('');
+                                              }
+                                              // Get plain text from body
+                                              const bodyTemp = document.createElement('div');
+                                              bodyTemp.innerHTML = html;
+                                              const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
+                                              plainParts.push(bodyPlain);
+                                              plain = plainParts.join('\n');
+                                            }
 
                                             try {
                                               if (navigator.clipboard && (window as any).ClipboardItem) {
-                                                const blobHtml = new Blob([html], { type: 'text/html' });
+                                                const blobHtml = new Blob([fullHtml], { type: 'text/html' });
                                                 const blobText = new Blob([plain], { type: 'text/plain' });
                                                 const item = new (window as any).ClipboardItem({
                                                   'text/html': blobHtml,
@@ -5262,11 +5296,27 @@ export default function Home() {
                                           title="Copy article text with clean paragraphs for AI checkers"
                                           onClick={async () => {
                                             try {
+                                              // Get title and meta description
+                                              const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
+                                              const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
+                                              
                                               // Find the rendered article element in the modal
                                               const articleElement = document.querySelector('.article-view-text') as HTMLElement;
                                               
                                               if (articleElement) {
-                                                await copyArticleAsPlainText(articleElement);
+                                                // Clone and modify to include title and meta description
+                                                const clone = articleElement.cloneNode(true) as HTMLElement;
+                                                if (titleTag) {
+                                                  const titleEl = document.createElement('h1');
+                                                  titleEl.textContent = titleTag;
+                                                  clone.insertBefore(titleEl, clone.firstChild);
+                                                }
+                                                if (metaDescription) {
+                                                  const metaEl = document.createElement('p');
+                                                  metaEl.innerHTML = `<em>${metaDescription}</em>`;
+                                                  clone.insertBefore(metaEl, clone.firstChild);
+                                                }
+                                                await copyArticleAsPlainText(clone);
                                                 setCopyPlainTextStatus("copied");
                                                 setTimeout(() => {
                                                   setCopyPlainTextStatus("idle");
