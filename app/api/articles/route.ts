@@ -44,7 +44,6 @@ import {
 } from "@/lib/articleStructure";
 import { filterAndSelectTrustSources, TrustSourceInput } from "@/lib/trustSourceFilter";
 import { humanizeSectionText } from "@/lib/sectionHumanize";
-import { validateWordCount, trimArticleToWordCount, countWordsInArticleStructure } from "@/lib/wordCountValidator";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -724,62 +723,6 @@ Language: US English.`;
             // #endregion
           }
 
-          // ========================================================================
-          // VALIDATION: Check and enforce word count (90-110% tolerance)
-          // ========================================================================
-          const targetWordCount = brief.wordCount 
-            ? (() => {
-                const match = String(brief.wordCount).match(/^(\d+)(?:-(\d+))?$/);
-                if (match) {
-                  return match[2] ? Math.floor((parseInt(match[1]) + parseInt(match[2])) / 2) : parseInt(match[1]);
-                }
-                return 1500; // Default
-              })()
-            : 1500;
-          
-          const wordCountValidation = validateWordCount(articleStructure.blocks, targetWordCount, 10);
-          
-          if (!wordCountValidation.isValid) {
-            console.warn(`[articles-api] Word count validation failed for topic: ${topic.title}`);
-            console.warn(`[articles-api] Target: ${targetWordCount}, Current: ${wordCountValidation.currentWordCount}, Difference: ${wordCountValidation.differencePercent.toFixed(1)}%`);
-            
-            if (wordCountValidation.needsTrimming) {
-              console.log(`[articles-api] Trimming article from ${wordCountValidation.currentWordCount} to ~${targetWordCount} words (max allowed: ${wordCountValidation.maxAllowed})`);
-              articleStructure.blocks = trimArticleToWordCount(articleStructure.blocks, targetWordCount, 10);
-              
-              // Re-validate after trimming
-              const postTrimValidation = validateWordCount(articleStructure.blocks, targetWordCount, 10);
-              console.log(`[articles-api] After trimming: ${postTrimValidation.currentWordCount} words (${postTrimValidation.differencePercent > 0 ? '+' : ''}${postTrimValidation.differencePercent.toFixed(1)}%)`);
-            } else {
-              console.warn(`[articles-api] Article is too short (${wordCountValidation.currentWordCount} words, min allowed: ${wordCountValidation.minAllowed}). Consider regenerating.`);
-            }
-          } else {
-            console.log(`[articles-api] Word count OK: ${wordCountValidation.currentWordCount} words (target: ${targetWordCount}, ${wordCountValidation.differencePercent > 0 ? '+' : ''}${wordCountValidation.differencePercent.toFixed(1)}%)`);
-          }
-          
-          // #region agent log
-          const wordCountLog = {
-            location: 'articles/route.ts:730',
-            message: 'Word count validation',
-            data: {
-              targetWordCount,
-              currentWordCount: wordCountValidation.currentWordCount,
-              minAllowed: wordCountValidation.minAllowed,
-              maxAllowed: wordCountValidation.maxAllowed,
-              difference: wordCountValidation.difference,
-              differencePercent: wordCountValidation.differencePercent,
-              isValid: wordCountValidation.isValid,
-              needsTrimming: wordCountValidation.needsTrimming,
-              topicTitle: topic.title
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'word-count-validation'
-          };
-          debugLog(wordCountLog);
-          // #endregion
-
           // Convert blocks to HTML, then clean invisible characters
           cleanedArticleBodyHtml = cleanText(
             blocksToHtml(
@@ -848,25 +791,6 @@ Language: US English.`;
         } else {
           // Fallback: use raw content
           cleanedArticleBodyHtml = cleanText(content);
-          
-          // Basic word count check for fallback format
-          const targetWordCount = brief.wordCount 
-            ? (() => {
-                const match = String(brief.wordCount).match(/^(\d+)(?:-(\d+))?$/);
-                if (match) {
-                  return match[2] ? Math.floor((parseInt(match[1]) + parseInt(match[2])) / 2) : parseInt(match[1]);
-                }
-                return 1500;
-              })()
-            : 1500;
-          
-          const wordCountValidator = await import("@/lib/wordCountValidator");
-          const currentWordCount = wordCountValidator.countWords(cleanedArticleBodyHtml);
-          const maxAllowed = Math.floor(targetWordCount * 1.1);
-          
-          if (currentWordCount > maxAllowed) {
-            console.warn(`[articles-api] Fallback format article too long: ${currentWordCount} words (target: ${targetWordCount}, max: ${maxAllowed})`);
-          }
         }
 
         // #region agent log

@@ -181,11 +181,10 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
 • The article MUST be approximately [[WORD_COUNT]] words long. This is NOT a suggestion, it is a HARD REQUIREMENT.
-• Before outputting the final article, count the words in articleBlocks (as plain text across all text fields, items, and cells).
+• Before outputting the final article, count the words in articleBodyText (as plain text).
 • If the count is far off (more than a 10 percent difference), extend or trim the content until it is close to [[WORD_COUNT]].
-• The final article MUST be within 90-110 percent of the target length (for example, for 1200 words the article must be 1080-1320 words).
+• The final article MUST be within 90-110 percent of the target length (for example, for 1000 words the article must be 900-1100 words).
 • Do NOT write a short article (300-400 words) when a long one is required (1000+ words).
-• Do NOT write an article that is more than 110% of the target word count - if you exceed this, you MUST trim content from the end, preserving the introduction and main sections.
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -459,7 +458,7 @@ After generating the article, perform a quick human QA:
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
 
 FINAL CHECKLIST BEFORE OUTPUT:
-• Word count is within 90-110% of [[WORD_COUNT]] words (counted across all text in articleBlocks as plain text). If it exceeds 110%, you MUST trim content from the end.
+• Word count is approximately [[WORD_COUNT]] words (counted across all text in articleBlocks as plain text).
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty).
@@ -599,7 +598,6 @@ CRITICAL REQUIREMENTS - READ CAREFULLY:
 • If the count is far off (more than a 10 percent difference), extend or trim the content until it is close to [[WORD_COUNT]].
 • The final article MUST be within 90-110 percent of the target length (for example, for 1200 words the article must be 1080-1320 words).
 • Do NOT write a short article (300-400 words) when a long one is required (1000+ words).
-• Do NOT write an article that is more than 110% of the target word count.
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -1123,7 +1121,7 @@ Note: This check is a reminder for post-processing. Focus on generating naturall
 FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
-• CRITICAL: Ensure word count is within 90-110% of [[WORD_COUNT]] (counted as plain text across all text in articleBlocks). If it exceeds 110%, you MUST trim content from the end, preserving the introduction and main sections.
+• Ensure word count is within 90-110% of [[WORD_COUNT]] (counted as plain text across all text in articleBlocks).
 • If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in the first 2-3 paragraphs.
 • Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
 • Scan all block texts/items/cells for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
