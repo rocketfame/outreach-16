@@ -1,5 +1,7 @@
 // lib/articlePrompt.ts
 
+import { TrustSourceSpec } from "@/lib/articleStructure";
+
 /**
  * ============================================================================
  * CRITICAL ARCHITECTURE DECISION - DO NOT CHANGE WITHOUT EXPLICIT APPROVAL
@@ -45,6 +47,7 @@ export interface ArticlePromptParams {
   brandName: string;
   keywordList: string[];
   trustSourcesList: string[];
+  trustSourcesSpecs?: TrustSourceSpec[]; // Optional: explicit placeholder mapping with anchor text
   language: string;
   targetAudience: string;
   wordCount?: string;
@@ -531,12 +534,18 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   console.log("[article-prompt-debug]", log);
   // #endregion
   
+  // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
+  let placeholderMappingBlock = "";
+  if (params.trustSourcesSpecs && params.trustSourcesSpecs.length > 0) {
+    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL INSTRUCTIONS FOR USING PLACEHOLDERS:\n• You have ${params.trustSourcesSpecs.length} external source(s) available.\n• Use 1-${params.trustSourcesSpecs.length} of these in your article.\n• When you reference them, DO NOT write any URLs.\n• Instead, insert the placeholders [${params.trustSourcesSpecs.map(ts => ts.id).join('], [')}] directly into the sentence.\n• Each placeholder must be part of a natural sentence, with a short 2-5 word anchor phrase that describes the source.\n• The anchor phrase should match the description provided (e.g., "[T1]" should be used where "${params.trustSourcesSpecs[0]?.text || 'the source'}" would naturally appear).\n• Example: "Research from [T1] indicates that..." (where [T1] represents "${params.trustSourcesSpecs[0]?.text || 'the source'}").\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs - use ONLY the placeholders provided above.\n`;
+  }
+  
   // Add explicit verification list with numbered sources for model to check against
   const sourcesVerificationBlock = params.trustSourcesList.length > 0
     ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
     : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
   
-  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + sourcesVerificationBlock);
+  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
 
   return prompt;
 }
@@ -558,6 +567,7 @@ export interface DirectArticlePromptParams {
   brandName: string;
   keywordList: string[];
   trustSourcesList: string[];
+  trustSourcesSpecs?: TrustSourceSpec[]; // Optional: explicit placeholder mapping with anchor text
   language: string;
   targetAudience: string;
   wordCount?: string;
@@ -1154,12 +1164,18 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
     ? params.trustSourcesList.join(", ")
     : "";
   
+  // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
+  let placeholderMappingBlock = "";
+  if (params.trustSourcesSpecs && params.trustSourcesSpecs.length > 0) {
+    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL INSTRUCTIONS FOR USING PLACEHOLDERS:\n• You have ${params.trustSourcesSpecs.length} external source(s) available.\n• Use 1-${params.trustSourcesSpecs.length} of these in your article.\n• When you reference them, DO NOT write any URLs.\n• Instead, insert the placeholders [${params.trustSourcesSpecs.map(ts => ts.id).join('], [')}] directly into the sentence.\n• Each placeholder must be part of a natural sentence, with a short 2-5 word anchor phrase that describes the source.\n• The anchor phrase should match the description provided (e.g., "[T1]" should be used where "${params.trustSourcesSpecs[0]?.text || 'the source'}" would naturally appear).\n• Example: "Research from [T1] indicates that..." (where [T1] represents "${params.trustSourcesSpecs[0]?.text || 'the source'}").\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs - use ONLY the placeholders provided above.\n`;
+  }
+  
   // Add explicit verification list with numbered sources
   const sourcesVerificationBlock = params.trustSourcesList.length > 0
     ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
     : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
   
-  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + sourcesVerificationBlock);
+  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
 
   return prompt;
 }

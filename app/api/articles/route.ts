@@ -39,8 +39,10 @@ import {
   blocksToHtml, 
   modelBlocksToArticleStructure,
   ArticleStructure,
-  type TableBlock
+  type TableBlock,
+  type TrustSourceSpec
 } from "@/lib/articleStructure";
+import { filterAndSelectTrustSources, TrustSourceInput } from "@/lib/trustSourceFilter";
 import { humanizeSectionText } from "@/lib/sectionHumanize";
 
 // Simple debug logger that works in both local and production (Vercel)
@@ -148,6 +150,59 @@ export async function POST(req: Request) {
                              !topic.whyNonGeneric && 
                              !topic.howAnchorFits;
 
+        // ========================================================================
+        // CRITICAL: Filter and select trust sources based on niche and relevance
+        // ========================================================================
+        // Convert trustSourcesList from "Name|URL" format to TrustSourceInput[]
+        const trustSourcesInput: TrustSourceInput[] = trustSourcesList.map((source: string) => {
+          const parts = source.split('|');
+          const url = parts.length > 1 ? parts[1] : parts[0];
+          const title = parts.length > 1 ? parts[0] : `Source ${trustSourcesList.indexOf(source) + 1}`;
+          // Extract snippet if available (Tavily format may include it, but we'll use empty if not)
+          const snippet = parts.length > 2 ? parts[2] : "";
+          return { title, url, snippet };
+        });
+
+        // Build topic brief for filtering
+        const topicBriefForFilter = isDirectMode
+          ? (topic.brief || topic.title)
+          : [
+              topic.brief || "",
+              topic.shortAngle || "",
+              topic.whyNonGeneric || "",
+              topic.howAnchorFits || "",
+            ].filter(Boolean).join("\n\n") || topic.title;
+
+        // Filter and select 1-3 trust sources based on niche and relevance
+        const filteredTrustSources: TrustSourceSpec[] = filterAndSelectTrustSources(
+          trustSourcesInput,
+          brief.niche || "",
+          topic.title,
+          topicBriefForFilter
+        );
+
+        // Convert filtered sources back to "Name|URL" format for prompt
+        const filteredTrustSourcesList = filteredTrustSources.map(ts => `${ts.text}|${ts.url}`);
+
+        // #region agent log
+        const filterLog = {
+          location: 'articles/route.ts:150',
+          message: 'Trust sources filtered',
+          data: {
+            originalCount: trustSourcesList.length,
+            filteredCount: filteredTrustSources.length,
+            niche: brief.niche || "",
+            topicTitle: topic.title,
+            filteredSources: filteredTrustSources.map(ts => ({ id: ts.id, text: ts.text, url: ts.url }))
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'articles-api',
+          hypothesisId: 'trust-source-filtering'
+        };
+        debugLog(filterLog);
+        // #endregion
+
         let prompt: string;
 
         if (isDirectMode) {
@@ -176,7 +231,8 @@ export async function POST(req: Request) {
             anchorUrl: brief.anchorUrl || brief.clientSite || "",
             brandName: brandName,
             keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
-            trustSourcesList: trustSourcesList,
+            trustSourcesList: filteredTrustSourcesList, // Use filtered sources
+            trustSourcesSpecs: filteredTrustSources, // Pass TrustSourceSpec[] for explicit placeholder mapping
             language: brief.language || "English",
             targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
             wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
@@ -221,7 +277,8 @@ export async function POST(req: Request) {
           anchorUrl: brief.anchorUrl || brief.clientSite || "",
           brandName: brandName,
           keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
-          trustSourcesList: trustSourcesList,
+          trustSourcesList: filteredTrustSourcesList, // Use filtered sources
+          trustSourcesSpecs: filteredTrustSources, // Pass TrustSourceSpec[] for explicit placeholder mapping
           language: brief.language || "English",
           targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
           wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
@@ -229,7 +286,7 @@ export async function POST(req: Request) {
         }
         
         // #region agent log
-        const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{trustSourcesCount:trustSourcesList.length,trustSources:trustSourcesList.slice(0,3),hasTrustSources:trustSourcesList.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
+        const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{filteredCount:filteredTrustSources.length,filteredSources:filteredTrustSources.map(ts => ({ id: ts.id, text: ts.text })),hasTrustSources:filteredTrustSources.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
         debugLog(trustSourcesLog);
         // #endregion
 
@@ -421,25 +478,33 @@ Language: US English.`;
         
         if (hasBlocksFormat) {
           // BLOCK FORMAT (preferred): deterministic structure -> HTML
+          // Use filtered trust sources (convert to "Name|URL" format for backward compatibility)
+          const filteredTrustSourcesListForStructure = filteredTrustSources.map(ts => `${ts.text}|${ts.url}`);
           articleStructure = modelBlocksToArticleStructure(
             parsedResponse.articleBlocks,
             cleanedTitleTag,
             cleanedMetaDescription,
             brief.anchorText,
             brief.anchorUrl || brief.clientSite || "",
-            trustSourcesList
+            filteredTrustSourcesListForStructure
           );
+          // Override trustSources with filtered ones (to ensure correct anchor text)
+          articleStructure.trustSources = filteredTrustSources;
         } else if (hasNewFormat) {
           // PLAIN TEXT FORMAT (fallback): heuristic parsing -> blocks -> HTML
           const articleBodyText = cleanText(parsedResponse.articleBodyText || "");
+          // Use filtered trust sources (convert to "Name|URL" format for backward compatibility)
+          const filteredTrustSourcesListForStructure = filteredTrustSources.map(ts => `${ts.text}|${ts.url}`);
           articleStructure = parsePlainTextToStructure(
             articleBodyText,
             cleanedTitleTag,
             cleanedMetaDescription,
             brief.anchorText,
             brief.anchorUrl || brief.clientSite || "",
-            trustSourcesList
+            filteredTrustSourcesListForStructure
           );
+          // Override trustSources with filtered ones (to ensure correct anchor text)
+          articleStructure.trustSources = filteredTrustSources;
         }
 
         if (articleStructure) {
@@ -592,6 +657,70 @@ Language: US English.`;
             } else {
               console.warn('[articles-api] Humanization on write requested but API key or email not configured');
             }
+          }
+
+          // ========================================================================
+          // VALIDATION: Check trust source placeholder usage
+          // ========================================================================
+          if (articleStructure.trustSources.length > 0) {
+            // Count how many [T1]/[T2]/[T3] placeholders were actually used in the article text
+            const allText = articleStructure.blocks
+              .map(block => {
+                if (block.type === 'ul' || block.type === 'ol') {
+                  return (block as any).items?.map((item: any) => item.text || '').join(' ') || '';
+                }
+                if (block.type === 'table') {
+                  const t = block as any;
+                  return [
+                    t.caption || '',
+                    ...(t.headers || []),
+                    ...(t.rows || []).flat()
+                  ].join(' ');
+                }
+                return block.text || '';
+              })
+              .join(' ');
+            
+            const placeholderMatches = allText.match(/\[T[1-3]\]/g) || [];
+            const uniquePlaceholders = new Set(placeholderMatches);
+            const placeholderCount = uniquePlaceholders.size;
+            
+            // Validate: must have 1-3 placeholders if trustSources.length > 0
+            if (placeholderCount === 0 && articleStructure.trustSources.length > 0) {
+              console.warn(`[articles-api] No trust source placeholders found in article for topic: ${topic.title}. Expected 1-${articleStructure.trustSources.length} placeholders.`);
+            } else if (placeholderCount > articleStructure.trustSources.length) {
+              console.warn(`[articles-api] More placeholders (${placeholderCount}) than trust sources (${articleStructure.trustSources.length}) for topic: ${topic.title}.`);
+            }
+            
+            // Validate: every placeholder must have a corresponding entry in trustSources
+            const usedPlaceholderIds = Array.from(uniquePlaceholders).map(p => p.replace(/[\[\]]/g, ''));
+            const validPlaceholderIds = articleStructure.trustSources.map(ts => ts.id);
+            const invalidPlaceholders = usedPlaceholderIds.filter(id => !validPlaceholderIds.includes(id));
+            
+            if (invalidPlaceholders.length > 0) {
+              console.warn(`[articles-api] Invalid placeholders found: ${invalidPlaceholders.join(', ')}. These will be removed or left as plain text.`);
+              // Remove invalid placeholders from text (optional: can be done in post-processing)
+            }
+            
+            // #region agent log
+            const validationLog = {
+              location: 'articles/route.ts:670',
+              message: 'Trust source placeholder validation',
+              data: {
+                trustSourcesCount: articleStructure.trustSources.length,
+                placeholderCount,
+                uniquePlaceholders: Array.from(uniquePlaceholders),
+                usedPlaceholderIds,
+                validPlaceholderIds,
+                invalidPlaceholders
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'articles-api',
+              hypothesisId: 'trust-source-validation'
+            };
+            debugLog(validationLog);
+            // #endregion
           }
 
           // Convert blocks to HTML, then clean invisible characters
