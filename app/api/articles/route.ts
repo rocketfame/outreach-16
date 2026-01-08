@@ -553,7 +553,9 @@ Language: US English.`;
           console.log("[articles-api] Cost tracked. Current totals:", {
             tavily: totals.tavily,
             openai: totals.openai,
+            aihumanize: totals.aihumanize, // CRITICAL: Include aihumanize in totals
             total: totals.total,
+            breakdown: totals.breakdown,
           });
         } else {
           console.warn("[articles-api] No tokens to track - usage:", usage);
@@ -897,10 +899,21 @@ Language: US English.`;
                 debugLog(humanizeResultLog);
                 // #endregion
 
+                // Track humanization costs (FIXED: removed duplicate tracking)
                 if (totalHumanizeWordsUsed > 0) {
                   const costTracker = getCostTracker();
                   const humanizeCost = totalHumanizeWordsUsed * 0.0005;
                   costTracker.trackHumanize(totalHumanizeWordsUsed, humanizeCost);
+                  
+                  // Log humanization costs
+                  const totals = costTracker.getTotalCosts();
+                  console.log("[articles-api] Humanization cost tracked. Current totals:", {
+                    tavily: totals.tavily,
+                    openai: totals.openai,
+                    aihumanize: totals.aihumanize, // CRITICAL: Include aihumanize in totals
+                    total: totals.total,
+                    breakdown: totals.breakdown,
+                  });
                 } else if (enableHumanizeOnWrite) {
                   // Log warning if humanization was enabled but no words were used
                   console.warn('[articles-api] Humanization was enabled but no words were processed. This may indicate API errors (e.g., insufficient balance) or all blocks were too short.');
@@ -921,12 +934,6 @@ Language: US English.`;
                 };
                 debugLog(humanizeSuccessLog);
                 // #endregion
-
-                if (totalHumanizeWordsUsed > 0) {
-                  const costTracker = getCostTracker();
-                  const humanizeCost = totalHumanizeWordsUsed * 0.0005;
-                  costTracker.trackHumanize(totalHumanizeWordsUsed, humanizeCost);
-                }
               } catch (humanizeError) {
                 // #region agent log
                 const humanizeErrorLog = {
