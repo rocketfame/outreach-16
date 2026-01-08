@@ -4945,14 +4945,48 @@ export default function Home() {
                                       }, 2000);
                                       return;
                                     }
-                                    // Create plain text fallback
+                                    
+                                    // Get title and meta description
+                                    const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
+                                    const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
+                                    
+                                    // Build complete HTML with title and meta description
+                                    let fullHtml = '';
+                                    if (titleTag) {
+                                      fullHtml += `<h1>${titleTag}</h1>\n`;
+                                    }
+                                    if (metaDescription) {
+                                      fullHtml += `<p><em>${metaDescription}</em></p>\n`;
+                                    }
+                                    fullHtml += html;
+                                    
+                                    // Create plain text fallback with title and meta description
                                     const temp = document.createElement('div');
-                                    temp.innerHTML = html;
-                                    const plain = temp.textContent ?? temp.innerText ?? '';
+                                    temp.innerHTML = fullHtml;
+                                    let plain = temp.textContent ?? temp.innerText ?? '';
+                                    
+                                    // Also build plain text manually to ensure proper formatting
+                                    if (titleTag || metaDescription) {
+                                      const plainParts: string[] = [];
+                                      if (titleTag) {
+                                        plainParts.push(titleTag);
+                                        plainParts.push('');
+                                      }
+                                      if (metaDescription) {
+                                        plainParts.push(metaDescription);
+                                        plainParts.push('');
+                                      }
+                                      // Get plain text from body
+                                      const bodyTemp = document.createElement('div');
+                                      bodyTemp.innerHTML = html;
+                                      const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
+                                      plainParts.push(bodyPlain);
+                                      plain = plainParts.join('\n');
+                                    }
 
                                     try {
                                       if (navigator.clipboard && (window as any).ClipboardItem) {
-                                        const blobHtml = new Blob([html], { type: 'text/html' });
+                                        const blobHtml = new Blob([fullHtml], { type: 'text/html' });
                                         const blobText = new Blob([plain], { type: 'text/plain' });
                                         const item = new (window as any).ClipboardItem({
                                           'text/html': blobHtml,
@@ -5015,19 +5049,48 @@ export default function Home() {
                                         throw new Error("No article content available");
                                       }
                                       
+                                      // Get title and meta description
+                                      const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
+                                      const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
+                                      
+                                      // Build complete HTML with title and meta description for extraction
+                                      let fullHtml = '';
+                                      if (titleTag) {
+                                        fullHtml += `<h1>${titleTag}</h1>\n`;
+                                      }
+                                      if (metaDescription) {
+                                        fullHtml += `<p><em>${metaDescription}</em></p>\n`;
+                                      }
+                                      fullHtml += html;
+                                      
                                       // Try to find the rendered article in the modal if it's open
                                       let articleElement: HTMLElement | null = null;
                                       if (isViewing && viewingArticle === topicId) {
                                         const modal = document.querySelector('.article-view-modal');
                                         if (modal) {
                                           articleElement = modal.querySelector('.article-view-text') as HTMLElement;
+                                          // Clone and modify to include title and meta description
+                                          if (articleElement) {
+                                            const clone = articleElement.cloneNode(true) as HTMLElement;
+                                            if (titleTag) {
+                                              const titleEl = document.createElement('h1');
+                                              titleEl.textContent = titleTag;
+                                              clone.insertBefore(titleEl, clone.firstChild);
+                                            }
+                                            if (metaDescription) {
+                                              const metaEl = document.createElement('p');
+                                              metaEl.innerHTML = `<em>${metaDescription}</em>`;
+                                              clone.insertBefore(metaEl, clone.firstChild);
+                                            }
+                                            articleElement = clone;
+                                          }
                                         }
                                       }
                                       
                                       // If not found in modal, create a temporary element from HTML
                                       if (!articleElement) {
                                         const temp = document.createElement('div');
-                                        temp.innerHTML = html;
+                                        temp.innerHTML = fullHtml;
                                         articleElement = temp;
                                       }
                                       

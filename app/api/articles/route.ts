@@ -639,12 +639,12 @@ Language: US English.`;
         
         // #region agent log - Brand check in raw content
         // Check if brand placeholder or value appears in raw content (before parsing)
-        const brandNameValueForCheck = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
-        if (brandNameValueForCheck !== "NONE") {
+        const brandNameValueForRawCheck = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
+        if (brandNameValueForRawCheck !== "NONE") {
           const brandInRawContent = {
-            brandValue: brandNameValueForCheck,
-            appearsInRawContent: content.includes(brandNameValueForCheck),
-            occurrencesInRawContent: (content.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
+            brandValue: brandNameValueForRawCheck,
+            appearsInRawContent: content.includes(brandNameValueForRawCheck),
+            occurrencesInRawContent: (content.match(new RegExp(brandNameValueForRawCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
             placeholderStillPresent: (content.match(/\[\[BRAND_NAME\]\]/g) || []).length,
           };
           console.log("[articles-api] Brand check in raw OpenAI response:", brandInRawContent);
