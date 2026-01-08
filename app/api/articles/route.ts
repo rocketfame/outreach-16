@@ -30,11 +30,6 @@ import { cleanText, lightHumanEdit, fixHtmlTagSpacing } from "@/lib/textPostProc
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { 
-  SEO_ARTICLE_PRESET, 
-  TOPIC_DISCOVERY_PRESET, 
-  applyPreset
-} from "@/lib/llmPresets";
-import { 
   parsePlainTextToStructure, 
   blocksToHtml, 
   modelBlocksToArticleStructure,
@@ -320,13 +315,10 @@ ${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific 
 Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
 Language: US English.`;
 
-        // Select preset based on mode
-        const preset = isDirectMode ? SEO_ARTICLE_PRESET : TOPIC_DISCOVERY_PRESET;
-        
-        // Apply preset with fixed max_completion_tokens (8000 as before preset system)
-        const apiParams = applyPreset(preset, { 
+        // API parameters for OpenAI
+        const apiParams = { 
           max_completion_tokens: 8000
-        });
+        };
 
         // Call OpenAI API with system + user messages
         // #region agent log
@@ -336,7 +328,6 @@ Language: US English.`;
           data: {
             model: 'gpt-5.2',
             mode: isDirectMode ? 'direct' : 'topic-discovery',
-            preset: isDirectMode ? 'SEO_ARTICLE' : 'TOPIC_DISCOVERY',
             hasSystemMessage: !!systemMessage,
             hasUserPrompt: !!prompt,
             promptLength: prompt.length,

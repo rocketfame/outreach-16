@@ -5,7 +5,6 @@ import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { getOpenAIApiKey } from "@/lib/config";
 import { cleanText, fixHtmlTagSpacing } from "@/lib/textPostProcessing";
 import { getCostTracker } from "@/lib/costTracker";
-import { ARTICLE_EDIT_PRESET, applyPreset } from "@/lib/llmPresets";
 
 export interface EditHistoryEntry {
   timestamp: string;
@@ -108,8 +107,8 @@ export async function POST(req: NextRequest) {
     console.log("[edit-article] Prompt built, length:", prompt.length);
 
     // Call OpenAI API
-    // Apply preset for article editing
-    const apiParams = applyPreset(ARTICLE_EDIT_PRESET);
+    // API parameters for OpenAI
+    const apiParams = {};
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

@@ -4,7 +4,6 @@ import { buildTopicPrompt } from "@/lib/topicPrompt";
 import { shouldUseBrowsing, browseForTopics } from "@/lib/topicBrowsing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
-import { TOPIC_GENERATION_PRESET, applyPreset } from "@/lib/llmPresets";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -110,8 +109,8 @@ export async function POST(req: Request) {
     debugLog(apiCallLog);
     // #endregion
 
-    // Apply preset for topic generation
-    const apiParams = applyPreset(TOPIC_GENERATION_PRESET);
+    // API parameters for OpenAI
+    const apiParams = {};
 
     // Generate topics using GPT-5.2
     let completion;

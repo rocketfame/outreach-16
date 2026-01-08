@@ -2,7 +2,6 @@
 // Analyze reference image style using GPT-4 Vision API
 
 import { getOpenAIClient, validateApiKeys } from "@/lib/config";
-import { STYLE_ANALYSIS_PRESET, applyPreset } from "@/lib/llmPresets";
 
 export interface AnalyzeImageStyleRequest {
   imageBase64: string; // base64 encoded image (with or without data URL prefix)
@@ -55,8 +54,8 @@ export async function POST(req: Request) {
     // Extract base64 data
     const base64Data = extractBase64(imageBase64);
 
-    // Apply preset for style analysis
-    const apiParams = applyPreset(STYLE_ANALYSIS_PRESET);
+    // API parameters for OpenAI
+    const apiParams = {};
 
     // Analyze image style using GPT-5.2
     const response = await openai.chat.completions.create({
