@@ -99,3 +99,6 @@ wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500
 
 **Тому зміни дозволені ТІЛЬКИ для wordCount параметру!**
 
+
+
+

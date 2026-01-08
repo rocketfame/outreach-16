@@ -112,3 +112,6 @@ After deployment, verify:
 - If GPT-5.2 doesn't support `response_format`, the code automatically falls back to standard mode
 - All error handling for unsupported parameters is preserved
 
+
+
+

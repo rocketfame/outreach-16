@@ -80,3 +80,6 @@ wordCount: brief.wordCount, // Pass wordCount from Project Basics
 2. Задокументуйте причину змін
 3. Оновіть цей файл з описом змін
 
+
+
+
