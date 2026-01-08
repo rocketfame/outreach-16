@@ -46,7 +46,8 @@ export interface ArticlePromptParams {
   anchorUrl: string;
   brandName: string;
   keywordList: string[];
-  trustSourcesList: string[];
+  trustSourcesList: string[]; // Old format: "Name|URL" for backward compatibility
+  trustSourcesJSON?: string; // New format: JSON array with id, url, title, type
   trustSourcesSpecs?: TrustSourceSpec[]; // Optional: explicit placeholder mapping with anchor text
   language: string;
   targetAudience: string;
@@ -259,39 +260,56 @@ Brand integration ([[BRAND_NAME]] - OPTIONAL):
 
 ⸻
 
-EXTERNAL SOURCES AND TAVILY RESULTS
+EXTERNAL SOURCES & REFERENCES
 
-You receive a list of pre validated external sources from Tavily search in [[TRUST_SOURCES_LIST]].
-Each item has at least: title, url, and a short snippet.
-All sources come from the Tavily search API - use only these URLs, do not invent new ones.
+You receive a pre-filtered list of trusted external sources in [[TRUST_SOURCES_LIST]].
+Each item has:
+- id: "T1" | "T2" | "T3"
+- url
+- title
+- type: "official_platform" | "stats_or_research" | "independent_media"
+These sources are ALREADY validated (no promo-service competitors).
 
-These are the ONLY external sources you are allowed to use.
+Your rules:
 
-CRITICAL RULES - READ CAREFULLY:
-	1.	STRICT SOURCE VALIDATION - NO EXCEPTIONS
-• You MUST choose all external sources ONLY from [[TRUST_SOURCES_LIST]].
-• NEVER invent, guess, or create new sources, guides, portals, brand names, or URLs.
-• If a source is NOT present in [[TRUST_SOURCES_LIST]], you MUST NOT mention it, link to it, or reference it.
-• Do NOT hallucinate resources like "YouTube Help", "Spotify for Artists guide", "Creator Academy", "TikTok Creator Portal", "Instagram Creator Hub", or any other platform resources UNLESS that exact URL exists in [[TRUST_SOURCES_LIST]].
-• Before using ANY source, verify that its EXACT URL appears in [[TRUST_SOURCES_LIST]].
-• If you cannot find a relevant source in [[TRUST_SOURCES_LIST]], write the article WITHOUT external links.
-	2.	Prefer deep, specific URLs
-• Prefer URLs that clearly point to a specific article or section
-(for example, /article/…, /insights/…, /blog/…, /…#section-2).
-• Avoid plain root URLs like "https://blog.hootsuite.com/" or "https://loudandclear.byspotify.com/" unless the root itself is clearly a dedicated article or report according to the snippet.
-• If a result looks like a generic homepage and the snippet is vague, you may ignore that source.
-	3.	RELEVANCE CHECK - MANDATORY BEFORE USE
-• Use a source only if BOTH conditions are met:
-a) The source's title/snippet clearly relates to the article topic ([[TOPIC_TITLE]] and [[TOPIC_BRIEF]]).
-b) The source adds value to a specific point you are making (statistic, definition, trend, guideline).
-• If a source in [[TRUST_SOURCES_LIST]] is about a different platform or niche than your article, you MUST NOT use it, even if it is in the list.
-• If [[TRUST_SOURCES_LIST]] contains no relevant sources for your topic, write the article WITHOUT any external links.
-	4.	Number of sources - MANDATORY REQUIREMENT
-• You MUST use EXACTLY 1-3 external sources per article.
-• You MUST integrate at least 1 external source, even if you have to pick the most relevant one from [[TRUST_SOURCES_LIST]].
-• If [[TRUST_SOURCES_LIST]] contains sources, you MUST use 1-3 of them. Do NOT write without external links.
-• Only if [[TRUST_SOURCES_LIST]] is completely empty may you write without external links.
-• Never stack long chains of citations. One strong source per point is enough.
+1. Allowed sources
+- You may ONLY reference sources from [[TRUST_SOURCES_LIST]].
+- NEVER invent new brands, URLs, or portals.
+- If [[TRUST_SOURCES_LIST]] is empty, write the article WITHOUT external links.
+
+2. Number of sources
+- Use between 1 and 3 sources in the whole article.
+- It is OK to use only 1–2 if they cover the topic well.
+
+3. Placement rules
+- Integrate sources inside the MAIN BODY of the article (not in the H1 title).
+- Prefer to place sources where you:
+  - mention a definition, statistic, case study, platform rule, or official guideline;
+  - explain how a platform or algorithm behaves.
+- Avoid putting all references in one paragraph. Spread them naturally across the body.
+- Do NOT place [T1]–[T3] in the introduction or final conclusion section.
+
+4. Anchor text & placeholders
+- For each reference, first choose a short, natural anchor (2–5 words), for example:
+  - "Spotify's official guidance"
+  - "a recent industry report"
+  - "RouteNote's breakdown"
+- Then attach the placeholder [T1], [T2], or [T3] after the anchor, matching the correct source from [[TRUST_SOURCES_LIST]].
+- Do NOT use bare URLs as text.
+- Do NOT copy the full page title as anchor.
+- Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+
+Examples of correct usage:
+- "According to Spotify's official guidance [T1], saves and completion now drive most recommendation surfaces."
+- "A recent industry report [T2] shows how independent artists benefit from algorithmic playlists."
+- "Streaming data from a niche analytics platform [T3] highlights how repeat listens predict long-tail growth."
+
+5. Consistency check before final answer
+Before you output the final article, verify:
+- You used at most 3 placeholders [T1]–[T3].
+- Every placeholder corresponds to an existing item in [[TRUST_SOURCES_LIST]].
+- Each placeholder is attached to a short, meaningful anchor phrase (not a URL, not an empty word like "here").
+- References read naturally and are relevant to the surrounding sentence.
 	5.	How to write in-text references - ORGANIC INTEGRATION REQUIRED
 • Integrate each source NATURALLY into the paragraph.
 • The source should feel like a natural part of your argument, not a forced citation.
@@ -564,14 +582,19 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   // Replace WORD_COUNT with the actual value
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   
-  // Format trust sources as "Name|URL" pairs, joined by ", "
-  const trustSourcesFormatted = params.trustSourcesList.length > 0 
-    ? params.trustSourcesList.join(", ")
-    : "";
+  // Format trust sources - prefer JSON format if available, otherwise use old format
+  let trustSourcesFormatted = "";
+  if (params.trustSourcesJSON) {
+    // Use new structured JSON format
+    trustSourcesFormatted = params.trustSourcesJSON;
+  } else if (params.trustSourcesList.length > 0) {
+    // Fallback to old "Name|URL" format for backward compatibility
+    trustSourcesFormatted = params.trustSourcesList.join(", ");
+  }
   
   // #region agent log
-  const log = {location:'articlePrompt.ts:247',message:'[article-prompt] Trust sources formatted for prompt',data:{trustSourcesCount:params.trustSourcesList.length,trustSourcesFormatted:trustSourcesFormatted.substring(0,500),hasTrustSources:params.trustSourcesList.length > 0,allSourcesFromTavily:true,fullSourcesList:params.trustSourcesList},timestamp:Date.now(),sessionId:'debug-session',runId:'article-prompt',hypothesisId:'trust-sources'};
-  console.log(`[article-prompt] trustSourcesList is ${params.trustSourcesList.length > 0 ? 'non-empty' : 'empty'} (${params.trustSourcesList.length} sources from Tavily)`);
+  const log = {location:'articlePrompt.ts:247',message:'[article-prompt] Trust sources formatted for prompt',data:{trustSourcesCount:params.trustSourcesList.length,hasJSON:!!params.trustSourcesJSON,trustSourcesFormatted:trustSourcesFormatted.substring(0,500),hasTrustSources:params.trustSourcesList.length > 0 || !!params.trustSourcesJSON,allSourcesFromTavily:true,fullSourcesList:params.trustSourcesList},timestamp:Date.now(),sessionId:'debug-session',runId:'article-prompt',hypothesisId:'trust-sources'};
+  console.log(`[article-prompt] trustSourcesList is ${params.trustSourcesList.length > 0 || !!params.trustSourcesJSON ? 'non-empty' : 'empty'} (${params.trustSourcesList.length} sources from Tavily, JSON: ${!!params.trustSourcesJSON})`);
   console.log("[article-prompt-debug]", log);
   // #endregion
   
@@ -581,10 +604,24 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
     placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL INSTRUCTIONS FOR USING PLACEHOLDERS:\n• You have ${params.trustSourcesSpecs.length} external source(s) available.\n• Use 1-${params.trustSourcesSpecs.length} of these in your article.\n• When you reference them, DO NOT write any URLs.\n• Instead, insert the placeholders [${params.trustSourcesSpecs.map(ts => ts.id).join('], [')}] directly into the sentence.\n• Each placeholder must be part of a natural sentence, with a short 2-5 word anchor phrase that describes the source.\n• The anchor phrase should match the description provided (e.g., "[T1]" should be used where "${params.trustSourcesSpecs[0]?.text || 'the source'}" would naturally appear).\n• Example: "Research from [T1] indicates that..." (where [T1] represents "${params.trustSourcesSpecs[0]?.text || 'the source'}").\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs - use ONLY the placeholders provided above.\n`;
   }
   
-  // Add explicit verification list with numbered sources for model to check against
-  const sourcesVerificationBlock = params.trustSourcesList.length > 0
-    ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
-    : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
+  // Build verification block - use JSON format if available
+  let sourcesVerificationBlock = "";
+  if (params.trustSourcesJSON) {
+    // Parse JSON to show structured sources
+    try {
+      const sources = JSON.parse(params.trustSourcesJSON);
+      sourcesVerificationBlock = `\n\nVERIFICATION LIST - Use ONLY these pre-filtered sources (already validated, no competitors):\n${sources.map((s: any, i: number) => `${i + 1}. [${s.id}] ${s.title} (${s.type}) - ${s.url}`).join('\n')}\n\nCRITICAL: These sources are already pre-filtered and validated. You may ONLY use sources from this list. If no sources are relevant to your topic, write the article WITHOUT external links.\n`;
+    } catch (e) {
+      // Fallback if JSON parsing fails
+      sourcesVerificationBlock = params.trustSourcesList.length > 0
+        ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs:\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link, verify that its URL matches EXACTLY one entry above.\n`
+        : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
+    }
+  } else {
+    sourcesVerificationBlock = params.trustSourcesList.length > 0
+      ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
+      : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
+  }
   
   prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
 
@@ -607,7 +644,8 @@ export interface DirectArticlePromptParams {
   anchorUrl: string;
   brandName: string;
   keywordList: string[];
-  trustSourcesList: string[];
+  trustSourcesList: string[]; // Old format: "Name|URL" for backward compatibility
+  trustSourcesJSON?: string; // New format: JSON array with id, url, title, type
   trustSourcesSpecs?: TrustSourceSpec[]; // Optional: explicit placeholder mapping with anchor text
   language: string;
   targetAudience: string;
@@ -947,39 +985,56 @@ treat the article as if no commercial link was requested.
 	  ✗ "Click here [A1] to discover more." (generic phrase, not natural)
 
 ================================
-6. EXTERNAL SOURCES (TAVILY)
+6. EXTERNAL SOURCES & REFERENCES
 
-• Use only URLs from [[TRUST_SOURCES_LIST]].
-• 1-3 sources per article, only if they are truly relevant.
-• Each source must support a specific point (definition, number, trend, guideline, case).
-• Integrate each source naturally inside a sentence using placeholders [T1], [T2], [T3].
-• Placeholder format: Use [T1] for the first source, [T2] for the second, [T3] for the third.
-• CRITICAL - Anchor text format (MANDATORY):
-  •	Every external source must appear as a placeholder INSIDE a natural sentence.
-  •	FORBIDDEN: using the full URL as visible text or anchor text.
-  •	FORBIDDEN: long, technical anchor text that harms readability.
-  •	FORBIDDEN: copying the full page title verbatim if it's too long or clunky.
-  •	REQUIRED: use natural anchor text that fits smoothly into the sentence.
-  •	Anchor text format (REQUIRED - VARIABLE LENGTH):
-    •	Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
-    •	Can be a single brand name ("RouteNote", "Spotify", "TikTok").
-    •	Can be a short phrase with 2-3 words ("recent analysis", "industry report", "platform guidelines", "Spotify's blog", "this study").
-    •	Must be a natural part of the sentence describing the source without being verbose.
-    •	DO NOT always use the same length - mix single words with 2-3 word phrases naturally.
-• Vary how you introduce sources. You MUST NOT reuse the same lead-in phrase more than once (for example, do not use "According to…" or "Data from…" multiple times).
-• Improvise to fit the context. Examples of different patterns:
-  •	"A recent breakdown from [T1] shows that…"
-  •	"[T1] reports that…"
-  •	"In an analysis published on [T1], …"
-  •	"Research highlighted on [T1] suggests…"
-  •	"Streaming data from [T1] indicates…"
-  •	"As [T1] explains, …"
-  •	"Findings from [T1] reveal that…"
-  •	"A study featured on [T1] demonstrates…"
-• The source should support your point, not distract from it.
-• Place sources in the first half or middle of the article, not only at the end.
-• Each source should add something concrete: a number, a term, a trend, or a guideline.
-• CRITICAL: The source reference must flow naturally inside the sentence and must not break its structure.
+You receive a pre-filtered list of trusted external sources in [[TRUST_SOURCES_LIST]].
+Each item has:
+- id: "T1" | "T2" | "T3"
+- url
+- title
+- type: "official_platform" | "stats_or_research" | "independent_media"
+These sources are ALREADY validated (no promo-service competitors).
+
+Your rules:
+
+1. Allowed sources
+- You may ONLY reference sources from [[TRUST_SOURCES_LIST]].
+- NEVER invent new brands, URLs, or portals.
+- If [[TRUST_SOURCES_LIST]] is empty, write the article WITHOUT external links.
+
+2. Number of sources
+- Use between 1 and 3 sources in the whole article.
+- It is OK to use only 1–2 if they cover the topic well.
+
+3. Placement rules
+- Integrate sources inside the MAIN BODY of the article (not in the H1 title).
+- Prefer to place sources where you:
+  - mention a definition, statistic, case study, platform rule, or official guideline;
+  - explain how a platform or algorithm behaves.
+- Avoid putting all references in one paragraph. Spread them naturally across the body.
+- Do NOT place [T1]–[T3] in the introduction or final conclusion section.
+
+4. Anchor text & placeholders
+- For each reference, first choose a short, natural anchor (2–5 words), for example:
+  - "Spotify's official guidance"
+  - "a recent industry report"
+  - "RouteNote's breakdown"
+- Then attach the placeholder [T1], [T2], or [T3] after the anchor, matching the correct source from [[TRUST_SOURCES_LIST]].
+- Do NOT use bare URLs as text.
+- Do NOT copy the full page title as anchor.
+- Anchor text length should VARY randomly: sometimes 1 word, sometimes 2-3 words.
+
+Examples of correct usage:
+- "According to Spotify's official guidance [T1], saves and completion now drive most recommendation surfaces."
+- "A recent industry report [T2] shows how independent artists benefit from algorithmic playlists."
+- "Streaming data from a niche analytics platform [T3] highlights how repeat listens predict long-tail growth."
+
+5. Consistency check before final answer
+Before you output the final article, verify:
+- You used at most 3 placeholders [T1]–[T3].
+- Every placeholder corresponds to an existing item in [[TRUST_SOURCES_LIST]].
+- Each placeholder is attached to a short, meaningful anchor phrase (not a URL, not an empty word like "here").
+- References read naturally and are relevant to the surrounding sentence.
 • Placeholders will be replaced with actual anchor links during processing.
 • Examples of CORRECT anchor integration:
   ✓ "A breakdown on [T1] shows how smaller playlists work better." (where [T1] = "RouteNote" - short brand name)
@@ -1253,10 +1308,15 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   
-  // Format trust sources
-  const trustSourcesFormatted = params.trustSourcesList.length > 0 
-    ? params.trustSourcesList.join(", ")
-    : "";
+  // Format trust sources - prefer JSON format if available, otherwise use old format
+  let trustSourcesFormatted = "";
+  if (params.trustSourcesJSON) {
+    // Use new structured JSON format
+    trustSourcesFormatted = params.trustSourcesJSON;
+  } else if (params.trustSourcesList.length > 0) {
+    // Fallback to old "Name|URL" format for backward compatibility
+    trustSourcesFormatted = params.trustSourcesList.join(", ");
+  }
   
   // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
   let placeholderMappingBlock = "";
@@ -1264,10 +1324,24 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
     placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL INSTRUCTIONS FOR USING PLACEHOLDERS:\n• You have ${params.trustSourcesSpecs.length} external source(s) available.\n• Use 1-${params.trustSourcesSpecs.length} of these in your article.\n• When you reference them, DO NOT write any URLs.\n• Instead, insert the placeholders [${params.trustSourcesSpecs.map(ts => ts.id).join('], [')}] directly into the sentence.\n• Each placeholder must be part of a natural sentence, with a short 2-5 word anchor phrase that describes the source.\n• The anchor phrase should match the description provided (e.g., "[T1]" should be used where "${params.trustSourcesSpecs[0]?.text || 'the source'}" would naturally appear).\n• Example: "Research from [T1] indicates that..." (where [T1] represents "${params.trustSourcesSpecs[0]?.text || 'the source'}").\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs - use ONLY the placeholders provided above.\n`;
   }
   
-  // Add explicit verification list with numbered sources
-  const sourcesVerificationBlock = params.trustSourcesList.length > 0
-    ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
-    : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
+  // Build verification block - use JSON format if available
+  let sourcesVerificationBlock = "";
+  if (params.trustSourcesJSON) {
+    // Parse JSON to show structured sources
+    try {
+      const sources = JSON.parse(params.trustSourcesJSON);
+      sourcesVerificationBlock = `\n\nVERIFICATION LIST - Use ONLY these pre-filtered sources (already validated, no competitors):\n${sources.map((s: any, i: number) => `${i + 1}. [${s.id}] ${s.title} (${s.type}) - ${s.url}`).join('\n')}\n\nCRITICAL: These sources are already pre-filtered and validated. You may ONLY use sources from this list. If no sources are relevant to your topic, write the article WITHOUT external links.\n`;
+    } catch (e) {
+      // Fallback if JSON parsing fails
+      sourcesVerificationBlock = params.trustSourcesList.length > 0
+        ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs:\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link, verify that its URL matches EXACTLY one entry above.\n`
+        : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
+    }
+  } else {
+    sourcesVerificationBlock = params.trustSourcesList.length > 0
+      ? `\n\nVERIFICATION LIST - Use ONLY these exact URLs (verify each link before using):\n${params.trustSourcesList.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nCRITICAL: Before using ANY external link in your article, verify that its URL matches EXACTLY one entry above. If it doesn't match, DO NOT use it. If no sources are relevant to your topic, write the article WITHOUT external links.\n`
+      : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
+  }
   
   prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
 

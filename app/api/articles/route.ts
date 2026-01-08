@@ -39,6 +39,11 @@ import {
 } from "@/lib/articleStructure";
 import { filterAndSelectTrustSources, TrustSourceInput } from "@/lib/trustSourceFilter";
 import { humanizeSectionText } from "@/lib/sectionHumanize";
+import { 
+  getTrustedSourcesFromTavily, 
+  type RawSearchResult,
+  type TrustedSource 
+} from "@/lib/sourceClassifier";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -146,54 +151,96 @@ export async function POST(req: Request) {
                              !topic.howAnchorFits;
 
         // ========================================================================
-        // CRITICAL: Filter and select trust sources based on niche and relevance
+        // CRITICAL: Intelligent LLM-based source classification and filtering
         // ========================================================================
-        // Convert trustSourcesList from "Name|URL" format to TrustSourceInput[]
-        const trustSourcesInput: TrustSourceInput[] = trustSourcesList.map((source: string) => {
-          const parts = source.split('|');
-          const url = parts.length > 1 ? parts[1] : parts[0];
-          const title = parts.length > 1 ? parts[0] : `Source ${trustSourcesList.indexOf(source) + 1}`;
-          // Extract snippet if available (Tavily format may include it, but we'll use empty if not)
-          const snippet = parts.length > 2 ? parts[2] : "";
-          return { title, url, snippet };
+        // Convert trustSourcesList from "Name|URL" or "Name|URL|Snippet" format to RawSearchResult[]
+        const rawSources: RawSearchResult[] = trustSourcesList.map((source: string | any) => {
+          // Support both string format ("Name|URL|Snippet") and object format
+          if (typeof source === 'string') {
+            const parts = source.split('|');
+            return {
+              url: parts.length > 1 ? parts[1] : parts[0],
+              title: parts.length > 1 ? parts[0] : `Source ${trustSourcesList.indexOf(source) + 1}`,
+              snippet: parts.length > 2 ? parts[2] : "",
+            };
+          } else {
+            // Object format (for future use)
+            return {
+              url: source.url || "",
+              title: source.title || "",
+              snippet: source.snippet || "",
+              content_preview: source.content_preview || source.snippet || "",
+            };
+          }
         });
 
-        // Build topic brief for filtering
-        const topicBriefForFilter = isDirectMode
-          ? (topic.brief || topic.title)
-          : [
-              topic.brief || "",
-              topic.shortAngle || "",
-              topic.whyNonGeneric || "",
-              topic.howAnchorFits || "",
-            ].filter(Boolean).join("\n\n") || topic.title;
+        // Use LLM-based intelligent classification to filter and rank sources
+        let trustedSources: TrustedSource[] = [];
+        try {
+          trustedSources = await getTrustedSourcesFromTavily(
+            rawSources,
+            topic.title,
+            brief.niche || ""
+          );
+        } catch (error) {
+          console.error("[articles/route] LLM classification failed, falling back to old filter:", error);
+          // Fallback to old filter if LLM classification fails
+          const trustSourcesInput: TrustSourceInput[] = rawSources.map(s => ({
+            title: s.title,
+            url: s.url,
+            snippet: s.snippet || "",
+          }));
+          const topicBriefForFilter = isDirectMode
+            ? (topic.brief || topic.title)
+            : [
+                topic.brief || "",
+                topic.shortAngle || "",
+                topic.whyNonGeneric || "",
+                topic.howAnchorFits || "",
+              ].filter(Boolean).join("\n\n") || topic.title;
+          const filteredTrustSources: TrustSourceSpec[] = filterAndSelectTrustSources(
+            trustSourcesInput,
+            brief.niche || "",
+            topic.title,
+            topicBriefForFilter
+          );
+          // Convert to TrustedSource format for compatibility
+          trustedSources = filteredTrustSources.map(ts => ({
+            id: ts.id as "T1" | "T2" | "T3",
+            url: ts.url,
+            title: ts.text,
+            type: "other" as const, // Old filter doesn't provide type
+            relevance_score: 7, // Default score
+          }));
+        }
 
-        // Filter and select 1-3 trust sources based on niche and relevance
-        const filteredTrustSources: TrustSourceSpec[] = filterAndSelectTrustSources(
-          trustSourcesInput,
-          brief.niche || "",
-          topic.title,
-          topicBriefForFilter
-        );
+        // Convert to format expected by prompt builders
+        // Format: JSON array with id, url, title, type for the prompt
+        const trustSourcesForPrompt = JSON.stringify(trustedSources.map(ts => ({
+          id: ts.id,
+          url: ts.url,
+          title: ts.title,
+          type: ts.type,
+        })), null, 2);
 
-        // Convert filtered sources back to "Name|URL" format for prompt
-        const filteredTrustSourcesList = filteredTrustSources.map(ts => `${ts.text}|${ts.url}`);
+        // Also keep old format for backward compatibility with prompt builders
+        const filteredTrustSourcesList = trustedSources.map(ts => `${ts.title}|${ts.url}`);
 
         // #region agent log
         const filterLog = {
           location: 'articles/route.ts:150',
-          message: 'Trust sources filtered',
+          message: 'Trust sources classified and filtered',
           data: {
             originalCount: trustSourcesList.length,
-            filteredCount: filteredTrustSources.length,
+            filteredCount: trustedSources.length,
             niche: brief.niche || "",
             topicTitle: topic.title,
-            filteredSources: filteredTrustSources.map(ts => ({ id: ts.id, text: ts.text, url: ts.url }))
+            trustedSources: trustedSources.map(ts => ({ id: ts.id, title: ts.title, url: ts.url, type: ts.type }))
           },
           timestamp: Date.now(),
           sessionId: 'debug-session',
           runId: 'articles-api',
-          hypothesisId: 'trust-source-filtering'
+          hypothesisId: 'trust-source-classification'
         };
         debugLog(filterLog);
         // #endregion
@@ -229,8 +276,9 @@ export async function POST(req: Request) {
             anchorUrl: brief.anchorUrl || brief.clientSite || "",
             brandName: brandName,
             keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
-            trustSourcesList: filteredTrustSourcesList, // Use filtered sources
-            trustSourcesSpecs: filteredTrustSources, // Pass TrustSourceSpec[] for explicit placeholder mapping
+            trustSourcesList: filteredTrustSourcesList, // Old format for backward compatibility
+            trustSourcesJSON: trustSourcesForPrompt, // New structured format with types
+            trustSourcesSpecs: trustedSources.map(ts => ({ id: ts.id, text: ts.title, url: ts.url })), // Pass TrustSourceSpec[] for explicit placeholder mapping
             language: brief.language || "English",
             targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
             wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
@@ -280,8 +328,9 @@ export async function POST(req: Request) {
           anchorUrl: brief.anchorUrl || brief.clientSite || "",
           brandName: brandName,
           keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
-          trustSourcesList: filteredTrustSourcesList, // Use filtered sources
-          trustSourcesSpecs: filteredTrustSources, // Pass TrustSourceSpec[] for explicit placeholder mapping
+          trustSourcesList: filteredTrustSourcesList, // Old format for backward compatibility
+          trustSourcesJSON: trustSourcesForPrompt, // New structured format with types
+          trustSourcesSpecs: trustedSources.map(ts => ({ id: ts.id, text: ts.title, url: ts.url })), // Pass TrustSourceSpec[] for explicit placeholder mapping
           language: brief.language || "English",
           targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
           wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
@@ -479,35 +528,42 @@ Language: US English.`;
         let articleStructure: ArticleStructure | null = null;
         let cleanedArticleBodyHtml = "";
         
+        // Convert trustedSources to TrustSourceSpec format for article structure
+        const trustSourcesForStructure: TrustSourceSpec[] = trustedSources.map(ts => ({
+          id: ts.id,
+          text: ts.title, // Use title as anchor text
+          url: ts.url,
+        }));
+
         if (hasBlocksFormat) {
           // BLOCK FORMAT (preferred): deterministic structure -> HTML
-          // Use filtered trust sources (convert to "Name|URL" format for backward compatibility)
-          const filteredTrustSourcesListForStructure = filteredTrustSources.map(ts => `${ts.text}|${ts.url}`);
+          // Use trusted sources (convert to "Name|URL" format for backward compatibility)
+          const trustSourcesListForStructure = trustedSources.map(ts => `${ts.title}|${ts.url}`);
           articleStructure = modelBlocksToArticleStructure(
             parsedResponse.articleBlocks,
             cleanedTitleTag,
             cleanedMetaDescription,
             brief.anchorText,
             brief.anchorUrl || brief.clientSite || "",
-            filteredTrustSourcesListForStructure
+            trustSourcesListForStructure
           );
-          // Override trustSources with filtered ones (to ensure correct anchor text)
-          articleStructure.trustSources = filteredTrustSources;
+          // Override trustSources with trusted ones (to ensure correct anchor text)
+          articleStructure.trustSources = trustSourcesForStructure;
         } else if (hasNewFormat) {
           // PLAIN TEXT FORMAT (fallback): heuristic parsing -> blocks -> HTML
           const articleBodyText = cleanText(parsedResponse.articleBodyText || "");
-          // Use filtered trust sources (convert to "Name|URL" format for backward compatibility)
-          const filteredTrustSourcesListForStructure = filteredTrustSources.map(ts => `${ts.text}|${ts.url}`);
+          // Use trusted sources (convert to "Name|URL" format for backward compatibility)
+          const trustSourcesListForStructure = trustedSources.map(ts => `${ts.title}|${ts.url}`);
           articleStructure = parsePlainTextToStructure(
             articleBodyText,
             cleanedTitleTag,
             cleanedMetaDescription,
             brief.anchorText,
             brief.anchorUrl || brief.clientSite || "",
-            filteredTrustSourcesListForStructure
+            trustSourcesListForStructure
           );
-          // Override trustSources with filtered ones (to ensure correct anchor text)
-          articleStructure.trustSources = filteredTrustSources;
+          // Override trustSources with trusted ones (to ensure correct anchor text)
+          articleStructure.trustSources = trustSourcesForStructure;
         }
 
         if (articleStructure) {
