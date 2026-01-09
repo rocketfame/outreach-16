@@ -1022,12 +1022,37 @@ Language: US English.`;
                             
                             // Restore placeholders after humanization
                             let restoredText = result.humanizedText;
+                            const tokensBeforeRestore = Array.from(placeholderMap.keys());
+                            const placeholdersBeforeRestore = Array.from(placeholderMap.values());
+                            
                             placeholderMap.forEach((placeholder, token) => {
+                              const beforeReplace = restoredText.includes(token);
                               restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                              const afterReplace = restoredText.includes(placeholder);
+                              
+                              if (!beforeReplace && placeholderMap.size > 0) {
+                                console.warn(`[articles-api] Token ${token} not found in humanized text for list item. Original placeholder: ${placeholder}`);
+                              }
+                              if (!afterReplace) {
+                                console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in list item`);
+                              }
                             });
+                            
+                            // Verify placeholders are restored
+                            const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
+                            if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
+                              console.warn(`[articles-api] Placeholder count mismatch in list item: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
+                            }
                             
                             // Clean invisible characters AFTER humanization (in case API returns them)
                             const finalText = cleanText(restoredText);
+                            
+                            // Final verification after cleanText
+                            const finalPlaceholders = (finalText.match(/\[([AT][1-3])\]/g) || []).length;
+                            if (finalPlaceholders !== placeholdersBeforeRestore.length) {
+                              console.error(`[articles-api] Placeholders lost after cleanText in list item: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}`);
+                            }
+                            
                             return { ...item, text: finalText };
                           } catch {
                             return item;
@@ -1068,12 +1093,35 @@ Language: US English.`;
                           
                           // Restore placeholders after humanization
                           let restoredText = result.humanizedText;
+                          const placeholdersBeforeRestore = Array.from(placeholderMap.values());
+                          
                           placeholderMap.forEach((placeholder, token) => {
+                            const beforeReplace = restoredText.includes(token);
                             restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                            const afterReplace = restoredText.includes(placeholder);
+                            
+                            if (!beforeReplace && placeholderMap.size > 0) {
+                              console.warn(`[articles-api] Token ${token} not found in humanized text for table caption. Original placeholder: ${placeholder}`);
+                            }
+                            if (!afterReplace) {
+                              console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in table caption`);
+                            }
                           });
+                          
+                          // Verify placeholders are restored
+                          const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
+                          if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
+                            console.warn(`[articles-api] Placeholder count mismatch in table caption: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
+                          }
                           
                           // Clean invisible characters AFTER humanization
                           caption = cleanText(restoredText);
+                          
+                          // Final verification after cleanText
+                          const finalPlaceholders = (caption.match(/\[([AT][1-3])\]/g) || []).length;
+                          if (finalPlaceholders !== placeholdersBeforeRestore.length) {
+                            console.error(`[articles-api] Placeholders lost after cleanText in table caption: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}`);
+                          }
                           tableWordsUsed += result.wordsUsed;
                         } catch {
                           // keep original
@@ -1111,12 +1159,37 @@ Language: US English.`;
                                 
                                 // Restore placeholders after humanization
                                 let restoredText = result.humanizedText;
+                                const placeholdersBeforeRestore = Array.from(placeholderMap.values());
+                                
                                 placeholderMap.forEach((placeholder, token) => {
+                                  const beforeReplace = restoredText.includes(token);
                                   restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                  const afterReplace = restoredText.includes(placeholder);
+                                  
+                                  if (!beforeReplace && placeholderMap.size > 0) {
+                                    console.warn(`[articles-api] Token ${token} not found in humanized text for table cell. Original placeholder: ${placeholder}`);
+                                  }
+                                  if (!afterReplace) {
+                                    console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in table cell`);
+                                  }
                                 });
                                 
+                                // Verify placeholders are restored
+                                const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
+                                if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
+                                  console.warn(`[articles-api] Placeholder count mismatch in table cell: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
+                                }
+                                
                                 // Clean invisible characters AFTER humanization
-                                return cleanText(restoredText);
+                                const finalText = cleanText(restoredText);
+                                
+                                // Final verification after cleanText
+                                const finalPlaceholders = (finalText.match(/\[([AT][1-3])\]/g) || []).length;
+                                if (finalPlaceholders !== placeholdersBeforeRestore.length) {
+                                  console.error(`[articles-api] Placeholders lost after cleanText in table cell: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}`);
+                                }
+                                
+                                return finalText;
                               } catch {
                                 return cell;
                               }
@@ -1162,12 +1235,36 @@ Language: US English.`;
                       
                       // Restore placeholders after humanization
                       let restoredText = result.humanizedText;
+                      const placeholdersBeforeRestore = Array.from(placeholderMap.values());
+                      
                       placeholderMap.forEach((placeholder, token) => {
+                        const beforeReplace = restoredText.includes(token);
                         restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                        const afterReplace = restoredText.includes(placeholder);
+                        
+                        if (!beforeReplace && placeholderMap.size > 0) {
+                          console.warn(`[articles-api] Token ${token} not found in humanized text for paragraph. Original placeholder: ${placeholder}`);
+                        }
+                        if (!afterReplace) {
+                          console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in paragraph`);
+                        }
                       });
+                      
+                      // Verify placeholders are restored
+                      const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
+                      if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
+                        console.warn(`[articles-api] Placeholder count mismatch in paragraph: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
+                      }
                       
                       // Clean invisible characters AFTER humanization (in case API returns them)
                       const finalText = cleanText(restoredText);
+                      
+                      // Final verification after cleanText
+                      const finalPlaceholders = (finalText.match(/\[([AT][1-3])\]/g) || []).length;
+                      if (finalPlaceholders !== placeholdersBeforeRestore.length) {
+                        console.error(`[articles-api] Placeholders lost after cleanText in paragraph: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}. Block text preview: ${finalText.substring(0, 200)}`);
+                      }
+                      
                       return { ...block, text: finalText };
                     } catch {
                       return block;
