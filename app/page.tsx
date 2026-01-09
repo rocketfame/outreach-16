@@ -5031,13 +5031,6 @@ export default function Home() {
                                 <p className="article-title-tag">{titleTag}</p>
                               )}
                               
-                              {/* Article Summary - plain text, not bold */}
-                              {articleSummary && (
-                                <p className="article-summary-text">
-                                  <span className="article-summary-label">Summary: </span>
-                                  {articleSummary}
-                                </p>
-                              )}
                               
                               {article && article.status === "ready" && (
                                 <div className="article-meta">
@@ -5073,12 +5066,6 @@ export default function Home() {
                           
                           {article && article.status === "ready" ? (
                             <div className="article-result-content">
-                              {/* Article Preview */}
-                              {/* Article Preview - plain text only, no bold formatting */}
-                              <div className="article-summary-box">
-                                <p className="article-preview-text">{getArticlePreview(article)}</p>
-                              </div>
-
                               {/* Action Buttons */}
                               <div className="article-actions">
                                 <button
@@ -5110,50 +5097,52 @@ export default function Home() {
                                       return;
                                     }
                                     
-                                    // Get title and meta description
-                                    const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
-                                    const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
-                                    
-                                    // Build complete HTML with title tag and meta description (exclude H1 from body)
-                                    // Remove any H1 tags from body HTML (they're not titleTag, they're article headings)
-                                    const bodyHtml = html.replace(/<h1[^>]*>.*?<\/h1>/gi, '');
-                                    let fullHtml = '';
-                                    if (titleTag) {
-                                      fullHtml += `<h1>${titleTag}</h1>\n`;
-                                    }
-                                    if (metaDescription) {
-                                      fullHtml += `<p><em>${metaDescription}</em></p>\n`;
-                                    }
-                                    fullHtml += bodyHtml;
-                                    
-                                    // Create plain text fallback with title and meta description
-                                    const temp = document.createElement('div');
-                                    temp.innerHTML = fullHtml;
-                                    let plain = temp.textContent ?? temp.innerText ?? '';
-                                    
-                                    // Also build plain text manually to ensure proper formatting
-                                    // Format: Title tag (if exists), Meta description (if exists), then body
+                                    // Build complete text with: internal title, Title tag (label + value), Meta description (label + value), Article body
                                     const plainParts: string[] = [];
                                     
-                                    // Add title tag if exists
+                                    // Get internal document title (topicTitle)
+                                    const internalTitle = topicTitle || article.titleTag || topicId;
+                                    if (internalTitle) {
+                                      plainParts.push(internalTitle);
+                                      plainParts.push('');
+                                    }
+                                    
+                                    // Add Title tag section (label + value)
+                                    const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
                                     if (titleTag) {
+                                      plainParts.push('Title tag');
                                       plainParts.push(titleTag);
                                       plainParts.push('');
                                     }
                                     
-                                    // Add meta description if exists
+                                    // Add Meta description section (label + value)
+                                    const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
                                     if (metaDescription) {
+                                      plainParts.push('Meta description');
                                       plainParts.push(metaDescription);
                                       plainParts.push('');
                                     }
                                     
-                                    // Get plain text from body (exclude any H1 tags - they're not titleTag)
+                                    // Get article body (keep H1 - it's part of the article)
                                     const bodyTemp = document.createElement('div');
-                                    bodyTemp.innerHTML = bodyHtml; // Use bodyHtml which already has H1 removed
+                                    bodyTemp.innerHTML = html;
                                     const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
                                     plainParts.push(bodyPlain);
                                     
-                                    plain = plainParts.join('\n');
+                                    const plain = plainParts.join('\n');
+                                    
+                                    // Build HTML version too
+                                    let fullHtml = '';
+                                    if (internalTitle) {
+                                      fullHtml += `<h1>${internalTitle}</h1>\n`;
+                                    }
+                                    if (titleTag) {
+                                      fullHtml += `<p><strong>Title tag</strong></p>\n<p>${titleTag}</p>\n`;
+                                    }
+                                    if (metaDescription) {
+                                      fullHtml += `<p><strong>Meta description</strong></p>\n<p>${metaDescription}</p>\n`;
+                                    }
+                                    fullHtml += html;
 
                                     try {
                                       if (navigator.clipboard && (window as any).ClipboardItem) {
@@ -5220,75 +5209,128 @@ export default function Home() {
                                         throw new Error("No article content available");
                                       }
                                       
-                                      // Get title and meta description
-                                      const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
-                                      const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
-                                      
-                                      // Build complete HTML with title tag and meta description (exclude H1 from body)
-                                      // Remove any H1 tags from body HTML (they're not titleTag, they're article headings)
-                                      const bodyHtml = html.replace(/<h1[^>]*>.*?<\/h1>/gi, '');
-                                      let fullHtml = '';
-                                      if (titleTag) {
-                                        fullHtml += `<h1>${titleTag}</h1>\n`;
-                                      }
-                                      if (metaDescription) {
-                                        fullHtml += `<p><em>${metaDescription}</em></p>\n`;
-                                      }
-                                      fullHtml += bodyHtml;
-                                      
+                                      // Copy everything from the modal: internal title, labels with values, and article body
                                       // Try to find the rendered article in the modal if it's open
                                       let articleElement: HTMLElement | null = null;
                                       if (isViewing && viewingArticle === topicId) {
                                         const modal = document.querySelector('.article-view-modal');
                                         if (modal) {
-                                          // Get only the article body text (exclude title, date, and meta sections)
-                                          const bodyElement = modal.querySelector('.article-view-text') as HTMLElement;
-                                          if (bodyElement) {
-                                            // Create a new container with title tag, meta description, and body
-                                            const container = document.createElement('div');
-                                            
-                                            // Add title tag if exists
-                                            if (titleTag) {
-                                              const titleEl = document.createElement('h1');
-                                              titleEl.textContent = titleTag;
-                                              container.appendChild(titleEl);
-                                            }
-                                            
-                                            // Add meta description if exists
-                                            if (metaDescription) {
-                                              const metaEl = document.createElement('p');
-                                              metaEl.innerHTML = `<em>${metaDescription}</em>`;
-                                              container.appendChild(metaEl);
-                                            }
-                                            
-                                            // Clone and add body content (exclude any H1 that might be in the body)
-                                            const bodyClone = bodyElement.cloneNode(true) as HTMLElement;
-                                            // Remove any H1 tags from body (they're not titleTag)
-                                            const h1Tags = bodyClone.querySelectorAll('h1');
-                                            h1Tags.forEach(h1 => h1.remove());
-                                            container.appendChild(bodyClone);
-                                            
-                                            articleElement = container;
+                                          // Get internal document title (the big title at the top)
+                                          const internalTitleEl = modal.querySelector('.article-view-title') as HTMLElement;
+                                          const internalTitle = internalTitleEl ? internalTitleEl.textContent?.trim() || '' : '';
+                                          
+                                          // Get Title tag section (label + value)
+                                          const titleTagSection = modal.querySelector('.article-meta-section');
+                                          let titleTagLabel = '';
+                                          let titleTagValue = '';
+                                          if (titleTagSection) {
+                                            const labelEl = titleTagSection.querySelector('.article-meta-label');
+                                            const valueEl = titleTagSection.querySelector('.article-meta-value');
+                                            titleTagLabel = labelEl?.textContent?.trim() || '';
+                                            titleTagValue = valueEl?.textContent?.trim() || '';
                                           }
+                                          
+                                          // Get Meta description section (label + value)
+                                          const metaSections = modal.querySelectorAll('.article-meta-section');
+                                          let metaLabel = '';
+                                          let metaValue = '';
+                                          metaSections.forEach((section) => {
+                                            const labelEl = section.querySelector('.article-meta-label');
+                                            const labelText = labelEl?.textContent?.trim() || '';
+                                            if (labelText.toLowerCase().includes('meta description')) {
+                                              metaLabel = labelText;
+                                              const valueEl = section.querySelector('.article-meta-value');
+                                              metaValue = valueEl?.textContent?.trim() || '';
+                                            }
+                                          });
+                                          
+                                          // Get article body
+                                          const bodyElement = modal.querySelector('.article-view-text') as HTMLElement;
+                                          
+                                          // Create container with all content
+                                          const container = document.createElement('div');
+                                          
+                                          // Add internal document title
+                                          if (internalTitle) {
+                                            const titleEl = document.createElement('h1');
+                                            titleEl.textContent = internalTitle;
+                                            container.appendChild(titleEl);
+                                          }
+                                          
+                                          // Add Title tag section (label + value)
+                                          if (titleTagLabel && titleTagValue) {
+                                            const labelEl = document.createElement('p');
+                                            labelEl.textContent = titleTagLabel;
+                                            labelEl.style.fontWeight = '600';
+                                            container.appendChild(labelEl);
+                                            const valueEl = document.createElement('p');
+                                            valueEl.textContent = titleTagValue;
+                                            container.appendChild(valueEl);
+                                          }
+                                          
+                                          // Add Meta description section (label + value)
+                                          if (metaLabel && metaValue) {
+                                            const labelEl = document.createElement('p');
+                                            labelEl.textContent = metaLabel;
+                                            labelEl.style.fontWeight = '600';
+                                            container.appendChild(labelEl);
+                                            const valueEl = document.createElement('p');
+                                            valueEl.textContent = metaValue;
+                                            container.appendChild(valueEl);
+                                          }
+                                          
+                                          // Add article body (keep H1 - it's part of the article)
+                                          if (bodyElement) {
+                                            const bodyClone = bodyElement.cloneNode(true) as HTMLElement;
+                                            container.appendChild(bodyClone);
+                                          }
+                                          
+                                          articleElement = container;
                                         }
                                       }
                                       
-                                      // If not found in modal, create a temporary element from HTML
+                                      // If not found in modal, build from article data
                                       if (!articleElement) {
-                                        const temp = document.createElement('div');
-                                        // Build HTML with title tag, meta description, and body (no H1 from body)
-                                        let cleanHtml = '';
+                                        const container = document.createElement('div');
+                                        
+                                        // Get internal document title
+                                        const internalTitle = topicTitle || article.titleTag || topicId;
+                                        if (internalTitle) {
+                                          const titleEl = document.createElement('h1');
+                                          titleEl.textContent = internalTitle;
+                                          container.appendChild(titleEl);
+                                        }
+                                        
+                                        // Add Title tag section (label + value)
+                                        const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
                                         if (titleTag) {
-                                          cleanHtml += `<h1>${titleTag}</h1>\n`;
+                                          const labelEl = document.createElement('p');
+                                          labelEl.textContent = 'Title tag';
+                                          labelEl.style.fontWeight = '600';
+                                          container.appendChild(labelEl);
+                                          const valueEl = document.createElement('p');
+                                          valueEl.textContent = titleTag;
+                                          container.appendChild(valueEl);
                                         }
+                                        
+                                        // Add Meta description section (label + value)
+                                        const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
                                         if (metaDescription) {
-                                          cleanHtml += `<p><em>${metaDescription}</em></p>\n`;
+                                          const labelEl = document.createElement('p');
+                                          labelEl.textContent = 'Meta description';
+                                          labelEl.style.fontWeight = '600';
+                                          container.appendChild(labelEl);
+                                          const valueEl = document.createElement('p');
+                                          valueEl.textContent = metaDescription;
+                                          container.appendChild(valueEl);
                                         }
-                                        // Remove any H1 tags from body HTML (they're not titleTag)
-                                        const bodyHtml = html.replace(/<h1[^>]*>.*?<\/h1>/gi, '');
-                                        cleanHtml += bodyHtml;
-                                        temp.innerHTML = cleanHtml;
-                                        articleElement = temp;
+                                        
+                                        // Add article body (keep H1 - it's part of the article)
+                                        const bodyTemp = document.createElement('div');
+                                        bodyTemp.innerHTML = html;
+                                        container.appendChild(bodyTemp);
+                                        
+                                        articleElement = container;
                                       }
                                       
                                       if (articleElement) {
@@ -5420,50 +5462,87 @@ export default function Home() {
                                               return;
                                             }
                                             
-                                            // Get title and meta description
-                                            const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
-                                            const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
-                                            
-                                            // Build complete HTML with title tag and meta description (exclude H1 from body)
-                                            // Remove any H1 tags from body HTML (they're not titleTag, they're article headings)
-                                            const bodyHtml = html.replace(/<h1[^>]*>.*?<\/h1>/gi, '');
-                                            let fullHtml = '';
-                                            if (titleTag) {
-                                              fullHtml += `<h1>${titleTag}</h1>\n`;
+                                            // Copy everything from the modal: internal title, labels with values, and article body
+                                            const modal = document.querySelector('.article-view-modal');
+                                            if (!modal) {
+                                              throw new Error("Modal not found");
                                             }
-                                            if (metaDescription) {
-                                              fullHtml += `<p><em>${metaDescription}</em></p>\n`;
+                                            
+                                            // Get internal document title (the big title at the top)
+                                            const internalTitleEl = modal.querySelector('.article-view-title') as HTMLElement;
+                                            const internalTitle = internalTitleEl ? internalTitleEl.textContent?.trim() || '' : '';
+                                            
+                                            // Get Title tag section (label + value)
+                                            const titleTagSection = modal.querySelector('.article-meta-section');
+                                            let titleTagLabel = '';
+                                            let titleTagValue = '';
+                                            if (titleTagSection) {
+                                              const labelEl = titleTagSection.querySelector('.article-meta-label');
+                                              const valueEl = titleTagSection.querySelector('.article-meta-value');
+                                              titleTagLabel = labelEl?.textContent?.trim() || '';
+                                              titleTagValue = valueEl?.textContent?.trim() || '';
                                             }
-                                            fullHtml += bodyHtml;
                                             
-                                            // Create plain text fallback with title and meta description
-                                            const temp = document.createElement('div');
-                                            temp.innerHTML = fullHtml;
-                                            let plain = temp.textContent ?? temp.innerText ?? '';
+                                            // Get Meta description section (label + value)
+                                            const metaSections = modal.querySelectorAll('.article-meta-section');
+                                            let metaLabel = '';
+                                            let metaValue = '';
+                                            metaSections.forEach((section) => {
+                                              const labelEl = section.querySelector('.article-meta-label');
+                                              const labelText = labelEl?.textContent?.trim() || '';
+                                              if (labelText.toLowerCase().includes('meta description')) {
+                                                metaLabel = labelText;
+                                                const valueEl = section.querySelector('.article-meta-value');
+                                                metaValue = valueEl?.textContent?.trim() || '';
+                                              }
+                                            });
                                             
-                                            // Also build plain text manually to ensure proper formatting
-                                            // Format: Title tag (if exists), Meta description (if exists), then body
+                                            // Get article body
+                                            const bodyElement = modal.querySelector('.article-view-text') as HTMLElement;
+                                            const bodyText = bodyElement ? extractPlainTextFromElement(bodyElement) : '';
+                                            
+                                            // Build complete text with all sections
                                             const plainParts: string[] = [];
                                             
-                                            // Add title tag if exists
-                                            if (titleTag) {
-                                              plainParts.push(titleTag);
+                                            // Add internal document title
+                                            if (internalTitle) {
+                                              plainParts.push(internalTitle);
                                               plainParts.push('');
                                             }
                                             
-                                            // Add meta description if exists
-                                            if (metaDescription) {
-                                              plainParts.push(metaDescription);
+                                            // Add Title tag section (label + value)
+                                            if (titleTagLabel && titleTagValue) {
+                                              plainParts.push(titleTagLabel);
+                                              plainParts.push(titleTagValue);
                                               plainParts.push('');
                                             }
                                             
-                                            // Get plain text from body (exclude any H1 tags - they're not titleTag)
-                                            const bodyTemp = document.createElement('div');
-                                            bodyTemp.innerHTML = bodyHtml; // Use bodyHtml which already has H1 removed
-                                            const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
-                                            plainParts.push(bodyPlain);
+                                            // Add Meta description section (label + value)
+                                            if (metaLabel && metaValue) {
+                                              plainParts.push(metaLabel);
+                                              plainParts.push(metaValue);
+                                              plainParts.push('');
+                                            }
                                             
-                                            plain = plainParts.join('\n');
+                                            // Add article body
+                                            if (bodyText) {
+                                              plainParts.push(bodyText);
+                                            }
+                                            
+                                            const plain = plainParts.join('\n');
+                                            
+                                            // Build HTML version
+                                            let fullHtml = '';
+                                            if (internalTitle) {
+                                              fullHtml += `<h1>${internalTitle}</h1>\n`;
+                                            }
+                                            if (titleTagLabel && titleTagValue) {
+                                              fullHtml += `<p><strong>${titleTagLabel}</strong></p>\n<p>${titleTagValue}</p>\n`;
+                                            }
+                                            if (metaLabel && metaValue) {
+                                              fullHtml += `<p><strong>${metaLabel}</strong></p>\n<p>${metaValue}</p>\n`;
+                                            }
+                                            fullHtml += html;
 
                                             try {
                                               if (navigator.clipboard && (window as any).ClipboardItem) {
@@ -5500,37 +5579,73 @@ export default function Home() {
                                           title="Copy article text with clean paragraphs for AI checkers"
                                           onClick={async () => {
                                             try {
-                                              // Get title and meta description
-                                              const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
-                                              const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
+                                              // Copy everything from the modal: internal title, labels with values, and article body
+                                              // Find the modal and extract all content
+                                              const modal = document.querySelector('.article-view-modal');
+                                              if (!modal) {
+                                                throw new Error("Modal not found");
+                                              }
                                               
-                                              // Build text manually to ensure we only copy: Title tag, Meta description, Article body
-                                              // Do NOT include internal document title, creation date, or section labels
+                                              // Get internal document title (the big title at the top)
+                                              const internalTitleEl = modal.querySelector('.article-view-title') as HTMLElement;
+                                              const internalTitle = internalTitleEl ? internalTitleEl.textContent?.trim() || '' : '';
+                                              
+                                              // Get Title tag section (label + value)
+                                              const titleTagSection = modal.querySelector('.article-meta-section');
+                                              let titleTagLabel = '';
+                                              let titleTagValue = '';
+                                              if (titleTagSection) {
+                                                const labelEl = titleTagSection.querySelector('.article-meta-label');
+                                                const valueEl = titleTagSection.querySelector('.article-meta-value');
+                                                titleTagLabel = labelEl?.textContent?.trim() || '';
+                                                titleTagValue = valueEl?.textContent?.trim() || '';
+                                              }
+                                              
+                                              // Get Meta description section (label + value)
+                                              const metaSections = modal.querySelectorAll('.article-meta-section');
+                                              let metaLabel = '';
+                                              let metaValue = '';
+                                              metaSections.forEach((section) => {
+                                                const labelEl = section.querySelector('.article-meta-label');
+                                                const labelText = labelEl?.textContent?.trim() || '';
+                                                if (labelText.toLowerCase().includes('meta description')) {
+                                                  metaLabel = labelText;
+                                                  const valueEl = section.querySelector('.article-meta-value');
+                                                  metaValue = valueEl?.textContent?.trim() || '';
+                                                }
+                                              });
+                                              
+                                              // Get article body
+                                              const bodyElement = modal.querySelector('.article-view-text') as HTMLElement;
+                                              const bodyText = bodyElement ? extractPlainTextFromElement(bodyElement) : '';
+                                              
+                                              // Build complete text with all sections
                                               const plainParts: string[] = [];
                                               
-                                              // Add title tag if exists (this is the SEO title, not the internal document title)
-                                              if (titleTag) {
-                                                plainParts.push(titleTag);
+                                              // Add internal document title
+                                              if (internalTitle) {
+                                                plainParts.push(internalTitle);
                                                 plainParts.push('');
                                               }
                                               
-                                              // Add meta description if exists
-                                              if (metaDescription) {
-                                                plainParts.push(metaDescription);
+                                              // Add Title tag section (label + value)
+                                              if (titleTagLabel && titleTagValue) {
+                                                plainParts.push(titleTagLabel);
+                                                plainParts.push(titleTagValue);
                                                 plainParts.push('');
                                               }
                                               
-                                              // Get article body text (exclude any H1 tags - they're not titleTag)
-                                              const html = article.articleBodyHtml || article.fullArticleText || article.editedText || "";
-                                              const bodyHtml = html.replace(/<h1[^>]*>.*?<\/h1>/gi, '');
+                                              // Add Meta description section (label + value)
+                                              if (metaLabel && metaValue) {
+                                                plainParts.push(metaLabel);
+                                                plainParts.push(metaValue);
+                                                plainParts.push('');
+                                              }
                                               
-                                              // Extract plain text from body HTML
-                                              const bodyTemp = document.createElement('div');
-                                              bodyTemp.innerHTML = bodyHtml;
-                                              const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
-                                              
-                                              // Add body text
-                                              plainParts.push(bodyPlain);
+                                              // Add article body
+                                              if (bodyText) {
+                                                plainParts.push(bodyText);
+                                              }
                                               
                                               const plain = plainParts.join('\n');
                                               
