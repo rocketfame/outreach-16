@@ -1011,7 +1011,8 @@ Language: US English.`;
                             
                             while ((match = placeholderPattern.exec(cleanedText)) !== null) {
                               const placeholder = match[0]; // [A1], [T1], etc.
-                              const token = `__PLACEHOLDER_${tokenIndex}__`;
+                              // Use more robust token that looks like a real word/term (AIHumanize is less likely to modify it)
+                              const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
                               placeholderMap.set(token, placeholder);
                               protectedText = protectedText.replace(placeholder, token);
                               tokenIndex++;
@@ -1026,8 +1027,36 @@ Language: US English.`;
                             const placeholdersBeforeRestore = Array.from(placeholderMap.values());
                             
                             placeholderMap.forEach((placeholder, token) => {
-                              const beforeReplace = restoredText.includes(token);
-                              restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                              // Try exact match first
+                              let beforeReplace = restoredText.includes(token);
+                              
+                              // Fallback: try variations if exact match fails (AIHumanize might modify the token)
+                              if (!beforeReplace) {
+                                // Try variations: without underscores, with spaces, with different casing
+                                const variations = [
+                                  token.replace(/_/g, ''),
+                                  token.replace(/_/g, ' '),
+                                  token.toLowerCase(),
+                                  token.toUpperCase(),
+                                  token.replace(/LINKREF/g, 'LINKREF'),
+                                  // Try partial matches (in case only part was modified)
+                                  token.substring(0, token.length - 2),
+                                  token.substring(0, token.length - 1),
+                                ];
+                                
+                                for (const variant of variations) {
+                                  if (restoredText.includes(variant)) {
+                                    restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                    beforeReplace = true;
+                                    console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder}, restored successfully`);
+                                    break;
+                                  }
+                                }
+                              } else {
+                                // Exact match found, replace normally
+                                restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                              }
+                              
                               const afterReplace = restoredText.includes(placeholder);
                               
                               if (!beforeReplace && placeholderMap.size > 0) {
@@ -1083,7 +1112,7 @@ Language: US English.`;
                           
                           while ((match = placeholderPattern.exec(cleanedCaption)) !== null) {
                             const placeholder = match[0];
-                            const token = `__PLACEHOLDER_${tokenIndex}__`;
+                            const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
                             placeholderMap.set(token, placeholder);
                             protectedText = protectedText.replace(placeholder, token);
                             tokenIndex++;
@@ -1096,8 +1125,30 @@ Language: US English.`;
                           const placeholdersBeforeRestore = Array.from(placeholderMap.values());
                           
                           placeholderMap.forEach((placeholder, token) => {
-                            const beforeReplace = restoredText.includes(token);
-                            restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                            let beforeReplace = restoredText.includes(token);
+                            
+                            if (!beforeReplace) {
+                              const variations = [
+                                token.replace(/_/g, ''),
+                                token.replace(/_/g, ' '),
+                                token.toLowerCase(),
+                                token.toUpperCase(),
+                                token.substring(0, token.length - 2),
+                                token.substring(0, token.length - 1),
+                              ];
+                              
+                              for (const variant of variations) {
+                                if (restoredText.includes(variant)) {
+                                  restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                  beforeReplace = true;
+                                  console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder} in caption, restored successfully`);
+                                  break;
+                                }
+                              }
+                            } else {
+                              restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                            }
+                            
                             const afterReplace = restoredText.includes(placeholder);
                             
                             if (!beforeReplace && placeholderMap.size > 0) {
@@ -1148,7 +1199,7 @@ Language: US English.`;
                                 
                                 while ((match = placeholderPattern.exec(cleanedCell)) !== null) {
                                   const placeholder = match[0];
-                                  const token = `__PLACEHOLDER_${tokenIndex}__`;
+                                  const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
                                   placeholderMap.set(token, placeholder);
                                   protectedText = protectedText.replace(placeholder, token);
                                   tokenIndex++;
@@ -1162,8 +1213,30 @@ Language: US English.`;
                                 const placeholdersBeforeRestore = Array.from(placeholderMap.values());
                                 
                                 placeholderMap.forEach((placeholder, token) => {
-                                  const beforeReplace = restoredText.includes(token);
-                                  restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                  let beforeReplace = restoredText.includes(token);
+                                  
+                                  if (!beforeReplace) {
+                                    const variations = [
+                                      token.replace(/_/g, ''),
+                                      token.replace(/_/g, ' '),
+                                      token.toLowerCase(),
+                                      token.toUpperCase(),
+                                      token.substring(0, token.length - 2),
+                                      token.substring(0, token.length - 1),
+                                    ];
+                                    
+                                    for (const variant of variations) {
+                                      if (restoredText.includes(variant)) {
+                                        restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                        beforeReplace = true;
+                                        console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder} in table cell, restored successfully`);
+                                        break;
+                                      }
+                                    }
+                                  } else {
+                                    restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                  }
+                                  
                                   const afterReplace = restoredText.includes(placeholder);
                                   
                                   if (!beforeReplace && placeholderMap.size > 0) {
@@ -1224,7 +1297,8 @@ Language: US English.`;
                       
                       while ((match = placeholderPattern.exec(cleanedText)) !== null) {
                         const placeholder = match[0]; // [A1], [T1], etc.
-                        const token = `__PLACEHOLDER_${tokenIndex}__`;
+                        // Use more robust token that looks like a real word/term (AIHumanize is less likely to modify it)
+                        const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
                         placeholderMap.set(token, placeholder);
                         protectedText = protectedText.replace(placeholder, token);
                         tokenIndex++;
@@ -1238,8 +1312,37 @@ Language: US English.`;
                       const placeholdersBeforeRestore = Array.from(placeholderMap.values());
                       
                       placeholderMap.forEach((placeholder, token) => {
-                        const beforeReplace = restoredText.includes(token);
-                        restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                        // Try exact match first
+                        let beforeReplace = restoredText.includes(token);
+                        
+                        // Fallback: try variations if exact match fails (AIHumanize might modify the token)
+                        if (!beforeReplace) {
+                          // Try variations: without underscores, with spaces, with different casing, partial matches
+                          const variations = [
+                            token.replace(/_/g, ''),
+                            token.replace(/_/g, ' '),
+                            token.toLowerCase(),
+                            token.toUpperCase(),
+                            token.substring(0, token.length - 2),
+                            token.substring(0, token.length - 1),
+                            // Try to find partial token (in case AIHumanize removed part of it)
+                            token.replace(/LINKREF/g, 'LINK'),
+                            token.replace(/LINKREF/g, 'REF'),
+                          ];
+                          
+                          for (const variant of variations) {
+                            if (restoredText.includes(variant)) {
+                              restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                              beforeReplace = true;
+                              console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder} in paragraph, restored successfully`);
+                              break;
+                            }
+                          }
+                        } else {
+                          // Exact match found, replace normally
+                          restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                        }
+                        
                         const afterReplace = restoredText.includes(placeholder);
                         
                         if (!beforeReplace && placeholderMap.size > 0) {
