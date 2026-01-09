@@ -1169,6 +1169,7 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   overflow: visible; /* Allow badges to overflow */
   position: relative;
+  gap: 0.5rem; /* Space between content and chevron */
 }
 
 .topic-header-card {
@@ -1324,15 +1325,20 @@ body {
 }
 
 .topic-chevron {
-  display: flex;
+  display: flex !important; /* Force display */
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
   flex-shrink: 0;
   margin-left: auto; /* Push to the right */
-  margin-right: 0.5rem; /* Space before remove button */
+  margin-right: 2.5rem; /* Space before remove button (0.75rem + 28px button width + padding) */
   transition: transform 0.2s ease, color 0.2s ease;
-  z-index: 1; /* Ensure it's above other elements */
+  z-index: 2; /* Ensure it's above other elements */
+  position: relative; /* Ensure it's in the flow */
+  min-width: 16px; /* Ensure minimum width */
+  height: 16px; /* Ensure height */
+  visibility: visible !important; /* Force visibility */
+  opacity: 1 !important; /* Force opacity */
 }
 
 .topic-chevron svg {
@@ -1372,7 +1378,7 @@ body {
   justify-content: center;
   width: 28px;
   height: 28px;
-  z-index: 10;
+  z-index: 10; /* Keep above chevron */
 }
 
 .topic-remove-btn:hover {
