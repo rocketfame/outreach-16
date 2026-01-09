@@ -1373,6 +1373,15 @@ Language: US English.`;
             // #endregion
           }
 
+          // CRITICAL: Log anchors and trustSources before converting to HTML
+          console.log(`[articles-api] Converting blocks to HTML for topic: ${topic.title}`, {
+            anchorsCount: articleStructure.anchors.length,
+            anchors: articleStructure.anchors.map(a => ({ id: a.id, text: a.text, url: a.url })),
+            trustSourcesCount: articleStructure.trustSources.length,
+            trustSources: articleStructure.trustSources.map(t => ({ id: t.id, text: t.text, url: t.url })),
+            blocksCount: articleStructure.blocks.length,
+          });
+          
           // Convert blocks to HTML, fix spacing around tags, remove excessive bold, then clean invisible characters
           cleanedArticleBodyHtml = cleanText(
             removeExcessiveBold(
@@ -1385,6 +1394,15 @@ Language: US English.`;
               )
             )
           );
+          
+          // CRITICAL: Verify that links were actually injected
+          const linkCount = (cleanedArticleBodyHtml.match(/<a\s+[^>]*href/g) || []).length;
+          console.log(`[articles-api] HTML generated for topic: ${topic.title}`, {
+            htmlLength: cleanedArticleBodyHtml.length,
+            linkCount,
+            expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
+            hasLinks: linkCount > 0,
+          });
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
           cleanedArticleBodyHtml = cleanText(
