@@ -4613,6 +4613,7 @@ export default function Home() {
                                 className={`topic-header-card ${isCompleted ? "topic-header-completed" : ""}`}
                                 onClick={() => !isCompleted && toggleClusterExpansion(clusterName)}
                                 disabled={isCompleted}
+                                style={{ paddingRight: '1.5rem' }}
                               >
                                 <div className="topic-header-content">
                                   {/* Top Row: Badges Only - Partially Overflowing */}
@@ -4672,8 +4673,20 @@ export default function Home() {
                                     )}
                                   </div>
                                 </div>
+                              </button>
+                              {/* Action buttons: chevron and remove - aligned on same axis */}
+                              <div className="topic-header-actions">
                                 {!isCompleted && (
-                                  <span className="topic-chevron">
+                                  <button
+                                    type="button"
+                                    className="topic-chevron-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleClusterExpansion(clusterName);
+                                    }}
+                                    title={isExpanded ? "Collapse" : "Expand"}
+                                    aria-label={isExpanded ? "Collapse" : "Expand"}
+                                  >
                                     {isExpanded ? (
                                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M18 15L12 9L6 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -4683,21 +4696,21 @@ export default function Home() {
                                         <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                       </svg>
                                     )}
-                                  </span>
+                                  </button>
                                 )}
-                              </button>
-                              <button
-                                type="button"
-                                className="topic-remove-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeCluster(clusterName);
-                                }}
-                                title="Remove cluster"
-                                aria-label="Remove cluster"
-                              >
-                                ×
-                              </button>
+                                <button
+                                  type="button"
+                                  className="topic-remove-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeCluster(clusterName);
+                                  }}
+                                  title="Remove cluster"
+                                  aria-label="Remove cluster"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             </div>
 
                             {/* Expanded Topics List - Show only first topic */}

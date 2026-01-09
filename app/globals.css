@@ -1324,24 +1324,45 @@ body {
   display: block;
 }
 
-.topic-chevron {
-  display: flex !important; /* Force display */
+/* Action buttons container - chevron and remove button aligned on same axis */
+.topic-header-actions {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  flex-shrink: 0;
-  margin-left: auto; /* Push to the right */
-  margin-right: 2.5rem; /* Space before remove button (0.75rem + 28px button width + padding) */
-  transition: transform 0.2s ease, color 0.2s ease;
-  z-index: 2; /* Ensure it's above other elements */
-  position: relative; /* Ensure it's in the flow */
-  min-width: 16px; /* Ensure minimum width */
-  height: 16px; /* Ensure height */
-  visibility: visible !important; /* Force visibility */
-  opacity: 1 !important; /* Force opacity */
+  gap: 0.5rem;
+  z-index: 10;
 }
 
-.topic-chevron svg {
+.topic-chevron-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.topic-chevron-btn:hover {
+  opacity: 1;
+  background: rgba(255, 107, 157, 0.08);
+  color: var(--primary);
+}
+
+.topic-chevron-btn:active {
+  transform: scale(0.9);
+}
+
+.topic-chevron-btn svg {
   width: 16px;
   height: 16px;
   stroke: currentColor;
@@ -1349,13 +1370,6 @@ body {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.topic-header-card:hover .topic-chevron {
-  color: var(--primary);
-}
-
-.topic-chevron svg {
   transition: transform 0.2s ease;
 }
 
