@@ -202,13 +202,21 @@ export function injectAnchorsIntoText(
     
     // Now replace placeholder with HTML anchor (already has spaces)
     const beforeReplace = result;
-    result = result.replace(new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), anchorHtml);
+    const placeholderRegex = new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const matchesBefore = (result.match(placeholderRegex) || []).length;
+    
+    result = result.replace(placeholderRegex, anchorHtml);
+    
+    const matchesAfter = (result.match(placeholderRegex) || []).length;
+    const linksAfter = (result.match(new RegExp(`<a[^>]*>.*?</a>`, 'g')) || []).length;
     
     // DEBUG: Verify replacement happened
     if (beforeReplace === result && placeholderExists) {
-      console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}`);
+      console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}, matches before: ${matchesBefore}, text preview: ${result.substring(0, 300)}`);
     } else if (beforeReplace !== result) {
-      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with anchor`);
+      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} (${matchesBefore} matches -> ${matchesAfter} remaining, ${linksAfter} links total)`);
+    } else if (!placeholderExists) {
+      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text, skipping replacement`);
     }
   });
 
@@ -287,13 +295,21 @@ export function injectAnchorsIntoText(
     
     // Now replace placeholder with HTML anchor (already has spaces)
     const beforeReplace = result;
-    result = result.replace(new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), trustHtml);
+    const placeholderRegex = new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const matchesBefore = (result.match(placeholderRegex) || []).length;
+    
+    result = result.replace(placeholderRegex, trustHtml);
+    
+    const matchesAfter = (result.match(placeholderRegex) || []).length;
+    const linksAfter = (result.match(new RegExp(`<a[^>]*>.*?</a>`, 'g')) || []).length;
     
     // DEBUG: Verify replacement happened
     if (beforeReplace === result && placeholderExists) {
-      console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}`);
+      console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}, matches before: ${matchesBefore}, text preview: ${result.substring(0, 300)}`);
     } else if (beforeReplace !== result) {
-      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with trust source link`);
+      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with trust source link (${matchesBefore} matches -> ${matchesAfter} remaining, ${linksAfter} links total)`);
+    } else if (!placeholderExists) {
+      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text, skipping replacement`);
     }
   });
 
