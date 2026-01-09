@@ -4674,8 +4674,20 @@ export default function Home() {
                                   </div>
                                 </div>
                               </button>
-                              {/* Action buttons: chevron and remove - aligned on same axis */}
+                              {/* Action buttons: remove button on top, chevron below */}
                               <div className="topic-header-actions">
+                                <button
+                                  type="button"
+                                  className="topic-remove-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeCluster(clusterName);
+                                  }}
+                                  title="Remove cluster"
+                                  aria-label="Remove cluster"
+                                >
+                                  ×
+                                </button>
                                 {!isCompleted && (
                                   <button
                                     type="button"
@@ -4698,18 +4710,6 @@ export default function Home() {
                                     )}
                                   </button>
                                 )}
-                                <button
-                                  type="button"
-                                  className="topic-remove-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeCluster(clusterName);
-                                  }}
-                                  title="Remove cluster"
-                                  aria-label="Remove cluster"
-                                >
-                                  ×
-                                </button>
                               </div>
                             </div>
 
