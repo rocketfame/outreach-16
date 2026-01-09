@@ -5132,23 +5132,28 @@ export default function Home() {
                                     let plain = temp.textContent ?? temp.innerText ?? '';
                                     
                                     // Also build plain text manually to ensure proper formatting
-                                    if (titleTag || metaDescription) {
-                                      const plainParts: string[] = [];
-                                      if (titleTag) {
-                                        plainParts.push(titleTag);
-                                        plainParts.push('');
-                                      }
-                                      if (metaDescription) {
-                                        plainParts.push(metaDescription);
-                                        plainParts.push('');
-                                      }
-                                      // Get plain text from body
-                                      const bodyTemp = document.createElement('div');
-                                      bodyTemp.innerHTML = html;
-                                      const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
-                                      plainParts.push(bodyPlain);
-                                      plain = plainParts.join('\n');
+                                    // Format: Title tag (if exists), Meta description (if exists), then body
+                                    const plainParts: string[] = [];
+                                    
+                                    // Add title tag if exists
+                                    if (titleTag) {
+                                      plainParts.push(titleTag);
+                                      plainParts.push('');
                                     }
+                                    
+                                    // Add meta description if exists
+                                    if (metaDescription) {
+                                      plainParts.push(metaDescription);
+                                      plainParts.push('');
+                                    }
+                                    
+                                    // Get plain text from body (exclude any H1 tags - they're not titleTag)
+                                    const bodyTemp = document.createElement('div');
+                                    bodyTemp.innerHTML = bodyHtml; // Use bodyHtml which already has H1 removed
+                                    const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
+                                    plainParts.push(bodyPlain);
+                                    
+                                    plain = plainParts.join('\n');
 
                                     try {
                                       if (navigator.clipboard && (window as any).ClipboardItem) {
