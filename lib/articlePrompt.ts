@@ -52,7 +52,7 @@ export interface ArticlePromptParams {
   language: string;
   targetAudience: string;
   wordCount?: string;
-  writingMode?: "seo" | "human"; // Writing mode: "seo" (default) or "human" (editorial style)
+  writingMode?: "seo" | "human" | "editorial"; // Writing mode: "seo" (default), "human" (editorial with humanization), or "editorial" (anti-AI without external humanization)
 }
 
 /**
@@ -887,7 +887,7 @@ export interface DirectArticlePromptParams {
   language: string;
   targetAudience: string;
   wordCount?: string;
-  writingMode?: "seo" | "human"; // Writing mode: "seo" (default) or "human" (editorial style)
+  writingMode?: "seo" | "human" | "editorial"; // Writing mode: "seo" (default), "human" (editorial with humanization), or "editorial" (anti-AI without external humanization)
 }
 
 /**
