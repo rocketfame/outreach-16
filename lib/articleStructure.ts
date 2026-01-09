@@ -202,10 +202,23 @@ export function injectAnchorsIntoText(
     
     // Now replace placeholder with HTML anchor (already has spaces)
     const beforeReplace = result;
-    const placeholderRegex = new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    // CRITICAL: escapedPlaceholder is already escaped, don't escape it again!
+    const placeholderRegex = new RegExp(escapedPlaceholder, 'g');
     const matchesBefore = (result.match(placeholderRegex) || []).length;
     
-    result = result.replace(placeholderRegex, anchorHtml);
+    if (matchesBefore === 0 && placeholderExists) {
+      // Fallback: try with unescaped placeholder (in case escapeHtml changed something)
+      const unescapedRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      const unescapedMatches = (result.match(unescapedRegex) || []).length;
+      if (unescapedMatches > 0) {
+        console.log(`[injectAnchorsIntoText] Using unescaped regex for ${placeholder} (found ${unescapedMatches} matches)`);
+        result = result.replace(unescapedRegex, anchorHtml);
+      } else {
+        console.error(`[injectAnchorsIntoText] CRITICAL: Placeholder ${placeholder} exists in text but regex finds 0 matches! Text sample: ${result.substring(result.indexOf(placeholder) - 50, result.indexOf(placeholder) + 50)}`);
+      }
+    } else {
+      result = result.replace(placeholderRegex, anchorHtml);
+    }
     
     const matchesAfter = (result.match(placeholderRegex) || []).length;
     const linksAfter = (result.match(new RegExp(`<a[^>]*>.*?</a>`, 'g')) || []).length;
@@ -295,10 +308,23 @@ export function injectAnchorsIntoText(
     
     // Now replace placeholder with HTML anchor (already has spaces)
     const beforeReplace = result;
-    const placeholderRegex = new RegExp(escapedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    // CRITICAL: escapedPlaceholder is already escaped, don't escape it again!
+    const placeholderRegex = new RegExp(escapedPlaceholder, 'g');
     const matchesBefore = (result.match(placeholderRegex) || []).length;
     
-    result = result.replace(placeholderRegex, trustHtml);
+    if (matchesBefore === 0 && placeholderExists) {
+      // Fallback: try with unescaped placeholder (in case escapeHtml changed something)
+      const unescapedRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      const unescapedMatches = (result.match(unescapedRegex) || []).length;
+      if (unescapedMatches > 0) {
+        console.log(`[injectAnchorsIntoText] Using unescaped regex for ${placeholder} (found ${unescapedMatches} matches)`);
+        result = result.replace(unescapedRegex, trustHtml);
+      } else {
+        console.error(`[injectAnchorsIntoText] CRITICAL: Placeholder ${placeholder} exists in text but regex finds 0 matches! Text sample: ${result.substring(result.indexOf(placeholder) - 50, result.indexOf(placeholder) + 50)}`);
+      }
+    } else {
+      result = result.replace(placeholderRegex, trustHtml);
+    }
     
     const matchesAfter = (result.match(placeholderRegex) || []).length;
     const linksAfter = (result.match(new RegExp(`<a[^>]*>.*?</a>`, 'g')) || []).length;
