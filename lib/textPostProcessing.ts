@@ -15,6 +15,17 @@ export function cleanInvisibleChars(text: string): string {
   let cleaned = text;
 
   // ========================================
+  // 0. CRITICAL: Replace Line Feed HTML entities FIRST (before any other processing)
+  // HTML entities for U+000A: &#10; &#x0A; &#xa; (case insensitive)
+  // ========================================
+  // Replace HTML numeric entities for Line Feed (U+000A) with space
+  cleaned = cleaned.replace(/&#10;/gi, ' '); // Decimal: &#10;
+  cleaned = cleaned.replace(/&#x0A;/gi, ' '); // Hexadecimal: &#x0A;
+  cleaned = cleaned.replace(/&#xa;/gi, ' '); // Hexadecimal lowercase: &#xa;
+  cleaned = cleaned.replace(/&#X0A;/gi, ' '); // Hexadecimal uppercase: &#X0A;
+  cleaned = cleaned.replace(/&#XA;/gi, ' '); // Hexadecimal uppercase: &#XA;
+
+  // ========================================
   // 1. REMOVE all invisible characters (completely invisible)
   // ========================================
   
@@ -45,7 +56,7 @@ export function cleanInvisibleChars(text: string): string {
   cleaned = cleaned.replace(/\u00AD/g, ''); // Soft hyphen
   
   // ========================================
-  // CRITICAL: Replace Line Feed (U+000A) FIRST - before any other processing
+  // CRITICAL: Replace Line Feed (U+000A) - after HTML entities are handled
   // According to Originality.ai: Line Feed should be replaced with space
   // This must happen BEFORE converting other separators to \n
   // ========================================
@@ -116,8 +127,12 @@ export function cleanInvisibleChars(text: string): string {
   // Normalize spaces in text content between HTML tags
   // This handles any remaining Line Feeds (U+000A) that might be in text content
   cleaned = cleaned.replace(/>([^<]+)</g, (match, textContent) => {
+    // Replace any remaining LF HTML entities first
+    let normalized = textContent.replace(/&#10;/gi, ' ');
+    normalized = normalized.replace(/&#x0A;/gi, ' ');
+    normalized = normalized.replace(/&#xa;/gi, ' ');
     // Replace any remaining LF characters (U+000A) with space (in case some were missed)
-    let normalized = textContent.replace(/\u000A/g, ' '); // Direct Unicode replacement
+    normalized = normalized.replace(/\u000A/g, ' '); // Direct Unicode replacement
     normalized = normalized.replace(/\n/g, ' '); // Also catch \n escape sequences
     // Normalize multiple spaces to single space
     normalized = normalized.replace(/\s{2,}/g, ' ');
