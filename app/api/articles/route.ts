@@ -1470,36 +1470,87 @@ Language: US English.`;
             // #endregion
           }
 
-          // CRITICAL: Log anchors and trustSources before converting to HTML
+          // CRITICAL: Check for placeholders in blocks BEFORE converting to HTML
+          const allPlaceholdersInBlocks: string[] = [];
+          articleStructure.blocks.forEach(block => {
+            if (block.type === 'ul' || block.type === 'ol') {
+              const listBlock = block as any;
+              (listBlock.items || []).forEach((item: any) => {
+                const matches = item?.text?.match(/\[([AT][1-3])\]/g);
+                if (matches) allPlaceholdersInBlocks.push(...matches);
+              });
+            } else if (block.type === 'table') {
+              const tableBlock = block as any;
+              if (tableBlock.caption) {
+                const matches = tableBlock.caption.match(/\[([AT][1-3])\]/g);
+                if (matches) allPlaceholdersInBlocks.push(...matches);
+              }
+              (tableBlock.rows || []).forEach((row: any) => {
+                (row || []).forEach((cell: any) => {
+                  if (typeof cell === 'string') {
+                    const matches = cell.match(/\[([AT][1-3])\]/g);
+                    if (matches) allPlaceholdersInBlocks.push(...matches);
+                  }
+                });
+              });
+            } else {
+              const matches = block.text?.match(/\[([AT][1-3])\]/g);
+              if (matches) allPlaceholdersInBlocks.push(...matches);
+            }
+          });
+          
           console.log(`[articles-api] Converting blocks to HTML for topic: ${topic.title}`, {
             anchorsCount: articleStructure.anchors.length,
             anchors: articleStructure.anchors.map(a => ({ id: a.id, text: a.text, url: a.url })),
             trustSourcesCount: articleStructure.trustSources.length,
             trustSources: articleStructure.trustSources.map(t => ({ id: t.id, text: t.text, url: t.url })),
             blocksCount: articleStructure.blocks.length,
+            placeholdersFound: [...new Set(allPlaceholdersInBlocks)],
+            placeholderCount: allPlaceholdersInBlocks.length,
           });
           
           // Convert blocks to HTML, fix spacing around tags, remove excessive bold, then clean invisible characters
+          const htmlBeforeClean = blocksToHtml(
+            articleStructure.blocks,
+            articleStructure.anchors,
+            articleStructure.trustSources
+          );
+          
+          // CRITICAL: Check if placeholders were replaced in HTML
+          const placeholdersInHtml = (htmlBeforeClean.match(/\[([AT][1-3])\]/g) || []).length;
+          const linksInHtml = (htmlBeforeClean.match(/<a\s+[^>]*href/g) || []).length;
+          
+          console.log(`[articles-api] HTML after blocksToHtml (before post-processing) for topic: ${topic.title}`, {
+            htmlLength: htmlBeforeClean.length,
+            placeholdersRemaining: placeholdersInHtml,
+            linksFound: linksInHtml,
+            expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
+          });
+          
           cleanedArticleBodyHtml = cleanText(
             removeExcessiveBold(
-              fixHtmlTagSpacing(
-                blocksToHtml(
-                  articleStructure.blocks,
-                  articleStructure.anchors,
-                  articleStructure.trustSources
-                )
-              )
+              fixHtmlTagSpacing(htmlBeforeClean)
             )
           );
           
           // CRITICAL: Verify that links were actually injected
           const linkCount = (cleanedArticleBodyHtml.match(/<a\s+[^>]*href/g) || []).length;
-          console.log(`[articles-api] HTML generated for topic: ${topic.title}`, {
+          const placeholdersAfterClean = (cleanedArticleBodyHtml.match(/\[([AT][1-3])\]/g) || []).length;
+          
+          console.log(`[articles-api] Final HTML generated for topic: ${topic.title}`, {
             htmlLength: cleanedArticleBodyHtml.length,
             linkCount,
+            placeholdersRemaining: placeholdersAfterClean,
             expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
             hasLinks: linkCount > 0,
+            hasPlaceholders: placeholdersAfterClean > 0,
           });
+          
+          if (placeholdersAfterClean > 0) {
+            console.error(`[articles-api] ERROR: ${placeholdersAfterClean} placeholders still present in final HTML! Expected 0.`, {
+              remainingPlaceholders: [...new Set((cleanedArticleBodyHtml.match(/\[([AT][1-3])\]/g) || []))],
+            });
+          }
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
           cleanedArticleBodyHtml = cleanText(

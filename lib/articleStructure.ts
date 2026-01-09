@@ -80,14 +80,62 @@ export function injectAnchorsIntoText(
   anchors: AnchorSpec[], 
   trusts: TrustSourceSpec[]
 ): string {
-  // Escape any model-provided text first to avoid HTML injection.
-  let result = escapeHtml(text || '');
+  if (!text) return '';
+  
+  // CRITICAL: First, check if placeholders exist in the original text
+  const allPlaceholders: string[] = [];
+  anchors.forEach(a => {
+    const placeholder = `[${a.id}]`;
+    if (text.includes(placeholder)) {
+      allPlaceholders.push(placeholder);
+    }
+  });
+  trusts.forEach(t => {
+    const placeholder = `[${t.id}]`;
+    if (text.includes(placeholder)) {
+      allPlaceholders.push(placeholder);
+    }
+  });
+  
+  if (allPlaceholders.length > 0) {
+    console.log(`[injectAnchorsIntoText] Found ${allPlaceholders.length} placeholders in text:`, allPlaceholders);
+  } else {
+    console.warn(`[injectAnchorsIntoText] No placeholders found in text! Expected:`, {
+      anchors: anchors.map(a => `[${a.id}]`),
+      trusts: trusts.map(t => `[${t.id}]`),
+      textPreview: text.substring(0, 200),
+    });
+  }
+  
+  // CRITICAL: Protect placeholders BEFORE escaping HTML
+  // Replace placeholders with temporary tokens that won't be affected by escapeHtml
+  const placeholderMap = new Map<string, string>();
+  let protectedText = text;
+  let tokenIndex = 0;
+  
+  [...anchors, ...trusts].forEach(item => {
+    const placeholder = `[${item.id}]`;
+    if (protectedText.includes(placeholder)) {
+      const token = `__PLACEHOLDER_TOKEN_${tokenIndex}__`;
+      placeholderMap.set(token, placeholder);
+      protectedText = protectedText.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), token);
+      tokenIndex++;
+    }
+  });
+  
+  // Now escape HTML (placeholders are protected as tokens)
+  let result = escapeHtml(protectedText);
 
   // Convert markdown-style bold (**text**) to HTML <b> tags
   result = result.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 
   // Convert markdown-style italic (*text*) to HTML <i> tags (if not already bold)
   result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
+
+  // Restore placeholders from tokens
+  placeholderMap.forEach((placeholder, token) => {
+    result = result.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+  });
 
   // Replace anchor placeholders [A1], [A2], etc.
   // CRITICAL: Add spaces around anchors to prevent them from merging with adjacent text
@@ -102,7 +150,8 @@ export function injectAnchorsIntoText(
     // DEBUG: Check if placeholder exists in text before replacement
     const placeholderExists = result.includes(placeholder);
     if (!placeholderExists) {
-      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text. Text preview: ${result.substring(0, 200)}`);
+      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text after restoration. Text preview: ${result.substring(0, 200)}`);
+      return; // Skip if placeholder not found
     }
     
     // CRITICAL: Always ensure spaces around anchors BEFORE replacing
@@ -130,6 +179,8 @@ export function injectAnchorsIntoText(
     // DEBUG: Verify replacement happened
     if (beforeReplace === result && placeholderExists) {
       console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}`);
+    } else if (beforeReplace !== result) {
+      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with anchor`);
     }
   });
 
@@ -184,7 +235,8 @@ export function injectAnchorsIntoText(
     // DEBUG: Check if placeholder exists in text before replacement
     const placeholderExists = result.includes(placeholder);
     if (!placeholderExists) {
-      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text. Text preview: ${result.substring(0, 200)}`);
+      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text after restoration. Text preview: ${result.substring(0, 200)}`);
+      return; // Skip if placeholder not found
     }
     
     // CRITICAL: Always ensure spaces around anchors BEFORE replacing
@@ -212,6 +264,8 @@ export function injectAnchorsIntoText(
     // DEBUG: Verify replacement happened
     if (beforeReplace === result && placeholderExists) {
       console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}`);
+    } else if (beforeReplace !== result) {
+      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with trust source link`);
     }
   });
 
