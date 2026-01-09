@@ -1499,15 +1499,28 @@ Language: US English.`;
             }
           });
           
-          console.log(`[articles-api] Converting blocks to HTML for topic: ${topic.title}`, {
-            anchorsCount: articleStructure.anchors.length,
-            anchors: articleStructure.anchors.map(a => ({ id: a.id, text: a.text, url: a.url })),
-            trustSourcesCount: articleStructure.trustSources.length,
-            trustSources: articleStructure.trustSources.map(t => ({ id: t.id, text: t.text, url: t.url })),
-            blocksCount: articleStructure.blocks.length,
-            placeholdersFound: [...new Set(allPlaceholdersInBlocks)],
-            placeholderCount: allPlaceholdersInBlocks.length,
-          });
+          // #region agent log
+          const blocksToHtmlLog = {
+            location: 'articles/route.ts:1502',
+            message: 'Converting blocks to HTML',
+            data: {
+              topicTitle: topic.title,
+              anchorsCount: articleStructure.anchors.length,
+              anchors: articleStructure.anchors.map(a => ({ id: a.id, text: a.text, url: a.url })),
+              trustSourcesCount: articleStructure.trustSources.length,
+              trustSources: articleStructure.trustSources.map(t => ({ id: t.id, text: t.text, url: t.url })),
+              blocksCount: articleStructure.blocks.length,
+              placeholdersFound: [...new Set(allPlaceholdersInBlocks)],
+              placeholderCount: allPlaceholdersInBlocks.length,
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'blocks-to-html'
+          };
+          debugLog(blocksToHtmlLog);
+          console.log(`[articles-api] Converting blocks to HTML for topic: ${topic.title}`, blocksToHtmlLog.data);
+          // #endregion
           
           // Convert blocks to HTML, fix spacing around tags, remove excessive bold, then clean invisible characters
           const htmlBeforeClean = blocksToHtml(
@@ -1520,12 +1533,32 @@ Language: US English.`;
           const placeholdersInHtml = (htmlBeforeClean.match(/\[([AT][1-3])\]/g) || []).length;
           const linksInHtml = (htmlBeforeClean.match(/<a\s+[^>]*href/g) || []).length;
           
-          console.log(`[articles-api] HTML after blocksToHtml (before post-processing) for topic: ${topic.title}`, {
-            htmlLength: htmlBeforeClean.length,
-            placeholdersRemaining: placeholdersInHtml,
-            linksFound: linksInHtml,
-            expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
-          });
+          // #region agent log
+          const htmlAfterBlocksLog = {
+            location: 'articles/route.ts:1520',
+            message: 'HTML after blocksToHtml (before post-processing)',
+            data: {
+              topicTitle: topic.title,
+              htmlLength: htmlBeforeClean.length,
+              placeholdersRemaining: placeholdersInHtml,
+              linksFound: linksInHtml,
+              expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
+              htmlPreview: htmlBeforeClean.substring(0, 500),
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'html-after-blocks'
+          };
+          debugLog(htmlAfterBlocksLog);
+          console.log(`[articles-api] HTML after blocksToHtml (before post-processing) for topic: ${topic.title}`, htmlAfterBlocksLog.data);
+          // #endregion
+          
+          if (placeholdersInHtml > 0) {
+            console.error(`[articles-api] ERROR: ${placeholdersInHtml} placeholders still present after blocksToHtml!`, {
+              remainingPlaceholders: [...new Set((htmlBeforeClean.match(/\[([AT][1-3])\]/g) || []))],
+            });
+          }
           
           cleanedArticleBodyHtml = cleanText(
             removeExcessiveBold(
@@ -1537,19 +1570,76 @@ Language: US English.`;
           const linkCount = (cleanedArticleBodyHtml.match(/<a\s+[^>]*href/g) || []).length;
           const placeholdersAfterClean = (cleanedArticleBodyHtml.match(/\[([AT][1-3])\]/g) || []).length;
           
-          console.log(`[articles-api] Final HTML generated for topic: ${topic.title}`, {
-            htmlLength: cleanedArticleBodyHtml.length,
-            linkCount,
-            placeholdersRemaining: placeholdersAfterClean,
-            expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
-            hasLinks: linkCount > 0,
-            hasPlaceholders: placeholdersAfterClean > 0,
-          });
+          // Extract actual links for verification
+          const actualLinks: Array<{text: string, url: string}> = [];
+          const linkMatches = cleanedArticleBodyHtml.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/g);
+          for (const match of linkMatches) {
+            actualLinks.push({ url: match[1], text: match[2] });
+          }
+          
+          // #region agent log
+          const finalHtmlLog = {
+            location: 'articles/route.ts:1535',
+            message: 'Final HTML generated',
+            data: {
+              topicTitle: topic.title,
+              htmlLength: cleanedArticleBodyHtml.length,
+              linkCount,
+              placeholdersRemaining: placeholdersAfterClean,
+              expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
+              hasLinks: linkCount > 0,
+              hasPlaceholders: placeholdersAfterClean > 0,
+              actualLinks: actualLinks,
+              htmlPreview: cleanedArticleBodyHtml.substring(0, 1000),
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'articles-api',
+            hypothesisId: 'final-html'
+          };
+          debugLog(finalHtmlLog);
+          console.log(`[articles-api] Final HTML generated for topic: ${topic.title}`, finalHtmlLog.data);
+          // #endregion
           
           if (placeholdersAfterClean > 0) {
-            console.error(`[articles-api] ERROR: ${placeholdersAfterClean} placeholders still present in final HTML! Expected 0.`, {
-              remainingPlaceholders: [...new Set((cleanedArticleBodyHtml.match(/\[([AT][1-3])\]/g) || []))],
-            });
+            const errorLog = {
+              location: 'articles/route.ts:1550',
+              message: 'ERROR: Placeholders still present in final HTML',
+              data: {
+                topicTitle: topic.title,
+                placeholdersRemaining: placeholdersAfterClean,
+                remainingPlaceholders: [...new Set((cleanedArticleBodyHtml.match(/\[([AT][1-3])\]/g) || []))],
+                expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
+                actualLinks: linkCount,
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'articles-api',
+              hypothesisId: 'placeholder-error'
+            };
+            debugLog(errorLog);
+            console.error(`[articles-api] ERROR: ${placeholdersAfterClean} placeholders still present in final HTML! Expected 0.`, errorLog.data);
+          }
+          
+          if (linkCount === 0 && (articleStructure.anchors.length > 0 || articleStructure.trustSources.length > 0)) {
+            const errorLog = {
+              location: 'articles/route.ts:1565',
+              message: 'ERROR: No links found in final HTML',
+              data: {
+                topicTitle: topic.title,
+                expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
+                actualLinks: linkCount,
+                anchorsProvided: articleStructure.anchors.length,
+                trustSourcesProvided: articleStructure.trustSources.length,
+                placeholdersBeforeHtml: allPlaceholdersInBlocks.length,
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'articles-api',
+              hypothesisId: 'no-links-error'
+            };
+            debugLog(errorLog);
+            console.error(`[articles-api] ERROR: No links found in final HTML! Expected ${articleStructure.anchors.length + articleStructure.trustSources.length} links.`, errorLog.data);
           }
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
