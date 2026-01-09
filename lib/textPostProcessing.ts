@@ -190,6 +190,19 @@ export function fixHtmlTagSpacing(text: string): string {
   
   let fixed = text;
   
+  // CRITICAL: PRIORITY 1 - Handle <a> tags FIRST (most important for links)
+  // These patterns MUST run before other tag patterns to ensure anchors are properly spaced
+  // Pattern: word<a href="..."> → word <a href="...">
+  // This handles: use<a href="..."> → use <a href="...">
+  fixed = fixed.replace(/([A-Za-z0-9])(<a\s+[^>]*>)/g, '$1 $2');
+  
+  // Pattern: </a>word → </a> word
+  // This handles: </a>once → </a> once
+  fixed = fixed.replace(/(<\/a>)([A-Za-z0-9])/g, '$1 $2');
+  
+  // Pattern: word</a> → word </a> (if closing tag is preceded by letter/number)
+  fixed = fixed.replace(/([A-Za-z0-9])(<\/a>)/g, '$1 $2');
+  
   // CRITICAL: Add space after closing tags (</strong>, </b>, </a>, </span>, etc.) if followed by letter/number
   // Pattern: </tag>letter → </tag> letter
   // This handles: word</tag>word → word</tag> word
@@ -207,14 +220,6 @@ export function fixHtmlTagSpacing(text: string): string {
   // This ensures anchors don't merge with punctuation marks
   fixed = fixed.replace(/([.,;:!?])(<(a|strong|b)[^>]*>)/g, '$1 $2');
   fixed = fixed.replace(/(<\/(a|strong|b)[^>]*>)([.,;:!?])/g, '$1 $3');
-  
-  // CRITICAL: Additional check for <a> tags that might still be merged
-  // Handle cases like: word<a href="...">text</a>word → word <a href="...">text</a> word
-  // This is a safety net in case previous patterns missed something
-  // More aggressive pattern: ensure space before opening <a> tag
-  fixed = fixed.replace(/([A-Za-z0-9])(<a\s+[^>]*>)/g, '$1 $2');
-  // More aggressive pattern: ensure space after closing </a> tag
-  fixed = fixed.replace(/(<\/a>)([A-Za-z0-9])/g, '$1 $2');
   
   // CRITICAL: Handle punctuation before/after links
   // Pattern: punctuation<a> -> punctuation <a> (unless it's part of the anchor)
