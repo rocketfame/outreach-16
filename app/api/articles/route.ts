@@ -1000,10 +1000,34 @@ Language: US English.`;
                           try {
                             // Clean invisible characters BEFORE humanization
                             const cleanedText = cleanText(item.text);
-                            const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                            
+                            // CRITICAL: Protect placeholders during humanization
+                            // Replace placeholders with temporary tokens that AIHumanize won't modify
+                            const placeholderMap = new Map<string, string>();
+                            let protectedText = cleanedText;
+                            const placeholderPattern = /\[([AT][1-3])\]/g;
+                            let match;
+                            let tokenIndex = 0;
+                            
+                            while ((match = placeholderPattern.exec(cleanedText)) !== null) {
+                              const placeholder = match[0]; // [A1], [T1], etc.
+                              const token = `__PLACEHOLDER_${tokenIndex}__`;
+                              placeholderMap.set(token, placeholder);
+                              protectedText = protectedText.replace(placeholder, token);
+                              tokenIndex++;
+                            }
+                            
+                            const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                             listWordsUsed += result.wordsUsed;
+                            
+                            // Restore placeholders after humanization
+                            let restoredText = result.humanizedText;
+                            placeholderMap.forEach((placeholder, token) => {
+                              restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                            });
+                            
                             // Clean invisible characters AFTER humanization (in case API returns them)
-                            const finalText = cleanText(result.humanizedText);
+                            const finalText = cleanText(restoredText);
                             return { ...item, text: finalText };
                           } catch {
                             return item;
@@ -1024,9 +1048,32 @@ Language: US English.`;
                         try {
                           // Clean invisible characters BEFORE humanization
                           const cleanedCaption = cleanText(caption);
-                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                          
+                          // CRITICAL: Protect placeholders during humanization
+                          const placeholderMap = new Map<string, string>();
+                          let protectedText = cleanedCaption;
+                          const placeholderPattern = /\[([AT][1-3])\]/g;
+                          let match;
+                          let tokenIndex = 0;
+                          
+                          while ((match = placeholderPattern.exec(cleanedCaption)) !== null) {
+                            const placeholder = match[0];
+                            const token = `__PLACEHOLDER_${tokenIndex}__`;
+                            placeholderMap.set(token, placeholder);
+                            protectedText = protectedText.replace(placeholder, token);
+                            tokenIndex++;
+                          }
+                          
+                          const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                          
+                          // Restore placeholders after humanization
+                          let restoredText = result.humanizedText;
+                          placeholderMap.forEach((placeholder, token) => {
+                            restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                          });
+                          
                           // Clean invisible characters AFTER humanization
-                          caption = cleanText(result.humanizedText);
+                          caption = cleanText(restoredText);
                           tableWordsUsed += result.wordsUsed;
                         } catch {
                           // keep original
@@ -1043,10 +1090,33 @@ Language: US English.`;
                               try {
                                 // Clean invisible characters BEFORE humanization
                                 const cleanedCell = cleanText(cell);
-                                const result = await humanizeSectionText(cleanedCell, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                                
+                                // CRITICAL: Protect placeholders during humanization
+                                const placeholderMap = new Map<string, string>();
+                                let protectedText = cleanedCell;
+                                const placeholderPattern = /\[([AT][1-3])\]/g;
+                                let match;
+                                let tokenIndex = 0;
+                                
+                                while ((match = placeholderPattern.exec(cleanedCell)) !== null) {
+                                  const placeholder = match[0];
+                                  const token = `__PLACEHOLDER_${tokenIndex}__`;
+                                  placeholderMap.set(token, placeholder);
+                                  protectedText = protectedText.replace(placeholder, token);
+                                  tokenIndex++;
+                                }
+                                
+                                const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                                 tableWordsUsed += result.wordsUsed;
+                                
+                                // Restore placeholders after humanization
+                                let restoredText = result.humanizedText;
+                                placeholderMap.forEach((placeholder, token) => {
+                                  restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                });
+                                
                                 // Clean invisible characters AFTER humanization
-                                return cleanText(result.humanizedText);
+                                return cleanText(restoredText);
                               } catch {
                                 return cell;
                               }
@@ -1070,10 +1140,34 @@ Language: US English.`;
                     try {
                       // Clean invisible characters BEFORE humanization
                       const cleanedText = cleanText(block.text);
-                      const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                      
+                      // CRITICAL: Protect placeholders during humanization
+                      // Replace placeholders with temporary tokens that AIHumanize won't modify
+                      const placeholderMap = new Map<string, string>();
+                      let protectedText = cleanedText;
+                      const placeholderPattern = /\[([AT][1-3])\]/g;
+                      let match;
+                      let tokenIndex = 0;
+                      
+                      while ((match = placeholderPattern.exec(cleanedText)) !== null) {
+                        const placeholder = match[0]; // [A1], [T1], etc.
+                        const token = `__PLACEHOLDER_${tokenIndex}__`;
+                        placeholderMap.set(token, placeholder);
+                        protectedText = protectedText.replace(placeholder, token);
+                        tokenIndex++;
+                      }
+                      
+                      const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                       totalHumanizeWordsUsed += result.wordsUsed;
+                      
+                      // Restore placeholders after humanization
+                      let restoredText = result.humanizedText;
+                      placeholderMap.forEach((placeholder, token) => {
+                        restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                      });
+                      
                       // Clean invisible characters AFTER humanization (in case API returns them)
-                      const finalText = cleanText(result.humanizedText);
+                      const finalText = cleanText(restoredText);
                       return { ...block, text: finalText };
                     } catch {
                       return block;
