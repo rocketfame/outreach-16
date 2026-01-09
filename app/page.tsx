@@ -5087,9 +5087,7 @@ export default function Home() {
                                     <div className="article-metric-divider"></div>
                                     <div className="article-metric-item">
                                       <span className="article-metric-label">Status:</span>
-                                      <span className={`article-status-badge ${article.status}`}>
-                                        {article.status === "generating" ? "Generating…" : article.status === "error" ? "Error" : "Ready"}
-                                      </span>
+                                      <span className="article-status-badge ready">Ready</span>
                                     </div>
                                     {article.humanizedOnWrite && (
                                       <>
