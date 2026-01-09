@@ -4575,6 +4575,24 @@ export default function Home() {
                         clustersMap.get(topic.clusterName)!.push(topic);
                       });
 
+                      // Helper function to map searchIntent to human-readable label
+                      const getSearchIntentLabel = (intent: Topic['searchIntent']) => {
+                        switch (intent) {
+                          case 'how_to':
+                            return 'How-to';
+                          case 'informational':
+                            return 'Informational';
+                          case 'problem_solving':
+                            return 'Problem-solving';
+                          case 'comparison':
+                            return 'Comparison';
+                          case 'strategic':
+                            return 'Strategic insight';
+                          default:
+                            return intent;
+                        }
+                      };
+
                       return Array.from(clustersMap.entries()).map(([clusterName, topics], index) => {
                         const isExpanded = expandedClusterNames.has(clusterName);
                         const firstTopic = topics[0];
@@ -4597,27 +4615,58 @@ export default function Home() {
                                 disabled={isCompleted}
                               >
                                 <div className="topic-header-content">
-                                  <h4 className="topic-cluster-name">
-                                    <span className="cluster-number-badge">{clusterNumber}</span>
-                                    {clusterName}
-                                    {hasArticle && (
-                                      <span className="topic-completed-badge-header" title={headerArticle?.createdAt ? `Article created: ${new Date(headerArticle.createdAt).toLocaleString()}` : "Article created"}>
-                                        ✓ Article created{headerArticle?.createdAt ? ` · ${new Date(headerArticle.createdAt).toLocaleString()}` : ""}
-                                      </span>
-                                    )}
-                                    {isGenerating && (
-                                      <span className="topic-generating-badge-header" title="Generating article">
-                                        ⏳ Generating...
-                                      </span>
-                                    )}
-                                  </h4>
-                                  <div className="topic-header-meta">
-                                    {firstTopic && (
-                                      <span className="topic-for-problem">
-                                        For: {firstTopic.forWho} · Problem: {firstTopic.problem}
-                                      </span>
-                                    )}
+                                  <div className="topic-header-left">
+                                    <h4 className="topic-cluster-name">
+                                      <span className="cluster-number-badge">{clusterNumber}</span>
+                                      {clusterName}
+                                      {hasArticle && (
+                                        <span className="topic-completed-badge-header" title={headerArticle?.createdAt ? `Article created: ${new Date(headerArticle.createdAt).toLocaleString()}` : "Article created"}>
+                                          ✓ Article created{headerArticle?.createdAt ? ` · ${new Date(headerArticle.createdAt).toLocaleString()}` : ""}
+                                        </span>
+                                      )}
+                                      {isGenerating && (
+                                        <span className="topic-generating-badge-header" title="Generating article">
+                                          ⏳ Generating...
+                                        </span>
+                                      )}
+                                    </h4>
+                                    <div className="topic-header-meta">
+                                      {firstTopic && (
+                                        <span className="topic-for-problem">
+                                          For: {firstTopic.forWho} · Problem: {firstTopic.problem}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
+                                  {/* Topic Meta-Preview Badges - Type + Evergreen + Competition */}
+                                  {firstTopic && (
+                                    <div className="topic-header-badges">
+                                      {/* Type Badge */}
+                                      <span className="topic-type-badge">
+                                        {getSearchIntentLabel(firstTopic.searchIntent)}
+                                      </span>
+                                      
+                                      {/* Evergreen Badge */}
+                                      <span className="topic-evergreen-badge">
+                                        <span className="topic-evergreen-label">Evergreen</span>
+                                        <div className="topic-evergreen-dots">
+                                          {[1, 2, 3, 4, 5].map(i => (
+                                            <span
+                                              key={i}
+                                              className={`topic-evergreen-dot ${i <= firstTopic.evergreenScore ? "filled" : "empty"}`}
+                                            >
+                                              ●
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </span>
+                                      
+                                      {/* Competition Badge */}
+                                      <span className={`topic-competition-badge ${firstTopic.competitionLevel}`}>
+                                        Competition: {firstTopic.competitionLevel.charAt(0).toUpperCase() + firstTopic.competitionLevel.slice(1)}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                                 {!isCompleted && (
                                   <span className="topic-chevron">
@@ -4653,23 +4702,6 @@ export default function Home() {
                                 {(() => {
                                   const topic = firstTopic;
                                   const isSelected = selectedTopicIds.includes(topic.id);
-                                  
-                                  const getSearchIntentLabel = (intent: Topic['searchIntent']) => {
-                                    switch (intent) {
-                                      case 'how_to':
-                                        return 'How-to guide';
-                                      case 'informational':
-                                        return 'Informational';
-                                      case 'problem_solving':
-                                        return 'Problem-solving';
-                                      case 'comparison':
-                                        return 'Comparison';
-                                      case 'strategic':
-                                        return 'Strategic insight';
-                                      default:
-                                        return intent;
-                                    }
-                                  };
 
                                   const hasArticle = generatedArticles.some(a => a.topicTitle === topic.id && a.status === "ready");
                                   const isGenerating = generatedArticles.some(a => a.topicTitle === topic.id && a.status === "generating");
@@ -4678,34 +4710,6 @@ export default function Home() {
                                   
                                   return (
                                     <div key={topic.id} className={`topic-preview-card ${isSelected ? "selected" : ""} ${isCompleted ? "topic-completed" : ""}`}>
-                                      {/* Topic Meta-Preview Row - Type + Evergreen + Competition (above title) */}
-                                      <div className="topic-meta-row">
-                                        {/* Type Badge */}
-                                        <span className="topic-type-badge">
-                                          {getSearchIntentLabel(topic.searchIntent)}
-                                        </span>
-                                        
-                                        {/* Evergreen Badge */}
-                                        <span className="topic-evergreen-badge">
-                                          <span className="topic-evergreen-label">Evergreen</span>
-                                          <div className="topic-evergreen-dots">
-                                            {[1, 2, 3, 4, 5].map(i => (
-                                              <span
-                                                key={i}
-                                                className={`topic-evergreen-dot ${i <= topic.evergreenScore ? "filled" : "empty"}`}
-                                              >
-                                                ●
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </span>
-                                        
-                                        {/* Competition Badge */}
-                                        <span className={`topic-competition-badge ${topic.competitionLevel}`}>
-                                          Competition: {topic.competitionLevel.charAt(0).toUpperCase() + topic.competitionLevel.slice(1)}
-                                        </span>
-                                      </div>
-
                                       {/* Title and Actions */}
                                       <div className="topic-preview-header">
                                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
