@@ -5504,30 +5504,42 @@ export default function Home() {
                                               const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : '';
                                               const metaDescription = article.metaDescription ? stripHtmlTags(article.metaDescription) : '';
                                               
-                                              // Find the rendered article element in the modal
-                                              const articleElement = document.querySelector('.article-view-text') as HTMLElement;
+                                              // Build text manually to ensure we only copy: Title tag, Meta description, Article body
+                                              // Do NOT include internal document title, creation date, or section labels
+                                              const plainParts: string[] = [];
                                               
-                                              if (articleElement) {
-                                                // Clone and modify to include title and meta description
-                                                const clone = articleElement.cloneNode(true) as HTMLElement;
-                                                if (titleTag) {
-                                                  const titleEl = document.createElement('h1');
-                                                  titleEl.textContent = titleTag;
-                                                  clone.insertBefore(titleEl, clone.firstChild);
-                                                }
-                                                if (metaDescription) {
-                                                  const metaEl = document.createElement('p');
-                                                  metaEl.innerHTML = `<em>${metaDescription}</em>`;
-                                                  clone.insertBefore(metaEl, clone.firstChild);
-                                                }
-                                                await copyArticleAsPlainText(clone);
-                                                setCopyPlainTextStatus("copied");
-                                                setTimeout(() => {
-                                                  setCopyPlainTextStatus("idle");
-                                                }, 2000);
-                                              } else {
-                                                throw new Error("Could not find article element");
+                                              // Add title tag if exists (this is the SEO title, not the internal document title)
+                                              if (titleTag) {
+                                                plainParts.push(titleTag);
+                                                plainParts.push('');
                                               }
+                                              
+                                              // Add meta description if exists
+                                              if (metaDescription) {
+                                                plainParts.push(metaDescription);
+                                                plainParts.push('');
+                                              }
+                                              
+                                              // Get article body text (exclude any H1 tags - they're not titleTag)
+                                              const html = article.articleBodyHtml || article.fullArticleText || article.editedText || "";
+                                              const bodyHtml = html.replace(/<h1[^>]*>.*?<\/h1>/gi, '');
+                                              
+                                              // Extract plain text from body HTML
+                                              const bodyTemp = document.createElement('div');
+                                              bodyTemp.innerHTML = bodyHtml;
+                                              const bodyPlain = bodyTemp.textContent ?? bodyTemp.innerText ?? '';
+                                              
+                                              // Add body text
+                                              plainParts.push(bodyPlain);
+                                              
+                                              const plain = plainParts.join('\n');
+                                              
+                                              // Copy to clipboard
+                                              await navigator.clipboard.writeText(plain);
+                                              setCopyPlainTextStatus("copied");
+                                              setTimeout(() => {
+                                                setCopyPlainTextStatus("idle");
+                                              }, 2000);
                                             } catch (err) {
                                               console.error('Failed to copy plain text:', err);
                                               setNotification({
