@@ -4617,9 +4617,11 @@ export default function Home() {
                                 <div className="topic-header-content">
                                   {/* Top Row: Title + Badges */}
                                   <div className="topic-header-top-row">
-                                    <h4 className="topic-cluster-name">
+                                    <div className="topic-title-wrapper">
                                       <span className="cluster-number-badge">{clusterNumber}</span>
-                                      {clusterName}
+                                      <h4 className="topic-cluster-name">
+                                        {clusterName}
+                                      </h4>
                                       {hasArticle && (
                                         <span className="topic-completed-badge-header" title={headerArticle?.createdAt ? `Article created: ${new Date(headerArticle.createdAt).toLocaleString()}` : "Article created"}>
                                           ✓ Article created{headerArticle?.createdAt ? ` · ${new Date(headerArticle.createdAt).toLocaleString()}` : ""}
@@ -4630,7 +4632,7 @@ export default function Home() {
                                           ⏳ Generating...
                                         </span>
                                       )}
-                                    </h4>
+                                    </div>
                                     {/* Topic Meta-Preview Badges - Type + Evergreen + Competition */}
                                     {firstTopic && (
                                       <div className="topic-header-badges">

@@ -1217,13 +1217,13 @@ body {
   width: 100%;
 }
 
-.topic-header-badges {
+.topic-title-wrapper {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
   flex-wrap: wrap;
-  flex-shrink: 0;
-  margin-left: auto;
 }
 
 .topic-cluster-name {
@@ -1231,12 +1231,21 @@ body {
   font-weight: 700;
   margin: 0;
   color: var(--foreground);
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  flex: 1;
+  min-width: 0; /* Allow text to wrap properly */
+}
+
+.topic-header-badges {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
-  flex: 1;
-  min-width: 0; /* Allow text truncation */
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .topic-completed-badge-header,
