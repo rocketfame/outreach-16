@@ -399,17 +399,22 @@ export function blocksToHtml(
     if (block.type === 'table') {
       const tableBlock = block as TableBlock;
       const captionHtml = tableBlock.caption
-        ? `<caption>${injectAnchorsIntoText(tableBlock.caption, anchors, trusts)}</caption>`
+        ? `<caption style="font-weight: 600; margin-bottom: 0.5rem; text-align: left;">${injectAnchorsIntoText(tableBlock.caption, anchors, trusts)}</caption>`
         : '';
+      // CRITICAL: Add border styles for Google Docs compatibility
+      // Google Docs requires inline styles with border properties to display table borders correctly
+      const tableStyle = 'border-collapse: collapse; width: 100%; border: 1px solid #000;';
+      const thStyle = 'border: 1px solid #000; padding: 8px 12px; text-align: left; background-color: #f5f5f5; font-weight: 600;';
+      const tdStyle = 'border: 1px solid #000; padding: 8px 12px; text-align: left;';
       const theadHtml = `<thead><tr>${(tableBlock.headers || [])
-        .map((h) => `<th>${injectAnchorsIntoText(h, anchors, trusts)}</th>`)
+        .map((h) => `<th style="${thStyle}">${injectAnchorsIntoText(h, anchors, trusts)}</th>`)
         .join('')}</tr></thead>`;
       const tbodyHtml = `<tbody>${(tableBlock.rows || [])
         .map((row) => `<tr>${(row || [])
-          .map((cell) => `<td>${injectAnchorsIntoText(cell, anchors, trusts)}</td>`)
+          .map((cell) => `<td style="${tdStyle}">${injectAnchorsIntoText(cell, anchors, trusts)}</td>`)
           .join('')}</tr>`)
         .join('')}</tbody>`;
-      return `<table>${captionHtml}${theadHtml}${tbodyHtml}</table>`;
+      return `<table style="${tableStyle}">${captionHtml}${theadHtml}${tbodyHtml}</table>`;
     }
 
     if (block.type === 'ul' || block.type === 'ol') {
