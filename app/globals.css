@@ -1219,11 +1219,10 @@ body {
 
 .topic-title-wrapper {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   flex: 1;
   min-width: 0; /* Allow text truncation */
-  flex-wrap: wrap;
 }
 
 .topic-cluster-name {
@@ -1232,9 +1231,9 @@ body {
   margin: 0;
   color: var(--foreground);
   line-height: 1.4;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
+  word-wrap: normal;
+  overflow-wrap: normal;
+  word-break: normal;
   flex: 1;
   min-width: 0; /* Allow text to wrap properly */
 }
