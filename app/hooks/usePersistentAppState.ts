@@ -62,7 +62,7 @@ export type GeneratedArticle = {
   createdAt?: string; // ISO timestamp when article was created
 };
 
-export type WritingMode = "seo" | "human";
+export type WritingMode = "seo" | "human" | "editorial";
 
 export type AppPersistedState = {
   projectBasics: Brief; // Legacy, kept for backward compatibility - maps to discoveryProjectBasics
@@ -154,7 +154,7 @@ export function usePersistentAppState() {
             discoveryProjectBasics: parsed.discoveryProjectBasics || legacyProjectBasics,
             directProjectBasics: parsed.directProjectBasics || defaultBrief,
             lightHumanEditEnabled: parsed.lightHumanEditEnabled !== undefined ? parsed.lightHumanEditEnabled : true,
-            writingMode: (parsed.writingMode === "seo" || parsed.writingMode === "human") ? parsed.writingMode : "seo", // Default to "seo" if invalid
+            writingMode: (parsed.writingMode === "seo" || parsed.writingMode === "human" || parsed.writingMode === "editorial") ? parsed.writingMode : "seo", // Default to "seo" if invalid
             theme: parsed.theme || "light", // Default to light if not set
           };
           setState(validatedState);
