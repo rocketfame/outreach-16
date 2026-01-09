@@ -98,12 +98,18 @@ export function injectAnchorsIntoText(
   });
   
   if (allPlaceholders.length > 0) {
-    console.log(`[injectAnchorsIntoText] Found ${allPlaceholders.length} placeholders in text:`, allPlaceholders);
+    console.log(`[injectAnchorsIntoText] Found ${allPlaceholders.length} placeholders in text:`, allPlaceholders, {
+      textLength: text.length,
+      textPreview: text.substring(0, 300),
+      anchorsProvided: anchors.length,
+      trustsProvided: trusts.length,
+    });
   } else {
     console.warn(`[injectAnchorsIntoText] No placeholders found in text! Expected:`, {
       anchors: anchors.map(a => `[${a.id}]`),
       trusts: trusts.map(t => `[${t.id}]`),
-      textPreview: text.substring(0, 200),
+      textPreview: text.substring(0, 500),
+      textLength: text.length,
     });
   }
   
@@ -120,11 +126,17 @@ export function injectAnchorsIntoText(
       placeholderMap.set(token, placeholder);
       protectedText = protectedText.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), token);
       tokenIndex++;
+      console.log(`[injectAnchorsIntoText] Protected placeholder ${placeholder} -> ${token}`);
     }
   });
   
+  if (placeholderMap.size > 0) {
+    console.log(`[injectAnchorsIntoText] Protected ${placeholderMap.size} placeholders. Protected text preview:`, protectedText.substring(0, 300));
+  }
+  
   // Now escape HTML (placeholders are protected as tokens)
   let result = escapeHtml(protectedText);
+  console.log(`[injectAnchorsIntoText] After escapeHtml, text length: ${result.length}, tokens found: ${Array.from(placeholderMap.keys()).filter(t => result.includes(t)).length}`);
 
   // Convert markdown-style bold (**text**) to HTML <b> tags
   result = result.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
@@ -133,9 +145,25 @@ export function injectAnchorsIntoText(
   result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
 
   // Restore placeholders from tokens
+  let restoredCount = 0;
   placeholderMap.forEach((placeholder, token) => {
+    const beforeRestore = result.includes(token);
     result = result.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+    const afterRestore = result.includes(placeholder);
+    if (beforeRestore && afterRestore) {
+      restoredCount++;
+      console.log(`[injectAnchorsIntoText] Successfully restored ${placeholder} from ${token}`);
+    } else if (beforeRestore && !afterRestore) {
+      console.error(`[injectAnchorsIntoText] ERROR: Failed to restore ${placeholder} from ${token}`);
+    } else if (!beforeRestore) {
+      console.warn(`[injectAnchorsIntoText] Token ${token} not found in text after escapeHtml`);
+    }
   });
+  
+  if (placeholderMap.size > 0) {
+    const finalPlaceholders = (result.match(/\[([AT][1-3])\]/g) || []).length;
+    console.log(`[injectAnchorsIntoText] After restoration: ${restoredCount}/${placeholderMap.size} placeholders restored, ${finalPlaceholders} total placeholders found in result`);
+  }
 
   // Replace anchor placeholders [A1], [A2], etc.
   // CRITICAL: Add spaces around anchors to prevent them from merging with adjacent text
