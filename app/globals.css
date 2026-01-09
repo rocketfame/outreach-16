@@ -1357,6 +1357,106 @@ body {
   color: var(--text-muted);
 }
 
+/* Topic Meta-Preview Row - Type + Evergreen + Competition (above title) */
+.topic-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Type Badge */
+.topic-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .topic-type-badge {
+  border-color: rgba(138, 43, 226, 0.5);
+  color: #b794f6;
+}
+
+/* Evergreen Badge */
+.topic-evergreen-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.topic-evergreen-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.topic-evergreen-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.topic-evergreen-dot {
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.topic-evergreen-dot.filled {
+  color: #22c55e;
+}
+
+.topic-evergreen-dot.empty {
+  color: #e5e7eb;
+}
+
+/* Competition Badge */
+.topic-competition-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.topic-competition-badge.low {
+  background: rgba(76, 175, 80, 0.15);
+  color: #2e7d32;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.topic-competition-badge.medium {
+  background: rgba(255, 193, 7, 0.15);
+  color: #f57c00;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.topic-competition-badge.high {
+  background: rgba(244, 67, 54, 0.15);
+  color: #c62828;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
 .topic-completed-badge,
 .topic-generating-badge {
   display: inline-flex;

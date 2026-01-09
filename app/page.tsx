@@ -4656,15 +4656,16 @@ export default function Home() {
                                   
                                   const getSearchIntentLabel = (intent: Topic['searchIntent']) => {
                                     switch (intent) {
-                                      case 'informational':
-                                      case 'strategic':
-                                        return 'Informational / Strategic insight';
                                       case 'how_to':
-                                        return 'How-to / Strategic guide';
+                                        return 'How-to guide';
+                                      case 'informational':
+                                        return 'Informational';
                                       case 'problem_solving':
                                         return 'Problem-solving';
                                       case 'comparison':
-                                        return 'Comparison / Decision help';
+                                        return 'Comparison';
+                                      case 'strategic':
+                                        return 'Strategic insight';
                                       default:
                                         return intent;
                                     }
@@ -4677,10 +4678,31 @@ export default function Home() {
                                   
                                   return (
                                     <div key={topic.id} className={`topic-preview-card ${isSelected ? "selected" : ""} ${isCompleted ? "topic-completed" : ""}`}>
-                                      {/* Search Intent Pill - placed at the top for quick reference */}
-                                      <div className="topic-preview-field" style={{ marginBottom: "0.75rem" }}>
-                                        <span className="search-intent-pill-large">
+                                      {/* Topic Meta-Preview Row - Type + Evergreen + Competition (above title) */}
+                                      <div className="topic-meta-row">
+                                        {/* Type Badge */}
+                                        <span className="topic-type-badge">
                                           {getSearchIntentLabel(topic.searchIntent)}
+                                        </span>
+                                        
+                                        {/* Evergreen Badge */}
+                                        <span className="topic-evergreen-badge">
+                                          <span className="topic-evergreen-label">Evergreen</span>
+                                          <div className="topic-evergreen-dots">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                              <span
+                                                key={i}
+                                                className={`topic-evergreen-dot ${i <= topic.evergreenScore ? "filled" : "empty"}`}
+                                              >
+                                                ●
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </span>
+                                        
+                                        {/* Competition Badge */}
+                                        <span className={`topic-competition-badge ${topic.competitionLevel}`}>
+                                          Competition: {topic.competitionLevel.charAt(0).toUpperCase() + topic.competitionLevel.slice(1)}
                                         </span>
                                       </div>
 
@@ -4709,46 +4731,6 @@ export default function Home() {
                                             />
                                             <span>Add to queue</span>
                                           </label>
-                                        </div>
-                                      </div>
-
-                                      {/* Key Metrics - displayed prominently after title */}
-                                      <div style={{ 
-                                        display: "flex", 
-                                        flexWrap: "wrap", 
-                                        gap: "1rem", 
-                                        marginTop: "0.75rem", 
-                                        marginBottom: "0.75rem",
-                                        padding: "0.75rem",
-                                        background: "var(--secondary)",
-                                        borderRadius: "8px",
-                                        border: "1px solid var(--border)"
-                                      }}>
-                                        {/* Evergreen Potential */}
-                                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                                          <strong style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Evergreen:</strong>
-                                          <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
-                                            {[1, 2, 3, 4, 5].map(i => (
-                                              <span
-                                                key={i}
-                                                style={{
-                                                  fontSize: "0.75rem",
-                                                  color: i <= topic.evergreenScore ? "#22c55e" : "#e5e7eb",
-                                                  lineHeight: "1"
-                                                }}
-                                              >
-                                                ●
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
-
-                                        {/* Competition */}
-                                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                                          <strong style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Competition:</strong>
-                                          <span className={`competition-pill-preview ${topic.competitionLevel}`} style={{ fontSize: "0.8rem", padding: "0.25rem 0.75rem" }}>
-                                            {topic.competitionLevel.charAt(0).toUpperCase() + topic.competitionLevel.slice(1)}
-                                          </span>
                                         </div>
                                       </div>
 
