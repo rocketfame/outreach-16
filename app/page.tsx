@@ -4138,13 +4138,14 @@ export default function Home() {
             {HUMAN_MODE_EXPERIMENT && (
               <label style={{ marginTop: "1.25rem" }}>
                 <span>Writing mode</span>
-                <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={() => updateWritingMode("seo")}
                     className={`writing-mode-btn ${writingMode === "seo" ? "active" : ""}`}
                     style={{
                       flex: 1,
+                      minWidth: "120px",
                       padding: "0.75rem 1rem",
                       borderRadius: "8px",
                       border: "2px solid",
@@ -4165,6 +4166,7 @@ export default function Home() {
                     className={`writing-mode-btn ${writingMode === "human" ? "active" : ""}`}
                     style={{
                       flex: 1,
+                      minWidth: "120px",
                       padding: "0.75rem 1rem",
                       borderRadius: "8px",
                       border: "2px solid",
@@ -4179,11 +4181,34 @@ export default function Home() {
                   >
                     Human Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(editorial)</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => updateWritingMode("editorial")}
+                    className={`writing-mode-btn ${writingMode === "editorial" ? "active" : ""}`}
+                    style={{
+                      flex: 1,
+                      minWidth: "120px",
+                      padding: "0.75rem 1rem",
+                      borderRadius: "8px",
+                      border: "2px solid",
+                      borderColor: writingMode === "editorial" ? "var(--primary)" : "var(--border)",
+                      background: writingMode === "editorial" ? "var(--primary)" : "var(--card)",
+                      color: writingMode === "editorial" ? "white" : "var(--foreground)",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
+                      fontWeight: writingMode === "editorial" ? 600 : 400,
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    Editorial Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(anti-AI)</span>
+                  </button>
                 </div>
                 <small style={{ display: "block", marginTop: "0.5rem", color: "var(--text-muted)" }}>
                   {writingMode === "seo" 
                     ? "Optimized structure with clear headings and SEO-friendly format" 
-                    : "Editorial, founder-style writing with natural flow and varied structure"}
+                    : writingMode === "human"
+                    ? "Editorial, founder-style writing with natural flow and varied structure. Humanization is automatically enabled."
+                    : "Editorial style optimized to bypass AI detection. Natural, slightly casual writing without external humanization API."}
                 </small>
               </label>
             )}
@@ -4812,6 +4837,13 @@ export default function Home() {
                                           {HUMAN_MODE_EXPERIMENT && writingMode === "human" && (
                                             <div style={{ padding: "0.75rem", background: "var(--secondary)", borderRadius: "8px", fontSize: "0.9rem", color: "var(--text-muted)" }}>
                                               <strong style={{ color: "var(--foreground)" }}>Human Mode:</strong> Humanization is automatically enabled for all generated articles.
+                                            </div>
+                                          )}
+                                          
+                                          {/* Show info message in Editorial Mode */}
+                                          {HUMAN_MODE_EXPERIMENT && writingMode === "editorial" && (
+                                            <div style={{ padding: "0.75rem", background: "var(--secondary)", borderRadius: "8px", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                                              <strong style={{ color: "var(--foreground)" }}>Editorial Mode:</strong> Anti-AI detection style without external humanization API. Content is optimized to bypass AI detectors naturally.
                                             </div>
                                           )}
                                           
