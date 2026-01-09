@@ -1158,7 +1158,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
-  padding-right: 4.5rem; /* Space for chevron (1rem) + remove button (3.5rem) */
+  padding-right: 1.5rem; /* Reduced padding since chevron is now outside */
   padding-top: 1.75rem; /* Extra top padding for badges */
   display: flex;
   justify-content: space-between;
@@ -1169,7 +1169,6 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   overflow: visible; /* Allow badges to overflow */
   position: relative;
-  gap: 0.5rem; /* Space between content and chevron */
 }
 
 .topic-header-card {
