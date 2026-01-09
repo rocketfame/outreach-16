@@ -2040,11 +2040,12 @@ body {
 .article-result-card {
   background: var(--card);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
   border: 1px solid var(--border);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: background-color 0.3s ease;
+  position: relative;
 }
 
 [data-theme="dark"] .article-result-card {
@@ -2055,8 +2056,24 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
   gap: 1rem;
+}
+
+/* Article Number Badge - Pink circular badge like in reference */
+.article-number-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(255, 107, 157, 0.3);
 }
 
 .article-header-actions {
@@ -2072,7 +2089,7 @@ body {
 }
 
 .article-result-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   margin: 0 0 0.5rem 0;
   color: var(--foreground);
@@ -2130,6 +2147,81 @@ body {
   flex-wrap: wrap;
 }
 
+/* Article Metrics Block - Compact metrics display like in reference */
+.article-metrics-block {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.article-metric-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.article-metric-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.article-metric-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.article-metric-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* Article Status Badge - Compact pill style */
+.article-status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.article-status-badge.ready {
+  background: rgba(76, 175, 80, 0.15);
+  color: #2e7d32;
+}
+
+.article-status-badge.generating {
+  background: rgba(255, 193, 7, 0.15);
+  color: #f57c00;
+}
+
+.article-status-badge.error {
+  background: rgba(244, 67, 54, 0.15);
+  color: #c62828;
+}
+
+/* Humanized Badge - Small indicator */
+.article-humanized-badge-small {
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(255, 107, 157, 0.15);
+  color: #FF6B9D;
+  white-space: nowrap;
+}
+
 .article-status {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
@@ -2167,6 +2259,14 @@ body {
   justify-content: center;
   width: 28px;
   height: 28px;
+  opacity: 0.5;
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+}
+
+.article-remove-btn:hover {
+  opacity: 1;
 }
 
 .article-remove-btn:hover {

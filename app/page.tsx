@@ -5040,7 +5040,7 @@ export default function Home() {
                 <div className="generated-articles-section" ref={generatedArticlesSectionRef}>
                   <h3 className="section-title">Generated Articles</h3>
                   <div className="articles-list">
-                    {generatedArticles.map((article) => {
+                    {generatedArticles.map((article, index) => {
                       const topicId = article.topicTitle;
                       // For discovery mode, find topic in topicsData
                       // For direct mode, topicTitle is stored in topicTitle (which is the articleId, but we extract the actual topic)
@@ -5062,36 +5062,59 @@ export default function Home() {
                       return (
                         <div key={topicId} className="article-result-card" data-article-id={topicId}>
                           <div className="article-result-header">
-                            <div>
-                              {/* Topic Title - H-level, bold, plain text (main heading) */}
-                              <h3 className="article-result-title">{topicTitle}</h3>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", width: "100%" }}>
+                              {/* Numbered Badge */}
+                              <div className="article-number-badge">
+                                {index + 1}
+                              </div>
                               
-                              {/* Title Tag - short phrase, regular text (subtitle) */}
-                              {titleTag && titleTag !== topicTitle && (
-                                <p className="article-title-tag">{titleTag}</p>
-                              )}
-                              
-                              
-                              {article && article.status === "ready" && (
-                                <div className="article-meta">
-                                  <span>Word count: {formattedWordCount} words</span>
-                                  <span>·</span>
-                                  <span>Anchor included</span>
-                                  {article.createdAt && (
-                                    <>
-                                      <span>·</span>
-                                      <span>Created: {new Date(article.createdAt).toLocaleString()}</span>
-                                    </>
-                                  )}
-                                </div>
-                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                {/* Topic Title - H-level, bold, plain text (main heading) */}
+                                <h3 className="article-result-title">{topicTitle}</h3>
+                                
+                                {/* Title Tag - short phrase, regular text (subtitle) */}
+                                {titleTag && titleTag !== topicTitle && (
+                                  <p className="article-title-tag">{titleTag}</p>
+                                )}
+                                
+                                {/* Key Metrics Block - Compact, visible immediately */}
+                                {article && article.status === "ready" && (
+                                  <div className="article-metrics-block">
+                                    <div className="article-metric-item">
+                                      <span className="article-metric-label">Words:</span>
+                                      <span className="article-metric-value">{formattedWordCount}</span>
+                                    </div>
+                                    <div className="article-metric-divider"></div>
+                                    <div className="article-metric-item">
+                                      <span className="article-metric-label">Status:</span>
+                                      <span className={`article-status-badge ${article.status}`}>
+                                        {article.status === "generating" ? "Generating…" : article.status === "error" ? "Error" : "Ready"}
+                                      </span>
+                                    </div>
+                                    {article.humanizedOnWrite && (
+                                      <>
+                                        <div className="article-metric-divider"></div>
+                                        <div className="article-metric-item">
+                                          <span className="article-humanized-badge-small">Humanized</span>
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {/* Generating Status */}
+                                {article && article.status === "generating" && (
+                                  <div className="article-metrics-block">
+                                    <div className="article-metric-item">
+                                      <span className="article-status-badge generating">Generating…</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
+                            
+                            {/* Actions - Top Right */}
                             <div className="article-header-actions">
-                              {article && (
-                                <span className={`article-status ${article.status}`}>
-                                  {article.status === "generating" ? "Generating…" : article.status === "error" ? "Error" : "Ready"}
-                                </span>
-                              )}
                               <button
                                 type="button"
                                 className="article-remove-btn"
