@@ -1158,7 +1158,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
-  padding-right: 3.5rem;
+  padding-right: 4.5rem; /* Space for chevron (1rem) + remove button (3.5rem) */
   padding-top: 1.75rem; /* Extra top padding for badges */
   display: flex;
   justify-content: space-between;
@@ -1329,8 +1329,10 @@ body {
   justify-content: center;
   color: var(--text-muted);
   flex-shrink: 0;
-  margin-left: 1rem;
+  margin-left: auto; /* Push to the right */
+  margin-right: 0.5rem; /* Space before remove button */
   transition: transform 0.2s ease, color 0.2s ease;
+  z-index: 1; /* Ensure it's above other elements */
 }
 
 .topic-chevron svg {
