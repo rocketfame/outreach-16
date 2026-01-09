@@ -4615,7 +4615,8 @@ export default function Home() {
                                 disabled={isCompleted}
                               >
                                 <div className="topic-header-content">
-                                  <div className="topic-header-left">
+                                  {/* Top Row: Title + Badges */}
+                                  <div className="topic-header-top-row">
                                     <h4 className="topic-cluster-name">
                                       <span className="cluster-number-badge">{clusterNumber}</span>
                                       {clusterName}
@@ -4630,43 +4631,44 @@ export default function Home() {
                                         </span>
                                       )}
                                     </h4>
-                                    <div className="topic-header-meta">
-                                      {firstTopic && (
-                                        <span className="topic-for-problem">
-                                          For: {firstTopic.forWho} · Problem: {firstTopic.problem}
+                                    {/* Topic Meta-Preview Badges - Type + Evergreen + Competition */}
+                                    {firstTopic && (
+                                      <div className="topic-header-badges">
+                                        {/* Type Badge */}
+                                        <span className="topic-type-badge">
+                                          {getSearchIntentLabel(firstTopic.searchIntent)}
                                         </span>
-                                      )}
-                                    </div>
+                                        
+                                        {/* Evergreen Badge */}
+                                        <span className="topic-evergreen-badge">
+                                          <span className="topic-evergreen-label">Evergreen</span>
+                                          <div className="topic-evergreen-dots">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                              <span
+                                                key={i}
+                                                className={`topic-evergreen-dot ${i <= firstTopic.evergreenScore ? "filled" : "empty"}`}
+                                              >
+                                                ●
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </span>
+                                        
+                                        {/* Competition Badge */}
+                                        <span className={`topic-competition-badge ${firstTopic.competitionLevel}`}>
+                                          Competition: {firstTopic.competitionLevel.charAt(0).toUpperCase() + firstTopic.competitionLevel.slice(1)}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
-                                  {/* Topic Meta-Preview Badges - Type + Evergreen + Competition */}
-                                  {firstTopic && (
-                                    <div className="topic-header-badges">
-                                      {/* Type Badge */}
-                                      <span className="topic-type-badge">
-                                        {getSearchIntentLabel(firstTopic.searchIntent)}
+                                  {/* Bottom Row: Meta Info */}
+                                  <div className="topic-header-meta">
+                                    {firstTopic && (
+                                      <span className="topic-for-problem">
+                                        For: {firstTopic.forWho} · Problem: {firstTopic.problem}
                                       </span>
-                                      
-                                      {/* Evergreen Badge */}
-                                      <span className="topic-evergreen-badge">
-                                        <span className="topic-evergreen-label">Evergreen</span>
-                                        <div className="topic-evergreen-dots">
-                                          {[1, 2, 3, 4, 5].map(i => (
-                                            <span
-                                              key={i}
-                                              className={`topic-evergreen-dot ${i <= firstTopic.evergreenScore ? "filled" : "empty"}`}
-                                            >
-                                              ●
-                                            </span>
-                                          ))}
-                                        </div>
-                                      </span>
-                                      
-                                      {/* Competition Badge */}
-                                      <span className={`topic-competition-badge ${firstTopic.competitionLevel}`}>
-                                        Competition: {firstTopic.competitionLevel.charAt(0).toUpperCase() + firstTopic.competitionLevel.slice(1)}
-                                      </span>
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
                                 {!isCompleted && (
                                   <span className="topic-chevron">
