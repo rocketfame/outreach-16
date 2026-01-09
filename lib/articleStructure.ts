@@ -226,6 +226,51 @@ export function blocksToHtml(
   anchors: AnchorSpec[], 
   trusts: TrustSourceSpec[]
 ): string {
+  // DEBUG: Check for placeholders in all blocks before processing
+  const allPlaceholders: string[] = [];
+  blocks.forEach(block => {
+    if (block.type === 'ul' || block.type === 'ol') {
+      const listBlock = block as ListBlock;
+      listBlock.items.forEach(item => {
+        const matches = item.text.match(/\[([AT][1-3])\]/g);
+        if (matches) allPlaceholders.push(...matches);
+      });
+    } else if (block.type === 'table') {
+      const tableBlock = block as TableBlock;
+      if (tableBlock.caption) {
+        const matches = tableBlock.caption.match(/\[([AT][1-3])\]/g);
+        if (matches) allPlaceholders.push(...matches);
+      }
+      tableBlock.headers.forEach(h => {
+        const matches = h.match(/\[([AT][1-3])\]/g);
+        if (matches) allPlaceholders.push(...matches);
+      });
+      tableBlock.rows.forEach(row => {
+        row.forEach(cell => {
+          const matches = cell.match(/\[([AT][1-3])\]/g);
+          if (matches) allPlaceholders.push(...matches);
+        });
+      });
+    } else {
+      const matches = block.text.match(/\[([AT][1-3])\]/g);
+      if (matches) allPlaceholders.push(...matches);
+    }
+  });
+  
+  if (allPlaceholders.length > 0) {
+    console.log(`[blocksToHtml] Found ${allPlaceholders.length} placeholders in blocks:`, {
+      placeholders: [...new Set(allPlaceholders)],
+      anchorsExpected: anchors.map(a => `[${a.id}]`),
+      trustsExpected: trusts.map(t => `[${t.id}]`),
+    });
+  } else {
+    console.warn(`[blocksToHtml] No placeholders found in blocks! Expected:`, {
+      anchorsExpected: anchors.map(a => `[${a.id}]`),
+      trustsExpected: trusts.map(t => `[${t.id}]`),
+      blocksCount: blocks.length,
+    });
+  }
+  
   return blocks.map(block => {
     if (block.type === 'table') {
       const tableBlock = block as TableBlock;
