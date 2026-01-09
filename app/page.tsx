@@ -4615,54 +4615,54 @@ export default function Home() {
                                 disabled={isCompleted}
                               >
                                 <div className="topic-header-content">
-                                  {/* Top Row: Title + Badges */}
-                                  <div className="topic-header-top-row">
-                                    <div className="topic-title-wrapper">
-                                      <span className="cluster-number-badge">{clusterNumber}</span>
-                                      <h4 className="topic-cluster-name">
-                                        {clusterName}
-                                      </h4>
-                                      {hasArticle && (
-                                        <span className="topic-completed-badge-header" title={headerArticle?.createdAt ? `Article created: ${new Date(headerArticle.createdAt).toLocaleString()}` : "Article created"}>
-                                          ✓ Article created{headerArticle?.createdAt ? ` · ${new Date(headerArticle.createdAt).toLocaleString()}` : ""}
-                                        </span>
-                                      )}
-                                      {isGenerating && (
-                                        <span className="topic-generating-badge-header" title="Generating article">
-                                          ⏳ Generating...
-                                        </span>
-                                      )}
+                                  {/* Top Row: Badges Only - Partially Overflowing */}
+                                  {firstTopic && (
+                                    <div className="topic-header-badges-row">
+                                      {/* Type Badge */}
+                                      <span className="topic-type-badge">
+                                        {getSearchIntentLabel(firstTopic.searchIntent)}
+                                      </span>
+                                      
+                                      {/* Evergreen Badge */}
+                                      <span className="topic-evergreen-badge">
+                                        <span className="topic-evergreen-label">Evergreen</span>
+                                        <div className="topic-evergreen-dots">
+                                          {[1, 2, 3, 4, 5].map(i => (
+                                            <span
+                                              key={i}
+                                              className={`topic-evergreen-dot ${i <= firstTopic.evergreenScore ? "filled" : "empty"}`}
+                                            >
+                                              ●
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </span>
+                                      
+                                      {/* Competition Badge */}
+                                      <span className={`topic-competition-badge ${firstTopic.competitionLevel}`}>
+                                        Competition: {firstTopic.competitionLevel.charAt(0).toUpperCase() + firstTopic.competitionLevel.slice(1)}
+                                      </span>
                                     </div>
-                                    {/* Topic Meta-Preview Badges - Type + Evergreen + Competition */}
-                                    {firstTopic && (
-                                      <div className="topic-header-badges">
-                                        {/* Type Badge */}
-                                        <span className="topic-type-badge">
-                                          {getSearchIntentLabel(firstTopic.searchIntent)}
-                                        </span>
-                                        
-                                        {/* Evergreen Badge */}
-                                        <span className="topic-evergreen-badge">
-                                          <span className="topic-evergreen-label">Evergreen</span>
-                                          <div className="topic-evergreen-dots">
-                                            {[1, 2, 3, 4, 5].map(i => (
-                                              <span
-                                                key={i}
-                                                className={`topic-evergreen-dot ${i <= firstTopic.evergreenScore ? "filled" : "empty"}`}
-                                              >
-                                                ●
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </span>
-                                        
-                                        {/* Competition Badge */}
-                                        <span className={`topic-competition-badge ${firstTopic.competitionLevel}`}>
-                                          Competition: {firstTopic.competitionLevel.charAt(0).toUpperCase() + firstTopic.competitionLevel.slice(1)}
-                                        </span>
-                                      </div>
+                                  )}
+                                  
+                                  {/* Second Row: Title with Number Badge */}
+                                  <div className="topic-title-wrapper">
+                                    <span className="cluster-number-badge">{clusterNumber}</span>
+                                    <h4 className="topic-cluster-name">
+                                      {clusterName}
+                                    </h4>
+                                    {hasArticle && (
+                                      <span className="topic-completed-badge-header" title={headerArticle?.createdAt ? `Article created: ${new Date(headerArticle.createdAt).toLocaleString()}` : "Article created"}>
+                                        ✓ Article created{headerArticle?.createdAt ? ` · ${new Date(headerArticle.createdAt).toLocaleString()}` : ""}
+                                      </span>
+                                    )}
+                                    {isGenerating && (
+                                      <span className="topic-generating-badge-header" title="Generating article">
+                                        ⏳ Generating...
+                                      </span>
                                     )}
                                   </div>
+                                  
                                   {/* Bottom Row: Meta Info */}
                                   <div className="topic-header-meta">
                                     {firstTopic && (
