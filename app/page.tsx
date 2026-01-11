@@ -4370,7 +4370,7 @@ export default function Home() {
                                 transition: "all 0.2s ease",
                               }}
                             >
-                              SEO Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(recommended)</span>
+                              SEO Mode
                             </button>
                             <button
                               type="button"
@@ -4391,7 +4391,7 @@ export default function Home() {
                                 transition: "all 0.2s ease",
                               }}
                             >
-                              Human Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(editorial)</span>
+                              Human Mode
                             </button>
                           </div>
                           <small style={{ display: "block", marginTop: "0.5rem", color: "var(--text-muted)" }}>
