@@ -1170,9 +1170,8 @@ export default function Home() {
       // This ensures that if user changed Brand, Anchor, or other Project Basics settings,
       // those changes will be reflected in the generated article
       // CRITICAL: For Human Mode, humanization is ALWAYS enabled (force ON)
-      // Editorial Mode does NOT use humanization (it's built into the prompt)
       // The API will automatically enable humanization for Human Mode regardless of UI toggle
-      const effectiveHumanizeForRequest = writingMode === "human" ? true : (writingMode === "editorial" ? false : humanizeOnWriteEnabled);
+      const effectiveHumanizeForRequest = writingMode === "human" ? true : humanizeOnWriteEnabled;
       
       const response = await fetch("/api/articles", {
         method: "POST",
@@ -1472,9 +1471,8 @@ export default function Home() {
       // These fields are used by API to detect Topic Discovery Mode
       // IMPORTANT: Pass articleId in the topic title so we can match it on response
       // CRITICAL: For Human Mode, humanization is ALWAYS enabled (force ON)
-      // Editorial Mode does NOT use humanization (it's built into the prompt)
       // The API will automatically enable humanization for Human Mode regardless of UI toggle
-      const effectiveHumanizeForRequest = writingMode === "human" ? true : (writingMode === "editorial" ? false : humanizeOnWriteEnabled);
+      const effectiveHumanizeForRequest = writingMode === "human" ? true : humanizeOnWriteEnabled;
       
       const response = await fetch("/api/articles", {
         method: "POST",
@@ -4181,34 +4179,11 @@ export default function Home() {
                   >
                     Human Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(editorial)</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => updateWritingMode("editorial")}
-                    className={`writing-mode-btn ${writingMode === "editorial" ? "active" : ""}`}
-                    style={{
-                      flex: 1,
-                      minWidth: "120px",
-                      padding: "0.75rem 1rem",
-                      borderRadius: "8px",
-                      border: "2px solid",
-                      borderColor: writingMode === "editorial" ? "var(--primary)" : "var(--border)",
-                      background: writingMode === "editorial" ? "var(--primary)" : "var(--card)",
-                      color: writingMode === "editorial" ? "white" : "var(--foreground)",
-                      cursor: "pointer",
-                      fontSize: "0.9rem",
-                      fontWeight: writingMode === "editorial" ? 600 : 400,
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    Editorial Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(anti-AI)</span>
-                  </button>
                 </div>
                 <small style={{ display: "block", marginTop: "0.5rem", color: "var(--text-muted)" }}>
                   {writingMode === "seo" 
                     ? "Optimized structure with clear headings and SEO-friendly format" 
-                    : writingMode === "human"
-                    ? "Editorial, founder-style writing with natural flow and varied structure. Humanization is automatically enabled."
-                    : "Editorial style optimized to bypass AI detection. Natural, slightly casual writing without external humanization API."}
+                    : "Editorial, founder-style writing with natural flow and varied structure. Humanization is automatically enabled."}
                 </small>
               </label>
             )}
@@ -4418,34 +4393,11 @@ export default function Home() {
                             >
                               Human Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(editorial)</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => updateWritingMode("editorial")}
-                              className={`writing-mode-btn ${writingMode === "editorial" ? "active" : ""}`}
-                              style={{
-                                flex: 1,
-                                minWidth: "120px",
-                                padding: "0.75rem 1rem",
-                                borderRadius: "8px",
-                                border: "2px solid",
-                                borderColor: writingMode === "editorial" ? "var(--primary)" : "var(--border)",
-                                background: writingMode === "editorial" ? "var(--primary)" : "var(--card)",
-                                color: writingMode === "editorial" ? "white" : "var(--foreground)",
-                                cursor: "pointer",
-                                fontSize: "0.9rem",
-                                fontWeight: writingMode === "editorial" ? 600 : 400,
-                                transition: "all 0.2s ease",
-                              }}
-                            >
-                              Editorial Mode <span style={{ fontSize: "0.85rem", opacity: 0.9 }}>(anti-AI)</span>
-                            </button>
                           </div>
                           <small style={{ display: "block", marginTop: "0.5rem", color: "var(--text-muted)" }}>
                             {writingMode === "seo" 
                               ? "Optimized structure with clear headings and SEO-friendly format" 
-                              : writingMode === "human"
-                              ? "Editorial, founder-style writing with natural flow and varied structure. Humanization is automatically enabled."
-                              : "Editorial style optimized to bypass AI detection. Natural, slightly casual writing without external humanization API."}
+                              : "Editorial, founder-style writing with natural flow and varied structure. Humanization is automatically enabled."}
                           </small>
                         </label>
                       </div>
@@ -4837,13 +4789,6 @@ export default function Home() {
                                           {HUMAN_MODE_EXPERIMENT && writingMode === "human" && (
                                             <div style={{ padding: "0.75rem", background: "var(--secondary)", borderRadius: "8px", fontSize: "0.9rem", color: "var(--text-muted)" }}>
                                               <strong style={{ color: "var(--foreground)" }}>Human Mode:</strong> Humanization is automatically enabled for all generated articles.
-                                            </div>
-                                          )}
-                                          
-                                          {/* Show info message in Editorial Mode */}
-                                          {HUMAN_MODE_EXPERIMENT && writingMode === "editorial" && (
-                                            <div style={{ padding: "0.75rem", background: "var(--secondary)", borderRadius: "8px", fontSize: "0.9rem", color: "var(--text-muted)" }}>
-                                              <strong style={{ color: "var(--foreground)" }}>Editorial Mode:</strong> Anti-AI detection style without external humanization API. Content is optimized to bypass AI detectors naturally.
                                             </div>
                                           )}
                                           

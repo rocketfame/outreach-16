@@ -52,7 +52,7 @@ export interface ArticlePromptParams {
   language: string;
   targetAudience: string;
   wordCount?: string;
-  writingMode?: "seo" | "human" | "editorial"; // Writing mode: "seo" (default), "human" (editorial with humanization), or "editorial" (anti-AI without external humanization)
+  writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
 }
 
 /**
@@ -185,7 +185,6 @@ WRITING MODE LOGIC
 WritingMode can be:
 - "seo" → use the existing strict SEO article behavior (headings, subheadings, lists, strong structure).
 - "human" → write in Human Mode (editorial / founder-style) as described below.
-- "editorial" → write in Editorial Mode (anti-AI detection style) as described below.
 
 If WritingMode == "seo":
 - Behave exactly as in the current live version of the app.
@@ -226,86 +225,6 @@ GENERAL (HUMAN MODE)
 - Never mention 'writing mode', 'SEO Mode', 'Human Mode', AI, prompts, or detectors in the article itself.
 - Prioritize clarity for a human reader over perfect formal structure.
 
-If WritingMode == "editorial":
-You are writing in Editorial Mode - you MUST write like a real human editor, NOT like an AI following templates.
-
-CRITICAL: BREAK ALL AI PATTERNS
-- You are a real person writing about something you care about. Write like a human would, not like a machine following instructions.
-- Real editors DON'T use numbered patterns (Pattern 1, Pattern 2, Pattern 3), structured rollouts (2-week rollout, Days 1-3), or repeating metrics sections.
-- Real editors DON'T create perfect symmetry - some sections are longer, some shorter, some have lists, some don't, some are more casual, some more serious.
-- Your writing should feel spontaneous and organic, like you're figuring it out as you go, not following a template.
-
-ABSOLUTELY FORBIDDEN STRUCTURES (EDITORIAL MODE):
-- NO "Pattern 1:", "Pattern 2:", "Pattern 3:" or any numbered patterns in headings
-- NO "Metric that proves it:" or "Metric:" or any repeating metric sections
-- NO "2-week rollout:", "Days 1-3:", "Week one:" or any structured timeline formats
-- NO perfectly parallel list structures (every section having the same format)
-- NO "First, Second, Third" or "Step 1, Step 2, Step 3" unless absolutely necessary
-- NO repeating phrases like "Next action:", "If it stalls:" in multiple sections
-- NO perfect intro-3-sections-conclusion template
-
-REQUIRED: ORGANIC HUMAN STRUCTURE (EDITORIAL MODE)
-- Use one H1 for the title - make it conversational, not formulaic
-- Use H2s when it feels natural (2–7 sections), but don't force a specific number
-- Some sections might be just paragraphs, no lists at all
-- Some sections might have one short list, then go back to paragraphs
-- Some sections might be mostly narrative with one example buried in the middle
-- Lists should appear rarely and only when they genuinely help - not as a default format
-- When you DO use lists, make them feel improvised - different lengths, different styles, maybe one bulleted, one numbered, one just indented
-- Mix list styles irregularly - don't make them all look the same
-
-REQUIRED: NATURAL HUMAN VOICE (EDITORIAL MODE)
-- Write like you're telling someone about this over coffee, not writing a manual
-- Use contractions naturally throughout (it's, don't, can't, won't, you're, that's, there's)
-- Mix long rambling sentences with very short punchy ones - humans don't write uniformly
-- Vary your sentence starts - don't begin every paragraph the same way
-- Sometimes start with "So", "But", "And", "The thing is", "Here's what I mean"
-- Use casual phrases naturally: "I've seen this work", "What usually happens", "The tricky part is", "Here's the thing"
-- It's okay to have run-on sentences or slightly awkward phrasing - humans write imperfectly
-- Occasionally use sentence fragments for emphasis. Like this. It works.
-- Use "I" and "you" naturally - speak directly to the reader like a real person would
-
-REQUIRED: HUMAN IMPERFECTIONS (EDITORIAL MODE)
-- Some paragraphs should be one sentence. Some should be five or six. Mix it up wildly.
-- Sometimes repeat yourself slightly - humans do this when they're making a point
-- Occasionally include an aside or tangent that feels natural
-- Use varied transitions - sometimes "But", sometimes "However", sometimes no transition at all
-- Don't explain everything perfectly - leave some things slightly implicit
-- It's okay if some sections feel less polished than others - that's human
-- Include natural digressions: "By the way, one thing I noticed...", "Oh, and another thing..."
-- Vary your tone - some parts more serious, some lighter, some more passionate
-
-STRUCTURAL FREEDOM (EDITORIAL MODE)
-- You don't need to cover everything in equal depth - some points can be brief, others expanded
-- You can jump around a bit - humans don't always organize perfectly linearly
-- Some sections might have subheadings (H3), others won't - mix it up
-- You can have sections that are just one paragraph, and sections that are several paragraphs with examples
-- Don't force every section to have examples - sometimes just explain, sometimes tell a story
-- If you mention metrics or timelines, weave them into the narrative, don't create structured sections for them
-
-WHAT REAL EDITORS DO (EDITORIAL MODE)
-- They start with what matters most, not with a template
-- They adjust their structure based on the content, not force content into a structure
-- They use lists sparingly and only when lists genuinely help
-- They write paragraphs of varying lengths because that's how thoughts flow
-- They sometimes include personal observations or experiences
-- They don't follow formulas - each piece has its own shape
-
-CRITICAL FORBIDDEN PATTERNS (EDITORIAL MODE)
-- NEVER use "Pattern 1:", "Pattern 2:", "Pattern 3:" or any numbered patterns
-- NEVER create structured rollouts like "2-week rollout:", "Days 1-3:", "Week one:"
-- NEVER repeat the same structure in every section (e.g., every section having: intro paragraph, list, metric section)
-- NEVER use "Metric that proves it:" or any repeating metric/timeline sections
-- NEVER create perfect parallelism - "First… Second… Third…" across sections
-- NEVER make every section the same length or format
-- NEVER use formulaic transitions like "Next action:", "If it stalls:" repeatedly
-
-GENERAL (EDITORIAL MODE)
-- Never mention 'writing mode', 'SEO Mode', 'Human Mode', 'Editorial Mode', AI, prompts, detectors, or any technical terms in the article itself.
-- Write as if you're a real human editor who genuinely knows this topic and is sharing insights, not following a template.
-- The article should feel like it could have been written by hand, not generated - imperfect, authentic, human.
-- If you catch yourself following a pattern, STOP and write it differently. Break the pattern.
-
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
@@ -338,16 +257,7 @@ Suggested flow (FOR SEO AND HUMAN MODES - EDITORIAL MODE IGNORES THIS):
   - If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brands and you skip the brand integration entirely.
 • Short conclusion that summarizes key points and gently points toward action.
   - CRITICAL: Do NOT add brand mentions in the conclusion unless they naturally fit the summary. Brand should primarily appear in main body sections.
-• Use bullet or numbered lists where helpful (EDITORIAL MODE: use lists VERY sparingly, maybe once or twice in the whole article, and never in every section).
-
-IF EDITORIAL MODE: OVERRIDE STRUCTURE RULES:
-• DO NOT follow the "Suggested flow" template above - write organically instead.
-• DO NOT create "2-4 main sections" - write as many or as few sections as feel natural (could be 2, could be 6, could be 3).
-• DO NOT use lists in every section - most sections should be paragraphs only. Lists should appear maybe once or twice in the entire article, and only when they genuinely help.
-• DO NOT create structured sections like "Metric that proves it:", "2-week rollout:", "Pattern 1:", etc. - weave information naturally into paragraphs.
-• DO NOT number patterns or steps unless absolutely necessary - prefer narrative explanation.
-• Start with what matters most to the reader, not with a formal template.
-• End naturally, not with a formal "conclusion" - just wrap up when you're done making your points.
+• Use bullet or numbered lists where helpful.
 
 Structure variation and pattern rules (IMPORTANT):
 • Do not turn every article into a numbered "Step 1 / Step 2 / Step 3" guide.
@@ -356,18 +266,6 @@ Structure variation and pattern rules (IMPORTANT):
 • Lists (<ul>/<ol>) are optional tools, not a default template. Use them only when they genuinely make the content clearer. Never build the whole article as one long sequence of bullets.
 • Inside one article, do not format every section as "Point 1 / Point 2 / Point 3". Mix narrative paragraphs, occasional bullets, and subheadings so the text feels like a real editorial piece, not a rigid manual.
 • It is fine if some articles look almost fully narrative (just headings plus paragraphs) as long as the structure stays readable and follows [[TOPIC_BRIEF]].
-
-IF EDITORIAL MODE - ADDITIONAL STRUCTURE RULES (CRITICAL):
-• NEVER use "Pattern 1:", "Pattern 2:", "Pattern 3:" or any numbered patterns in headings or section titles.
-• NEVER create structured sections like "Metric that proves it:", "2-week rollout:", "Days 1-3:", "Week one:", or any timeline/metric templates.
-• NEVER repeat the same structure in multiple sections (e.g., every section having: intro paragraph, list, metric section).
-• NEVER use formulaic phrases like "Next action:", "If it stalls:", "Metric that proves it:" repeatedly.
-• NEVER create perfect parallelism across sections ("First… Second… Third…").
-• Lists should appear AT MOST once or twice in the entire article, and NEVER in every section.
-• Most sections should be paragraphs only - no lists, no bullet points, just natural narrative.
-• When you mention metrics or timelines, weave them into paragraphs naturally - don't create structured sections for them.
-• If you mention a process or method, explain it in paragraphs, not as a numbered list or structured template.
-• Each section should have its own unique shape - don't force them all into the same format.
 
 Repetition:
 • Avoid repeating the same phrases and sentence patterns.
@@ -937,7 +835,7 @@ export interface DirectArticlePromptParams {
   language: string;
   targetAudience: string;
   wordCount?: string;
-  writingMode?: "seo" | "human" | "editorial"; // Writing mode: "seo" (default), "human" (editorial with humanization), or "editorial" (anti-AI without external humanization)
+  writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
 }
 
 /**
