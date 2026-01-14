@@ -198,13 +198,12 @@ Core principles:
 - SEO is allowed but secondary: focus on voice and flow first, structure second.
 
 STRUCTURE (HUMAN MODE)
-- Use one H1 for the title - that's the only structural requirement.
-- H2 headings are OPTIONAL. Use them ONLY when they genuinely help the reader navigate. Most editorial pieces work fine with just paragraphs - skip headings entirely if the article flows naturally without them.
-- If you do use H2s, use them sparingly (maybe 1-2 total, not 4-5). And don't create perfect symmetry - some sections with headings, some without.
-- Paragraph length should vary dramatically: some 1-sentence paragraphs, some 2-3 sentences, some longer (5-7 sentences). Mix it up wildly.
-- Lists are HIGHLY DISCOURAGED in Human Mode. Use them only if absolutely necessary (maybe once in the whole article, or skip them entirely). Most of the time, just use paragraphs.
-- Do NOT force any structure template. Write naturally, like you're explaining something to a colleague. It's okay if there are no clear "sections" - just paragraphs that flow from one thought to the next.
-- The article should feel like a stream of thought, not a structured manual. Think blog post, not tutorial.
+- Use one H1 for the title.
+- Use a small number of H2s (2–5), only when they genuinely help the flow.
+- Avoid rigid patterns where every H2 has the same internal layout.
+- Paragraph length should vary: some 1–2 sentence paragraphs, some longer.
+- Lists are allowed, but use them rarely and irregularly. Prefer narrative text over big bullet checklists.
+- Do NOT force a classic 'Intro → 3 sections → Conclusion' skeleton. Let the article breathe.
 
 STYLE & VOICE (HUMAN MODE)
 - Mix long, flowing sentences with very short ones.
@@ -250,7 +249,7 @@ Structure:
 • Structure the article with clear headings written as plain text on their own lines, followed by double newline.
 • Use plain text headings for the main article title, major sections, and subsections.
 
-Suggested flow (FOR SEO MODE ONLY - HUMAN MODE IGNORES THIS):
+Suggested flow (FOR SEO AND HUMAN MODES - EDITORIAL MODE IGNORES THIS):
 • Short intro that hooks the reader and hints at the solution.
   - CRITICAL: Do NOT mention [[BRAND_NAME]] in the intro, even if provided. Brand mentions belong in the main body sections only.
 • 2-4 main sections (H2/H3) with practical advice and examples.
@@ -259,15 +258,6 @@ Suggested flow (FOR SEO MODE ONLY - HUMAN MODE IGNORES THIS):
 • Short conclusion that summarizes key points and gently points toward action.
   - CRITICAL: Do NOT add brand mentions in the conclusion unless they naturally fit the summary. Brand should primarily appear in main body sections.
 • Use bullet or numbered lists where helpful.
-
-IF HUMAN MODE - COMPLETELY DIFFERENT APPROACH:
-• DO NOT follow the "Suggested flow" template above. Write organically, like a blog post or editorial piece.
-• Start with what matters most - could be a question, a story, an observation, or diving straight into the topic.
-• Write in paragraphs. Let thoughts flow naturally from one to the next. No need for clear "sections" - just natural transitions.
-• Use H2 headings ONLY if they genuinely help (maybe 1-2 times, or skip them entirely). Most editorial pieces don't need many headings.
-• If [[BRAND_NAME]] is provided, weave it in naturally where it makes sense (usually in the middle/body, not intro or conclusion).
-• End when you've made your point - no need for a formal "conclusion" section. Just wrap up naturally.
-• AVOID lists entirely if possible. If you absolutely must use one, keep it short and informal.
 
 Structure variation and pattern rules (IMPORTANT):
 • Do not turn every article into a numbered "Step 1 / Step 2 / Step 3" guide.
@@ -884,13 +874,12 @@ Core principles:
 - SEO is allowed but secondary: focus on voice and flow first, structure second.
 
 STRUCTURE (HUMAN MODE)
-- Use one H1 for the title - that's the only structural requirement.
-- H2 headings are OPTIONAL. Use them ONLY when they genuinely help the reader navigate. Most editorial pieces work fine with just paragraphs - skip headings entirely if the article flows naturally without them.
-- If you do use H2s, use them sparingly (maybe 1-2 total, not 4-5). And don't create perfect symmetry - some sections with headings, some without.
-- Paragraph length should vary dramatically: some 1-sentence paragraphs, some 2-3 sentences, some longer (5-7 sentences). Mix it up wildly.
-- Lists are HIGHLY DISCOURAGED in Human Mode. Use them only if absolutely necessary (maybe once in the whole article, or skip them entirely). Most of the time, just use paragraphs.
-- Do NOT force any structure template. Write naturally, like you're explaining something to a colleague. It's okay if there are no clear "sections" - just paragraphs that flow from one thought to the next.
-- The article should feel like a stream of thought, not a structured manual. Think blog post, not tutorial.
+- Use one H1 for the title.
+- Use a small number of H2s (2–5), only when they genuinely help the flow.
+- Avoid rigid patterns where every H2 has the same internal layout.
+- Paragraph length should vary: some 1–2 sentence paragraphs, some longer.
+- Lists are allowed, but use them rarely and irregularly. Prefer narrative text over big bullet checklists.
+- Do NOT force a classic 'Intro → 3 sections → Conclusion' skeleton. Let the article breathe.
 
 STYLE & VOICE (HUMAN MODE)
 - Mix long, flowing sentences with very short ones.
