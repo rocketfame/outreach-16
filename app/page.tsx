@@ -3876,7 +3876,7 @@ export default function Home() {
               - AIHumanize usage (words used)
               - Total cost calculation
           */}
-          <div className="cost-display">
+          <div className="cost-display" style={{ display: 'none' }}>
             <div className="cost-item">
               <span className="cost-label">Tavily:</span>
               <span className="cost-value">
