@@ -1019,6 +1019,7 @@ export default function Home() {
       ...generatedArticles.filter(a => !topicIds.includes(a.topicTitle)),
       ...topics.map(topic => ({
         topicTitle: topic.id,
+        topicDisplayTitle: topic.workingTitle,
         titleTag: "",
         metaDescription: "",
         fullArticleText: "",
@@ -1219,6 +1220,7 @@ export default function Home() {
           fullArticleText: cleanText(article.fullArticleText || ''),
           articleBodyHtml: cleanText(article.articleBodyHtml || article.fullArticleText || ''),
           topicTitle: topics[index]?.id || article.topicTitle,
+          topicDisplayTitle: topics[index]?.workingTitle || article.topicDisplayTitle,
           status: "ready" as const,
           createdAt: now, // Save creation timestamp
           // CRITICAL: Save humanization settings used for this article
@@ -5063,7 +5065,7 @@ export default function Home() {
                       // For direct mode, use articleTitle or extract from topicId; for discovery, use topic.workingTitle
                       const topicTitle = mode === "direct" 
                         ? (article.titleTag ? stripHtmlTags(article.titleTag) : topicId.replace(/^direct-\d+-/, ""))
-                        : (topic?.workingTitle || topicId);
+                        : (article.topicDisplayTitle || topic?.workingTitle || topicId);
                       const titleTag = article.titleTag ? stripHtmlTags(article.titleTag) : null;
                       
                       return (

@@ -852,9 +852,9 @@ Language: US English.`;
           }
           
           return {
-            id: ts.id,
+          id: ts.id,
             text: anchorText, // Short anchor text (1-3 words)
-            url: ts.url,
+          url: ts.url,
           };
         });
 
@@ -1624,12 +1624,12 @@ Language: US English.`;
           debugLog(blocksToHtmlLog);
           console.log(`[articles-api] Converting blocks to HTML for topic: ${topic.title}`, blocksToHtmlLog.data);
           // #endregion
-          
+
           // Convert blocks to HTML, fix spacing around tags, remove excessive bold, then clean invisible characters
           const htmlBeforeClean = blocksToHtml(
-            articleStructure.blocks,
-            articleStructure.anchors,
-            articleStructure.trustSources
+                  articleStructure.blocks,
+                  articleStructure.anchors,
+                  articleStructure.trustSources
           );
           
           // CRITICAL: Check if placeholders were replaced in HTML

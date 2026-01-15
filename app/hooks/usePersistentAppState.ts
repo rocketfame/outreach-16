@@ -44,6 +44,7 @@ export type EditHistoryEntry = {
 
 export type GeneratedArticle = {
   topicTitle: string;
+  topicDisplayTitle?: string; // Preserve original topic title for display even if topics list changes
   titleTag: string;
   metaDescription: string;
   fullArticleText: string;

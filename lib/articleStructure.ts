@@ -528,7 +528,7 @@ export function modelBlocksToArticleStructure(
             const shortWords = words.slice(0, 2).join(' ');
             // If first 2 words are too generic or short, use first 3
             if (shortWords.length < 5 || /^(the|a|an|this|that|how|what|why|when|where)\s/i.test(shortWords)) {
-              name = words.slice(0, 3).join(' ');
+            name = words.slice(0, 3).join(' ');
             } else {
               name = shortWords;
             }
@@ -537,7 +537,7 @@ export function modelBlocksToArticleStructure(
           // If URL parsing fails, use first 1-2 words (prefer shorter)
           const shortWords = words.slice(0, 2).join(' ');
           if (shortWords.length < 5 || /^(the|a|an|this|that)\s/i.test(shortWords)) {
-            name = words.slice(0, 3).join(' ');
+          name = words.slice(0, 3).join(' ');
           } else {
             name = shortWords;
           }

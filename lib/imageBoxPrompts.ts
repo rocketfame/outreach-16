@@ -90,6 +90,46 @@ CONTEXT:
 FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
   },
   {
+    id: "ink_wash_action_ninja_illustration",
+    name: "Ink-wash action character",
+    description: "Energetic watercolor/ink sketch of a dynamic character in motion, textured paper, loose linework, and bold brush accents",
+    promptTemplate: `BOX 25 – "Ink-wash action character"
+
+Goal:
+Create a dynamic watercolor/ink hero illustration inspired by a hand-drawn sketch: expressive linework, loose brush strokes, and motion energy. The result should feel like a premium editorial illustration, not a kids' cartoon or generic AI art.
+
+Core style rules:
+- Watercolor + ink sketch look with visible paper texture (off-white, slightly warm).
+- Loose, expressive linework with imperfect edges and hand-drawn energy.
+- Broad brush accents and paint drips/splashes to suggest motion.
+- Palette: muted teal/blue + warm coral/orange accents, with a few punchy highlights.
+
+Character and action:
+- One dynamic character in mid-action (leaping, twisting, striking), captured with strong motion lines.
+- Outfit can be stylized (mask, scarf, layered clothing, light armor, sports gear), but keep it editorial and tasteful.
+- Use ONE prop related to the topic if it makes sense (e.g., racket, mic, camera, headset), drawn as part of the sketch.
+- Emphasize energy and flow (fabric trails, swooshes, diagonal composition).
+
+Background:
+- Minimal background; mostly blank paper.
+- Add vertical paint washes or abstract strokes behind the character for depth.
+- No detailed scenery or environment.
+
+Brand/platform integration:
+- If [[MAIN_PLATFORM]] needs to be referenced, hint at it with an abstract shape or color cue only.
+- No readable text, logos, or UI elements.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, subject centered or slightly off-center, with ample negative space.
+- Professional quality, editorial illustration feel.`
+  },
+  {
     id: "retro_futuristic_space_studio",
     name: "Retro-futuristic space studio",
     description: "Cinematic retro-futuristic studio scene with character in futuristic helmet, vintage audio gear, and deep space background",
@@ -1278,6 +1318,114 @@ CONTEXT:
 - Brand: [[BRAND_NAME]]
 
 FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box26_neon_dj_halftone_poster",
+    name: "Neon DJ Halftone Poster",
+    description: "High-contrast DJ portrait with lime background, halftone dots, diagonal speed lines, and bold screenprint poster vibe",
+    promptTemplate: `Create a bold screenprint-style hero image for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
+
+STYLE:
+- High-contrast black/white subject against a vivid neon-lime background.
+- Screenprint / poster aesthetic with crisp edges and slightly rough texture.
+- Large halftone dot field and diagonal speed lines to convey energy.
+- Limited palette: neon lime, black, white, and optional small accent (dark green or charcoal).
+
+SUBJECT:
+- One DJ or music creator, waist-up or mid-shot, wearing headphones and interacting with turntables or mixer.
+- Strong silhouette and expressive pose (leaning in, hands on decks).
+- No photorealistic skin tones; use stark black/white graphic treatment.
+
+COMPOSITION:
+- Subject placed left or center-left; strong negative space on the right.
+- Halftone dots and diagonal lines fill the right side for balance.
+- Keep background minimal; no clutter or realistic environment.
+
+TEXT/LOGO RULES:
+- No readable text from the article.
+- If [[MAIN_PLATFORM]] logo appears, keep it small and subtle in a corner or in the negative space.
+- No other typography unless it's abstract and unreadable.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT:
+- 16:9 horizontal hero image, poster-like layout, professional quality.`
+  },
+  {
+    id: "box27_flat_vector_headphones_portrait",
+    name: "Flat Vector Headphones Portrait",
+    description: "Clean vector illustration of a confident music creator with headphones on a solid warm background and a single brand color accent",
+    promptTemplate: `Create a clean, flat vector-style hero illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
+
+STYLE:
+- Crisp vector shapes, smooth edges, and minimal shading (2–3 tone blocks max).
+- Strong, solid background color (warm orange or amber).
+- Limited palette: warm background + one bold accent color + neutral blacks/whites.
+- Graphic poster vibe, not photorealistic.
+
+SUBJECT:
+- Single confident music creator, waist-up or medium shot, wearing headphones.
+- Simple modern streetwear (jacket + t-shirt), stylized but clean.
+- Face angled upward or to the side, expressive and aspirational.
+- If a logo is needed, integrate [[MAIN_PLATFORM]] as a simplified icon on the shirt or headphone earcup (no readable text).
+
+COMPOSITION:
+- Subject placed slightly left or right of center with clear negative space.
+- No detailed background; keep it flat and minimal.
+- No props or clutter.
+
+TEXT/LOGO RULES:
+- No readable text or article title.
+- No UI elements, no screenshots.
+- Logo use must be minimal and abstract.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT:
+- 16:9 horizontal hero image, clean editorial poster quality.`
+  },
+  {
+    id: "box28_liquid_metal_brand_abstraction",
+    name: "Liquid Metal Brand Abstraction",
+    description: "Abstract liquid-metal forms with glossy reflections and subtle platform-inspired motifs, no text, premium 3D poster vibe",
+    promptTemplate: `Create a premium abstract hero image inspired by liquid metal and brand motifs for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
+
+STYLE:
+- Abstract composition with glossy liquid-metal forms (chrome, molten silver) and smooth reflections.
+- Soft gradient background (warm orange/red or deep charcoal) with subtle glow.
+- High-end 3D render look, clean and minimal, premium tech/creative feel.
+
+MOTIFS & CONTEXT:
+- Integrate subtle abstract shapes inspired by [[MAIN_PLATFORM]] and the niche (e.g., simplified icon geometry, waves, signals, play-like curves), but never exact logos.
+- Use 1–3 recognizable motif hints, blended into the liquid forms or floating nearby.
+- Keep the references thematic and tasteful; avoid literal icons or UI elements.
+
+COMPOSITION:
+- Centered hero cluster of liquid shapes, with ample negative space.
+- Depth and layering: foreground glossy forms + soft background glow.
+- No characters, no devices, no scenery.
+
+RULES:
+- Absolutely no text or readable characters.
+- No full logos; only abstract hints.
+- No UI screenshots.
+
+CONTEXT:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+FORMAT:
+- 16:9 horizontal hero image, premium abstract poster quality.`
   },
 ];
 
