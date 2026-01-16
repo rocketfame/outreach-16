@@ -1201,6 +1201,7 @@ export default function Home() {
         metaDescription: string;
         fullArticleText: string;
         articleBodyHtml?: string;
+        topicDisplayTitle?: string;
       }> };
 
       // #region agent log
