@@ -878,6 +878,7 @@ export default function Home() {
         metaDescription: string;
         fullArticleText: string;
         articleBodyHtml?: string;
+        topicDisplayTitle?: string;
       }> };
 
       if (data.articles.length > 0) {
