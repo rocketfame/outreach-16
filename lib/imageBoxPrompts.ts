@@ -1439,14 +1439,43 @@ export function buildImagePromptFromBox(
     niche: string;
     mainPlatform: string;
     brandName: string;
+    contentPurpose?: string; // Optional: content purpose (e.g., "Blog", "Outreach")
   }
 ): string {
   let prompt = boxPrompt.promptTemplate;
   
+  // Replace placeholders
   prompt = prompt.replaceAll("[[ARTICLE_TITLE]]", params.articleTitle);
   prompt = prompt.replaceAll("[[NICHE]]", params.niche);
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform);
   prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "");
+  
+  // Add context-aware instructions to ensure image relevance
+  const contextInstructions = `
+
+CRITICAL CONTEXT REQUIREMENTS - IMAGE MUST BE RELEVANT TO ARTICLE TOPIC:
+- The article is about: "${params.articleTitle}"
+- The niche/topic area is: ${params.niche}
+- The main platform is: ${params.mainPlatform}${params.brandName ? `\n- The brand is: ${params.brandName}` : ""}
+
+VISUAL RELEVANCE RULES:
+- ALL characters, props, scenes, and visual elements MUST be directly relevant to the article topic "${params.articleTitle}" and the niche "${params.niche}".
+- If the article is about OSINT (Open Source Intelligence), the character should be a researcher, analyst, investigator, or someone working with data/intelligence - NOT a musician, synthesizer user, or unrelated profession.
+- If the article is about music marketing, the character should be related to music (artist, producer, marketer) - NOT a cybersecurity expert or unrelated field.
+- Props, tools, and visual elements must match the article's topic: for OSINT articles, show research tools, data visualization, screens with information; for music articles, show music-related items; for tech articles, show tech-related elements.
+- The scene, setting, and atmosphere must reflect the article's niche and topic, not generic or unrelated themes.
+- The character's appearance, clothing, and accessories should be appropriate for the article's niche and topic area.
+- DO NOT use generic characters or props that don't relate to the article topic - every visual element must support the article's subject matter.
+
+EXAMPLE: If the article is "OSINT Tools for Investigators", the image should show:
+- A character who looks like a researcher/investigator (not a musician or unrelated profession)
+- Props related to investigation/research (screens with data, maps, documents, analysis tools)
+- Setting appropriate for investigation work (office, research environment, not a music studio)
+
+The visual style from the box prompt above should be maintained, but ALL content (characters, props, scenes) must be relevant to the article topic "${params.articleTitle}" and niche "${params.niche}".`;
+
+  // Append context instructions to the prompt
+  prompt = prompt + contextInstructions;
   
   return prompt.trim();
 }

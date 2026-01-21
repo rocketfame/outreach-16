@@ -4,6 +4,7 @@
 import { getOpenAIClient, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { selectImageBoxPrompt, buildImagePromptFromBox } from "@/lib/imageBoxPrompts";
+import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken } from "@/lib/trialLimits";
 
 // Simple debug logger
 const debugLog = (...args: any[]) => {
@@ -206,6 +207,7 @@ Generate an image that looks like it was created by the same artist using the sa
         niche,
         mainPlatform,
         brandName,
+        contentPurpose,
       });
       
       debugLog({
@@ -308,6 +310,16 @@ export async function POST(req: Request) {
   debugLog(logEntry);
   // #endregion
 
+  // Check trial limits before processing
+  const trialToken = extractTrialToken(req);
+  const imageLimitCheck = canGenerateImage(trialToken);
+  if (!imageLimitCheck.allowed) {
+    return new Response(
+      JSON.stringify({ success: false, error: imageLimitCheck.reason || "Trial limit reached" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   // Validate API keys
   try {
     validateApiKeys();
@@ -398,6 +410,11 @@ export async function POST(req: Request) {
     const successLog = {location:'article-image/route.ts:POST',message:'Image generated successfully',data:{imageBase64Length:imageBase64.length},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(successLog);
     // #endregion
+
+    // Increment trial image count if trial token is present (not for main link/master)
+    if (trialToken && !isMasterToken(trialToken)) {
+      incrementImageCount(trialToken);
+    }
 
     return new Response(
       JSON.stringify({ success: true, imageBase64, selectedBoxIndex }),

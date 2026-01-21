@@ -8,10 +8,13 @@ interface TrialUsageData {
   isTrial: boolean;
   articlesGenerated: number;
   topicDiscoveryRuns: number;
+  imagesGenerated: number;
   maxArticles: number | null;
   maxTopicDiscoveryRuns: number | null;
+  maxImages: number | null;
   articlesRemaining: number | null;
   topicDiscoveryRunsRemaining: number | null;
+  imagesRemaining: number | null;
   error?: string;
 }
 
@@ -67,25 +70,27 @@ export default function TrialUsageDisplay() {
     return null;
   }
 
-  // Calculate total remaining "credits" (topic discovery runs + articles)
-  const totalRemaining = (usageData.topicDiscoveryRunsRemaining || 0) + (usageData.articlesRemaining || 0);
-  const totalUsed = usageData.topicDiscoveryRuns + usageData.articlesGenerated;
-  const totalLimit = (usageData.maxTopicDiscoveryRuns || 0) + (usageData.maxArticles || 0);
+  // Calculate total remaining "credits" (topic discovery runs + articles + images)
+  const totalRemaining = (usageData.topicDiscoveryRunsRemaining || 0) + (usageData.articlesRemaining || 0) + (usageData.imagesRemaining || 0);
+  const totalUsed = usageData.topicDiscoveryRuns + usageData.articlesGenerated + usageData.imagesGenerated;
+  const totalLimit = (usageData.maxTopicDiscoveryRuns || 0) + (usageData.maxArticles || 0) + (usageData.maxImages || 0);
   const totalProgress = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
 
   return (
     <div style={{
-      marginBottom: "1.5rem",
-      padding: "0.75rem 0",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "flex-end",
+      gap: "0.25rem",
+      minWidth: "140px",
     }}>
       {/* Minimalistic Progress Bar */}
       <div style={{
         width: "100%",
-        height: "6px",
+        height: "4px",
         background: "var(--secondary)",
-        borderRadius: "3px",
+        borderRadius: "2px",
         overflow: "hidden",
-        marginBottom: "0.5rem",
       }}>
         <div style={{
           width: `${Math.min(100, totalProgress)}%`,
@@ -93,7 +98,7 @@ export default function TrialUsageDisplay() {
           background: totalProgress >= 100
             ? "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)"
             : "linear-gradient(90deg, #10b981 0%, #059669 100%)",
-          borderRadius: "3px",
+          borderRadius: "2px",
           transition: "width 0.3s ease",
         }} />
       </div>
@@ -102,11 +107,10 @@ export default function TrialUsageDisplay() {
       <div style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
-        gap: "0.5rem",
+        gap: "0.375rem",
+        fontSize: "0.75rem",
       }}>
         <span style={{
-          fontSize: "0.875rem",
           fontWeight: 600,
           color: "var(--foreground)",
         }}>
@@ -143,11 +147,11 @@ export default function TrialUsageDisplay() {
             e.currentTarget.style.color = "var(--text-muted)";
             e.currentTarget.style.transform = "rotate(0deg)";
           }}
-          title="Refresh usage"
+          title={`Trial: ${usageData.maxTopicDiscoveryRuns} topic searches, ${usageData.maxArticles} articles, ${usageData.maxImages} image`}
         >
           <svg 
-            width="16" 
-            height="16" 
+            width="14" 
+            height="14" 
             viewBox="0 0 24 24" 
             fill="none" 
             stroke="currentColor" 

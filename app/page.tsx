@@ -4002,7 +4002,10 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <div className="theme-switch-container">
+          <div className="theme-switch-container" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {/* Trial Usage Display - inline with theme toggle */}
+            <TrialUsageDisplay />
+            
             <button
               type="button"
               className={`theme-toggle ${theme === "dark" ? "dark-active" : ""}`}
@@ -4030,8 +4033,6 @@ export default function Home() {
       </header>
 
       <main className="content">
-          {/* Trial Usage Display */}
-          <TrialUsageDisplay />
           
           {/* Mode Switch */}
           <div className="mode-switch">

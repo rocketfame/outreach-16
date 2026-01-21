@@ -14,6 +14,7 @@ const trialUsageStore = new Map<string, TrialUsage>();
 export const TRIAL_LIMITS = {
   MAX_ARTICLES: 2,
   MAX_TOPIC_DISCOVERY_RUNS: 2,
+  MAX_IMAGES: 1,
 } as const;
 
 /**
@@ -81,6 +82,7 @@ export function getTrialUsage(token: string): TrialUsage {
     trialUsageStore.set(token, {
       articlesGenerated: 0,
       topicDiscoveryRuns: 0,
+      imagesGenerated: 0,
     });
   }
   return trialUsageStore.get(token)!;
@@ -102,6 +104,43 @@ export function incrementTopicDiscoveryCount(token: string): void {
   const usage = getTrialUsage(token);
   usage.topicDiscoveryRuns += 1;
   trialUsageStore.set(token, usage);
+}
+
+/**
+ * Increment image generation count for trial token
+ */
+export function incrementImageCount(token: string): void {
+  const usage = getTrialUsage(token);
+  usage.imagesGenerated += 1;
+  trialUsageStore.set(token, usage);
+}
+
+/**
+ * Check if trial user can generate more images
+ */
+export function canGenerateImage(token: string | null): { allowed: boolean; reason?: string } {
+  // If no token provided, allow access (main link works as master)
+  if (!token) {
+    return { allowed: true }; // Main link without trial token = master access
+  }
+
+  if (isMasterToken(token)) {
+    return { allowed: true }; // Master has no limits
+  }
+
+  if (!isTrialToken(token)) {
+    return { allowed: false, reason: "Invalid trial token" };
+  }
+
+  const usage = getTrialUsage(token);
+  if (usage.imagesGenerated >= TRIAL_LIMITS.MAX_IMAGES) {
+    return {
+      allowed: false,
+      reason: `Trial limit reached: maximum ${TRIAL_LIMITS.MAX_IMAGES} image generation allowed`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 /**
