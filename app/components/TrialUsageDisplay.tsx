@@ -22,7 +22,16 @@ export default function TrialUsageDisplay() {
   useEffect(() => {
     const fetchUsage = async () => {
       try {
-        const response = await fetch("/api/trial-usage");
+        // Get trial token from URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const trialToken = urlParams.get("trial");
+        
+        // Build API URL with trial token if present
+        const apiUrl = trialToken 
+          ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}`
+          : "/api/trial-usage";
+        
+        const response = await fetch(apiUrl);
         if (response.ok) {
           const data = await response.json();
           setUsageData(data);
