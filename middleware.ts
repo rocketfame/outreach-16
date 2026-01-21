@@ -70,9 +70,25 @@ export function middleware(request: NextRequest) {
   const isMasterIPAddress = isMasterIP(clientIP);
   
   // Check for trial token first (allows access without basic auth)
-  // Extract trial token directly from URL (more reliable in middleware)
+  // Extract trial token from:
+  // 1. Query parameter: ?trial=token
+  // 2. URL path: /token (if path starts with a valid token)
+  // 3. Header: x-trial-token
   const trialTokenFromQuery = request.nextUrl.searchParams.get("trial");
-  const trialToken = trialTokenFromQuery || request.headers.get("x-trial-token");
+  let trialToken = trialTokenFromQuery || request.headers.get("x-trial-token");
+  
+  // If no token in query, check if path is a valid token (e.g., /trial-token-1)
+  if (!trialToken && request.nextUrl.pathname !== "/" && request.nextUrl.pathname !== "/not-found") {
+    const pathToken = request.nextUrl.pathname.slice(1); // Remove leading /
+    // Check if this path token is valid (only if it looks like a token, not a real route)
+    if (pathToken && (isTrialToken(pathToken) || isMasterToken(pathToken))) {
+      trialToken = pathToken;
+      // Rewrite to root path but keep the token
+      const rootUrl = new URL("/", request.url);
+      rootUrl.searchParams.set("trial", pathToken);
+      return NextResponse.redirect(rootUrl);
+    }
+  }
   
   // CRITICAL: If trial parameter exists, it MUST be valid
   if (trialToken) {
