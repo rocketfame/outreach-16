@@ -81,11 +81,9 @@ export function middleware(request: NextRequest) {
     
     // If token exists but is neither valid trial nor master, return 404
     if (!isValidTrial && !isValidMaster) {
-      // Invalid trial token - rewrite to 404 page (keeps URL but shows 404 content)
+      // Invalid trial token - redirect to 404 page
       const notFoundUrl = new URL("/not-found", request.url);
-      const response = NextResponse.rewrite(notFoundUrl);
-      response.status = 404;
-      return response;
+      return NextResponse.redirect(notFoundUrl);
     }
     
     // Valid trial or master token - allow access
