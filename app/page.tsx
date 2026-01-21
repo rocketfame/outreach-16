@@ -3,6 +3,7 @@
 import { ChangeEvent, useState, useEffect, useRef, useMemo } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
+import TrialLimitReached from "./components/TrialLimitReached";
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
@@ -111,6 +112,10 @@ export default function Home() {
     time: string;
     visible: boolean;
   } | null>(null);
+  const [trialLimitReached, setTrialLimitReached] = useState<{
+    visible: boolean;
+    message?: string;
+  }>({ visible: false });
   const generatedArticlesSectionRef = useRef<HTMLDivElement>(null);
   const prevThemeRef = useRef<string>(theme);
   const prevModeRef = useRef<string>(mode);
@@ -404,6 +409,16 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        // Check if it's a trial limit error (403)
+        if (response.status === 403 && errorData.error) {
+          setTrialLimitReached({
+            visible: true,
+            message: errorData.error,
+          });
+          setIsGeneratingTopics(false);
+          setLoadingStep(null);
+          return;
+        }
         throw new Error(errorData.error ?? "Failed to generate topics.");
       }
 
@@ -628,6 +643,21 @@ export default function Home() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          // Check if it's a trial limit error (403)
+          if (response.status === 403 && errorData.error) {
+            setTrialLimitReached({
+              visible: true,
+              message: errorData.error,
+            });
+            updateGeneratedArticles(
+              generatedArticles.map(a =>
+                a.topicTitle === topicId
+                  ? { ...a, status: "error" as const }
+                  : a
+              )
+            );
+            return;
+          }
           throw new Error(errorData.error ?? "Failed to regenerate article.");
         }
 
@@ -1192,6 +1222,24 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        // Check if it's a trial limit error (403)
+        if (response.status === 403 && errorData.error) {
+          setTrialLimitReached({
+            visible: true,
+            message: errorData.error,
+          });
+          setIsGeneratingArticles(new Set());
+          setLoadingStep(null);
+          // Mark all articles as error
+          updateGeneratedArticles(
+            generatedArticles.map(a =>
+              topicIds.includes(a.topicTitle)
+                ? { ...a, status: "error" as const }
+                : a
+            )
+          );
+          return;
+        }
         throw new Error(errorData.error ?? "Failed to generate articles.");
       }
 
@@ -1502,6 +1550,21 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        // Check if it's a trial limit error (403)
+        if (response.status === 403 && errorData.error) {
+          setTrialLimitReached({
+            visible: true,
+            message: errorData.error,
+          });
+          updateGeneratedArticles(
+            generatedArticles.map(a =>
+              a.topicTitle === "direct"
+                ? { ...a, status: "error" as const }
+                : a
+            )
+          );
+          return;
+        }
         throw new Error(errorData.error ?? "Failed to generate article.");
       }
 
@@ -4966,6 +5029,12 @@ export default function Home() {
       
       {/* Notification */}
       {notification && (
+        {trialLimitReached.visible && (
+          <TrialLimitReached
+            message={trialLimitReached.message}
+            onClose={() => setTrialLimitReached({ visible: false })}
+          />
+        )}
         <Notification
           message={notification.message}
           time={notification.time}

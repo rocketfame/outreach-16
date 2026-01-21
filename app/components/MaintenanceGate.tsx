@@ -125,6 +125,11 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
           textAlign: "center",
           border: "1px solid var(--border)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto",
         }}>
           <div style={{
             width: "80px",
@@ -136,6 +141,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             alignItems: "center",
             justifyContent: "center",
             fontSize: "2.5rem",
+            flexShrink: 0,
           }}>
             🔒
           </div>
@@ -146,6 +152,8 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             marginBottom: "1rem",
             color: "var(--foreground)",
             lineHeight: 1.2,
+            textAlign: "center",
+            width: "100%",
           }}>
             Access Request Required
           </h1>
@@ -155,6 +163,9 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             color: "var(--text-muted)",
             marginBottom: "2rem",
             lineHeight: 1.6,
+            textAlign: "center",
+            width: "100%",
+            maxWidth: "100%",
           }}>
             This platform is currently in private beta. To request access and unlock the full functionality, please contact our support team.
           </p>
@@ -165,6 +176,12 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             padding: "1.5rem",
             marginBottom: "2rem",
             border: "1px solid var(--border)",
+            width: "100%",
+            maxWidth: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
           }}>
             <p style={{
               fontSize: "0.875rem",
@@ -173,6 +190,8 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
+              textAlign: "center",
+              width: "100%",
             }}>
               Support Email
             </p>
@@ -185,6 +204,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
                 fontWeight: 600,
                 display: "inline-block",
                 transition: "opacity 0.2s",
+                textAlign: "center",
               }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
               onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
@@ -197,6 +217,9 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             fontSize: "0.875rem",
             color: "var(--text-light)",
             lineHeight: 1.5,
+            textAlign: "center",
+            width: "100%",
+            maxWidth: "100%",
           }}>
             We'll review your request and provide access credentials as soon as possible.
           </p>
