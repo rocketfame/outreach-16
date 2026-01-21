@@ -5060,14 +5060,16 @@ export default function Home() {
         </div>
       </div>
       
+      {/* Trial Limit Reached */}
+      {trialLimitReached.visible && (
+        <TrialLimitReached
+          message={trialLimitReached.message}
+          onClose={() => setTrialLimitReached({ visible: false })}
+        />
+      )}
+      
       {/* Notification */}
       {notification && (
-        {trialLimitReached.visible && (
-          <TrialLimitReached
-            message={trialLimitReached.message}
-            onClose={() => setTrialLimitReached({ visible: false })}
-          />
-        )}
         <Notification
           message={notification.message}
           time={notification.time}
