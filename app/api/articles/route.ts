@@ -29,7 +29,7 @@ import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePromp
 import { cleanText, lightHumanEdit, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
-import { extractTrialToken, canGenerateArticle, incrementArticleCount } from "@/lib/trialLimits";
+import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
 import { 
   parsePlainTextToStructure, 
   blocksToHtml, 
@@ -1851,8 +1851,8 @@ Language: US English.`;
     debugLog(successLog);
     // #endregion
 
-    // Increment trial article count if trial token is present
-    if (trialToken) {
+    // Increment trial article count if trial token is present (not for main link/master)
+    if (trialToken && !isMasterToken(trialToken)) {
       incrementArticleCount(trialToken);
     }
 

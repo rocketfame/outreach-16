@@ -85,8 +85,9 @@ export function incrementTopicDiscoveryCount(token: string): void {
  * Check if trial user can generate more articles
  */
 export function canGenerateArticle(token: string | null): { allowed: boolean; reason?: string } {
+  // If no token provided, allow access (main link works as master)
   if (!token) {
-    return { allowed: false, reason: "No trial token provided" };
+    return { allowed: true }; // Main link without trial token = master access
   }
 
   if (isMasterToken(token)) {
@@ -112,8 +113,9 @@ export function canGenerateArticle(token: string | null): { allowed: boolean; re
  * Check if trial user can run topic discovery
  */
 export function canRunTopicDiscovery(token: string | null): { allowed: boolean; reason?: string } {
+  // If no token provided, allow access (main link works as master)
   if (!token) {
-    return { allowed: false, reason: "No trial token provided" };
+    return { allowed: true }; // Main link without trial token = master access
   }
 
   if (isMasterToken(token)) {

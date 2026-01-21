@@ -4,7 +4,7 @@ import { buildTopicPrompt } from "@/lib/topicPrompt";
 import { shouldUseBrowsing, browseForTopics } from "@/lib/topicBrowsing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
-import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount } from "@/lib/trialLimits";
+import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount, isMasterToken } from "@/lib/trialLimits";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -219,8 +219,8 @@ export async function POST(req: Request) {
       debugLog(parseLog);
       // #endregion
 
-      // Increment trial topic discovery count if trial token is present
-      if (trialToken) {
+      // Increment trial topic discovery count if trial token is present (not for main link/master)
+      if (trialToken && !isMasterToken(trialToken)) {
         incrementTopicDiscoveryCount(trialToken);
       }
 
