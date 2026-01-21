@@ -91,13 +91,13 @@ export default function TrialUsageDisplay() {
     return null;
   }
 
-  console.log('[TrialUsageDisplay] Rendering for trial user, progress:', totalProgress, 'remaining:', totalRemaining);
-
   // Calculate total remaining "credits" (topic discovery runs + articles + images)
   const totalRemaining = (usageData.topicDiscoveryRunsRemaining || 0) + (usageData.articlesRemaining || 0) + (usageData.imagesRemaining || 0);
   const totalUsed = usageData.topicDiscoveryRuns + usageData.articlesGenerated + usageData.imagesGenerated;
   const totalLimit = (usageData.maxTopicDiscoveryRuns || 0) + (usageData.maxArticles || 0) + (usageData.maxImages || 0);
   const totalProgress = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
+
+  console.log('[TrialUsageDisplay] Rendering for trial user, progress:', totalProgress, 'remaining:', totalRemaining);
 
   console.log('[TrialUsageDisplay] Rendering component:', {
     totalRemaining,
