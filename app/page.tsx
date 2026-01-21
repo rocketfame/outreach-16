@@ -4024,7 +4024,7 @@ export default function Home() {
               <span>Language</span>
               <select
                 value={
-                  brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language)
+                  brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian", "Russian"].includes(brief.language)
                     ? "Other (custom)"
                     : (brief.language || "English")
                 }
@@ -4032,7 +4032,7 @@ export default function Home() {
                   const value = e.target.value;
                   if (value === "Other (custom)") {
                     // Show custom input field, keep current language value if it's custom
-                    const currentCustom = brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language)
+                    const currentCustom = brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian", "Russian"].includes(brief.language)
                       ? brief.language
                       : "";
                     updateBrief({ 
@@ -4054,9 +4054,10 @@ export default function Home() {
                 <option value="Italian">Italian</option>
                 <option value="Polish">Polish</option>
                 <option value="Ukrainian">Ukrainian</option>
+                <option value="Russian">Russian</option>
                 <option value="Other (custom)">Other (custom)</option>
               </select>
-              {brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian"].includes(brief.language) && (
+              {brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian", "Russian"].includes(brief.language) && (
                 <input
                   type="text"
                   value={brief.language}
