@@ -16,6 +16,30 @@ type LoadingStep = "topics" | "outline" | "draft" | null;
 export default function Home() {
   const [persistedState, setPersistedState, resetPersistedState, isHydrated] = usePersistentAppState();
   
+  // Helper function to get trial token from URL
+  const getTrialTokenFromURL = (): string | null => {
+    if (typeof window === "undefined") return null;
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("trial");
+  };
+  
+  // Helper function to add trial token to fetch options
+  const getFetchOptions = (body?: any): RequestInit => {
+    const trialToken = getTrialTokenFromURL();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    
+    // Add trial token to header if present
+    if (trialToken) {
+      headers["x-trial-token"] = trialToken;
+    }
+    
+    return {
+      method: "POST",
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    };
+  };
+  
   // Extract state from persisted state
   const mode = persistedState.mode;
   const topicsData = persistedState.topicClusters;
@@ -398,9 +422,13 @@ export default function Home() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:277',message:'About to call /api/generate-topics',data:{endpoint:'/api/generate-topics',briefFields:Object.keys(brief)},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
       // #endregion
+      const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/generate-topics", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(trialToken ? { "x-trial-token": trialToken } : {}),
+        },
         body: JSON.stringify({ brief }),
       });
       
@@ -620,9 +648,13 @@ export default function Home() {
           });
         }
         
+        const trialToken = getTrialTokenFromURL();
         const response = await fetch("/api/articles", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(trialToken ? { "x-trial-token": trialToken } : {}),
+          },
           body: JSON.stringify({
             brief, // Use current brief (may have been updated)
             selectedTopics: [{
@@ -883,9 +915,13 @@ export default function Home() {
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:365',message:'[regenerate] Calling /api/articles with Tavily sources',data:{topicTitle:topic.workingTitle,trustSourcesCount:trustSourcesList.length,humanizeOnWrite:regenerateHumanizeOnWrite,usingSavedSettings:!!savedHumanizeSettings,briefChanged},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'articles-flow'})}).catch(()=>{});
       // #endregion
 
+      const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/articles", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(trialToken ? { "x-trial-token": trialToken } : {}),
+        },
         body: JSON.stringify({
           brief, // Use current brief (may have been updated)
           selectedTopics: selectedTopicsData,
@@ -1206,9 +1242,13 @@ export default function Home() {
       // The API will automatically enable humanization for Human Mode regardless of UI toggle
       const effectiveHumanizeForRequest = writingMode === "human" ? true : humanizeOnWriteEnabled;
       
+      const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/articles", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(trialToken ? { "x-trial-token": trialToken } : {}),
+        },
         body: JSON.stringify({
           brief, // Current Project Basics (always up-to-date, even if changed after topic generation)
           selectedTopics: selectedTopicsData,
@@ -1527,9 +1567,13 @@ export default function Home() {
       // The API will automatically enable humanization for Human Mode regardless of UI toggle
       const effectiveHumanizeForRequest = writingMode === "human" ? true : humanizeOnWriteEnabled;
       
+      const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/articles", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(trialToken ? { "x-trial-token": trialToken } : {}),
+        },
         body: JSON.stringify({
           brief: briefWithDefaults,
           selectedTopics: [{
@@ -3362,9 +3406,13 @@ export default function Home() {
         throw new Error(errorMsg);
       }
 
+      const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/article-image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(trialToken ? { "x-trial-token": trialToken } : {}),
+        },
         body: JSON.stringify({
           articleTitle,
           niche,

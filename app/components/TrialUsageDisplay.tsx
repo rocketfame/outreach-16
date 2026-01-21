@@ -97,16 +97,18 @@ export default function TrialUsageDisplay() {
   const totalLimit = (usageData.maxTopicDiscoveryRuns || 0) + (usageData.maxArticles || 0) + (usageData.maxImages || 0);
   const totalProgress = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
 
-  console.log('[TrialUsageDisplay] Rendering for trial user, progress:', totalProgress, 'remaining:', totalRemaining);
-
-  console.log('[TrialUsageDisplay] Rendering component:', {
-    totalRemaining,
-    totalUsed,
-    totalLimit,
-    totalProgress,
-    isTrial,
-    isMaster
-  });
+  // Remove console.logs for production (keep only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[TrialUsageDisplay] Rendering for trial user, progress:', totalProgress, 'remaining:', totalRemaining);
+    console.log('[TrialUsageDisplay] Rendering component:', {
+      totalRemaining,
+      totalUsed,
+      totalLimit,
+      totalProgress,
+      isTrial,
+      isMaster
+    });
+  }
 
   return (
     <div style={{
@@ -164,7 +166,10 @@ export default function TrialUsageDisplay() {
               : "/api/trial-usage";
             fetch(apiUrl)
               .then(res => res.json())
-              .then(data => setUsageData(data))
+              .then(data => {
+                console.log('[TrialUsageDisplay] Refreshed data:', data);
+                setUsageData(data);
+              })
               .catch(err => console.error("Error refreshing:", err));
           }}
           style={{
@@ -186,7 +191,7 @@ export default function TrialUsageDisplay() {
             e.currentTarget.style.color = "var(--text-muted)";
             e.currentTarget.style.transform = "rotate(0deg)";
           }}
-          title={`Trial: ${usageData.maxTopicDiscoveryRuns} topic searches, ${usageData.maxArticles} articles, ${usageData.maxImages} image`}
+          title={`Trial limits: ${usageData.maxTopicDiscoveryRuns} topic discovery runs, ${usageData.maxArticles} articles total, ${usageData.maxImages} image`}
         >
           <svg 
             width="14" 
@@ -204,6 +209,17 @@ export default function TrialUsageDisplay() {
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
           </svg>
         </button>
+      </div>
+      
+      {/* Trial limits info - minimalistic */}
+      <div style={{
+        fontSize: "0.65rem",
+        color: "var(--text-light)",
+        textAlign: "right",
+        lineHeight: 1.3,
+        marginTop: "0.125rem",
+      }}>
+        {usageData.maxTopicDiscoveryRuns} topic searches • {usageData.maxArticles} articles • {usageData.maxImages} image
       </div>
     </div>
   );
