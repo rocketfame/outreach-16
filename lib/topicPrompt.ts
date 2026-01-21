@@ -289,7 +289,7 @@ export function buildTopicPrompt(brief: TopicBrief, browsingData?: {
         "• Topics that provide practical value and insights for readers in [MAIN_NICHE]"
       );
       prompt = prompt.replaceAll(
-        /Anchor integration strategy:.*?not like a promotional insert in the intro or conclusion\./gs,
+        /Anchor integration strategy:[\s\S]*?not like a promotional insert in the intro or conclusion\./g,
         `Blog content strategy (NO anchor links):
 • Focus on providing valuable, educational content for readers in [MAIN_NICHE]
 • If [BRAND_NAME] is provided, you may mention it naturally as context or expertise, but DO NOT create anchor links
