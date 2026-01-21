@@ -4,6 +4,7 @@ import { buildTopicPrompt } from "@/lib/topicPrompt";
 import { shouldUseBrowsing, browseForTopics } from "@/lib/topicBrowsing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
+import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount } from "@/lib/trialLimits";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -26,6 +27,16 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Check trial limits before processing
+  const trialToken = extractTrialToken(req);
+  const topicDiscoveryLimitCheck = canRunTopicDiscovery(trialToken);
+  if (!topicDiscoveryLimitCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: topicDiscoveryLimitCheck.reason || "Trial limit reached" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -207,6 +218,11 @@ export async function POST(req: Request) {
       const parseLog = {location:'generate-topics/route.ts:85',message:'Topics parsed successfully',data:{topicsCount:parsedData.topics.length,hasOverview:!!parsedData.overview},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
       debugLog(parseLog);
       // #endregion
+
+      // Increment trial topic discovery count if trial token is present
+      if (trialToken) {
+        incrementTopicDiscoveryCount(trialToken);
+      }
 
       return new Response(JSON.stringify({ overview: parsedData.overview, topics: parsedData.topics }), {
         status: 200,

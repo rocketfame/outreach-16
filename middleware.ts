@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { extractTrialToken, isMasterToken, isTrialToken } from "@/lib/trialLimits";
 
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "";
 const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS || "";
@@ -30,6 +31,17 @@ function isValidAuth(authHeader: string | null) {
 }
 
 export function middleware(request: NextRequest) {
+  // Check for trial token first (allows access without basic auth)
+  const trialToken = extractTrialToken(request);
+  if (trialToken && (isTrialToken(trialToken) || isMasterToken(trialToken))) {
+    // Trial or master token found - allow access without basic auth
+    // Add trial token to headers for API routes to use
+    const response = NextResponse.next();
+    response.headers.set("x-trial-token", trialToken);
+    return response;
+  }
+
+  // No valid trial token - require basic auth if configured
   if (!isAuthConfigured()) {
     return NextResponse.next();
   }

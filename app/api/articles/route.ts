@@ -29,6 +29,7 @@ import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePromp
 import { cleanText, lightHumanEdit, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
+import { extractTrialToken, canGenerateArticle, incrementArticleCount } from "@/lib/trialLimits";
 import { 
   parsePlainTextToStructure, 
   blocksToHtml, 
@@ -108,6 +109,16 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Check trial limits before processing
+  const trialToken = extractTrialToken(req);
+  const articleLimitCheck = canGenerateArticle(trialToken);
+  if (!articleLimitCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: articleLimitCheck.reason || "Trial limit reached" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -1839,6 +1850,11 @@ Language: US English.`;
     const successLog = {location:'articles/route.ts:140',message:'Articles generation completed',data:{articlesCount:generatedArticles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
     debugLog(successLog);
     // #endregion
+
+    // Increment trial article count if trial token is present
+    if (trialToken) {
+      incrementArticleCount(trialToken);
+    }
 
     return new Response(
       JSON.stringify({ articles: generatedArticles }),
