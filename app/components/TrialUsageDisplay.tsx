@@ -122,11 +122,12 @@ export default function TrialUsageDisplay() {
       {/* Minimalistic Progress Bar - fills from center */}
       <div style={{
         width: "100%",
-        height: "4px",
+        height: "6px",
         background: "var(--secondary)",
-        borderRadius: "2px",
+        borderRadius: "3px",
         overflow: "hidden",
         position: "relative",
+        marginBottom: "0.375rem",
       }}>
         {/* Progress bar that fills from center */}
         <div style={{
@@ -134,13 +135,14 @@ export default function TrialUsageDisplay() {
           left: "50%",
           top: 0,
           height: "100%",
-          width: `${Math.min(100, totalProgress)}%`,
+          width: `${Math.min(100, Math.max(0, totalProgress))}%`,
           transform: "translateX(-50%)",
           background: totalProgress >= 100
             ? "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)"
             : "linear-gradient(90deg, #10b981 0%, #059669 100%)",
-          borderRadius: "2px",
+          borderRadius: "3px",
           transition: "width 0.3s ease",
+          opacity: totalProgress > 0 ? 1 : 0,
         }} />
       </div>
 
