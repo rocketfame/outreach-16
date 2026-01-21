@@ -183,9 +183,13 @@ export async function POST(req: Request) {
         // Direct Mode: No detailed brief fields (shortAngle, whyNonGeneric, howAnchorFits)
         // Topic Discovery Mode: topic has detailed brief fields (shortAngle, whyNonGeneric, etc.)
         // Note: topic.brief can be either topic.title OR a custom brief from the user in Direct Mode
+        // Also check if howAnchorFits is "N/A" (indicates no anchors, but still Topic Discovery Mode)
+        const hasHowAnchorFits = topic.howAnchorFits && 
+                                  topic.howAnchorFits.trim() && 
+                                  !topic.howAnchorFits.includes("N/A");
         const isDirectMode = !topic.shortAngle && 
                              !topic.whyNonGeneric && 
-                             !topic.howAnchorFits;
+                             !hasHowAnchorFits;
 
         // ========================================================================
         // CRITICAL: Intelligent LLM-based source classification and filtering

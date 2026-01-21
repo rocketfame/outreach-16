@@ -222,7 +222,7 @@ Return exactly this JSON shape:
       "searchIntent": "informational | how_to | problem_solving | comparison | strategic",
       "shortAngle": "string - 2–3 sentences describing the concrete angle",
       "whyNonGeneric": "string - 1–2 sentences explaining what makes this deeper/more specific",
-      "howAnchorFits": "string - 1–2 sentences with concrete example showing how ANCHOR_TEXT → ANCHOR_URL fits naturally",
+      "howAnchorFits": "string - 1–2 sentences with concrete example showing how ANCHOR_TEXT → ANCHOR_URL fits naturally (or 'N/A - This is a blog article without anchor links' if no anchors provided)",
       "evergreenScore": 1,
       "evergreenNote": "string - 1–2 sentences rating from 1 to 5 with justification",
       "competitionLevel": "low | medium | high",
@@ -237,7 +237,7 @@ REQUIREMENTS:
 * searchIntent must be one of: "informational", "how_to", "problem_solving", "comparison", "strategic"
 * evergreenScore must be a number from 1 to 5
 * competitionLevel must be one of: "low", "medium", "high"
-* All string fields must be non-empty
+* All string fields must be non-empty (except howAnchorFits can be 'N/A' if no anchors are provided)
 * Return ONLY the JSON object, no markdown, no code fences, no additional text
 
 Now, using all the rules above and the specific values of MAIN_NICHE, MAIN_PLATFORM, CONTENT_PURPOSE, BRAND_NAME, ANCHOR_TEXT, and ANCHOR_URL provided by the app, research and propose clusters and topics exactly in the specified JSON format.
@@ -261,8 +261,88 @@ export function buildTopicPrompt(brief: TopicBrief, browsingData?: {
   prompt = prompt.replaceAll("[MAIN_PLATFORM]", brief.platform || "multi-platform");
   prompt = prompt.replaceAll("[CONTENT_PURPOSE]", brief.contentPurpose || "guest post / outreach");
   prompt = prompt.replaceAll("[BRAND_NAME]", brief.brandName || "");
-  prompt = prompt.replaceAll("[ANCHOR_TEXT]", brief.anchorText || "");
-  prompt = prompt.replaceAll("[ANCHOR_URL]", brief.anchorUrl || "");
+  
+  // Check if anchors are provided
+  const hasAnchors = !!(brief.anchorText && brief.anchorText.trim() && brief.anchorUrl && brief.anchorUrl.trim());
+  const anchorText = brief.anchorText?.trim() || "";
+  const anchorUrl = brief.anchorUrl?.trim() || "";
+  const isBlogMode = (brief.contentPurpose || "").toLowerCase() === "blog";
+  
+  prompt = prompt.replaceAll("[ANCHOR_TEXT]", anchorText);
+  prompt = prompt.replaceAll("[ANCHOR_URL]", anchorUrl);
+  
+  // Conditional anchor instructions based on whether anchors are provided
+  if (!hasAnchors) {
+    // Remove or modify anchor-related instructions when anchors are not provided
+    if (isBlogMode) {
+      // For blog mode without anchors: focus on brand, no anchor links
+      prompt = prompt.replaceAll(
+        /• naturally compatible with placing the anchor \[ANCHOR_TEXT\] → \[ANCHOR_URL\] inside the body of the article\./g,
+        "• valuable for readers interested in [MAIN_NICHE] and [MAIN_PLATFORM]"
+      );
+      prompt = prompt.replaceAll(
+        /• Bottom funnel \(when and how to use paid\/external tools like \[ANCHOR_TEXT\]\) – problem_solving intent/g,
+        "• Bottom funnel (practical solutions and tools) – problem_solving intent"
+      );
+      prompt = prompt.replaceAll(
+        /• Topics that naturally lead to the anchor: real problem → explanation → then a mention that some companies\/users solve this through \[ANCHOR_TEXT\] → \[ANCHOR_URL\]/g,
+        "• Topics that provide practical value and insights for readers in [MAIN_NICHE]"
+      );
+      prompt = prompt.replaceAll(
+        /Anchor integration strategy:.*?not like a promotional insert in the intro or conclusion\./gs,
+        `Blog content strategy (NO anchor links):
+• Focus on providing valuable, educational content for readers in [MAIN_NICHE]
+• If [BRAND_NAME] is provided, you may mention it naturally as context or expertise, but DO NOT create anchor links
+• Articles should be informative and useful on their own, without requiring external links
+• The content should help establish [BRAND_NAME] as a knowledgeable source in the niche, but through expertise, not promotion`
+      );
+      prompt = prompt.replaceAll(
+        /How your anchor fits: \[1–2 sentences with a concrete example sentence showing how \[ANCHOR_TEXT\] linking to \[ANCHOR_URL\] can appear naturally in the article\. This text will be reused directly in the article brief\.\]/g,
+        "How your anchor fits: N/A - This is a blog article without anchor links. Focus on providing valuable content for readers."
+      );
+      prompt = prompt.replaceAll(
+        /• Always use \[ANCHOR_TEXT\] and \[ANCHOR_URL\] exactly as provided in the 'How your anchor fits' section \(do not translate or rephrase the anchor text\)\./g,
+        "• DO NOT invent or suggest anchor links. This is a blog article without commercial links."
+      );
+      prompt = prompt.replaceAll(
+        /Mention how the anchor can naturally appear in this landscape\./g,
+        "Focus on how [BRAND_NAME] can establish expertise through valuable content."
+      );
+    } else {
+      // For non-blog mode without anchors: remove anchor requirements
+      prompt = prompt.replaceAll(
+        /• naturally compatible with placing the anchor \[ANCHOR_TEXT\] → \[ANCHOR_URL\] inside the body of the article\./g,
+        "• valuable for readers interested in [MAIN_NICHE] and [MAIN_PLATFORM]"
+      );
+      prompt = prompt.replaceAll(
+        /• Bottom funnel \(when and how to use paid\/external tools like \[ANCHOR_TEXT\]\) – problem_solving intent/g,
+        "• Bottom funnel (practical solutions and tools) – problem_solving intent"
+      );
+      prompt = prompt.replaceAll(
+        /• Topics that naturally lead to the anchor: real problem → explanation → then a mention that some companies\/users solve this through \[ANCHOR_TEXT\] → \[ANCHOR_URL\]/g,
+        "• Topics that provide practical value and insights for readers in [MAIN_NICHE]"
+      );
+      prompt = prompt.replaceAll(
+        /Anchor integration strategy:.*?not like a promotional insert in the intro or conclusion\./gs,
+        `Content strategy (NO anchor links):
+• Focus on providing valuable, educational content for readers in [MAIN_NICHE]
+• If [BRAND_NAME] is provided, you may mention it naturally as context or expertise, but DO NOT create anchor links
+• Articles should be informative and useful on their own, without requiring external links`
+      );
+      prompt = prompt.replaceAll(
+        /How your anchor fits: \[1–2 sentences with a concrete example sentence showing how \[ANCHOR_TEXT\] linking to \[ANCHOR_URL\] can appear naturally in the article\. This text will be reused directly in the article brief\.\]/g,
+        "How your anchor fits: N/A - No anchor links are required for this article. Focus on providing valuable content."
+      );
+      prompt = prompt.replaceAll(
+        /• Always use \[ANCHOR_TEXT\] and \[ANCHOR_URL\] exactly as provided in the 'How your anchor fits' section \(do not translate or rephrase the anchor text\)\./g,
+        "• DO NOT invent or suggest anchor links. This article does not require commercial links."
+      );
+      prompt = prompt.replaceAll(
+        /Mention how the anchor can naturally appear in this landscape\./g,
+        "Focus on how [BRAND_NAME] can establish expertise through valuable content."
+      );
+    }
+  }
   
   // Add news hook instruction based on user preference (or infer from content purpose)
   const includeNewsHook =

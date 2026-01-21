@@ -1890,8 +1890,37 @@ export default function Home() {
   };
 
   const getWordCount = (text: string): number => {
-    const plainText = stripHtmlTags(text);
-    return plainText.split(/\s+/).filter(word => word.length > 0).length;
+    if (!text || typeof text !== 'string') return 0;
+    
+    // Step 1: Remove HTML tags
+    let plainText = text.replace(/<[^>]*>/g, '');
+    
+    // Step 2: Decode HTML entities
+    plainText = decodeHtmlEntities(plainText);
+    
+    // Step 3: Remove placeholders like [A1], [T1], [T2], [T3]
+    plainText = plainText.replace(/\[A\d+\]/g, '');
+    plainText = plainText.replace(/\[T\d+\]/g, '');
+    
+    // Step 4: Remove H1/H2/H3 labels if present
+    plainText = plainText.replace(/H[1-3]:\s*/gi, '');
+    
+    // Step 5: Normalize whitespace and split into words
+    // Remove leading/trailing whitespace, then split by whitespace
+    plainText = plainText.trim();
+    
+    if (!plainText) return 0;
+    
+    // Split by whitespace and filter out empty strings
+    const words = plainText.split(/\s+/).filter(word => {
+      // Filter out empty strings and strings that are only punctuation/special chars
+      const trimmed = word.trim();
+      if (!trimmed) return false;
+      // Check if it contains at least one letter or digit (not just punctuation)
+      return /[a-zA-Z0-9]/.test(trimmed);
+    });
+    
+    return words.length;
   };
 
   const formatWordCount = (count: number): string => {

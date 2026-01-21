@@ -697,8 +697,54 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform || "multi-platform");
   prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
-  prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText);
-  prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl);
+  // Check if anchors are provided and if topic brief indicates no anchors needed
+  const hasAnchors = !!(params.anchorText && params.anchorText.trim() && params.anchorUrl && params.anchorUrl.trim());
+  const topicBriefIndicatesNoAnchors = params.topicBrief.includes("N/A") && params.topicBrief.includes("anchor");
+  const shouldUseAnchors = hasAnchors && !topicBriefIndicatesNoAnchors;
+  
+  prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText || "");
+  prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl || "");
+  
+  // If no anchors should be used, modify anchor-related instructions
+  if (!shouldUseAnchors) {
+    // Remove or modify anchor placement requirements
+    prompt = prompt.replaceAll(
+      /• CRITICAL - Anchor placement \(MANDATORY\):[\s\S]*?• The anchor must be in one of the first three paragraph blocks \(type "p"\) in articleBlocks\./g,
+      "• CRITICAL - Anchor placement: NOT REQUIRED - This article does not include anchor links. Focus on providing valuable content without commercial links."
+    );
+    prompt = prompt.replaceAll(
+      /• CRITICAL: Use the \[A1\] placeholder EXACTLY ONCE in the entire article\. You MUST NOT use it twice, even if it looks very natural\./g,
+      "• CRITICAL: DO NOT use [A1] placeholder - This article does not require anchor links. Write the article without any commercial anchor placeholders."
+    );
+    prompt = prompt.replaceAll(
+      /• The topic brief may already contain anchor phrases that must link to a specific product or service via \[\[ANCHOR_TEXT\]\] and \[\[ANCHOR_URL\]\]\./g,
+      "• This article does not require anchor links. Focus on providing valuable, educational content."
+    );
+    prompt = prompt.replaceAll(
+      /• When such anchors are provided, integrate them naturally into the article body as parts of sentences, not as ads or isolated CTAs\./g,
+      "• Write the article as a standalone piece of content without commercial links."
+    );
+    prompt = prompt.replaceAll(
+      /• Do not change or translate the anchor text; the placeholder \[A1\] will be replaced with \[\[ANCHOR_TEXT\]\] linking to \[\[ANCHOR_URL\]\] during processing\./g,
+      "• Do not add any anchor links or placeholders - this article is link-free."
+    );
+    prompt = prompt.replaceAll(
+      /• Make the sentence around the placeholder natural, specific, and relevant to the topic\./g,
+      "• Focus on natural, valuable content without commercial links."
+    );
+    prompt = prompt.replaceAll(
+      /• After using it once, never mention \[A1\] or \[\[ANCHOR_TEXT\]\] again in the article\./g,
+      "• Do not mention [A1] or any anchor links in the article."
+    );
+    prompt = prompt.replaceAll(
+      /• Examples of CORRECT anchor integration:[\s\S]*?✗ "Click here \[A1\] to discover more\." \(generic phrase, not natural\)/g,
+      "• DO NOT include anchor links in this article. Focus on providing valuable content."
+    );
+    prompt = prompt.replaceAll(
+      /• Commercial anchor: use \[A1\] placeholder exactly once where \[\[ANCHOR_TEXT\]\] should appear\./g,
+      "• Commercial anchor: NOT REQUIRED - Do not use [A1] placeholder. This article does not include anchor links."
+    );
+  }
   // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
   const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
   console.log("[buildArticlePrompt] Brand name processing:", {
