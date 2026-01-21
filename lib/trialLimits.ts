@@ -4,6 +4,7 @@
 export interface TrialUsage {
   articlesGenerated: number;
   topicDiscoveryRuns: number;
+  imagesGenerated: number;
   lastReset?: number; // timestamp for potential reset logic
 }
 
