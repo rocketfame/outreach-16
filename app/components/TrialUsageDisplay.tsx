@@ -37,12 +37,14 @@ export default function TrialUsageDisplay() {
         const response = await fetch(apiUrl);
         if (response.ok) {
           const data = await response.json();
+          console.log("[TrialUsageDisplay] Received data:", data);
           setUsageData(data);
         } else {
-          console.error("Failed to fetch trial usage");
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error("[TrialUsageDisplay] Failed to fetch:", response.status, errorText);
         }
       } catch (error) {
-        console.error("Error fetching trial usage:", error);
+        console.error("[TrialUsageDisplay] Error:", error);
       } finally {
         setIsLoading(false);
       }
@@ -59,22 +61,52 @@ export default function TrialUsageDisplay() {
     return null; // Don't show anything while loading
   }
 
-  if (!usageData || usageData.error) {
-    return null; // Don't show if error or invalid
+  if (!usageData) {
+    // Debug: log why usageData is null
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[TrialUsageDisplay] No usageData available');
+    }
+    return null; // Don't show if no data
+  }
+
+  if (usageData.error) {
+    // Debug: log error
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[TrialUsageDisplay] Error:', usageData.error);
+    }
+    return null; // Don't show if error
   }
 
   const isMaster = usageData.isMaster;
+  const isTrial = usageData.isTrial;
 
   // For master, don't show anything (unlimited access)
   if (isMaster) {
     return null;
   }
 
+  // Only show for trial users
+  if (!isTrial) {
+    console.log('[TrialUsageDisplay] Not a trial user, isMaster:', isMaster, 'isTrial:', isTrial);
+    return null;
+  }
+
+  console.log('[TrialUsageDisplay] Rendering for trial user, progress:', totalProgress, 'remaining:', totalRemaining);
+
   // Calculate total remaining "credits" (topic discovery runs + articles + images)
   const totalRemaining = (usageData.topicDiscoveryRunsRemaining || 0) + (usageData.articlesRemaining || 0) + (usageData.imagesRemaining || 0);
   const totalUsed = usageData.topicDiscoveryRuns + usageData.articlesGenerated + usageData.imagesGenerated;
   const totalLimit = (usageData.maxTopicDiscoveryRuns || 0) + (usageData.maxArticles || 0) + (usageData.maxImages || 0);
   const totalProgress = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
+
+  console.log('[TrialUsageDisplay] Rendering component:', {
+    totalRemaining,
+    totalUsed,
+    totalLimit,
+    totalProgress,
+    isTrial,
+    isMaster
+  });
 
   return (
     <div style={{
@@ -83,6 +115,7 @@ export default function TrialUsageDisplay() {
       alignItems: "flex-end",
       gap: "0.25rem",
       minWidth: "140px",
+      zIndex: 10, // Ensure it's visible
     }}>
       {/* Minimalistic Progress Bar - fills from center */}
       <div style={{
