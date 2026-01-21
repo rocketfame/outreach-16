@@ -70,25 +70,32 @@ export function middleware(request: NextRequest) {
   const isMasterIPAddress = isMasterIP(clientIP);
   
   // Check for trial token first (allows access without basic auth)
-  const trialToken = extractTrialToken(request);
+  // Extract trial token directly from URL (more reliable in middleware)
+  const trialTokenFromQuery = request.nextUrl.searchParams.get("trial");
+  const trialToken = trialTokenFromQuery || request.headers.get("x-trial-token");
   
-  // If trial parameter exists but token is invalid, return 404
-  if (trialToken && !isTrialToken(trialToken) && !isMasterToken(trialToken)) {
-    // Invalid trial token - return 404
-    return new NextResponse("404: Page Not Found", {
-      status: 404,
-      headers: { "Content-Type": "text/plain" },
-    });
-  }
-  
-  if (trialToken && (isTrialToken(trialToken) || isMasterToken(trialToken))) {
-    // Trial or master token found - allow access without basic auth
-    // Add trial token to headers for API routes to use
-    const response = NextResponse.next();
-    response.headers.set("x-trial-token", trialToken);
-    // Mark as bypassing maintenance (both trial and master tokens bypass)
-    response.cookies.set("bypass_maintenance", "true");
-    return response;
+  // CRITICAL: If trial parameter exists, it MUST be valid
+  if (trialToken) {
+    const isValidTrial = isTrialToken(trialToken);
+    const isValidMaster = isMasterToken(trialToken);
+    
+    // If token exists but is neither valid trial nor master, return 404
+    if (!isValidTrial && !isValidMaster) {
+      // Invalid trial token - rewrite to 404 page (keeps URL but shows 404 content)
+      const notFoundUrl = new URL("/not-found", request.url);
+      const response = NextResponse.rewrite(notFoundUrl);
+      response.status = 404;
+      return response;
+    }
+    
+    // Valid trial or master token - allow access
+    if (isValidTrial || isValidMaster) {
+      const response = NextResponse.next();
+      response.headers.set("x-trial-token", trialToken);
+      // Mark as bypassing maintenance (both trial and master tokens bypass)
+      response.cookies.set("bypass_maintenance", "true");
+      return response;
+    }
   }
   
   // Check for invalid query parameters (any query param other than valid ones)
@@ -107,11 +114,22 @@ export function middleware(request: NextRequest) {
   }
 
   // Check maintenance gate (only for main page, not API routes)
-  if (isMaintenanceEnabled() && request.nextUrl.pathname === "/" && !isMasterIPAddress) {
-    // Check if user has bypass cookie (from master token access)
+  // Show gate for everyone EXCEPT:
+  // 1. Master IP addresses
+  // 2. Users with valid trial/master tokens (they already got bypass cookie above)
+  if (isMaintenanceEnabled() && request.nextUrl.pathname === "/") {
+    // Master IP always bypasses
+    if (isMasterIPAddress) {
+      const response = NextResponse.next();
+      response.cookies.set("is_master_ip", "true");
+      response.cookies.set("bypass_maintenance", "true");
+      return response;
+    }
+    
+    // Check if user has bypass cookie (from valid trial/master token)
     const bypassCookie = request.cookies.get("bypass_maintenance");
     if (bypassCookie?.value !== "true") {
-      // Show maintenance gate - let it render but add flag
+      // Show maintenance gate for everyone else
       const response = NextResponse.next();
       response.headers.set("x-maintenance-gate", "true");
       return response;

@@ -10,7 +10,9 @@ const isMaintenanceEnabled = () => {
   const disabled = localStorage.getItem("maintenance_disabled");
   if (disabled === "true") return false;
   // Check environment variable (for production control)
-  return process.env.NEXT_PUBLIC_MAINTENANCE_ENABLED !== "false";
+  // Default to true (show gate) if not explicitly set to "false"
+  const envValue = process.env.NEXT_PUBLIC_MAINTENANCE_ENABLED;
+  return envValue !== "false";
 };
 
 // Check if user is master (from cookie set by middleware)
