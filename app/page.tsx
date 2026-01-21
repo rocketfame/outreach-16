@@ -4,6 +4,7 @@ import { ChangeEvent, useState, useEffect, useRef, useMemo } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
 import TrialLimitReached from "./components/TrialLimitReached";
+import TrialUsageDisplay from "./components/TrialUsageDisplay";
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
@@ -4029,6 +4030,9 @@ export default function Home() {
       </header>
 
       <main className="content">
+          {/* Trial Usage Display */}
+          <TrialUsageDisplay />
+          
           {/* Mode Switch */}
           <div className="mode-switch">
             <button

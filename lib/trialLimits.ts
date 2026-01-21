@@ -106,8 +106,10 @@ export function incrementTopicDiscoveryCount(token: string): void {
 
 /**
  * Check if trial user can generate more articles
+ * @param token - Trial token (or null for main link)
+ * @param articlesToGenerate - Number of articles that will be generated in this request (default: 1)
  */
-export function canGenerateArticle(token: string | null): { allowed: boolean; reason?: string } {
+export function canGenerateArticle(token: string | null, articlesToGenerate: number = 1): { allowed: boolean; reason?: string } {
   // If no token provided, allow access (main link works as master)
   if (!token) {
     return { allowed: true }; // Main link without trial token = master access
@@ -122,10 +124,12 @@ export function canGenerateArticle(token: string | null): { allowed: boolean; re
   }
 
   const usage = getTrialUsage(token);
-  if (usage.articlesGenerated >= TRIAL_LIMITS.MAX_ARTICLES) {
+  const totalAfterGeneration = usage.articlesGenerated + articlesToGenerate;
+  
+  if (totalAfterGeneration > TRIAL_LIMITS.MAX_ARTICLES) {
     return {
       allowed: false,
-      reason: `Trial limit reached: maximum ${TRIAL_LIMITS.MAX_ARTICLES} articles allowed`,
+      reason: `Trial limit reached: you have generated ${usage.articlesGenerated} article(s), and trying to generate ${articlesToGenerate} more. Maximum ${TRIAL_LIMITS.MAX_ARTICLES} articles allowed.`,
     };
   }
 
@@ -162,8 +166,9 @@ export function canRunTopicDiscovery(token: string | null): { allowed: boolean; 
 
 /**
  * Extract trial token from request (from query param or header)
+ * Works with both standard Request and NextRequest
  */
-export function extractTrialToken(request: Request): string | null {
+export function extractTrialToken(request: Request | { url: string; headers: Headers }): string | null {
   // Try to get from query parameter (for URL-based access)
   const url = new URL(request.url);
   const tokenFromQuery = url.searchParams.get("trial");

@@ -112,22 +112,23 @@ export async function POST(req: Request) {
     );
   }
 
-  // Check trial limits before processing
-  const trialToken = extractTrialToken(req);
-  const articleLimitCheck = canGenerateArticle(trialToken);
-  if (!articleLimitCheck.allowed) {
-    return new Response(
-      JSON.stringify({ error: articleLimitCheck.reason || "Trial limit reached" }),
-      { status: 403, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
   // Get OpenAI client (pre-configured with validated API key)
   const openai = getOpenAIClient();
 
   try {
     const body: ArticleRequest = await req.json();
     const { brief, selectedTopics, keywordList = [], trustSourcesList = [], writingMode = "seo" } = body;
+    
+    // Check trial limits AFTER parsing body to know how many articles will be generated
+    const trialToken = extractTrialToken(req);
+    const articlesToGenerate = selectedTopics?.length || 1;
+    const articleLimitCheck = canGenerateArticle(trialToken, articlesToGenerate);
+    if (!articleLimitCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: articleLimitCheck.reason || "Trial limit reached" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
     
     // CRITICAL: For Human Mode, force humanization ON
     // In Human Mode, humanization is always enabled (integrated into the mode)
@@ -1856,8 +1857,12 @@ Language: US English.`;
     // #endregion
 
     // Increment trial article count if trial token is present (not for main link/master)
+    // Increment by the number of articles actually generated
     if (trialToken && !isMasterToken(trialToken)) {
-      incrementArticleCount(trialToken);
+      const articlesGenerated = generatedArticles.length;
+      for (let i = 0; i < articlesGenerated; i++) {
+        incrementArticleCount(trialToken);
+      }
     }
 
     return new Response(
