@@ -71,6 +71,16 @@ export function middleware(request: NextRequest) {
   
   // Check for trial token first (allows access without basic auth)
   const trialToken = extractTrialToken(request);
+  
+  // If trial parameter exists but token is invalid, return 404
+  if (trialToken && !isTrialToken(trialToken) && !isMasterToken(trialToken)) {
+    // Invalid trial token - return 404
+    return new NextResponse("404: Page Not Found", {
+      status: 404,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+  
   if (trialToken && (isTrialToken(trialToken) || isMasterToken(trialToken))) {
     // Trial or master token found - allow access without basic auth
     // Add trial token to headers for API routes to use
@@ -79,6 +89,21 @@ export function middleware(request: NextRequest) {
     // Mark as bypassing maintenance (both trial and master tokens bypass)
     response.cookies.set("bypass_maintenance", "true");
     return response;
+  }
+  
+  // Check for invalid query parameters (any query param other than valid ones)
+  const url = request.nextUrl;
+  const validQueryParams = ["trial", "theme"]; // Add other valid params if needed
+  const hasInvalidQueryParams = Array.from(url.searchParams.keys()).some(
+    key => !validQueryParams.includes(key)
+  );
+  
+  // If there are invalid query params and it's not an API route, return 404
+  if (hasInvalidQueryParams && !url.pathname.startsWith("/api/")) {
+    return new NextResponse("404: Page Not Found", {
+      status: 404,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   // Check maintenance gate (only for main page, not API routes)
