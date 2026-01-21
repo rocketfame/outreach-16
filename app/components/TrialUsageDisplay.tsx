@@ -84,17 +84,23 @@ export default function TrialUsageDisplay() {
       gap: "0.25rem",
       minWidth: "140px",
     }}>
-      {/* Minimalistic Progress Bar */}
+      {/* Minimalistic Progress Bar - fills from center */}
       <div style={{
         width: "100%",
         height: "4px",
         background: "var(--secondary)",
         borderRadius: "2px",
         overflow: "hidden",
+        position: "relative",
       }}>
+        {/* Progress bar that fills from center */}
         <div style={{
-          width: `${Math.min(100, totalProgress)}%`,
+          position: "absolute",
+          left: "50%",
+          top: 0,
           height: "100%",
+          width: `${Math.min(100, totalProgress)}%`,
+          transform: "translateX(-50%)",
           background: totalProgress >= 100
             ? "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)"
             : "linear-gradient(90deg, #10b981 0%, #059669 100%)",
