@@ -82,7 +82,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
   }
 
   // Don't show gate for master IP or if disabled
-  if (!showGate || isMaster) {
+  if (!showGate) {
     return <>{children}</>;
   }
 
