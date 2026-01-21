@@ -60,241 +60,108 @@ export default function TrialUsageDisplay() {
     return null; // Don't show if error or invalid
   }
 
-  // Don't show if invalid or error
-  if (!usageData || usageData.error) {
+  const isMaster = usageData.isMaster;
+
+  // For master, don't show anything (unlimited access)
+  if (isMaster) {
     return null;
   }
 
-  // Show for both trial and master users
-  // For master, show unlimited status
-
-  const articlesProgress = usageData.maxArticles !== null
-    ? (usageData.articlesGenerated / usageData.maxArticles) * 100
-    : 0;
-
-  const topicDiscoveryProgress = usageData.maxTopicDiscoveryRuns !== null
-    ? (usageData.topicDiscoveryRuns / usageData.maxTopicDiscoveryRuns) * 100
-    : 0;
-
-  const isMaster = usageData.isMaster;
+  // Calculate total remaining "credits" (topic discovery runs + articles)
+  const totalRemaining = (usageData.topicDiscoveryRunsRemaining || 0) + (usageData.articlesRemaining || 0);
+  const totalUsed = usageData.topicDiscoveryRuns + usageData.articlesGenerated;
+  const totalLimit = (usageData.maxTopicDiscoveryRuns || 0) + (usageData.maxArticles || 0);
+  const totalProgress = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
 
   return (
     <div style={{
-      background: "var(--card)",
-      border: "1px solid var(--border)",
-      borderRadius: "16px",
-      padding: "1.5rem",
-      marginBottom: "2rem",
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+      marginBottom: "1.5rem",
+      padding: "0.75rem 0",
     }}>
+      {/* Minimalistic Progress Bar */}
+      <div style={{
+        width: "100%",
+        height: "6px",
+        background: "var(--secondary)",
+        borderRadius: "3px",
+        overflow: "hidden",
+        marginBottom: "0.5rem",
+      }}>
+        <div style={{
+          width: `${Math.min(100, totalProgress)}%`,
+          height: "100%",
+          background: totalProgress >= 100
+            ? "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)"
+            : "linear-gradient(90deg, #10b981 0%, #059669 100%)",
+          borderRadius: "3px",
+          transition: "width 0.3s ease",
+        }} />
+      </div>
+
+      {/* Credits Left Text with Refresh Icon */}
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: "0.75rem",
-        marginBottom: "1rem",
+        justifyContent: "center",
+        gap: "0.5rem",
       }}>
-        <div style={{
-          width: "24px",
-          height: "24px",
-          borderRadius: "50%",
-          background: isMaster 
-            ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
-            : "var(--primary-gradient)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+        <span style={{
           fontSize: "0.875rem",
-          flexShrink: 0,
-        }}>
-          {isMaster ? "✨" : "📊"}
-        </div>
-        <h3 style={{
-          fontSize: "1rem",
           fontWeight: 600,
           color: "var(--foreground)",
-          margin: 0,
         }}>
-          {isMaster ? "Usage (Master Access)" : "Trial Usage"}
-        </h3>
-      </div>
-
-      {/* Topic Discovery Progress */}
-      <div style={{ marginBottom: "1.25rem" }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.5rem",
-        }}>
-          <span style={{
-            fontSize: "0.875rem",
+          {totalRemaining} credit{totalRemaining !== 1 ? "s" : ""} left
+        </span>
+        <button
+          onClick={() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const trialToken = urlParams.get("trial");
+            const apiUrl = trialToken 
+              ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}`
+              : "/api/trial-usage";
+            fetch(apiUrl)
+              .then(res => res.json())
+              .then(data => setUsageData(data))
+              .catch(err => console.error("Error refreshing:", err));
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             color: "var(--text-muted)",
-            fontWeight: 500,
-          }}>
-            Topic Discovery
-          </span>
-          <span style={{
-            fontSize: "0.875rem",
-            color: "var(--foreground)",
-            fontWeight: 600,
-          }}>
-            {isMaster ? (
-              <span style={{ color: "#10b981" }}>Unlimited</span>
-            ) : (
-              `${usageData.topicDiscoveryRuns} / ${usageData.maxTopicDiscoveryRuns}`
-            )}
-          </span>
-        </div>
-        {!isMaster && (
-          <>
-            <div style={{
-              width: "100%",
-              height: "8px",
-              background: "var(--secondary)",
-              borderRadius: "4px",
-              overflow: "hidden",
-            }}>
-              <div style={{
-                width: `${Math.min(100, topicDiscoveryProgress)}%`,
-                height: "100%",
-                background: topicDiscoveryProgress >= 100
-                  ? "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)"
-                  : "var(--primary-gradient)",
-                borderRadius: "4px",
-                transition: "width 0.3s ease",
-              }} />
-            </div>
-            {usageData.topicDiscoveryRunsRemaining !== null && usageData.topicDiscoveryRunsRemaining > 0 && (
-              <p style={{
-                fontSize: "0.75rem",
-                color: "var(--text-light)",
-                margin: "0.25rem 0 0 0",
-              }}>
-                {usageData.topicDiscoveryRunsRemaining} run{usageData.topicDiscoveryRunsRemaining !== 1 ? "s" : ""} remaining
-              </p>
-            )}
-            {usageData.topicDiscoveryRunsRemaining === 0 && (
-              <p style={{
-                fontSize: "0.75rem",
-                color: "#ef4444",
-                margin: "0.25rem 0 0 0",
-                fontWeight: 500,
-              }}>
-                Limit reached
-              </p>
-            )}
-          </>
-        )}
-        {isMaster && (
-          <p style={{
-            fontSize: "0.75rem",
-            color: "#10b981",
-            margin: "0.25rem 0 0 0",
-            fontWeight: 500,
-          }}>
-            No limits - full access
-          </p>
-        )}
+            transition: "color 0.2s, transform 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--foreground)";
+            e.currentTarget.style.transform = "rotate(180deg)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--text-muted)";
+            e.currentTarget.style.transform = "rotate(0deg)";
+          }}
+          title="Refresh usage"
+        >
+          <svg 
+            width="16" 
+            height="16" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{
+              transition: "transform 0.3s ease",
+            }}
+          >
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </button>
       </div>
-
-      {/* Articles Progress */}
-      <div>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.5rem",
-        }}>
-          <span style={{
-            fontSize: "0.875rem",
-            color: "var(--text-muted)",
-            fontWeight: 500,
-          }}>
-            Articles Generated
-          </span>
-          <span style={{
-            fontSize: "0.875rem",
-            color: "var(--foreground)",
-            fontWeight: 600,
-          }}>
-            {isMaster ? (
-              <span style={{ color: "#10b981" }}>Unlimited</span>
-            ) : (
-              `${usageData.articlesGenerated} / ${usageData.maxArticles}`
-            )}
-          </span>
-        </div>
-        {!isMaster && (
-          <>
-            <div style={{
-              width: "100%",
-              height: "8px",
-              background: "var(--secondary)",
-              borderRadius: "4px",
-              overflow: "hidden",
-            }}>
-              <div style={{
-                width: `${Math.min(100, articlesProgress)}%`,
-                height: "100%",
-                background: articlesProgress >= 100
-                  ? "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)"
-                  : "var(--primary-gradient)",
-                borderRadius: "4px",
-                transition: "width 0.3s ease",
-              }} />
-            </div>
-            {usageData.articlesRemaining !== null && usageData.articlesRemaining > 0 && (
-              <p style={{
-                fontSize: "0.75rem",
-                color: "var(--text-light)",
-                margin: "0.25rem 0 0 0",
-              }}>
-                {usageData.articlesRemaining} article{usageData.articlesRemaining !== 1 ? "s" : ""} remaining
-              </p>
-            )}
-            {usageData.articlesRemaining === 0 && (
-              <p style={{
-                fontSize: "0.75rem",
-                color: "#ef4444",
-                margin: "0.25rem 0 0 0",
-                fontWeight: 500,
-              }}>
-                Limit reached
-              </p>
-            )}
-          </>
-        )}
-        {isMaster && (
-          <p style={{
-            fontSize: "0.75rem",
-            color: "#10b981",
-            margin: "0.25rem 0 0 0",
-            fontWeight: 500,
-          }}>
-            No limits - full access
-          </p>
-        )}
-      </div>
-
-      {/* Info hint */}
-      {!isMaster && (
-        <div style={{
-          marginTop: "1rem",
-          padding: "0.75rem",
-          background: "var(--secondary)",
-          borderRadius: "8px",
-          border: "1px solid var(--border)",
-        }}>
-          <p style={{
-            fontSize: "0.75rem",
-            color: "var(--text-muted)",
-            margin: 0,
-            lineHeight: 1.5,
-          }}>
-            💡 <strong>Trial limits:</strong> You can generate up to {usageData.maxTopicDiscoveryRuns} topic discovery runs and up to {usageData.maxArticles} articles. Master access has unlimited usage.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
