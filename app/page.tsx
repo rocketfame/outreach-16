@@ -576,6 +576,11 @@ export default function Home() {
       
       // Play success sound after topic generation (always, regardless of timing)
       playSuccessSound();
+      
+      // Trigger trial usage update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+      }
     } catch (error) {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:303',message:'generateTopics error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
@@ -865,6 +870,11 @@ export default function Home() {
             visible: true,
           });
           playSuccessSound();
+          
+          // Trigger trial usage update
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+          }
         }
       } catch (error) {
         console.error("[regenerateArticleForTopic] Error:", error);
@@ -1518,6 +1528,11 @@ export default function Home() {
       // Play success sound after article generation (always, regardless of timing)
       playSuccessSound();
       
+      // Trigger trial usage update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+      }
+      
       // Auto-scroll to the first article that is currently generating (from top to bottom)
       setTimeout(() => {
         // Find the first article card that is in "generating" status
@@ -1909,6 +1924,11 @@ export default function Home() {
       
       // Play success sound after article generation (always, regardless of timing)
       playSuccessSound();
+      
+      // Trigger trial usage update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+      }
     } catch (error) {
       console.error(error);
       const errorMessage = (error as Error).message || "Failed to generate article. Please try again.";
@@ -3663,6 +3683,11 @@ export default function Home() {
           // Images are stored in component state only and can be regenerated
           return next;
         });
+        
+        // Trigger trial usage update
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+        }
         
         // Update used box indices after successful generation
         if (data.selectedBoxIndex !== undefined) {

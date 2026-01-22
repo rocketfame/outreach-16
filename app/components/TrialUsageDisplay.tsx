@@ -27,39 +27,75 @@ export default function TrialUsageDisplay() {
   const [usageData, setUsageData] = useState<TrialUsageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUsage = async () => {
-      try {
-        // Get trial token from URL query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const trialToken = urlParams.get("trial");
-        
-        // Build API URL with trial token if present
-        const apiUrl = trialToken 
-          ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}`
-          : "/api/trial-usage";
-        
-        const response = await fetch(apiUrl);
-        if (response.ok) {
-          const data = await response.json();
-          console.log("[TrialUsageDisplay] Received data:", data);
-          setUsageData(data);
-        } else {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          console.error("[TrialUsageDisplay] Failed to fetch:", response.status, errorText);
-        }
-      } catch (error) {
-        console.error("[TrialUsageDisplay] Error:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchUsage = async () => {
+    try {
+      // Get trial token from URL query parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const trialToken = urlParams.get("trial");
+      
+      // Build API URL with trial token if present
+      const apiUrl = trialToken 
+        ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`
+        : `/api/trial-usage?_t=${Date.now()}`;
+      
+      const response = await fetch(apiUrl, {
+        cache: 'no-store', // Prevent caching
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsageData(data);
+      } else {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error("[TrialUsageDisplay] Failed to fetch:", response.status, errorText);
       }
+    } catch (error) {
+      console.error("[TrialUsageDisplay] Error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Debounce function to prevent too frequent updates
+  const debouncedFetchUsage = (() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        fetchUsage();
+      }, 500); // Wait 500ms before fetching
     };
+  })();
 
+  useEffect(() => {
+    // Initial fetch
     fetchUsage();
     
-    // Refresh usage data every 5 seconds to keep it updated
-    const interval = setInterval(fetchUsage, 5000);
-    return () => clearInterval(interval);
+    // Listen for custom events to refresh usage data
+    const handleRefreshUsage = () => {
+      debouncedFetchUsage();
+    };
+    
+    // Listen for trial usage updates
+    window.addEventListener('trialUsageUpdated', handleRefreshUsage);
+    
+    // Also listen for visibility change to refresh when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchUsage();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('trialUsageUpdated', handleRefreshUsage);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   if (isLoading) {
