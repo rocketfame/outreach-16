@@ -147,6 +147,66 @@ export default function Home() {
   const [currentBalance, setCurrentBalance] = useState(0);
   const [isCreditsExhaustedOpen, setIsCreditsExhaustedOpen] = useState(false);
   const [trialStats, setTrialStats] = useState<{ topicSearches: number; articles: number; images: number } | undefined>(undefined);
+
+  // Unified function to check trial limits BEFORE starting generation
+  const checkTrialLimitsBeforeGeneration = async (action: 'topicDiscovery' | 'article' | 'image', articlesToGenerate: number = 1): Promise<{ allowed: boolean; allCreditsExhausted: boolean }> => {
+    const trialToken = getTrialTokenFromURL();
+    if (!trialToken) {
+      return { allowed: true, allCreditsExhausted: false }; // No trial token = master access
+    }
+
+    try {
+      const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+      if (usageResponse.ok) {
+        const usageData = await usageResponse.json();
+        if (usageData.isTrial) {
+          // Check if all credits are exhausted
+          const allCreditsExhausted = usageData.topicDiscoveryRunsRemaining === 0 && 
+              usageData.articlesRemaining === 0 && 
+              usageData.imagesRemaining === 0;
+          
+          if (allCreditsExhausted) {
+            setTrialStats({
+              topicSearches: usageData.topicDiscoveryRuns || 0,
+              articles: usageData.articlesGenerated || 0,
+              images: usageData.imagesGenerated || 0,
+            });
+            setIsCreditsExhaustedOpen(true);
+            return { allowed: false, allCreditsExhausted: true };
+          }
+
+          // Check specific limit for the action
+          if (action === 'topicDiscovery' && usageData.topicDiscoveryRunsRemaining === 0) {
+            setTrialLimitReached({
+              visible: true,
+              message: `Trial limit reached: You have run ${usageData.topicDiscoveryRuns || 0} topic discovery search(es). Maximum ${usageData.maxTopicDiscoveryRuns || 2} topic discovery runs allowed in trial mode.`,
+            });
+            return { allowed: false, allCreditsExhausted: false };
+          }
+
+          if (action === 'article' && usageData.articlesRemaining < articlesToGenerate) {
+            setTrialLimitReached({
+              visible: true,
+              message: `Trial limit reached: You have generated ${usageData.articlesGenerated || 0} article(s). Maximum ${usageData.maxArticles || 2} articles allowed in trial mode.`,
+            });
+            return { allowed: false, allCreditsExhausted: false };
+          }
+
+          if (action === 'image' && usageData.imagesRemaining === 0) {
+            setTrialLimitReached({
+              visible: true,
+              message: `Trial limit reached: You have generated ${usageData.imagesGenerated || 0} image(s). Maximum ${usageData.maxImages || 1} image allowed in trial mode.`,
+            });
+            return { allowed: false, allCreditsExhausted: false };
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[checkTrialLimitsBeforeGeneration] Error:", error);
+    }
+
+    return { allowed: true, allCreditsExhausted: false };
+  };
   const [trialUsage, setTrialUsage] = useState<{
     isTrial: boolean;
     topicDiscoveryRunsRemaining: number | null;
@@ -463,6 +523,13 @@ export default function Home() {
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:266',message:'generateTopics called',data:{briefNiche:brief.niche,briefLanguage:brief.language,briefPlatform:brief.platform,briefAnchorText:brief.anchorText,briefAnchorUrl:brief.anchorUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
     // #endregion
+    
+    // CRITICAL: Check trial limits BEFORE starting generation
+    const limitCheck = await checkTrialLimitsBeforeGeneration('topicDiscovery');
+    if (!limitCheck.allowed) {
+      return; // Stop immediately, widget is already shown
+    }
+
     // Validate Project Basis fields with detailed error messages
     const missingFields: string[] = [];
     if (!brief.niche.trim()) {
@@ -1203,6 +1270,12 @@ export default function Home() {
   };
 
   const generateArticlesForTopics = async (topics: Topic[], autoOpenModal = false) => {
+    // CRITICAL: Check trial limits BEFORE starting generation
+    const limitCheck = await checkTrialLimitsBeforeGeneration('article', topics.length);
+    if (!limitCheck.allowed) {
+      return; // Stop immediately, widget is already shown
+    }
+
     // Only allow generation in discovery mode
     if (mode !== "discovery") {
       console.warn("generateArticlesForTopics called outside discovery mode, ignoring");
@@ -1653,6 +1726,12 @@ export default function Home() {
 
   // Generate article for DirectArticleCreation mode
   const generateDirectArticle = async () => {
+    // CRITICAL: Check trial limits BEFORE starting generation
+    const limitCheck = await checkTrialLimitsBeforeGeneration('article', 1);
+    if (!limitCheck.allowed) {
+      return; // Stop immediately, widget is already shown
+    }
+
     // Only allow generation in direct mode
     if (mode !== "direct") {
       return;
@@ -3561,6 +3640,12 @@ export default function Home() {
 
   // Generate hero image for an article
   const generateArticleImage = async (topicId: string) => {
+    // CRITICAL: Check trial limits BEFORE starting generation
+    const limitCheck = await checkTrialLimitsBeforeGeneration('image', 1);
+    if (!limitCheck.allowed) {
+      return; // Stop immediately, widget is already shown
+    }
+
     const article = generatedArticles.find(a => a.topicTitle === topicId);
     
     if (!article) {
