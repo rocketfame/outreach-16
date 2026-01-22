@@ -48,6 +48,7 @@ export async function getTrialUsage(token: string): Promise<TrialUsage> {
       const key = getStorageKey(token);
       const usage = await kv.get<TrialUsage>(key);
       if (usage) {
+        console.log("[trialLimits] Using KV storage for token:", token.substring(0, 10) + "...");
         return usage;
       }
       // Initialize if not found
@@ -57,11 +58,14 @@ export async function getTrialUsage(token: string): Promise<TrialUsage> {
         imagesGenerated: 0,
       };
       await kv.set(key, defaultUsage);
+      console.log("[trialLimits] Initialized KV storage for token:", token.substring(0, 10) + "...");
       return defaultUsage;
     } catch (error) {
       console.error("[trialLimits] KV error, falling back to in-memory:", error);
       // Fall through to in-memory storage
     }
+  } else {
+    console.warn("[trialLimits] KV not available, using in-memory storage. Check KV_REST_API_URL and KV_REST_API_TOKEN environment variables.");
   }
 
   // Fallback to in-memory storage
@@ -84,6 +88,7 @@ async function saveTrialUsage(token: string, usage: TrialUsage): Promise<void> {
     try {
       const key = getStorageKey(token);
       await kv.set(key, usage);
+      console.log("[trialLimits] Saved to KV storage for token:", token.substring(0, 10) + "...", usage);
       return;
     } catch (error) {
       console.error("[trialLimits] KV error saving, falling back to in-memory:", error);
@@ -93,6 +98,7 @@ async function saveTrialUsage(token: string, usage: TrialUsage): Promise<void> {
 
   // Fallback to in-memory storage
   trialUsageStore.set(token, usage);
+  console.log("[trialLimits] Saved to in-memory storage for token:", token.substring(0, 10) + "...", usage);
 }
 
 /**

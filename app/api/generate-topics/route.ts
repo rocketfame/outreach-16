@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   // Check trial limits before processing
   const trialToken = extractTrialToken(req);
-  const topicDiscoveryLimitCheck = canRunTopicDiscovery(trialToken);
+  const topicDiscoveryLimitCheck = await canRunTopicDiscovery(trialToken);
   if (!topicDiscoveryLimitCheck.allowed) {
     return new Response(
       JSON.stringify({ error: topicDiscoveryLimitCheck.reason || "Trial limit reached" }),
