@@ -230,21 +230,23 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
             borderRadius: "12px",
             padding: "16px",
             marginBottom: "24px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
           }}>
-            <div>
-              <div style={{
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: "14px",
-                fontWeight: 400,
-                lineHeight: "20px",
-                color: textPrimary,
-                marginBottom: "4px",
-              }}>
-                Current Balance
-              </div>
+            <div style={{
+              fontFamily: "Inter, system-ui, sans-serif",
+              fontSize: "14px",
+              fontWeight: 400,
+              lineHeight: "20px",
+              color: textPrimary,
+              marginBottom: "8px",
+            }}>
+              Current Balance
+            </div>
+            <div style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}>
               <div style={{
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontSize: "24px",
@@ -254,26 +256,14 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
               }}>
                 {currentBalance} Credits
               </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
               <div style={{
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontSize: "14px",
                 fontWeight: 400,
                 lineHeight: "20px",
                 color: textPrimary,
-                marginBottom: "4px",
               }}>
-                Credit Cost
-              </div>
-              <div style={{
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: "18px",
-                fontWeight: 400,
-                lineHeight: "28px",
-                color: textSecondary,
-              }}>
-                $0.60 per credit
+                • $0.60 per credit
               </div>
             </div>
           </div>

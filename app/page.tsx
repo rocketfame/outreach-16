@@ -6,6 +6,7 @@ import Notification from "./components/Notification";
 import TrialLimitReached from "./components/TrialLimitReached";
 import TrialUsageDisplay from "./components/TrialUsageDisplay";
 import UpgradeModal from "./components/UpgradeModal";
+import CreditsExhausted from "./components/CreditsExhausted";
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
@@ -144,6 +145,17 @@ export default function Home() {
   }>({ visible: false });
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [currentBalance, setCurrentBalance] = useState(0);
+  const [isCreditsExhaustedOpen, setIsCreditsExhaustedOpen] = useState(false);
+  const [trialStats, setTrialStats] = useState<{ topicSearches: number; articles: number; images: number } | null>(null);
+  const [trialUsage, setTrialUsage] = useState<{
+    isTrial: boolean;
+    topicDiscoveryRunsRemaining: number | null;
+    articlesRemaining: number | null;
+    imagesRemaining: number | null;
+    topicDiscoveryRuns: number;
+    articlesGenerated: number;
+    imagesGenerated: number;
+  } | null>(null);
 
   // Fetch current balance
   useEffect(() => {
@@ -488,6 +500,32 @@ export default function Home() {
         const errorData = await response.json().catch(() => ({}));
         // Check if it's a trial limit error (403)
         if (response.status === 403 && errorData.error) {
+          // Check if all credits are exhausted
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            try {
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+              if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (usageData.isTrial && 
+                    usageData.topicDiscoveryRunsRemaining === 0 && 
+                    usageData.articlesRemaining === 0 && 
+                    usageData.imagesRemaining === 0) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  setIsGeneratingTopics(false);
+                  setLoadingStep(null);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch trial usage:", e);
+            }
+          }
           setTrialLimitReached({
             visible: true,
             message: errorData.error,
@@ -726,6 +764,37 @@ export default function Home() {
           const errorData = await response.json().catch(() => ({}));
           // Check if it's a trial limit error (403)
           if (response.status === 403 && errorData.error) {
+            // Check if all credits are exhausted
+            const trialToken = getTrialTokenFromURL();
+            if (trialToken) {
+              try {
+                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+                if (usageResponse.ok) {
+                  const usageData = await usageResponse.json();
+                  if (usageData.isTrial && 
+                      usageData.topicDiscoveryRunsRemaining === 0 && 
+                      usageData.articlesRemaining === 0 && 
+                      usageData.imagesRemaining === 0) {
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
+                    });
+                    setIsCreditsExhaustedOpen(true);
+                    updateGeneratedArticles(
+                      generatedArticles.map(a =>
+                        a.topicTitle === topicId
+                          ? { ...a, status: "error" as const }
+                          : a
+                      )
+                    );
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.error("Failed to fetch trial usage:", e);
+              }
+            }
             setTrialLimitReached({
               visible: true,
               message: errorData.error,
@@ -1313,6 +1382,40 @@ export default function Home() {
         const errorData = await response.json().catch(() => ({}));
         // Check if it's a trial limit error (403)
         if (response.status === 403 && errorData.error) {
+          // Check if all credits are exhausted
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            try {
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+              if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (usageData.isTrial && 
+                    usageData.topicDiscoveryRunsRemaining === 0 && 
+                    usageData.articlesRemaining === 0 && 
+                    usageData.imagesRemaining === 0) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  setIsGeneratingArticles(new Set());
+                  setLoadingStep(null);
+                  // Mark all articles as error
+                  updateGeneratedArticles(
+                    generatedArticles.map(a =>
+                      topicIds.includes(a.topicTitle)
+                        ? { ...a, status: "error" as const }
+                        : a
+                    )
+                  );
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch trial usage:", e);
+            }
+          }
           setTrialLimitReached({
             visible: true,
             message: errorData.error,
@@ -1645,6 +1748,37 @@ export default function Home() {
         const errorData = await response.json().catch(() => ({}));
         // Check if it's a trial limit error (403)
         if (response.status === 403 && errorData.error) {
+          // Check if all credits are exhausted
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            try {
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+              if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (usageData.isTrial && 
+                    usageData.topicDiscoveryRunsRemaining === 0 && 
+                    usageData.articlesRemaining === 0 && 
+                    usageData.imagesRemaining === 0) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  updateGeneratedArticles(
+                    generatedArticles.map(a =>
+                      a.topicTitle === "direct"
+                        ? { ...a, status: "error" as const }
+                        : a
+                    )
+                  );
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch trial usage:", e);
+            }
+          }
           setTrialLimitReached({
             visible: true,
             message: errorData.error,
@@ -3474,6 +3608,48 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        // Check if it's a trial limit error (403)
+        if (response.status === 403 && errorData.error) {
+          // Check if all credits are exhausted
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            try {
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+              if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (usageData.isTrial && 
+                    usageData.topicDiscoveryRunsRemaining === 0 && 
+                    usageData.articlesRemaining === 0 && 
+                    usageData.imagesRemaining === 0) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  setIsGeneratingImage(prev => {
+                    const next = new Set(prev);
+                    next.delete(topicId);
+                    return next;
+                  });
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch trial usage:", e);
+            }
+          }
+          setTrialLimitReached({
+            visible: true,
+            message: errorData.error,
+          });
+          setIsGeneratingImage(prev => {
+            const next = new Set(prev);
+            next.delete(topicId);
+            return next;
+          });
+          return;
+        }
         throw new Error(errorData.error || "Failed to generate image");
       }
 
@@ -5164,8 +5340,19 @@ export default function Home() {
         </div>
       </div>
       
-      {/* Trial Limit Reached */}
-      {trialLimitReached.visible && (
+      {/* Credits Exhausted Modal */}
+      <CreditsExhausted
+        isOpen={isCreditsExhaustedOpen}
+        onClose={() => setIsCreditsExhaustedOpen(false)}
+        onUpgrade={() => {
+          setIsCreditsExhaustedOpen(false);
+          setIsUpgradeModalOpen(true);
+        }}
+        trialStats={trialStats}
+      />
+      
+      {/* Trial Limit Reached (fallback for other errors) */}
+      {trialLimitReached.visible && !isCreditsExhaustedOpen && (
         <TrialLimitReached
           message={trialLimitReached.message}
           onClose={() => setTrialLimitReached({ visible: false })}
