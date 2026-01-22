@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 interface CreditPlan {
   id: string;
   credits: number;
-  pricePerCredit: number;
   totalPrice: number;
+  savings?: number;
   popular?: boolean;
+  benefits: string[];
 }
 
 interface UpgradeModalProps {
@@ -19,10 +20,34 @@ interface UpgradeModalProps {
 
 // Credit plans from Figma design
 const CREDIT_PLANS: CreditPlan[] = [
-  { id: "30", credits: 30, pricePerCredit: 0.60, totalPrice: 18.00 },
-  { id: "100", credits: 100, pricePerCredit: 0.50, totalPrice: 50.00, popular: true },
-  { id: "250", credits: 250, pricePerCredit: 0.40, totalPrice: 100.00 },
-  { id: "500", credits: 500, pricePerCredit: 0.35, totalPrice: 175.00 },
+  {
+    id: "50",
+    credits: 50,
+    totalPrice: 30.00,
+    benefits: ["~5 topic generations", "~10 full articles", "Credits never expire"],
+  },
+  {
+    id: "100",
+    credits: 100,
+    totalPrice: 55.00,
+    savings: 5,
+    popular: true,
+    benefits: ["~10 topic generations", "~20 full articles", "Credits never expire"],
+  },
+  {
+    id: "250",
+    credits: 250,
+    totalPrice: 125.00,
+    savings: 25,
+    benefits: ["~25 topic generations", "~50 full articles", "Credits never expire"],
+  },
+  {
+    id: "500",
+    credits: 500,
+    totalPrice: 225.00,
+    savings: 75,
+    benefits: ["~50 topic generations", "~100 full articles", "Credits never expire"],
+  },
 ];
 
 // Helper function to convert RGB 0-1 to hex
@@ -95,6 +120,9 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
   const textSecondary = rgbToHex(0.065, 0.094, 0.157);
   const gradientButton = `linear-gradient(90deg, ${rgbToHex(0.961, 0.288, 0)} 0%, ${rgbToHex(0.901, 0, 0.463)} 100%)`;
   const popularBadgeBg = gradientButton;
+  const savingsColor = "#10b981"; // Green for savings
+  const balanceBg = `linear-gradient(180deg, ${rgbToHex(1, 0.969, 0.929)} 0%, ${rgbToHex(0.991, 0.949, 0.972)} 100%)`;
+  const balanceBorder = rgbToHex(1, 0.841, 0.657);
 
   return (
     <div
@@ -121,161 +149,113 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
         style={{
           backgroundColor: modalBg,
           borderRadius: "16px",
-          padding: "24px",
-          maxWidth: "600px",
+          maxWidth: "800px",
           width: "100%",
           maxHeight: "90vh",
-          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
           boxShadow: "0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          overflow: "hidden",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
-          <div>
-            <h2 style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "24px",
-              fontWeight: 600,
-              lineHeight: "32px",
-              color: textSecondary,
-              margin: "0 0 8px 0",
-            }}>
-              Purchase Credits
-            </h2>
-            <p style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "14px",
-              fontWeight: 400,
-              lineHeight: "20px",
-              color: textPrimary,
-              margin: 0,
-            }}>
-              Secure payment processing · Credits added instantly
-            </p>
+        {/* Scrollable Content */}
+        <div
+          style={{
+            overflowY: "auto",
+            padding: "24px",
+            flex: 1,
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {/* Star Icon */}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={rgbToHex(1, 0.412, 0)} strokeWidth="1.67">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+              </svg>
+              <h2 style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: "24px",
+                fontWeight: 600,
+                lineHeight: "32px",
+                color: textSecondary,
+                margin: 0,
+              }}>
+                Buy Additional Credits
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: textPrimary,
+                transition: "opacity 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.7";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "4px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: textPrimary,
-              transition: "opacity 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = "0.7";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = "1";
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
 
-        {/* Current Balance */}
-        <div style={{
-          backgroundColor: rgbToHex(0.969, 0.973, 0.980),
-          borderRadius: "12px",
-          padding: "16px",
-          marginBottom: "24px",
-        }}>
-          <div style={{
+          {/* Description */}
+          <p style={{
             fontFamily: "Inter, system-ui, sans-serif",
             fontSize: "14px",
             fontWeight: 400,
             lineHeight: "20px",
             color: textPrimary,
-            marginBottom: "4px",
+            margin: "0 0 24px 0",
           }}>
-            Current Balance
-          </div>
-          <div style={{
-            fontFamily: "Inter, system-ui, sans-serif",
-            fontSize: "24px",
-            fontWeight: 400,
-            lineHeight: "32px",
-            color: textSecondary,
-          }}>
-            {currentBalance} Credits
-          </div>
-        </div>
+            Choose a credit pack that suits your needs and get started with your writing projects.
+          </p>
 
-        {/* Credit Plans */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: "16px",
-          marginBottom: "24px",
-        }}>
-          {CREDIT_PLANS.map((plan) => (
-            <div
-              key={plan.id}
-              style={{
-                border: `1px solid ${plan.popular ? rgbToHex(0.961, 0.288, 0) : borderColor}`,
-                borderRadius: "12px",
-                padding: "16px",
-                position: "relative",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                backgroundColor: plan === selectedPlan ? rgbToHex(0.969, 0.973, 0.980) : "transparent",
-              }}
-              onClick={() => setSelectedPlan(plan)}
-              onMouseEnter={(e) => {
-                if (plan !== selectedPlan) {
-                  e.currentTarget.style.backgroundColor = rgbToHex(0.969, 0.973, 0.980);
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (plan !== selectedPlan) {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }
-              }}
-            >
-              {plan.popular && (
-                <div style={{
-                  position: "absolute",
-                  top: "-8px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  backgroundColor: popularBadgeBg,
-                  color: "#ffffff",
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                  fontSize: "10px",
-                  fontWeight: 600,
-                  fontFamily: "Inter, system-ui, sans-serif",
-                }}>
-                  Popular
-                </div>
-              )}
-              <div style={{
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: "24px",
-                fontWeight: 400,
-                lineHeight: "32px",
-                color: textSecondary,
-                marginBottom: "4px",
-              }}>
-                {plan.credits}
-              </div>
+          {/* Current Balance and Credit Cost */}
+          <div style={{
+            background: balanceBg,
+            border: `1px solid ${balanceBorder}`,
+            borderRadius: "12px",
+            padding: "16px",
+            marginBottom: "24px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}>
+            <div>
               <div style={{
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontSize: "14px",
                 fontWeight: 400,
                 lineHeight: "20px",
                 color: textPrimary,
-                marginBottom: "8px",
+                marginBottom: "4px",
               }}>
-                Credits
+                Current Balance
               </div>
+              <div style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: "24px",
+                fontWeight: 400,
+                lineHeight: "32px",
+                color: rgbToHex(0.961, 0.288, 0), // Orange color for balance
+              }}>
+                {currentBalance} Credits
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
               <div style={{
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontSize: "14px",
@@ -293,113 +273,175 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
                 lineHeight: "28px",
                 color: textSecondary,
               }}>
-                ${plan.pricePerCredit.toFixed(2)} per credit
+                $0.60 per credit
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Selected Plan Summary */}
-        {selectedPlan && (
-          <div style={{
-            border: `1px solid ${borderColor}`,
-            borderRadius: "12px",
-            padding: "16px",
-            marginBottom: "24px",
-            backgroundColor: rgbToHex(0.969, 0.973, 0.980),
-          }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "8px",
-            }}>
-              <div>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "14px",
-                  fontWeight: 400,
-                  lineHeight: "20px",
-                  color: textPrimary,
-                }}>
-                  Selected Plan
-                </div>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "24px",
-                  fontWeight: 400,
-                  lineHeight: "32px",
-                  color: textSecondary,
-                }}>
-                  {selectedPlan.credits} Credits
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "14px",
-                  fontWeight: 400,
-                  lineHeight: "20px",
-                  color: textPrimary,
-                }}>
-                  Total Price
-                </div>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "24px",
-                  fontWeight: 400,
-                  lineHeight: "32px",
-                  color: textSecondary,
-                }}>
-                  ${selectedPlan.totalPrice.toFixed(2)}
-                </div>
-              </div>
-            </div>
-            <div style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "12px",
-              fontWeight: 400,
-              lineHeight: "16px",
-              color: textPrimary,
-              marginTop: "8px",
-            }}>
-              Credits never expire
             </div>
           </div>
-        )}
 
-        {/* Purchase Button */}
-        <button
-          onClick={() => selectedPlan && handlePurchase(selectedPlan)}
-          disabled={!selectedPlan || isProcessing}
-          style={{
-            width: "100%",
-            padding: "12px 24px",
-            background: selectedPlan && !isProcessing ? gradientButton : borderColor,
-            color: selectedPlan && !isProcessing ? "#ffffff" : textPrimary,
-            border: "none",
-            borderRadius: "8px",
-            fontFamily: "Inter, system-ui, sans-serif",
-            fontSize: "14px",
-            fontWeight: 500,
-            lineHeight: "20px",
-            cursor: selectedPlan && !isProcessing ? "pointer" : "not-allowed",
-            transition: "opacity 0.2s",
-            opacity: selectedPlan && !isProcessing ? 1 : 0.6,
-          }}
-          onMouseEnter={(e) => {
-            if (selectedPlan && !isProcessing) {
-              e.currentTarget.style.opacity = "0.9";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (selectedPlan && !isProcessing) {
-              e.currentTarget.style.opacity = "1";
-            }
-          }}
-        >
-          {isProcessing ? "Processing..." : selectedPlan ? `Purchase ${selectedPlan.credits} Credits - $${selectedPlan.totalPrice.toFixed(2)}` : "Select a plan to continue"}
-        </button>
+          {/* Credit Plans - 2 columns grid */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "16px",
+            marginBottom: "24px",
+          }}>
+            {CREDIT_PLANS.map((plan) => (
+              <div
+                key={plan.id}
+                style={{
+                  border: `1px solid ${plan === selectedPlan ? rgbToHex(0.961, 0.288, 0) : borderColor}`,
+                  borderRadius: "12px",
+                  padding: "16px",
+                  position: "relative",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  backgroundColor: plan === selectedPlan ? rgbToHex(0.969, 0.973, 0.980) : "transparent",
+                }}
+                onClick={() => setSelectedPlan(plan)}
+                onMouseEnter={(e) => {
+                  if (plan !== selectedPlan) {
+                    e.currentTarget.style.backgroundColor = rgbToHex(0.969, 0.973, 0.980);
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (plan !== selectedPlan) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }
+                }}
+              >
+                {plan.popular && (
+                  <div style={{
+                    position: "absolute",
+                    top: "-8px",
+                    right: "8px",
+                    background: popularBadgeBg,
+                    color: "#ffffff",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    fontFamily: "Inter, system-ui, sans-serif",
+                  }}>
+                    Best Value
+                  </div>
+                )}
+                
+                {/* Credits */}
+                <div style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: "24px",
+                  fontWeight: 400,
+                  lineHeight: "32px",
+                  color: textSecondary,
+                  marginBottom: "4px",
+                }}>
+                  {plan.credits}
+                </div>
+                <div style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 400,
+                  lineHeight: "20px",
+                  color: textPrimary,
+                  marginBottom: "16px",
+                }}>
+                  Credits
+                </div>
+
+                {/* Price */}
+                <div style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: "24px",
+                  fontWeight: 400,
+                  lineHeight: "32px",
+                  color: plan.popular ? savingsColor : textSecondary,
+                  marginBottom: plan.savings ? "4px" : "16px",
+                }}>
+                  ${plan.totalPrice.toFixed(0)}
+                </div>
+
+                {/* Savings */}
+                {plan.savings && (
+                  <div style={{
+                    fontFamily: "Inter, system-ui, sans-serif",
+                    fontSize: "14px",
+                    fontWeight: 400,
+                    lineHeight: "20px",
+                    color: savingsColor,
+                    marginBottom: "16px",
+                  }}>
+                    Save ${plan.savings}
+                  </div>
+                )}
+
+                {/* Benefits */}
+                <div style={{ marginTop: plan.savings ? "0" : "16px" }}>
+                  {plan.benefits.map((benefit, index) => (
+                    <div key={index} style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "8px",
+                      marginBottom: index < plan.benefits.length - 1 ? "8px" : "0",
+                    }}>
+                      {/* Checkmark Icon */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={savingsColor} strokeWidth="2" style={{ flexShrink: 0, marginTop: "2px" }}>
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                      <div style={{
+                        fontFamily: "Inter, system-ui, sans-serif",
+                        fontSize: "12px",
+                        fontWeight: 400,
+                        lineHeight: "16px",
+                        color: textPrimary,
+                      }}>
+                        {benefit}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Fixed Footer with Purchase Button */}
+        <div style={{
+          padding: "24px",
+          borderTop: `1px solid ${borderColor}`,
+          backgroundColor: modalBg,
+        }}>
+          <button
+            onClick={() => selectedPlan && handlePurchase(selectedPlan)}
+            disabled={!selectedPlan || isProcessing}
+            style={{
+              width: "100%",
+              padding: "12px 24px",
+              background: selectedPlan && !isProcessing ? gradientButton : borderColor,
+              color: selectedPlan && !isProcessing ? "#ffffff" : textPrimary,
+              border: "none",
+              borderRadius: "8px",
+              fontFamily: "Inter, system-ui, sans-serif",
+              fontSize: "14px",
+              fontWeight: 500,
+              lineHeight: "20px",
+              cursor: selectedPlan && !isProcessing ? "pointer" : "not-allowed",
+              transition: "opacity 0.2s",
+              opacity: selectedPlan && !isProcessing ? 1 : 0.6,
+            }}
+            onMouseEnter={(e) => {
+              if (selectedPlan && !isProcessing) {
+                e.currentTarget.style.opacity = "0.9";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (selectedPlan && !isProcessing) {
+                e.currentTarget.style.opacity = "1";
+              }
+            }}
+          >
+            {isProcessing ? "Processing..." : selectedPlan ? `Purchase ${selectedPlan.credits} Credits - $${selectedPlan.totalPrice.toFixed(2)}` : "Select a plan to continue"}
+          </button>
+        </div>
       </div>
     </div>
   );
