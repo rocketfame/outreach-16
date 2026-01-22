@@ -5,6 +5,7 @@ import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
 import TrialLimitReached from "./components/TrialLimitReached";
 import TrialUsageDisplay from "./components/TrialUsageDisplay";
+import UpgradeModal from "./components/UpgradeModal";
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
@@ -141,6 +142,53 @@ export default function Home() {
     visible: boolean;
     message?: string;
   }>({ visible: false });
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [currentBalance, setCurrentBalance] = useState(0);
+
+  // Fetch current balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const trialToken = getTrialTokenFromURL();
+        const apiUrl = trialToken 
+          ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}`
+          : "/api/trial-usage";
+        
+        const response = await fetch(apiUrl);
+        if (response.ok) {
+          const data = await response.json();
+          // For trial users, balance is 0. For paid users, get from API
+          if (data.isTrial) {
+            setCurrentBalance(0);
+          } else if (data.isMaster) {
+            setCurrentBalance(Infinity); // Master has unlimited
+          } else {
+            // Paid user - get balance from API (will be implemented in API)
+            setCurrentBalance(data.purchasedCredits || 0);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+      }
+    };
+
+    if (isHydrated) {
+      fetchBalance();
+      // Refresh balance every 10 seconds
+      const interval = setInterval(fetchBalance, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [isHydrated]);
+
+  // Listen for openUpgradeModal event
+  useEffect(() => {
+    const handleOpenModal = () => {
+      setIsUpgradeModalOpen(true);
+    };
+
+    window.addEventListener('openUpgradeModal', handleOpenModal);
+    return () => window.removeEventListener('openUpgradeModal', handleOpenModal);
+  }, []);
   const generatedArticlesSectionRef = useRef<HTMLDivElement>(null);
   const prevThemeRef = useRef<string>(theme);
   const prevModeRef = useRef<string>(mode);
@@ -4053,6 +4101,13 @@ export default function Home() {
           <div className="theme-switch-container" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             {/* Trial Usage Display - inline with theme toggle */}
             <TrialUsageDisplay />
+            
+            <UpgradeModal
+              isOpen={isUpgradeModalOpen}
+              onClose={() => setIsUpgradeModalOpen(false)}
+              currentBalance={currentBalance}
+              trialToken={getTrialTokenFromURL()}
+            />
             
             <button
               type="button"

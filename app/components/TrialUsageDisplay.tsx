@@ -308,7 +308,10 @@ export default function TrialUsageDisplay() {
             {/* Upgrade Button */}
             <button
               onClick={() => {
-                window.open('mailto:support@typereach.app?subject=Upgrade Request', '_blank');
+                // This will be handled by parent component to open modal
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('openUpgradeModal'));
+                }
               }}
               style={{
                 display: "flex",
