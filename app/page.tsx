@@ -159,6 +159,15 @@ export default function Home() {
       const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
       if (usageResponse.ok) {
         const usageData = await usageResponse.json();
+        console.log("[checkTrialLimitsBeforeGeneration] Usage data:", {
+          action,
+          articlesToGenerate,
+          isTrial: usageData.isTrial,
+          topicDiscoveryRunsRemaining: usageData.topicDiscoveryRunsRemaining,
+          articlesRemaining: usageData.articlesRemaining,
+          imagesRemaining: usageData.imagesRemaining,
+        });
+        
         if (usageData.isTrial) {
           // Check if all credits are exhausted
           const allCreditsExhausted = usageData.topicDiscoveryRunsRemaining === 0 && 
@@ -166,6 +175,7 @@ export default function Home() {
               usageData.imagesRemaining === 0;
           
           if (allCreditsExhausted) {
+            console.log("[checkTrialLimitsBeforeGeneration] All credits exhausted, showing CreditsExhausted");
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
               articles: usageData.articlesGenerated || 0,
@@ -177,6 +187,7 @@ export default function Home() {
 
           // Check specific limit for the action - always show CreditsExhausted for any limit exhaustion
           if (action === 'topicDiscovery' && usageData.topicDiscoveryRunsRemaining === 0) {
+            console.log("[checkTrialLimitsBeforeGeneration] Topic discovery limit reached, showing CreditsExhausted");
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
               articles: usageData.articlesGenerated || 0,
@@ -187,6 +198,10 @@ export default function Home() {
           }
 
           if (action === 'article' && usageData.articlesRemaining < articlesToGenerate) {
+            console.log("[checkTrialLimitsBeforeGeneration] Article limit reached, showing CreditsExhausted", {
+              articlesRemaining: usageData.articlesRemaining,
+              articlesToGenerate,
+            });
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
               articles: usageData.articlesGenerated || 0,
@@ -197,6 +212,7 @@ export default function Home() {
           }
 
           if (action === 'image' && usageData.imagesRemaining === 0) {
+            console.log("[checkTrialLimitsBeforeGeneration] Image limit reached, showing CreditsExhausted");
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
               articles: usageData.articlesGenerated || 0,
@@ -206,11 +222,14 @@ export default function Home() {
             return { allowed: false, allCreditsExhausted: false };
           }
         }
+      } else {
+        console.error("[checkTrialLimitsBeforeGeneration] Failed to fetch usage:", usageResponse.status, usageResponse.statusText);
       }
     } catch (error) {
       console.error("[checkTrialLimitsBeforeGeneration] Error:", error);
     }
 
+    console.log("[checkTrialLimitsBeforeGeneration] Allowed to proceed");
     return { allowed: true, allCreditsExhausted: false };
   };
   const [trialUsage, setTrialUsage] = useState<{
@@ -5614,8 +5633,12 @@ export default function Home() {
       {/* Credits Exhausted Modal */}
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
-        onClose={() => setIsCreditsExhaustedOpen(false)}
+        onClose={() => {
+          console.log("[page.tsx] CreditsExhausted onClose called");
+          setIsCreditsExhaustedOpen(false);
+        }}
         onUpgrade={() => {
+          console.log("[page.tsx] CreditsExhausted onUpgrade called");
           setIsCreditsExhaustedOpen(false);
           setIsUpgradeModalOpen(true);
         }}
