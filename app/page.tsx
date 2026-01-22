@@ -146,7 +146,7 @@ export default function Home() {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [currentBalance, setCurrentBalance] = useState(0);
   const [isCreditsExhaustedOpen, setIsCreditsExhaustedOpen] = useState(false);
-  const [trialStats, setTrialStats] = useState<{ topicSearches: number; articles: number; images: number } | null>(null);
+  const [trialStats, setTrialStats] = useState<{ topicSearches: number; articles: number; images: number } | undefined>(undefined);
   const [trialUsage, setTrialUsage] = useState<{
     isTrial: boolean;
     topicDiscoveryRunsRemaining: number | null;
@@ -5373,7 +5373,7 @@ export default function Home() {
           setIsCreditsExhaustedOpen(false);
           setIsUpgradeModalOpen(true);
         }}
-        trialStats={trialStats}
+        trialStats={trialStats ?? undefined}
       />
       
       {/* Trial Limit Reached (fallback for other errors) */}
