@@ -157,14 +157,14 @@ export default function Home() {
     imagesGenerated: number;
   } | null>(null);
 
-  // Fetch current balance
+  // Fetch current balance and check if all credits are exhausted
   useEffect(() => {
     const fetchBalance = async () => {
       try {
         const trialToken = getTrialTokenFromURL();
         const apiUrl = trialToken 
-          ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}`
-          : "/api/trial-usage";
+          ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`
+          : `/api/trial-usage?_t=${Date.now()}`;
         
         const response = await fetch(apiUrl);
         if (response.ok) {
@@ -172,6 +172,18 @@ export default function Home() {
           // For trial users, balance is 0. For paid users, get from API
           if (data.isTrial) {
             setCurrentBalance(0);
+            
+            // Check if all credits are exhausted - show CreditsExhausted modal
+            if (data.topicDiscoveryRunsRemaining === 0 && 
+                data.articlesRemaining === 0 && 
+                data.imagesRemaining === 0) {
+              setTrialStats({
+                topicSearches: data.topicDiscoveryRuns || 0,
+                articles: data.articlesGenerated || 0,
+                images: data.imagesGenerated || 0,
+              });
+              setIsCreditsExhaustedOpen(true);
+            }
           } else if (data.isMaster) {
             setCurrentBalance(Infinity); // Master has unlimited
           } else {
@@ -504,22 +516,38 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
-                if (usageData.isTrial && 
-                    usageData.topicDiscoveryRunsRemaining === 0 && 
-                    usageData.articlesRemaining === 0 && 
-                    usageData.imagesRemaining === 0) {
-                  setTrialStats({
-                    topicSearches: usageData.topicDiscoveryRuns || 0,
-                    articles: usageData.articlesGenerated || 0,
-                    images: usageData.imagesGenerated || 0,
-                  });
-                  setIsCreditsExhaustedOpen(true);
-                  setIsGeneratingTopics(false);
-                  setLoadingStep(null);
-                  return;
+                if (usageData.isTrial) {
+                  // Check if all credits are exhausted
+                  if (usageData.topicDiscoveryRunsRemaining === 0 && 
+                      usageData.articlesRemaining === 0 && 
+                      usageData.imagesRemaining === 0) {
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
+                    });
+                    setIsCreditsExhaustedOpen(true);
+                    setIsGeneratingTopics(false);
+                    setLoadingStep(null);
+                    return;
+                  }
+                  // If only topic discovery limit is reached, show specific message
+                  if (usageData.topicDiscoveryRunsRemaining === 0) {
+                    setTrialLimitReached({
+                      visible: true,
+                      message: `Trial limit reached: You have run ${usageData.topicDiscoveryRuns || 0} topic discovery search(es). Maximum ${usageData.maxTopicDiscoveryRuns || 2} topic discovery runs allowed in trial mode.`,
+                    });
+                    setIsGeneratingTopics(false);
+                    setLoadingStep(null);
+                    // Trigger trial usage update to refresh display
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+                    }
+                    return;
+                  }
                 }
               }
             } catch (e) {
@@ -1388,62 +1416,86 @@ export default function Home() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        // Check if it's a trial limit error (403)
-        if (response.status === 403 && errorData.error) {
-          // Check if all credits are exhausted
-          const trialToken = getTrialTokenFromURL();
-          if (trialToken) {
-            try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
-              if (usageResponse.ok) {
-                const usageData = await usageResponse.json();
-                if (usageData.isTrial && 
-                    usageData.topicDiscoveryRunsRemaining === 0 && 
-                    usageData.articlesRemaining === 0 && 
-                    usageData.imagesRemaining === 0) {
-                  setTrialStats({
-                    topicSearches: usageData.topicDiscoveryRuns || 0,
-                    articles: usageData.articlesGenerated || 0,
-                    images: usageData.imagesGenerated || 0,
-                  });
-                  setIsCreditsExhaustedOpen(true);
-                  setIsGeneratingArticles(new Set());
-                  setLoadingStep(null);
-                  // Mark all articles as error
-                  updateGeneratedArticles(
-                    generatedArticles.map(a =>
-                      topicIds.includes(a.topicTitle)
-                        ? { ...a, status: "error" as const }
-                        : a
-                    )
-                  );
-                  return;
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          // Check if it's a trial limit error (403)
+          if (response.status === 403 && errorData.error) {
+            // Check if all credits are exhausted
+            const trialToken = getTrialTokenFromURL();
+            if (trialToken) {
+              try {
+                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+                if (usageResponse.ok) {
+                  const usageData = await usageResponse.json();
+                  if (usageData.isTrial) {
+                    // Check if all credits are exhausted
+                    if (usageData.topicDiscoveryRunsRemaining === 0 && 
+                        usageData.articlesRemaining === 0 && 
+                        usageData.imagesRemaining === 0) {
+                      setTrialStats({
+                        topicSearches: usageData.topicDiscoveryRuns || 0,
+                        articles: usageData.articlesGenerated || 0,
+                        images: usageData.imagesGenerated || 0,
+                      });
+                      setIsCreditsExhaustedOpen(true);
+                      setIsGeneratingArticles(new Set());
+                      setLoadingStep(null);
+                      // Mark all articles as error
+                      updateGeneratedArticles(
+                        generatedArticles.map(a =>
+                          topicIds.includes(a.topicTitle)
+                            ? { ...a, status: "error" as const }
+                            : a
+                        )
+                      );
+                      return;
+                    }
+                    // If only articles limit is reached, show specific message
+                    if (usageData.articlesRemaining === 0) {
+                      setTrialLimitReached({
+                        visible: true,
+                        message: `Trial limit reached: You have generated ${usageData.articlesGenerated || 0} article(s). Maximum ${usageData.maxArticles || 2} articles allowed in trial mode.`,
+                      });
+                      setIsGeneratingArticles(new Set());
+                      setLoadingStep(null);
+                      // Mark all articles as error
+                      updateGeneratedArticles(
+                        generatedArticles.map(a =>
+                          topicIds.includes(a.topicTitle)
+                            ? { ...a, status: "error" as const }
+                            : a
+                        )
+                      );
+                      // Trigger trial usage update to refresh display
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+                      }
+                      return;
+                    }
+                  }
                 }
+              } catch (e) {
+                console.error("Failed to fetch trial usage:", e);
               }
-            } catch (e) {
-              console.error("Failed to fetch trial usage:", e);
             }
+            setTrialLimitReached({
+              visible: true,
+              message: errorData.error,
+            });
+            setIsGeneratingArticles(new Set());
+            setLoadingStep(null);
+            // Mark all articles as error
+            updateGeneratedArticles(
+              generatedArticles.map(a =>
+                topicIds.includes(a.topicTitle)
+                  ? { ...a, status: "error" as const }
+                  : a
+              )
+            );
+            return;
           }
-          setTrialLimitReached({
-            visible: true,
-            message: errorData.error,
-          });
-          setIsGeneratingArticles(new Set());
-          setLoadingStep(null);
-          // Mark all articles as error
-          updateGeneratedArticles(
-            generatedArticles.map(a =>
-              topicIds.includes(a.topicTitle)
-                ? { ...a, status: "error" as const }
-                : a
-            )
-          );
-          return;
+          throw new Error(errorData.error ?? "Failed to generate articles.");
         }
-        throw new Error(errorData.error ?? "Failed to generate articles.");
-      }
 
       const data = await response.json() as { articles: Array<{
         topicTitle: string;
@@ -1767,27 +1819,48 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
-                if (usageData.isTrial && 
-                    usageData.topicDiscoveryRunsRemaining === 0 && 
-                    usageData.articlesRemaining === 0 && 
-                    usageData.imagesRemaining === 0) {
-                  setTrialStats({
-                    topicSearches: usageData.topicDiscoveryRuns || 0,
-                    articles: usageData.articlesGenerated || 0,
-                    images: usageData.imagesGenerated || 0,
-                  });
-                  setIsCreditsExhaustedOpen(true);
-                  updateGeneratedArticles(
-                    generatedArticles.map(a =>
-                      a.topicTitle === "direct"
-                        ? { ...a, status: "error" as const }
-                        : a
-                    )
-                  );
-                  return;
+                if (usageData.isTrial) {
+                  // Check if all credits are exhausted
+                  if (usageData.topicDiscoveryRunsRemaining === 0 && 
+                      usageData.articlesRemaining === 0 && 
+                      usageData.imagesRemaining === 0) {
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
+                    });
+                    setIsCreditsExhaustedOpen(true);
+                    updateGeneratedArticles(
+                      generatedArticles.map(a =>
+                        a.topicTitle === articleId
+                          ? { ...a, status: "error" as const }
+                          : a
+                      )
+                    );
+                    return;
+                  }
+                  // If only articles limit is reached, show specific message
+                  if (usageData.articlesRemaining === 0) {
+                    setTrialLimitReached({
+                      visible: true,
+                      message: `Trial limit reached: You have generated ${usageData.articlesGenerated || 0} article(s). Maximum ${usageData.maxArticles || 2} articles allowed in trial mode.`,
+                    });
+                    updateGeneratedArticles(
+                      generatedArticles.map(a =>
+                        a.topicTitle === articleId
+                          ? { ...a, status: "error" as const }
+                          : a
+                      )
+                    );
+                    // Trigger trial usage update to refresh display
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+                    }
+                    return;
+                  }
                 }
               }
             } catch (e) {
@@ -1800,7 +1873,7 @@ export default function Home() {
           });
           updateGeneratedArticles(
             generatedArticles.map(a =>
-              a.topicTitle === "direct"
+              a.topicTitle === articleId
                 ? { ...a, status: "error" as const }
                 : a
             )
@@ -3630,29 +3703,48 @@ export default function Home() {
         const errorData = await response.json().catch(() => ({}));
         // Check if it's a trial limit error (403)
         if (response.status === 403 && errorData.error) {
-          // Check if all credits are exhausted
+          // Check if all credits are exhausted or just image limit
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
-                if (usageData.isTrial && 
-                    usageData.topicDiscoveryRunsRemaining === 0 && 
-                    usageData.articlesRemaining === 0 && 
-                    usageData.imagesRemaining === 0) {
-                  setTrialStats({
-                    topicSearches: usageData.topicDiscoveryRuns || 0,
-                    articles: usageData.articlesGenerated || 0,
-                    images: usageData.imagesGenerated || 0,
-                  });
-                  setIsCreditsExhaustedOpen(true);
-                  setIsGeneratingImage(prev => {
-                    const next = new Set(prev);
-                    next.delete(topicId);
-                    return next;
-                  });
-                  return;
+                if (usageData.isTrial) {
+                  // Check if all credits are exhausted
+                  if (usageData.topicDiscoveryRunsRemaining === 0 && 
+                      usageData.articlesRemaining === 0 && 
+                      usageData.imagesRemaining === 0) {
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
+                    });
+                    setIsCreditsExhaustedOpen(true);
+                    setIsGeneratingImage(prev => {
+                      const next = new Set(prev);
+                      next.delete(topicId);
+                      return next;
+                    });
+                    return;
+                  }
+                  // If only image limit is reached, show specific message
+                  if (usageData.imagesRemaining === 0) {
+                    setTrialLimitReached({
+                      visible: true,
+                      message: `Trial limit reached: You have generated ${usageData.imagesGenerated || 0} image(s). Maximum ${usageData.imagesRemaining === 0 ? 1 : 0} image generation allowed in trial mode.`,
+                    });
+                    setIsGeneratingImage(prev => {
+                      const next = new Set(prev);
+                      next.delete(topicId);
+                      return next;
+                    });
+                    // Trigger trial usage update to refresh display
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+                    }
+                    return;
+                  }
                 }
               }
             } catch (e) {
