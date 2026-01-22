@@ -175,28 +175,34 @@ export default function Home() {
             return { allowed: false, allCreditsExhausted: true };
           }
 
-          // Check specific limit for the action
+          // Check specific limit for the action - always show CreditsExhausted for any limit exhaustion
           if (action === 'topicDiscovery' && usageData.topicDiscoveryRunsRemaining === 0) {
-            setTrialLimitReached({
-              visible: true,
-              message: `Trial limit reached: You have run ${usageData.topicDiscoveryRuns || 0} topic discovery search(es). Maximum ${usageData.maxTopicDiscoveryRuns || 2} topic discovery runs allowed in trial mode.`,
+            setTrialStats({
+              topicSearches: usageData.topicDiscoveryRuns || 0,
+              articles: usageData.articlesGenerated || 0,
+              images: usageData.imagesGenerated || 0,
             });
+            setIsCreditsExhaustedOpen(true);
             return { allowed: false, allCreditsExhausted: false };
           }
 
           if (action === 'article' && usageData.articlesRemaining < articlesToGenerate) {
-            setTrialLimitReached({
-              visible: true,
-              message: `Trial limit reached: You have generated ${usageData.articlesGenerated || 0} article(s). Maximum ${usageData.maxArticles || 2} articles allowed in trial mode.`,
+            setTrialStats({
+              topicSearches: usageData.topicDiscoveryRuns || 0,
+              articles: usageData.articlesGenerated || 0,
+              images: usageData.imagesGenerated || 0,
             });
+            setIsCreditsExhaustedOpen(true);
             return { allowed: false, allCreditsExhausted: false };
           }
 
           if (action === 'image' && usageData.imagesRemaining === 0) {
-            setTrialLimitReached({
-              visible: true,
-              message: `Trial limit reached: You have generated ${usageData.imagesGenerated || 0} image(s). Maximum ${usageData.maxImages || 1} image allowed in trial mode.`,
+            setTrialStats({
+              topicSearches: usageData.topicDiscoveryRuns || 0,
+              articles: usageData.articlesGenerated || 0,
+              images: usageData.imagesGenerated || 0,
             });
+            setIsCreditsExhaustedOpen(true);
             return { allowed: false, allCreditsExhausted: false };
           }
         }
@@ -601,12 +607,14 @@ export default function Home() {
                     setLoadingStep(null);
                     return;
                   }
-                  // If only topic discovery limit is reached, show specific message
+                  // If only topic discovery limit is reached, show CreditsExhausted
                   if (usageData.topicDiscoveryRunsRemaining === 0) {
-                    setTrialLimitReached({
-                      visible: true,
-                      message: `Trial limit reached: You have run ${usageData.topicDiscoveryRuns || 0} topic discovery search(es). Maximum ${usageData.maxTopicDiscoveryRuns || 2} topic discovery runs allowed in trial mode.`,
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
                     });
+                    setIsCreditsExhaustedOpen(true);
                     setIsGeneratingTopics(false);
                     setLoadingStep(null);
                     // Trigger trial usage update to refresh display
@@ -1523,12 +1531,14 @@ export default function Home() {
                       );
                       return;
                     }
-                    // If only articles limit is reached, show specific message
+                    // If only articles limit is reached, show CreditsExhausted
                     if (usageData.articlesRemaining === 0) {
-                      setTrialLimitReached({
-                        visible: true,
-                        message: `Trial limit reached: You have generated ${usageData.articlesGenerated || 0} article(s). Maximum ${usageData.maxArticles || 2} articles allowed in trial mode.`,
+                      setTrialStats({
+                        topicSearches: usageData.topicDiscoveryRuns || 0,
+                        articles: usageData.articlesGenerated || 0,
+                        images: usageData.imagesGenerated || 0,
                       });
+                      setIsCreditsExhaustedOpen(true);
                       setIsGeneratingArticles(new Set());
                       setLoadingStep(null);
                       // Mark all articles as error
@@ -1921,12 +1931,14 @@ export default function Home() {
                     );
                     return;
                   }
-                  // If only articles limit is reached, show specific message
+                  // If only articles limit is reached, show CreditsExhausted
                   if (usageData.articlesRemaining === 0) {
-                    setTrialLimitReached({
-                      visible: true,
-                      message: `Trial limit reached: You have generated ${usageData.articlesGenerated || 0} article(s). Maximum ${usageData.maxArticles || 2} articles allowed in trial mode.`,
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
                     });
+                    setIsCreditsExhaustedOpen(true);
                     updateGeneratedArticles(
                       generatedArticles.map(a =>
                         a.topicTitle === articleId
@@ -3827,12 +3839,14 @@ export default function Home() {
                     }
                     return;
                   }
-                  // If only image limit is reached (but other credits still available), show specific message
+                  // If only image limit is reached (but other credits still available), show CreditsExhausted
                   if (usageData.imagesRemaining === 0) {
-                    setTrialLimitReached({
-                      visible: true,
-                      message: `Trial limit reached: You have generated ${usageData.imagesGenerated || 0} image(s). Maximum ${usageData.maxImages || 1} image generation allowed in trial mode.`,
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
                     });
+                    setIsCreditsExhaustedOpen(true);
                     setIsGeneratingImage(prev => {
                       const next = new Set(prev);
                       next.delete(topicId);
