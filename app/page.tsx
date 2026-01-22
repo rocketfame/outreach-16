@@ -3,7 +3,6 @@
 import { ChangeEvent, useState, useEffect, useRef, useMemo } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
-import TrialLimitReached from "./components/TrialLimitReached";
 import TrialUsageDisplay from "./components/TrialUsageDisplay";
 import UpgradeModal from "./components/UpgradeModal";
 import CreditsExhausted from "./components/CreditsExhausted";
@@ -139,10 +138,6 @@ export default function Home() {
     time: string;
     visible: boolean;
   } | null>(null);
-  const [trialLimitReached, setTrialLimitReached] = useState<{
-    visible: boolean;
-    message?: string;
-  }>({ visible: false });
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [currentBalance, setCurrentBalance] = useState(0);
   const [isCreditsExhaustedOpen, setIsCreditsExhaustedOpen] = useState(false);
@@ -648,10 +643,29 @@ export default function Home() {
               console.error("Failed to fetch trial usage:", e);
             }
           }
-          setTrialLimitReached({
-            visible: true,
-            message: errorData.error,
-          });
+          // Fallback: If we can't fetch usage, try to show CreditsExhausted anyway
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            try {
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+              if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (usageData.isTrial) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  setIsGeneratingTopics(false);
+                  setLoadingStep(null);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch trial usage in fallback:", e);
+            }
+          }
           setIsGeneratingTopics(false);
           setLoadingStep(null);
           return;
@@ -922,10 +936,34 @@ export default function Home() {
                 console.error("Failed to fetch trial usage:", e);
               }
             }
-            setTrialLimitReached({
-              visible: true,
-              message: errorData.error,
-            });
+            // Fallback: If we can't fetch usage, try to show CreditsExhausted anyway
+            const trialToken = getTrialTokenFromURL();
+            if (trialToken) {
+              try {
+                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+                if (usageResponse.ok) {
+                  const usageData = await usageResponse.json();
+                  if (usageData.isTrial) {
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
+                    });
+                    setIsCreditsExhaustedOpen(true);
+                    updateGeneratedArticles(
+                      generatedArticles.map(a =>
+                        a.topicTitle === topicId
+                          ? { ...a, status: "error" as const }
+                          : a
+                      )
+                    );
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.error("Failed to fetch trial usage in fallback:", e);
+              }
+            }
             updateGeneratedArticles(
               generatedArticles.map(a =>
                 a.topicTitle === topicId
@@ -1580,10 +1618,37 @@ export default function Home() {
                 console.error("Failed to fetch trial usage:", e);
               }
             }
-            setTrialLimitReached({
-              visible: true,
-              message: errorData.error,
-            });
+            // Fallback: If we can't fetch usage, try to show CreditsExhausted anyway
+            const trialToken = getTrialTokenFromURL();
+            if (trialToken) {
+              try {
+                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+                if (usageResponse.ok) {
+                  const usageData = await usageResponse.json();
+                  if (usageData.isTrial) {
+                    setTrialStats({
+                      topicSearches: usageData.topicDiscoveryRuns || 0,
+                      articles: usageData.articlesGenerated || 0,
+                      images: usageData.imagesGenerated || 0,
+                    });
+                    setIsCreditsExhaustedOpen(true);
+                    setIsGeneratingArticles(new Set());
+                    setLoadingStep(null);
+                    // Mark all articles as error
+                    updateGeneratedArticles(
+                      generatedArticles.map(a =>
+                        topicIds.includes(a.topicTitle)
+                          ? { ...a, status: "error" as const }
+                          : a
+                      )
+                    );
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.error("Failed to fetch trial usage in fallback:", e);
+              }
+            }
             setIsGeneratingArticles(new Set());
             setLoadingStep(null);
             // Mark all articles as error
@@ -1977,10 +2042,34 @@ export default function Home() {
               console.error("Failed to fetch trial usage:", e);
             }
           }
-          setTrialLimitReached({
-            visible: true,
-            message: errorData.error,
-          });
+          // Fallback: If we can't fetch usage, try to show CreditsExhausted anyway
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            try {
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+              if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (usageData.isTrial) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  updateGeneratedArticles(
+                    generatedArticles.map(a =>
+                      a.topicTitle === articleId
+                        ? { ...a, status: "error" as const }
+                        : a
+                    )
+                  );
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch trial usage in fallback:", e);
+            }
+          }
           updateGeneratedArticles(
             generatedArticles.map(a =>
               a.topicTitle === articleId
@@ -3883,11 +3972,32 @@ export default function Home() {
               console.error("Failed to fetch trial usage:", e);
             }
           }
-          // If no trial token or failed to fetch usage, show generic trial limit message
-          setTrialLimitReached({
-            visible: true,
-            message: errorData.error || "Trial limit reached for image generation",
-          });
+          // Fallback: If we can't fetch usage, try to show CreditsExhausted anyway
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            try {
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+              if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (usageData.isTrial) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  setIsGeneratingImage(prev => {
+                    const next = new Set(prev);
+                    next.delete(topicId);
+                    return next;
+                  });
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch trial usage in fallback:", e);
+            }
+          }
           setIsGeneratingImage(prev => {
             const next = new Set(prev);
             next.delete(topicId);
@@ -5644,14 +5754,6 @@ export default function Home() {
         }}
         trialStats={trialStats ?? undefined}
       />
-      
-      {/* Trial Limit Reached (fallback for other errors) */}
-      {trialLimitReached.visible && !isCreditsExhaustedOpen && (
-        <TrialLimitReached
-          message={trialLimitReached.message}
-          onClose={() => setTrialLimitReached({ visible: false })}
-        />
-      )}
       
       {/* Notification */}
       {notification && (
