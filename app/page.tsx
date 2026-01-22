@@ -3701,8 +3701,8 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        // Check if it's a trial limit error (403)
-        if (response.status === 403 && errorData.error) {
+        // Check if it's a trial limit error (403) - ALWAYS check for 403, even if errorData.error is empty
+        if (response.status === 403) {
           // Check if all credits are exhausted or just image limit
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
@@ -3765,9 +3765,10 @@ export default function Home() {
               console.error("Failed to fetch trial usage:", e);
             }
           }
+          // If no trial token or failed to fetch usage, show generic trial limit message
           setTrialLimitReached({
             visible: true,
-            message: errorData.error,
+            message: errorData.error || "Trial limit reached for image generation",
           });
           setIsGeneratingImage(prev => {
             const next = new Set(prev);
@@ -3826,6 +3827,46 @@ export default function Home() {
     } catch (error) {
       console.error("Image generation error:", error);
       const errorMessage = (error as Error).message || "Failed to generate image. Please try again.";
+      
+      // Check if error message indicates trial limit (403)
+      // This is a fallback in case the error wasn't caught in the response.ok check
+      if (errorMessage.includes("Trial limit") || errorMessage.includes("403")) {
+        const trialToken = getTrialTokenFromURL();
+        if (trialToken) {
+          try {
+            const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+            if (usageResponse.ok) {
+              const usageData = await usageResponse.json();
+              if (usageData.isTrial) {
+                // Check if all credits are exhausted
+                if (usageData.topicDiscoveryRunsRemaining === 0 && 
+                    usageData.articlesRemaining === 0 && 
+                    usageData.imagesRemaining === 0) {
+                  setTrialStats({
+                    topicSearches: usageData.topicDiscoveryRuns || 0,
+                    articles: usageData.articlesGenerated || 0,
+                    images: usageData.imagesGenerated || 0,
+                  });
+                  setIsCreditsExhaustedOpen(true);
+                  setIsGeneratingImage(prev => {
+                    const next = new Set(prev);
+                    next.delete(topicId);
+                    return next;
+                  });
+                  // Trigger trial usage update to refresh display
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+                  }
+                  return;
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Failed to fetch trial usage in catch block:", e);
+          }
+        }
+      }
+      
       setNotification({
         message: errorMessage,
         time: "",

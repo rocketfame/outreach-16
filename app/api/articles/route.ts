@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     // Check trial limits AFTER parsing body to know how many articles will be generated
     const trialToken = extractTrialToken(req);
     const articlesToGenerate = selectedTopics?.length || 1;
-    const articleLimitCheck = canGenerateArticle(trialToken, articlesToGenerate);
+    const articleLimitCheck = await canGenerateArticle(trialToken, articlesToGenerate);
     if (!articleLimitCheck.allowed) {
       return new Response(
         JSON.stringify({ error: articleLimitCheck.reason || "Trial limit reached" }),
@@ -1861,7 +1861,7 @@ Language: US English.`;
     if (trialToken && !isMasterToken(trialToken)) {
       const articlesGenerated = generatedArticles.length;
       for (let i = 0; i < articlesGenerated; i++) {
-        incrementArticleCount(trialToken);
+        await incrementArticleCount(trialToken);
       }
     }
 

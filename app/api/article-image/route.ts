@@ -312,7 +312,7 @@ export async function POST(req: Request) {
 
   // Check trial limits before processing
   const trialToken = extractTrialToken(req);
-  const imageLimitCheck = canGenerateImage(trialToken);
+  const imageLimitCheck = await canGenerateImage(trialToken);
   if (!imageLimitCheck.allowed) {
     return new Response(
       JSON.stringify({ success: false, error: imageLimitCheck.reason || "Trial limit reached" }),
@@ -413,7 +413,7 @@ export async function POST(req: Request) {
 
     // Increment trial image count if trial token is present (not for main link/master)
     if (trialToken && !isMasterToken(trialToken)) {
-      incrementImageCount(trialToken);
+      await incrementImageCount(trialToken);
     }
 
     return new Response(

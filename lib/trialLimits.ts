@@ -1,6 +1,8 @@
 // lib/trialLimits.ts
 // Trial limits management system
 
+import { kv } from "@vercel/kv";
+
 export interface TrialUsage {
   articlesGenerated: number;
   topicDiscoveryRuns: number;
@@ -8,7 +10,7 @@ export interface TrialUsage {
   lastReset?: number; // timestamp for potential reset logic
 }
 
-// In-memory storage for trial usage (for production, consider using Vercel KV or similar)
+// Fallback in-memory storage (used if KV is not configured)
 const trialUsageStore = new Map<string, TrialUsage>();
 
 // Maximum limits for trial users
@@ -17,6 +19,81 @@ export const TRIAL_LIMITS = {
   MAX_TOPIC_DISCOVERY_RUNS: 2,
   MAX_IMAGES: 1,
 } as const;
+
+/**
+ * Check if Vercel KV is available
+ */
+function isKvAvailable(): boolean {
+  try {
+    return !!kv && !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get storage key for a trial token
+ */
+function getStorageKey(token: string): string {
+  return `trial:usage:${token}`;
+}
+
+/**
+ * Get usage for a trial token (with persistent storage)
+ */
+export async function getTrialUsage(token: string): Promise<TrialUsage> {
+  // Try to use Vercel KV if available
+  if (isKvAvailable()) {
+    try {
+      const key = getStorageKey(token);
+      const usage = await kv.get<TrialUsage>(key);
+      if (usage) {
+        return usage;
+      }
+      // Initialize if not found
+      const defaultUsage: TrialUsage = {
+        articlesGenerated: 0,
+        topicDiscoveryRuns: 0,
+        imagesGenerated: 0,
+      };
+      await kv.set(key, defaultUsage);
+      return defaultUsage;
+    } catch (error) {
+      console.error("[trialLimits] KV error, falling back to in-memory:", error);
+      // Fall through to in-memory storage
+    }
+  }
+
+  // Fallback to in-memory storage
+  if (!trialUsageStore.has(token)) {
+    trialUsageStore.set(token, {
+      articlesGenerated: 0,
+      topicDiscoveryRuns: 0,
+      imagesGenerated: 0,
+    });
+  }
+  return trialUsageStore.get(token)!;
+}
+
+/**
+ * Save usage for a trial token (with persistent storage)
+ */
+async function saveTrialUsage(token: string, usage: TrialUsage): Promise<void> {
+  // Try to use Vercel KV if available
+  if (isKvAvailable()) {
+    try {
+      const key = getStorageKey(token);
+      await kv.set(key, usage);
+      return;
+    } catch (error) {
+      console.error("[trialLimits] KV error saving, falling back to in-memory:", error);
+      // Fall through to in-memory storage
+    }
+  }
+
+  // Fallback to in-memory storage
+  trialUsageStore.set(token, usage);
+}
 
 /**
  * Get trial token from environment variables
@@ -76,50 +153,36 @@ export function isTrialToken(token: string | null): boolean {
 }
 
 /**
- * Get usage for a trial token
- */
-export function getTrialUsage(token: string): TrialUsage {
-  if (!trialUsageStore.has(token)) {
-    trialUsageStore.set(token, {
-      articlesGenerated: 0,
-      topicDiscoveryRuns: 0,
-      imagesGenerated: 0,
-    });
-  }
-  return trialUsageStore.get(token)!;
-}
-
-/**
  * Increment article count for trial token
  */
-export function incrementArticleCount(token: string): void {
-  const usage = getTrialUsage(token);
+export async function incrementArticleCount(token: string): Promise<void> {
+  const usage = await getTrialUsage(token);
   usage.articlesGenerated += 1;
-  trialUsageStore.set(token, usage);
+  await saveTrialUsage(token, usage);
 }
 
 /**
  * Increment topic discovery count for trial token
  */
-export function incrementTopicDiscoveryCount(token: string): void {
-  const usage = getTrialUsage(token);
+export async function incrementTopicDiscoveryCount(token: string): Promise<void> {
+  const usage = await getTrialUsage(token);
   usage.topicDiscoveryRuns += 1;
-  trialUsageStore.set(token, usage);
+  await saveTrialUsage(token, usage);
 }
 
 /**
  * Increment image generation count for trial token
  */
-export function incrementImageCount(token: string): void {
-  const usage = getTrialUsage(token);
+export async function incrementImageCount(token: string): Promise<void> {
+  const usage = await getTrialUsage(token);
   usage.imagesGenerated += 1;
-  trialUsageStore.set(token, usage);
+  await saveTrialUsage(token, usage);
 }
 
 /**
  * Check if trial user can generate more images
  */
-export function canGenerateImage(token: string | null): { allowed: boolean; reason?: string } {
+export async function canGenerateImage(token: string | null): Promise<{ allowed: boolean; reason?: string }> {
   // If no token provided, allow access (main link works as master)
   if (!token) {
     return { allowed: true }; // Main link without trial token = master access
@@ -133,7 +196,7 @@ export function canGenerateImage(token: string | null): { allowed: boolean; reas
     return { allowed: false, reason: "Invalid trial token" };
   }
 
-  const usage = getTrialUsage(token);
+  const usage = await getTrialUsage(token);
   if (usage.imagesGenerated >= TRIAL_LIMITS.MAX_IMAGES) {
     return {
       allowed: false,
@@ -149,7 +212,7 @@ export function canGenerateImage(token: string | null): { allowed: boolean; reas
  * @param token - Trial token (or null for main link)
  * @param articlesToGenerate - Number of articles that will be generated in this request (default: 1)
  */
-export function canGenerateArticle(token: string | null, articlesToGenerate: number = 1): { allowed: boolean; reason?: string } {
+export async function canGenerateArticle(token: string | null, articlesToGenerate: number = 1): Promise<{ allowed: boolean; reason?: string }> {
   // If no token provided, allow access (main link works as master)
   if (!token) {
     return { allowed: true }; // Main link without trial token = master access
@@ -163,7 +226,7 @@ export function canGenerateArticle(token: string | null, articlesToGenerate: num
     return { allowed: false, reason: "Invalid trial token" };
   }
 
-  const usage = getTrialUsage(token);
+  const usage = await getTrialUsage(token);
   const totalAfterGeneration = usage.articlesGenerated + articlesToGenerate;
   
   if (totalAfterGeneration > TRIAL_LIMITS.MAX_ARTICLES) {
@@ -179,7 +242,7 @@ export function canGenerateArticle(token: string | null, articlesToGenerate: num
 /**
  * Check if trial user can run topic discovery
  */
-export function canRunTopicDiscovery(token: string | null): { allowed: boolean; reason?: string } {
+export async function canRunTopicDiscovery(token: string | null): Promise<{ allowed: boolean; reason?: string }> {
   // If no token provided, allow access (main link works as master)
   if (!token) {
     return { allowed: true }; // Main link without trial token = master access
@@ -193,7 +256,7 @@ export function canRunTopicDiscovery(token: string | null): { allowed: boolean; 
     return { allowed: false, reason: "Invalid trial token" };
   }
 
-  const usage = getTrialUsage(token);
+  const usage = await getTrialUsage(token);
   if (usage.topicDiscoveryRuns >= TRIAL_LIMITS.MAX_TOPIC_DISCOVERY_RUNS) {
     return {
       allowed: false,
@@ -229,12 +292,12 @@ export function extractTrialToken(request: Request | { url: string; headers: Hea
 /**
  * Get usage stats for a token (for admin/debugging)
  */
-export function getUsageStats(token: string): TrialUsage | null {
+export async function getUsageStats(token: string): Promise<TrialUsage | null> {
   if (isMasterToken(token)) {
     return null; // Master has no stats
   }
   if (!isTrialToken(token)) {
     return null;
   }
-  return getTrialUsage(token);
+  return await getTrialUsage(token);
 }

@@ -221,7 +221,7 @@ export async function POST(req: Request) {
 
       // Increment trial topic discovery count if trial token is present (not for main link/master)
       if (trialToken && !isMasterToken(trialToken)) {
-        incrementTopicDiscoveryCount(trialToken);
+        await incrementTopicDiscoveryCount(trialToken);
       }
 
       return new Response(JSON.stringify({ overview: parsedData.overview, topics: parsedData.topics }), {

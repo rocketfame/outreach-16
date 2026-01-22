@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get usage for trial token
-    const usage = getTrialUsage(trialToken);
+    const usage = await getTrialUsage(trialToken);
     
     return NextResponse.json({
       isMaster: false,
