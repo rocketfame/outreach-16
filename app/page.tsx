@@ -603,7 +603,7 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 if (usageData.isTrial) {
@@ -1992,7 +1992,7 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 if (usageData.isTrial) {
@@ -3912,7 +3912,7 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 console.log("[generateArticleImage] Trial usage data:", usageData);
