@@ -3710,11 +3710,21 @@ export default function Home() {
               const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
+                console.log("[generateArticleImage] Trial usage data:", usageData);
                 if (usageData.isTrial) {
-                  // Check if all credits are exhausted
-                  if (usageData.topicDiscoveryRunsRemaining === 0 && 
+                  // CRITICAL: Check if all credits are exhausted FIRST
+                  // This ensures CreditsExhausted is shown when all credits are used
+                  const allCreditsExhausted = usageData.topicDiscoveryRunsRemaining === 0 && 
                       usageData.articlesRemaining === 0 && 
-                      usageData.imagesRemaining === 0) {
+                      usageData.imagesRemaining === 0;
+                  
+                  console.log("[generateArticleImage] All credits exhausted:", allCreditsExhausted, {
+                    topicDiscoveryRunsRemaining: usageData.topicDiscoveryRunsRemaining,
+                    articlesRemaining: usageData.articlesRemaining,
+                    imagesRemaining: usageData.imagesRemaining,
+                  });
+                  
+                  if (allCreditsExhausted) {
                     setTrialStats({
                       topicSearches: usageData.topicDiscoveryRuns || 0,
                       articles: usageData.articlesGenerated || 0,
@@ -3726,13 +3736,17 @@ export default function Home() {
                       next.delete(topicId);
                       return next;
                     });
+                    // Trigger trial usage update to refresh display
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
+                    }
                     return;
                   }
-                  // If only image limit is reached, show specific message
+                  // If only image limit is reached (but other credits still available), show specific message
                   if (usageData.imagesRemaining === 0) {
                     setTrialLimitReached({
                       visible: true,
-                      message: `Trial limit reached: You have generated ${usageData.imagesGenerated || 0} image(s). Maximum ${usageData.imagesRemaining === 0 ? 1 : 0} image generation allowed in trial mode.`,
+                      message: `Trial limit reached: You have generated ${usageData.imagesGenerated || 0} image(s). Maximum ${usageData.maxImages || 1} image generation allowed in trial mode.`,
                     });
                     setIsGeneratingImage(prev => {
                       const next = new Set(prev);
