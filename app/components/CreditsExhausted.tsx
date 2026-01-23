@@ -19,9 +19,6 @@ const rgbToHex = (r: number, g: number, b: number): string => {
 };
 
 export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStats }: CreditsExhaustedProps) {
-  // CRITICAL: Log to verify component is being called
-  console.log("🟢🟢🟢 [CreditsExhausted] FUNCTION CALLED! isOpen:", isOpen, "trialStats:", trialStats);
-  
   // Close on Escape key and lock body scroll
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -40,13 +37,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
   }, [isOpen, onClose]);
 
   // Simple conditional rendering - same pattern as UpgradeModal
-  console.log("🟢 [CreditsExhausted] Checking isOpen:", isOpen);
-  if (!isOpen) {
-    console.log("🟢 [CreditsExhausted] ❌ RETURNING NULL - isOpen is false");
-    return null;
-  }
-  
-  console.log("🟢 [CreditsExhausted] ✅ RENDERING MODAL - isOpen is true");
+  if (!isOpen) return null;
 
   // Colors from Figma
   const overlayBg = "rgba(0, 0, 0, 0.5)";

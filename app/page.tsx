@@ -793,6 +793,12 @@ export default function Home() {
   // getEvergreenRating removed - now using evergreenScore directly from API
 
   const regenerateArticleForTopic = async (topicId: string) => {
+    // CRITICAL: Check trial limits BEFORE starting regeneration
+    const limitCheck = await checkTrialLimitsBeforeGeneration('article');
+    if (!limitCheck.allowed) {
+      return; // Stop immediately, widget is already shown
+    }
+    
     // Check if article was edited
     const existingArticle = generatedArticles.find(a => a.topicTitle === topicId);
     if (existingArticle?.editedText || existingArticle?.articleBodyHtml) {
@@ -4714,77 +4720,6 @@ export default function Home() {
             {/* Trial Usage Display - inline with theme toggle */}
             <TrialUsageDisplay />
             
-            {/* TEST BUTTON - Remove after testing */}
-            <button
-              onClick={() => {
-                console.log("🔴 [DEBUG] Button clicked!");
-                console.log("🔴 [DEBUG] Current isCreditsExhaustedOpen:", isCreditsExhaustedOpen);
-                console.log("🔴 [DEBUG] Current trialStats:", trialStats);
-                
-                const stats = {
-                  topicSearches: 2,
-                  articles: 2,
-                  images: 1,
-                };
-                
-                console.log("🔴 [DEBUG] About to call setTrialStats with:", stats);
-                setTrialStats(stats);
-                
-                console.log("🔴 [DEBUG] About to call setIsCreditsExhaustedOpen(true)");
-                setIsCreditsExhaustedOpen(true);
-                
-                console.log("🔴 [DEBUG] State setters called. React should re-render soon...");
-                
-                // Force immediate check after React batch
-                // Use a ref to capture current state values
-                setTimeout(() => {
-                  // Re-read state from React (this will show updated values after re-render)
-                  console.log("🔴 [DEBUG] After 100ms - checking DOM for modal...");
-                  const modalEl = document.querySelector('[data-testid="credits-exhausted-modal"]');
-                  console.log("🔴 [DEBUG] Modal element in DOM:", modalEl ? "✅ FOUND" : "❌ NOT FOUND");
-                  
-                  if (modalEl) {
-                    const style = window.getComputedStyle(modalEl);
-                    const rect = modalEl.getBoundingClientRect();
-                    console.log("🔴 [DEBUG] ✅ Modal found! Styles:", {
-                      display: style.display,
-                      visibility: style.visibility,
-                      opacity: style.opacity,
-                      zIndex: style.zIndex,
-                      position: style.position,
-                      top: rect.top,
-                      left: rect.left,
-                      width: rect.width,
-                      height: rect.height,
-                      isVisible: rect.width > 0 && rect.height > 0,
-                    });
-                    // Check if modal is in body (should be with Portal)
-                    console.log("🔴 [DEBUG] Modal parent:", modalEl.parentElement?.tagName, "Is in body:", modalEl.parentElement === document.body);
-                  } else {
-                    console.log("🔴 [DEBUG] ❌ Modal not found in DOM!");
-                    console.log("🔴 [DEBUG] Checking if CreditsExhausted component is in React tree...");
-                    // Check if component rendered at all
-                    const creditsExhaustedComponents = document.querySelectorAll('[data-is-open]');
-                    console.log("🔴 [DEBUG] Elements with data-is-open:", creditsExhaustedComponents.length);
-                  }
-                }, 200);
-              }}
-              style={{
-                padding: "6px 12px",
-                background: "linear-gradient(90deg, #ff6b00 0%, #e6004f 100%)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontWeight: 500,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-              title="Test Credits Exhausted Widget"
-            >
-              🧪 Test Widget
-            </button>
-            
             <UpgradeModal
               isOpen={isUpgradeModalOpen}
               onClose={() => setIsUpgradeModalOpen(false)}
@@ -5866,19 +5801,12 @@ export default function Home() {
         </div>
       )}
       
-      {(() => {
-        console.log("🔵 [page.tsx] About to render CreditsExhausted in JSX, isOpen:", isCreditsExhaustedOpen);
-        return null;
-      })()}
-      
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
         onClose={() => {
-          console.log("[page.tsx] CreditsExhausted onClose called");
           setIsCreditsExhaustedOpen(false);
         }}
         onUpgrade={() => {
-          console.log("[page.tsx] CreditsExhausted onUpgrade called");
           setIsCreditsExhaustedOpen(false);
           setIsUpgradeModalOpen(true);
         }}
