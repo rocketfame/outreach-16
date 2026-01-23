@@ -164,6 +164,14 @@ export default function Home() {
         });
         
         if (usageData.isTrial) {
+          console.log("[checkTrialLimitsBeforeGeneration] Trial user detected, checking limits", {
+            action,
+            articlesToGenerate,
+            topicDiscoveryRunsRemaining: usageData.topicDiscoveryRunsRemaining,
+            articlesRemaining: usageData.articlesRemaining,
+            imagesRemaining: usageData.imagesRemaining,
+          });
+          
           // Check if all credits are exhausted
           const allCreditsExhausted = usageData.topicDiscoveryRunsRemaining === 0 && 
               usageData.articlesRemaining === 0 && 
@@ -177,6 +185,7 @@ export default function Home() {
               images: usageData.imagesGenerated || 0,
             });
             setIsCreditsExhaustedOpen(true);
+            console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called, returning false");
             return { allowed: false, allCreditsExhausted: true };
           }
 
@@ -189,21 +198,32 @@ export default function Home() {
               images: usageData.imagesGenerated || 0,
             });
             setIsCreditsExhaustedOpen(true);
+            console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called for topicDiscovery, returning false");
             return { allowed: false, allCreditsExhausted: false };
           }
 
-          if (action === 'article' && usageData.articlesRemaining < articlesToGenerate) {
-            console.log("[checkTrialLimitsBeforeGeneration] Article limit reached, showing CreditsExhausted", {
+          if (action === 'article') {
+            // Check if we have enough remaining articles for the requested generation
+            const articlesLimitReached = usageData.articlesRemaining === 0 || usageData.articlesRemaining < articlesToGenerate;
+            console.log("[checkTrialLimitsBeforeGeneration] Article check:", {
               articlesRemaining: usageData.articlesRemaining,
               articlesToGenerate,
+              articlesLimitReached,
+              articlesGenerated: usageData.articlesGenerated,
+              maxArticles: usageData.maxArticles,
             });
-            setTrialStats({
-              topicSearches: usageData.topicDiscoveryRuns || 0,
-              articles: usageData.articlesGenerated || 0,
-              images: usageData.imagesGenerated || 0,
-            });
-            setIsCreditsExhaustedOpen(true);
-            return { allowed: false, allCreditsExhausted: false };
+            
+            if (articlesLimitReached) {
+              console.log("[checkTrialLimitsBeforeGeneration] Article limit reached, showing CreditsExhausted");
+              setTrialStats({
+                topicSearches: usageData.topicDiscoveryRuns || 0,
+                articles: usageData.articlesGenerated || 0,
+                images: usageData.imagesGenerated || 0,
+              });
+              setIsCreditsExhaustedOpen(true);
+              console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called for article, returning false");
+              return { allowed: false, allCreditsExhausted: false };
+            }
           }
 
           if (action === 'image' && usageData.imagesRemaining === 0) {
@@ -214,8 +234,11 @@ export default function Home() {
               images: usageData.imagesGenerated || 0,
             });
             setIsCreditsExhaustedOpen(true);
+            console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called for image, returning false");
             return { allowed: false, allCreditsExhausted: false };
           }
+        } else {
+          console.log("[checkTrialLimitsBeforeGeneration] Not a trial user, allowing generation");
         }
       } else {
         console.error("[checkTrialLimitsBeforeGeneration] Failed to fetch usage:", usageResponse.status, usageResponse.statusText);
@@ -283,6 +306,15 @@ export default function Home() {
       return () => clearInterval(interval);
     }
   }, [isHydrated]);
+
+  // Debug: Track changes to isCreditsExhaustedOpen
+  useEffect(() => {
+    console.log("[page.tsx] isCreditsExhaustedOpen changed:", isCreditsExhaustedOpen);
+    if (isCreditsExhaustedOpen) {
+      console.log("[page.tsx] CreditsExhausted modal should be visible now");
+      console.log("[page.tsx] trialStats:", trialStats);
+    }
+  }, [isCreditsExhaustedOpen, trialStats]);
 
   // Listen for openUpgradeModal event
   useEffect(() => {
@@ -1336,10 +1368,14 @@ export default function Home() {
 
   const generateArticlesForTopics = async (topics: Topic[], autoOpenModal = false) => {
     // CRITICAL: Check trial limits BEFORE starting generation
+    console.log("[generateArticlesForTopics] Checking trial limits before generation...", { topicsCount: topics.length });
     const limitCheck = await checkTrialLimitsBeforeGeneration('article', topics.length);
+    console.log("[generateArticlesForTopics] Limit check result:", limitCheck);
     if (!limitCheck.allowed) {
+      console.log("[generateArticlesForTopics] Generation not allowed, stopping. CreditsExhausted should be shown.");
       return; // Stop immediately, widget is already shown
     }
+    console.log("[generateArticlesForTopics] Generation allowed, proceeding...");
 
     // Only allow generation in discovery mode
     if (mode !== "discovery") {
@@ -1821,10 +1857,14 @@ export default function Home() {
   // Generate article for DirectArticleCreation mode
   const generateDirectArticle = async () => {
     // CRITICAL: Check trial limits BEFORE starting generation
+    console.log("[generateDirectArticle] Checking trial limits before generation...");
     const limitCheck = await checkTrialLimitsBeforeGeneration('article', 1);
+    console.log("[generateDirectArticle] Limit check result:", limitCheck);
     if (!limitCheck.allowed) {
+      console.log("[generateDirectArticle] Generation not allowed, stopping. CreditsExhausted should be shown.");
       return; // Stop immediately, widget is already shown
     }
+    console.log("[generateDirectArticle] Generation allowed, proceeding...");
 
     // Only allow generation in direct mode
     if (mode !== "direct") {
@@ -3761,10 +3801,14 @@ export default function Home() {
   // Generate hero image for an article
   const generateArticleImage = async (topicId: string) => {
     // CRITICAL: Check trial limits BEFORE starting generation
+    console.log("[generateArticleImage] Checking trial limits before generation...", { topicId });
     const limitCheck = await checkTrialLimitsBeforeGeneration('image', 1);
+    console.log("[generateArticleImage] Limit check result:", limitCheck);
     if (!limitCheck.allowed) {
+      console.log("[generateArticleImage] Generation not allowed, stopping. CreditsExhausted should be shown.");
       return; // Stop immediately, widget is already shown
     }
+    console.log("[generateArticleImage] Generation allowed, proceeding...");
 
     const article = generatedArticles.find(a => a.topicTitle === topicId);
     
