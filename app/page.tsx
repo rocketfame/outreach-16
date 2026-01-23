@@ -311,6 +311,11 @@ export default function Home() {
   useEffect(() => {
     console.log("🔵 [page.tsx] isCreditsExhaustedOpen state changed:", isCreditsExhaustedOpen);
     console.log("🔵 [page.tsx] trialStats:", trialStats);
+    console.log("🔵 [page.tsx] About to render CreditsExhausted with props:", {
+      isOpen: isCreditsExhaustedOpen,
+      hasTrialStats: !!trialStats,
+      trialStats,
+    });
     if (isCreditsExhaustedOpen) {
       console.log("🔵 [page.tsx] ✅ CreditsExhausted modal should be visible now");
       console.log("🔵 [page.tsx] ✅ CreditsExhausted props:", {
@@ -5894,13 +5899,6 @@ export default function Home() {
           <div>trialStats: {trialStats ? JSON.stringify(trialStats) : "null"}</div>
         </div>
       )}
-      
-      {/* DEBUG: Test if component renders at all */}
-      {console.log("🔵 [page.tsx] About to render CreditsExhausted with props:", {
-        isOpen: isCreditsExhaustedOpen,
-        hasTrialStats: !!trialStats,
-        trialStats,
-      }) || null}
       
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
