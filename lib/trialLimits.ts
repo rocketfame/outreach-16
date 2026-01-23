@@ -108,15 +108,22 @@ async function saveTrialUsage(token: string, usage: TrialUsage): Promise<void> {
 export function getTrialTokens(): string[] {
   const tokens = process.env.TRIAL_TOKENS || "";
   const parsed = tokens.split(",").map(t => t.trim()).filter(Boolean);
-  // Debug logging (only in development or if explicitly enabled)
-  if (process.env.NODE_ENV === "development" || process.env.DEBUG_TRIAL_TOKENS === "true") {
-    console.log("[trialLimits] TRIAL_TOKENS env:", process.env.TRIAL_TOKENS ? "SET" : "NOT SET");
-    console.log("[trialLimits] Parsed tokens count:", parsed.length);
-    if (parsed.length > 0) {
-      console.log("[trialLimits] First token:", parsed[0]);
-      console.log("[trialLimits] Last token:", parsed[parsed.length - 1]);
-    }
+  
+  // Always log to help debug token issues
+  console.log("[trialLimits] TRIAL_TOKENS env:", process.env.TRIAL_TOKENS ? "SET" : "NOT SET");
+  if (process.env.TRIAL_TOKENS) {
+    console.log("[trialLimits] TRIAL_TOKENS raw length:", process.env.TRIAL_TOKENS.length);
+    console.log("[trialLimits] TRIAL_TOKENS first 50 chars:", process.env.TRIAL_TOKENS.substring(0, 50));
   }
+  console.log("[trialLimits] Parsed tokens count:", parsed.length);
+  if (parsed.length > 0) {
+    console.log("[trialLimits] First token:", parsed[0]);
+    console.log("[trialLimits] Last token:", parsed[parsed.length - 1]);
+    console.log("[trialLimits] All tokens:", parsed);
+  } else {
+    console.warn("[trialLimits] No trial tokens parsed! Check TRIAL_TOKENS environment variable.");
+  }
+  
   return parsed;
 }
 
@@ -143,18 +150,26 @@ export function isTrialToken(token: string | null): boolean {
   if (!token) return false;
   const trialTokens = getTrialTokens();
   const isValid = trialTokens.includes(token);
-  // Debug logging (only in development or if explicitly enabled)
-  if (process.env.NODE_ENV === "development" || process.env.DEBUG_TRIAL_TOKENS === "true") {
-    console.log("[trialLimits] Checking token:", token);
-    console.log("[trialLimits] Token length:", token.length);
-    console.log("[trialLimits] Available tokens count:", trialTokens.length);
-    console.log("[trialLimits] Is valid:", isValid);
-    if (!isValid && trialTokens.length > 0) {
-      console.log("[trialLimits] Token matches first?", token === trialTokens[0]);
-      console.log("[trialLimits] First available token:", trialTokens[0]);
+  
+  // Always log in production to help debug token issues
+  console.log("[trialLimits] Checking token:", token);
+  console.log("[trialLimits] Token length:", token.length);
+  console.log("[trialLimits] Available tokens count:", trialTokens.length);
+  console.log("[trialLimits] Is valid:", isValid);
+  
+  if (!isValid) {
+    if (trialTokens.length > 0) {
+      console.log("[trialLimits] Token does not match. First available token:", trialTokens[0]);
       console.log("[trialLimits] First token length:", trialTokens[0]?.length);
+      console.log("[trialLimits] Token exact match with first?", token === trialTokens[0]);
+      // Check if token exists in array (case-sensitive)
+      const foundIndex = trialTokens.findIndex(t => t === token);
+      console.log("[trialLimits] Token found at index:", foundIndex);
+    } else {
+      console.warn("[trialLimits] No trial tokens configured! TRIAL_TOKENS env variable is empty or not set.");
     }
   }
+  
   return isValid;
 }
 
