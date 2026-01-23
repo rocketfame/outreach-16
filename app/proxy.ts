@@ -64,7 +64,7 @@ function isValidAuth(authHeader: string | null) {
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Get client IP
   const clientIP = getClientIP(request);
   const isMasterIPAddress = isMasterIP(clientIP);

@@ -15,10 +15,10 @@ const isMaintenanceEnabled = () => {
   return envValue !== "false";
 };
 
-// Check if user is master (from cookie set by middleware)
+// Check if user is master (from cookie set by proxy)
 const isMasterUser = () => {
   if (typeof document === "undefined") return false;
-  // Check cookie set by middleware
+  // Check cookie set by proxy
   const cookies = document.cookie.split(";");
   const isMasterIP = cookies.some(c => c.trim().startsWith("is_master_ip=true"));
   const bypassMaintenance = cookies.some(c => c.trim().startsWith("bypass_maintenance=true"));
@@ -44,7 +44,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
       return;
     }
 
-    // Check maintenance gate header (set by middleware)
+    // Check maintenance gate header (set by proxy)
     const maintenanceHeader = document.querySelector('meta[name="maintenance-gate"]');
     if (maintenanceHeader?.getAttribute("content") === "false") {
       setShowGate(false);
