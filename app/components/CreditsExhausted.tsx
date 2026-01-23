@@ -41,11 +41,11 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
       }
     };
     if (isOpen) {
-      console.log("[CreditsExhausted] Modal is open, adding event listeners");
+      console.log("🟢 [CreditsExhausted] Modal is open, adding event listeners");
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
     } else {
-      console.log("[CreditsExhausted] Modal is closed");
+      console.log("🟢 [CreditsExhausted] Modal is closed");
     }
     return () => {
       document.removeEventListener("keydown", handleEscape);
@@ -111,7 +111,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
         justifyContent: "center",
         zIndex: 9999,
         padding: "1rem",
-        pointerEvents: "auto", // Ensure it can receive clicks
+        pointerEvents: "auto",
       }}
       data-testid="credits-exhausted-modal"
       data-is-open={isOpen}
@@ -415,7 +415,6 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
   );
 
   // Use React Portal to render directly in body, bypassing any parent container constraints
-  // This ensures the modal is not affected by parent container CSS (overflow, transform, etc.)
   console.log("🟢 [CreditsExhausted] Using React Portal to render in body");
   console.log("🟢 [CreditsExhausted] document.body exists:", !!document.body);
   console.log("🟢 [CreditsExhausted] modalContent type:", typeof modalContent);

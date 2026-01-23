@@ -6,6 +6,10 @@ import Notification from "./components/Notification";
 import TrialUsageDisplay from "./components/TrialUsageDisplay";
 import UpgradeModal from "./components/UpgradeModal";
 import CreditsExhausted from "./components/CreditsExhausted";
+
+// DEBUG: Check if component is imported correctly
+console.log("🔵 [page.tsx] Import check - CreditsExhausted type:", typeof CreditsExhausted);
+console.log("🔵 [page.tsx] Import check - CreditsExhausted value:", CreditsExhausted);
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
