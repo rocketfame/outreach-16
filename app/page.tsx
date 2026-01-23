@@ -158,7 +158,18 @@ export default function Home() {
     }
 
     try {
-      const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+      const apiUrl = `/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`;
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:154',message:'Fetching trial usage',data:{apiUrl,trialToken,hasToken:!!trialToken},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'api-call'})}).catch(()=>{});
+      // #endregion
+      
+      const usageResponse = await fetch(apiUrl);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:160',message:'Trial usage response received',data:{status:usageResponse.status,statusText:usageResponse.statusText,ok:usageResponse.ok,url:usageResponse.url},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'api-call'})}).catch(()=>{});
+      // #endregion
+      
       if (usageResponse.ok) {
         const usageData = await usageResponse.json();
         
@@ -236,13 +247,34 @@ export default function Home() {
         }
       } else {
         // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:243',message:'Failed to fetch trial usage',data:{status:usageResponse.status,statusText:usageResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:243',message:'Failed to fetch trial usage',data:{status:usageResponse.status,statusText:usageResponse.statusText,url:apiUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
         // #endregion
+        
+        // If API returns 404, assume trial limits are exhausted to be safe
+        // This prevents generation when we can't verify limits
+        console.error("[checkTrialLimitsBeforeGeneration] API returned", usageResponse.status, "- blocking generation for safety");
+        setTrialStats({
+          topicSearches: 2,
+          articles: 2,
+          images: 1,
+        });
+        setIsCreditsExhaustedOpen(true);
+        return { allowed: false, allCreditsExhausted: true };
       }
     } catch (error) {
       // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:246',message:'Error checking trial limits',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:252',message:'Error checking trial limits',data:{error:error instanceof Error?error.message:String(error),stack:error instanceof Error?error.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
       // #endregion
+      
+      // If API fails, assume trial limits are exhausted to be safe
+      console.error("[checkTrialLimitsBeforeGeneration] Error:", error, "- blocking generation for safety");
+      setTrialStats({
+        topicSearches: 2,
+        articles: 2,
+        images: 1,
+      });
+      setIsCreditsExhaustedOpen(true);
+      return { allowed: false, allCreditsExhausted: true };
     }
 
     // #region agent log
