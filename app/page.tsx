@@ -145,8 +145,15 @@ export default function Home() {
 
   // Unified function to check trial limits BEFORE starting generation
   const checkTrialLimitsBeforeGeneration = async (action: 'topicDiscovery' | 'article' | 'image', articlesToGenerate: number = 1): Promise<{ allowed: boolean; allCreditsExhausted: boolean }> => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:147',message:'checkTrialLimitsBeforeGeneration called',data:{action,articlesToGenerate},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+    // #endregion
+    
     const trialToken = getTrialTokenFromURL();
     if (!trialToken) {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:150',message:'No trial token, allowing generation',data:{action},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+      // #endregion
       return { allowed: true, allCreditsExhausted: false }; // No trial token = master access
     }
 
@@ -154,100 +161,94 @@ export default function Home() {
       const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
       if (usageResponse.ok) {
         const usageData = await usageResponse.json();
-        console.log("[checkTrialLimitsBeforeGeneration] Usage data:", {
-          action,
-          articlesToGenerate,
-          isTrial: usageData.isTrial,
-          topicDiscoveryRunsRemaining: usageData.topicDiscoveryRunsRemaining,
-          articlesRemaining: usageData.articlesRemaining,
-          imagesRemaining: usageData.imagesRemaining,
-        });
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:156',message:'Trial usage data received',data:{action,isTrial:usageData.isTrial,topicDiscoveryRunsRemaining:usageData.topicDiscoveryRunsRemaining,articlesRemaining:usageData.articlesRemaining,imagesRemaining:usageData.imagesRemaining},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+        // #endregion
         
         if (usageData.isTrial) {
-          console.log("[checkTrialLimitsBeforeGeneration] Trial user detected, checking limits", {
-            action,
-            articlesToGenerate,
-            topicDiscoveryRunsRemaining: usageData.topicDiscoveryRunsRemaining,
-            articlesRemaining: usageData.articlesRemaining,
-            imagesRemaining: usageData.imagesRemaining,
-          });
-          
           // Check if all credits are exhausted
           const allCreditsExhausted = usageData.topicDiscoveryRunsRemaining === 0 && 
               usageData.articlesRemaining === 0 && 
               usageData.imagesRemaining === 0;
           
           if (allCreditsExhausted) {
-            console.log("[checkTrialLimitsBeforeGeneration] All credits exhausted, showing CreditsExhausted");
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:180',message:'All credits exhausted, showing widget',data:{action,stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+            // #endregion
+            
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
               articles: usageData.articlesGenerated || 0,
               images: usageData.imagesGenerated || 0,
             });
             setIsCreditsExhaustedOpen(true);
-            console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called, returning false");
             return { allowed: false, allCreditsExhausted: true };
           }
 
           // Check specific limit for the action - always show CreditsExhausted for any limit exhaustion
           if (action === 'topicDiscovery' && usageData.topicDiscoveryRunsRemaining === 0) {
-            console.log("[checkTrialLimitsBeforeGeneration] Topic discovery limit reached, showing CreditsExhausted");
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:193',message:'Topic discovery limit reached, showing widget',data:{stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+            // #endregion
+            
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
               articles: usageData.articlesGenerated || 0,
               images: usageData.imagesGenerated || 0,
             });
             setIsCreditsExhaustedOpen(true);
-            console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called for topicDiscovery, returning false");
             return { allowed: false, allCreditsExhausted: false };
           }
 
           if (action === 'article') {
             // Check if we have enough remaining articles for the requested generation
             const articlesLimitReached = usageData.articlesRemaining === 0 || usageData.articlesRemaining < articlesToGenerate;
-            console.log("[checkTrialLimitsBeforeGeneration] Article check:", {
-              articlesRemaining: usageData.articlesRemaining,
-              articlesToGenerate,
-              articlesLimitReached,
-              articlesGenerated: usageData.articlesGenerated,
-              maxArticles: usageData.maxArticles,
-            });
             
             if (articlesLimitReached) {
-              console.log("[checkTrialLimitsBeforeGeneration] Article limit reached, showing CreditsExhausted");
+              // #region agent log
+              fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:216',message:'Article limit reached, showing widget',data:{articlesRemaining:usageData.articlesRemaining,articlesToGenerate,stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+              // #endregion
+              
               setTrialStats({
                 topicSearches: usageData.topicDiscoveryRuns || 0,
                 articles: usageData.articlesGenerated || 0,
                 images: usageData.imagesGenerated || 0,
               });
               setIsCreditsExhaustedOpen(true);
-              console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called for article, returning false");
               return { allowed: false, allCreditsExhausted: false };
             }
           }
 
           if (action === 'image' && usageData.imagesRemaining === 0) {
-            console.log("[checkTrialLimitsBeforeGeneration] Image limit reached, showing CreditsExhausted");
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:229',message:'Image limit reached, showing widget',data:{stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+            // #endregion
+            
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
               articles: usageData.articlesGenerated || 0,
               images: usageData.imagesGenerated || 0,
             });
             setIsCreditsExhaustedOpen(true);
-            console.log("[checkTrialLimitsBeforeGeneration] setIsCreditsExhaustedOpen(true) called for image, returning false");
             return { allowed: false, allCreditsExhausted: false };
           }
-        } else {
-          console.log("[checkTrialLimitsBeforeGeneration] Not a trial user, allowing generation");
         }
       } else {
-        console.error("[checkTrialLimitsBeforeGeneration] Failed to fetch usage:", usageResponse.status, usageResponse.statusText);
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:243',message:'Failed to fetch trial usage',data:{status:usageResponse.status,statusText:usageResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+        // #endregion
       }
     } catch (error) {
-      console.error("[checkTrialLimitsBeforeGeneration] Error:", error);
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:246',message:'Error checking trial limits',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+      // #endregion
     }
 
-    console.log("[checkTrialLimitsBeforeGeneration] Allowed to proceed");
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:250',message:'Generation allowed to proceed',data:{action},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
+    // #endregion
+    
     return { allowed: true, allCreditsExhausted: false };
   };
   const [trialUsage, setTrialUsage] = useState<{
@@ -5801,12 +5802,25 @@ export default function Home() {
         </div>
       )}
       
+      {/* #region agent log */}
+      {(() => {
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:5869',message:'About to render CreditsExhausted in JSX',data:{isCreditsExhaustedOpen,hasTrialStats:!!trialStats},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'jsx-render'})}).catch(()=>{});
+        return null;
+      })()}
+      {/* #endregion */}
+      
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
         onClose={() => {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:5875',message:'CreditsExhausted onClose called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-interaction',hypothesisId:'user-action'})}).catch(()=>{});
+          // #endregion
           setIsCreditsExhaustedOpen(false);
         }}
         onUpgrade={() => {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:5881',message:'CreditsExhausted onUpgrade called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-interaction',hypothesisId:'user-action'})}).catch(()=>{});
+          // #endregion
           setIsCreditsExhaustedOpen(false);
           setIsUpgradeModalOpen(true);
         }}
