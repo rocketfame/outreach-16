@@ -19,6 +19,15 @@ const rgbToHex = (r: number, g: number, b: number): string => {
 };
 
 export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStats }: CreditsExhaustedProps) {
+  // Debug logging
+  useEffect(() => {
+    console.log("[CreditsExhausted] Component rendered with props:", {
+      isOpen,
+      hasTrialStats: !!trialStats,
+      trialStats,
+    });
+  }, [isOpen, trialStats]);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -26,8 +35,11 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
       }
     };
     if (isOpen) {
+      console.log("[CreditsExhausted] Modal is open, adding event listeners");
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
+    } else {
+      console.log("[CreditsExhausted] Modal is closed");
     }
     return () => {
       document.removeEventListener("keydown", handleEscape);
@@ -35,7 +47,13 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  console.log("[CreditsExhausted] Render check - isOpen:", isOpen, "trialStats:", trialStats);
+  if (!isOpen) {
+    console.log("[CreditsExhausted] ❌ Returning null because isOpen is false");
+    return null;
+  }
+  
+  console.log("[CreditsExhausted] ✅ Rendering modal content - isOpen is true");
 
   // Colors from Figma
   const overlayBg = "rgba(0, 0, 0, 0.5)";
@@ -62,6 +80,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
     { label: "Export", value: "in multiple formats" },
   ];
 
+  console.log("[CreditsExhausted] ✅ About to render modal div with zIndex 9999");
+  
   return (
     <div
       style={{
@@ -77,6 +97,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
         zIndex: 9999,
         padding: "1rem",
       }}
+      data-testid="credits-exhausted-modal"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();

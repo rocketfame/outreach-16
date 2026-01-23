@@ -4731,13 +4731,17 @@ export default function Home() {
             {/* TEST BUTTON - Remove after testing */}
             <button
               onClick={() => {
-                console.log("[TEST] Opening CreditsExhausted widget");
-                setTrialStats({
+                console.log("[TEST] Button clicked - Opening CreditsExhausted widget");
+                const stats = {
                   topicSearches: 2,
                   articles: 2,
                   images: 1,
-                });
+                };
+                console.log("[TEST] Setting trialStats:", stats);
+                setTrialStats(stats);
+                console.log("[TEST] Setting isCreditsExhaustedOpen to true");
                 setIsCreditsExhaustedOpen(true);
+                console.log("[TEST] State updated, checking in next render...");
               }}
               style={{
                 padding: "6px 12px",
