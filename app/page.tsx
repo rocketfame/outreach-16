@@ -5822,6 +5822,24 @@ export default function Home() {
       </div>
       
       {/* Credits Exhausted Modal */}
+      {/* DEBUG: Show state in UI */}
+      {process.env.NODE_ENV === "development" && (
+        <div style={{
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          background: "rgba(0,0,0,0.8)",
+          color: "white",
+          padding: "10px",
+          borderRadius: "5px",
+          fontSize: "12px",
+          zIndex: 10000,
+        }}>
+          <div>isCreditsExhaustedOpen: {isCreditsExhaustedOpen ? "✅ true" : "❌ false"}</div>
+          <div>trialStats: {trialStats ? JSON.stringify(trialStats) : "null"}</div>
+        </div>
+      )}
+      
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
         onClose={() => {

@@ -82,6 +82,11 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
 
   console.log("[CreditsExhausted] ✅ About to render modal div with zIndex 9999");
   
+  // Force render check - add to DOM immediately
+  if (typeof document !== 'undefined') {
+    console.log("[CreditsExhausted] Document exists, checking if modal will be visible");
+  }
+  
   return (
     <div
       style={{
@@ -96,8 +101,10 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
         justifyContent: "center",
         zIndex: 9999,
         padding: "1rem",
+        pointerEvents: "auto", // Ensure it can receive clicks
       }}
       data-testid="credits-exhausted-modal"
+      data-is-open={isOpen}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
