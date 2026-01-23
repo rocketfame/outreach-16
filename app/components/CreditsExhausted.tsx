@@ -20,11 +20,12 @@ const rgbToHex = (r: number, g: number, b: number): string => {
 };
 
 export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStats }: CreditsExhaustedProps) {
-  // No need for mounted state - we can check directly in render
-
+  // CRITICAL: Log at the very start of the function to ensure it's being called
+  console.log("🟢🟢🟢 [CreditsExhausted] FUNCTION CALLED! isOpen:", isOpen, "trialStats:", trialStats);
+  
   // Debug logging
   useEffect(() => {
-    console.log("🟢 [CreditsExhausted] Component rendered with props:", {
+    console.log("🟢 [CreditsExhausted] useEffect - Component rendered with props:", {
       isOpen,
       hasTrialStats: !!trialStats,
       trialStats,
@@ -416,5 +417,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
   // Use React Portal to render directly in body, bypassing any parent container constraints
   // This ensures the modal is not affected by parent container CSS (overflow, transform, etc.)
   console.log("🟢 [CreditsExhausted] Using React Portal to render in body");
+  console.log("🟢 [CreditsExhausted] document.body exists:", !!document.body);
+  console.log("🟢 [CreditsExhausted] modalContent type:", typeof modalContent);
+  
   return createPortal(modalContent, document.body);
 }

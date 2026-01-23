@@ -309,30 +309,31 @@ export default function Home() {
 
   // Debug: Track changes to isCreditsExhaustedOpen
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:311',message:'isCreditsExhaustedOpen state changed',data:{isCreditsExhaustedOpen,trialStats,hasTrialStats:!!trialStats},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    console.log("[page.tsx] isCreditsExhaustedOpen changed:", isCreditsExhaustedOpen);
-    console.log("[page.tsx] trialStats:", trialStats);
+    console.log("🔵 [page.tsx] isCreditsExhaustedOpen state changed:", isCreditsExhaustedOpen);
+    console.log("🔵 [page.tsx] trialStats:", trialStats);
     if (isCreditsExhaustedOpen) {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:315',message:'Modal should be visible - checking DOM',data:{isOpen:isCreditsExhaustedOpen},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      console.log("[page.tsx] ✅ CreditsExhausted modal should be visible now");
-      console.log("[page.tsx] ✅ CreditsExhausted props:", {
+      console.log("🔵 [page.tsx] ✅ CreditsExhausted modal should be visible now");
+      console.log("🔵 [page.tsx] ✅ CreditsExhausted props:", {
         isOpen: isCreditsExhaustedOpen,
         trialStats: trialStats ?? undefined,
       });
       // Check DOM after a short delay to allow React to render
       setTimeout(() => {
-        // #region agent log
         const modalEl = document.querySelector('[data-testid="credits-exhausted-modal"]');
-        const computedStyle = modalEl ? window.getComputedStyle(modalEl) : null;
-        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:325',message:'DOM check after render',data:{modalExists:!!modalEl,display:computedStyle?.display,zIndex:computedStyle?.zIndex,visibility:computedStyle?.visibility,opacity:computedStyle?.opacity,position:computedStyle?.position},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-      }, 100);
+        console.log("🔵 [page.tsx] DOM check after render - modal element:", modalEl ? "✅ FOUND" : "❌ NOT FOUND");
+        if (modalEl) {
+          const computedStyle = window.getComputedStyle(modalEl);
+          console.log("🔵 [page.tsx] Modal computed styles:", {
+            display: computedStyle.display,
+            zIndex: computedStyle.zIndex,
+            visibility: computedStyle.visibility,
+            opacity: computedStyle.opacity,
+            position: computedStyle.position,
+          });
+        }
+      }, 200);
     } else {
-      console.log("[page.tsx] ❌ CreditsExhausted modal is closed");
+      console.log("🔵 [page.tsx] ❌ CreditsExhausted modal is closed");
     }
   }, [isCreditsExhaustedOpen, trialStats]);
 
@@ -5893,6 +5894,13 @@ export default function Home() {
           <div>trialStats: {trialStats ? JSON.stringify(trialStats) : "null"}</div>
         </div>
       )}
+      
+      {/* DEBUG: Test if component renders at all */}
+      {console.log("🔵 [page.tsx] About to render CreditsExhausted with props:", {
+        isOpen: isCreditsExhaustedOpen,
+        hasTrialStats: !!trialStats,
+        trialStats,
+      }) || null}
       
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
