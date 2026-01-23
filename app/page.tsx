@@ -5866,6 +5866,11 @@ export default function Home() {
         </div>
       )}
       
+      {(() => {
+        console.log("🔵 [page.tsx] About to render CreditsExhausted in JSX, isOpen:", isCreditsExhaustedOpen);
+        return null;
+      })()}
+      
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
         onClose={() => {
