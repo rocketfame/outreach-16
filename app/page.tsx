@@ -5900,6 +5900,13 @@ export default function Home() {
         </div>
       )}
       
+      {/* DEBUG: Test if component renders */}
+      {isCreditsExhaustedOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 10000, background: 'red', color: 'white', padding: '20px' }}>
+          DEBUG: isCreditsExhaustedOpen is TRUE, CreditsExhausted should render
+        </div>
+      )}
+      
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
         onClose={() => {
