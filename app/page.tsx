@@ -309,14 +309,28 @@ export default function Home() {
 
   // Debug: Track changes to isCreditsExhaustedOpen
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:311',message:'isCreditsExhaustedOpen state changed',data:{isCreditsExhaustedOpen,trialStats,hasTrialStats:!!trialStats},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     console.log("[page.tsx] isCreditsExhaustedOpen changed:", isCreditsExhaustedOpen);
     console.log("[page.tsx] trialStats:", trialStats);
     if (isCreditsExhaustedOpen) {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:315',message:'Modal should be visible - checking DOM',data:{isOpen:isCreditsExhaustedOpen},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       console.log("[page.tsx] ✅ CreditsExhausted modal should be visible now");
       console.log("[page.tsx] ✅ CreditsExhausted props:", {
         isOpen: isCreditsExhaustedOpen,
         trialStats: trialStats ?? undefined,
       });
+      // Check DOM after a short delay to allow React to render
+      setTimeout(() => {
+        // #region agent log
+        const modalEl = document.querySelector('[data-testid="credits-exhausted-modal"]');
+        const computedStyle = modalEl ? window.getComputedStyle(modalEl) : null;
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:325',message:'DOM check after render',data:{modalExists:!!modalEl,display:computedStyle?.display,zIndex:computedStyle?.zIndex,visibility:computedStyle?.visibility,opacity:computedStyle?.opacity,position:computedStyle?.position},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+      }, 100);
     } else {
       console.log("[page.tsx] ❌ CreditsExhausted modal is closed");
     }
@@ -4731,17 +4745,57 @@ export default function Home() {
             {/* TEST BUTTON - Remove after testing */}
             <button
               onClick={() => {
-                console.log("[TEST] Button clicked - Opening CreditsExhausted widget");
+                console.log("🔴 [DEBUG] Button clicked!");
+                console.log("🔴 [DEBUG] Current isCreditsExhaustedOpen:", isCreditsExhaustedOpen);
+                console.log("🔴 [DEBUG] Current trialStats:", trialStats);
+                
                 const stats = {
                   topicSearches: 2,
                   articles: 2,
                   images: 1,
                 };
-                console.log("[TEST] Setting trialStats:", stats);
+                
+                console.log("🔴 [DEBUG] About to call setTrialStats with:", stats);
                 setTrialStats(stats);
-                console.log("[TEST] Setting isCreditsExhaustedOpen to true");
+                
+                console.log("🔴 [DEBUG] About to call setIsCreditsExhaustedOpen(true)");
                 setIsCreditsExhaustedOpen(true);
-                console.log("[TEST] State updated, checking in next render...");
+                
+                console.log("🔴 [DEBUG] State setters called. React should re-render soon...");
+                
+                // Force immediate check after React batch
+                // Use a ref to capture current state values
+                setTimeout(() => {
+                  // Re-read state from React (this will show updated values after re-render)
+                  console.log("🔴 [DEBUG] After 100ms - checking DOM for modal...");
+                  const modalEl = document.querySelector('[data-testid="credits-exhausted-modal"]');
+                  console.log("🔴 [DEBUG] Modal element in DOM:", modalEl ? "✅ FOUND" : "❌ NOT FOUND");
+                  
+                  if (modalEl) {
+                    const style = window.getComputedStyle(modalEl);
+                    const rect = modalEl.getBoundingClientRect();
+                    console.log("🔴 [DEBUG] ✅ Modal found! Styles:", {
+                      display: style.display,
+                      visibility: style.visibility,
+                      opacity: style.opacity,
+                      zIndex: style.zIndex,
+                      position: style.position,
+                      top: rect.top,
+                      left: rect.left,
+                      width: rect.width,
+                      height: rect.height,
+                      isVisible: rect.width > 0 && rect.height > 0,
+                    });
+                    // Check if modal is in body (should be with Portal)
+                    console.log("🔴 [DEBUG] Modal parent:", modalEl.parentElement?.tagName, "Is in body:", modalEl.parentElement === document.body);
+                  } else {
+                    console.log("🔴 [DEBUG] ❌ Modal not found in DOM!");
+                    console.log("🔴 [DEBUG] Checking if CreditsExhausted component is in React tree...");
+                    // Check if component rendered at all
+                    const creditsExhaustedComponents = document.querySelectorAll('[data-is-open]');
+                    console.log("🔴 [DEBUG] Elements with data-is-open:", creditsExhaustedComponents.length);
+                  }
+                }, 200);
               }}
               style={{
                 padding: "6px 12px",
