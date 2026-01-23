@@ -6,10 +6,6 @@ import Notification from "./components/Notification";
 import TrialUsageDisplay from "./components/TrialUsageDisplay";
 import UpgradeModal from "./components/UpgradeModal";
 import CreditsExhausted from "./components/CreditsExhausted";
-
-// DEBUG: Check if component is imported correctly
-console.log("🔵 [page.tsx] Import check - CreditsExhausted type:", typeof CreditsExhausted);
-console.log("🔵 [page.tsx] Import check - CreditsExhausted value:", CreditsExhausted);
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
@@ -311,40 +307,6 @@ export default function Home() {
     }
   }, [isHydrated]);
 
-  // Debug: Track changes to isCreditsExhaustedOpen
-  useEffect(() => {
-    console.log("🔵 [page.tsx] isCreditsExhaustedOpen state changed:", isCreditsExhaustedOpen);
-    console.log("🔵 [page.tsx] trialStats:", trialStats);
-    console.log("🔵 [page.tsx] About to render CreditsExhausted with props:", {
-      isOpen: isCreditsExhaustedOpen,
-      hasTrialStats: !!trialStats,
-      trialStats,
-    });
-    if (isCreditsExhaustedOpen) {
-      console.log("🔵 [page.tsx] ✅ CreditsExhausted modal should be visible now");
-      console.log("🔵 [page.tsx] ✅ CreditsExhausted props:", {
-        isOpen: isCreditsExhaustedOpen,
-        trialStats: trialStats ?? undefined,
-      });
-      // Check DOM after a short delay to allow React to render
-      setTimeout(() => {
-        const modalEl = document.querySelector('[data-testid="credits-exhausted-modal"]');
-        console.log("🔵 [page.tsx] DOM check after render - modal element:", modalEl ? "✅ FOUND" : "❌ NOT FOUND");
-        if (modalEl) {
-          const computedStyle = window.getComputedStyle(modalEl);
-          console.log("🔵 [page.tsx] Modal computed styles:", {
-            display: computedStyle.display,
-            zIndex: computedStyle.zIndex,
-            visibility: computedStyle.visibility,
-            opacity: computedStyle.opacity,
-            position: computedStyle.position,
-          });
-        }
-      }, 200);
-    } else {
-      console.log("🔵 [page.tsx] ❌ CreditsExhausted modal is closed");
-    }
-  }, [isCreditsExhaustedOpen, trialStats]);
 
   // Listen for openUpgradeModal event
   useEffect(() => {
@@ -5901,13 +5863,6 @@ export default function Home() {
         }}>
           <div>isCreditsExhaustedOpen: {isCreditsExhaustedOpen ? "✅ true" : "❌ false"}</div>
           <div>trialStats: {trialStats ? JSON.stringify(trialStats) : "null"}</div>
-        </div>
-      )}
-      
-      {/* DEBUG: Test if component renders */}
-      {isCreditsExhaustedOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 10000, background: 'red', color: 'white', padding: '20px' }}>
-          DEBUG: isCreditsExhaustedOpen is TRUE, CreditsExhausted should render
         </div>
       )}
       

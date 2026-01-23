@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { createPortal } from "react-dom";
 
 interface CreditsExhaustedProps {
   isOpen: boolean;
@@ -20,20 +19,7 @@ const rgbToHex = (r: number, g: number, b: number): string => {
 };
 
 export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStats }: CreditsExhaustedProps) {
-  // CRITICAL: Log at the very start of the function to ensure it's being called
-  console.log("🟢🟢🟢 [CreditsExhausted] FUNCTION CALLED! isOpen:", isOpen, "trialStats:", trialStats);
-  
-  // Debug logging
-  useEffect(() => {
-    console.log("🟢 [CreditsExhausted] useEffect - Component rendered with props:", {
-      isOpen,
-      hasTrialStats: !!trialStats,
-      trialStats,
-      hasDocument: typeof document !== 'undefined',
-      hasBody: typeof document !== 'undefined' && !!document.body,
-    });
-  }, [isOpen, trialStats]);
-
+  // Close on Escape key and lock body scroll
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -41,11 +27,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
       }
     };
     if (isOpen) {
-      console.log("🟢 [CreditsExhausted] Modal is open, adding event listeners");
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
-    } else {
-      console.log("🟢 [CreditsExhausted] Modal is closed");
     }
     return () => {
       document.removeEventListener("keydown", handleEscape);
@@ -53,21 +36,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
     };
   }, [isOpen, onClose]);
 
-  console.log("🟢 [CreditsExhausted] RENDER - isOpen:", isOpen, "trialStats:", trialStats);
-  
-  // Early return if not open
-  if (!isOpen) {
-    console.log("🟢 [CreditsExhausted] ❌ RETURNING NULL - isOpen is false");
-    return null;
-  }
-  
-  // Early return if not in browser (SSR safety)
-  if (typeof window === 'undefined' || typeof document === 'undefined' || !document.body) {
-    console.log("🟢 [CreditsExhausted] ⏳ Not in browser or document.body not available");
-    return null;
-  }
-  
-  console.log("🟢 [CreditsExhausted] ✅ RENDERING MODAL - isOpen is true, document.body available");
+  // Simple conditional rendering - same pattern as UpgradeModal
+  if (!isOpen) return null;
 
   // Colors from Figma
   const overlayBg = "rgba(0, 0, 0, 0.5)";
@@ -94,10 +64,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
     { label: "Export", value: "in multiple formats" },
   ];
 
-  console.log("🟢 [CreditsExhausted] ✅ About to render modal div with zIndex 9999");
-  
-  // Use React Portal to render directly in body, bypassing any parent container constraints
-  const modalContent = (
+  return (
     <div
       style={{
         position: "fixed",
@@ -111,30 +78,6 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
         justifyContent: "center",
         zIndex: 9999,
         padding: "1rem",
-        pointerEvents: "auto",
-      }}
-      data-testid="credits-exhausted-modal"
-      data-is-open={isOpen}
-      ref={(el) => {
-        if (el) {
-          console.log("🟢 [CreditsExhausted] ✅ MODAL DIV MOUNTED TO DOM!");
-          const computed = window.getComputedStyle(el);
-          const rect = el.getBoundingClientRect();
-          console.log("🟢 [CreditsExhausted] Modal styles:", {
-            display: computed.display,
-            visibility: computed.visibility,
-            opacity: computed.opacity,
-            zIndex: computed.zIndex,
-            position: computed.position,
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            isVisible: computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0',
-          });
-        } else {
-          console.log("🟢 [CreditsExhausted] ❌ Modal div ref is null");
-        }
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
@@ -413,11 +356,4 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
       </div>
     </div>
   );
-
-  // Use React Portal to render directly in body, bypassing any parent container constraints
-  console.log("🟢 [CreditsExhausted] Using React Portal to render in body");
-  console.log("🟢 [CreditsExhausted] document.body exists:", !!document.body);
-  console.log("🟢 [CreditsExhausted] modalContent type:", typeof modalContent);
-  
-  return createPortal(modalContent, document.body);
 }
