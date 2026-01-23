@@ -310,9 +310,15 @@ export default function Home() {
   // Debug: Track changes to isCreditsExhaustedOpen
   useEffect(() => {
     console.log("[page.tsx] isCreditsExhaustedOpen changed:", isCreditsExhaustedOpen);
+    console.log("[page.tsx] trialStats:", trialStats);
     if (isCreditsExhaustedOpen) {
-      console.log("[page.tsx] CreditsExhausted modal should be visible now");
-      console.log("[page.tsx] trialStats:", trialStats);
+      console.log("[page.tsx] ✅ CreditsExhausted modal should be visible now");
+      console.log("[page.tsx] ✅ CreditsExhausted props:", {
+        isOpen: isCreditsExhaustedOpen,
+        trialStats: trialStats ?? undefined,
+      });
+    } else {
+      console.log("[page.tsx] ❌ CreditsExhausted modal is closed");
     }
   }, [isCreditsExhaustedOpen, trialStats]);
 
@@ -4721,6 +4727,33 @@ export default function Home() {
           <div className="theme-switch-container" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             {/* Trial Usage Display - inline with theme toggle */}
             <TrialUsageDisplay />
+            
+            {/* TEST BUTTON - Remove after testing */}
+            <button
+              onClick={() => {
+                console.log("[TEST] Opening CreditsExhausted widget");
+                setTrialStats({
+                  topicSearches: 2,
+                  articles: 2,
+                  images: 1,
+                });
+                setIsCreditsExhaustedOpen(true);
+              }}
+              style={{
+                padding: "6px 12px",
+                background: "linear-gradient(90deg, #ff6b00 0%, #e6004f 100%)",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: 500,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+              title="Test Credits Exhausted Widget"
+            >
+              🧪 Test Widget
+            </button>
             
             <UpgradeModal
               isOpen={isUpgradeModalOpen}
