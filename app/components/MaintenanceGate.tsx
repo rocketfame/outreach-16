@@ -15,6 +15,30 @@ const isMaintenanceEnabled = () => {
   return envValue !== "false";
 };
 
+// Check if user has valid trial token in URL
+const hasValidTrialToken = () => {
+  if (typeof window === "undefined") return false;
+  const urlParams = new URLSearchParams(window.location.search);
+  const trialToken = urlParams.get("trial");
+  if (!trialToken) return false;
+  
+  // List of valid trial tokens (should match .env.local)
+  const validTrialTokens = [
+    "trial-09w33n-3143-bpckc2",
+    "trial-hu3cv3-5439-4v0sfz",
+    "trial-fm7rd0-7987-vsr9bu",
+    "trial-ktait2-4362-ntwket",
+    "trial-iky4vf-201-8tab5i",
+    "trial-vc6wae-2018-ovsvpb",
+    "trial-4w2si4-9986-rjinw8",
+    "trial-ud7v67-85-d7affp",
+    "trial-fzjpbv-5895-xcojzt",
+    "trial-euwtpk-1377-65j1kx",
+  ];
+  
+  return validTrialTokens.includes(trialToken);
+};
+
 // Check if user is master (from cookie set by proxy)
 const isMasterUser = () => {
   if (typeof document === "undefined") return false;
@@ -37,6 +61,14 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
       return;
     }
 
+    // CRITICAL: Check if user has valid trial token in URL FIRST
+    // This bypasses maintenance gate for trial users
+    if (hasValidTrialToken()) {
+      setShowGate(false);
+      setIsLoading(false);
+      return;
+    }
+
     // Check if user is master (from cookie)
     if (isMasterUser()) {
       setShowGate(false);
@@ -52,7 +84,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
       return;
     }
 
-    // Show gate for non-master users
+    // Show gate for non-master users without valid trial token
     setShowGate(true);
     setIsLoading(false);
   }, []);

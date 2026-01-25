@@ -107,7 +107,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       const response = NextResponse.next();
       response.headers.set("x-trial-token", trialToken);
       // Mark as bypassing maintenance (both trial and master tokens bypass)
-      response.cookies.set("bypass_maintenance", "true");
+      // Set cookie with proper attributes for cross-domain support
+      response.cookies.set("bypass_maintenance", "true", {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
       // CRITICAL: Allow access to all routes including API
       return response;
     }
