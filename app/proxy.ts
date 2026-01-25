@@ -102,12 +102,13 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(notFoundUrl);
     }
     
-    // Valid trial or master token - allow access
+    // Valid trial or master token - allow FULL access (bypass all restrictions)
     if (isValidTrial || isValidMaster) {
       const response = NextResponse.next();
       response.headers.set("x-trial-token", trialToken);
       // Mark as bypassing maintenance (both trial and master tokens bypass)
       response.cookies.set("bypass_maintenance", "true");
+      // CRITICAL: Allow access to all routes including API
       return response;
     }
   }
@@ -127,12 +128,13 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // Check maintenance gate (only for main page, not API routes)
-  // Show gate for everyone EXCEPT:
+  // CRITICAL: For main URL (without trial token), check access restrictions
+  // Main URL is ONLY accessible to:
   // 1. Master IP addresses
-  // 2. Users with valid trial/master tokens (they already got bypass cookie above)
-  if (isMaintenanceEnabled() && request.nextUrl.pathname === "/") {
-    // Master IP always bypasses
+  // 2. Users with basic auth (if configured)
+  // Everyone else should be blocked
+  if (request.nextUrl.pathname === "/" && !trialToken) {
+    // Master IP always has access
     if (isMasterIPAddress) {
       const response = NextResponse.next();
       response.cookies.set("is_master_ip", "true");
@@ -140,31 +142,81 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return response;
     }
     
-    // Check if user has bypass cookie (from valid trial/master token)
-    const bypassCookie = request.cookies.get("bypass_maintenance");
-    if (bypassCookie?.value !== "true") {
-      // Show maintenance gate for everyone else
-      const response = NextResponse.next();
-      response.headers.set("x-maintenance-gate", "true");
-      return response;
+    // Check maintenance gate for non-master IPs
+    if (isMaintenanceEnabled()) {
+      const bypassCookie = request.cookies.get("bypass_maintenance");
+      if (bypassCookie?.value !== "true") {
+        // Show maintenance gate for everyone else
+        const response = NextResponse.next();
+        response.headers.set("x-maintenance-gate", "true");
+        return response;
+      }
+    }
+    
+    // No valid trial token and not master IP - require basic auth if configured
+    if (isAuthConfigured()) {
+      const authHeader = request.headers.get("authorization");
+      if (!isValidAuth(authHeader)) {
+        return unauthorizedResponse();
+      }
+    } else {
+      // If auth is not configured, block access for non-master IPs
+      // This ensures main URL is only accessible to master IPs
+      return new NextResponse("Access Denied", {
+        status: 403,
+        headers: { "Content-Type": "text/plain" },
+      });
     }
   }
 
-  // Master IP or maintenance disabled - continue normally
-  // No valid trial token - require basic auth if configured
-  if (!isAuthConfigured()) {
-    const response = NextResponse.next();
-    // Mark master IP in cookie for client-side check
+  // For API routes and other paths without trial token:
+  // - Master IP: always allowed
+  // - Basic auth: allowed if configured
+  // - Others: blocked (for API routes)
+  if (!trialToken && request.nextUrl.pathname.startsWith("/api/")) {
+    // Master IP always has access
     if (isMasterIPAddress) {
+      const response = NextResponse.next();
       response.cookies.set("is_master_ip", "true");
       response.cookies.set("bypass_maintenance", "true");
+      return response;
     }
-    return response;
+    
+    // Require basic auth if configured
+    if (isAuthConfigured()) {
+      const authHeader = request.headers.get("authorization");
+      if (!isValidAuth(authHeader)) {
+        return unauthorizedResponse();
+      }
+    } else {
+      // If auth is not configured and not master IP, block API access
+      return new NextResponse("Access Denied", {
+        status: 403,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
   }
-
-  const authHeader = request.headers.get("authorization");
-  if (!isValidAuth(authHeader)) {
-    return unauthorizedResponse();
+  
+  // For other routes (not API, not main page) without trial token:
+  // - Master IP: always allowed
+  // - Basic auth: allowed if configured
+  // - Others: allow (for static assets, etc.)
+  if (!trialToken && !request.nextUrl.pathname.startsWith("/api/") && request.nextUrl.pathname !== "/") {
+    // Master IP always has access
+    if (isMasterIPAddress) {
+      const response = NextResponse.next();
+      response.cookies.set("is_master_ip", "true");
+      response.cookies.set("bypass_maintenance", "true");
+      return response;
+    }
+    
+    // Require basic auth if configured
+    if (isAuthConfigured()) {
+      const authHeader = request.headers.get("authorization");
+      if (!isValidAuth(authHeader)) {
+        return unauthorizedResponse();
+      }
+    }
   }
 
   const response = NextResponse.next();
