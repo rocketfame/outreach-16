@@ -157,6 +157,64 @@ export default function Home() {
       return { allowed: true, allCreditsExhausted: false }; // No trial token = master access
     }
 
+    // OPTIMIZATION: Check cached trialUsage state FIRST for instant response
+    // This allows widget to appear immediately without waiting for API call
+    if (trialUsage && trialUsage.isTrial) {
+      const allCreditsExhausted = trialUsage.topicDiscoveryRunsRemaining === 0 && 
+          trialUsage.articlesRemaining === 0 && 
+          trialUsage.imagesRemaining === 0;
+      
+      if (allCreditsExhausted) {
+        // Show widget INSTANTLY using cached data
+        setTrialStats({
+          topicSearches: trialUsage.topicDiscoveryRuns || 0,
+          articles: trialUsage.articlesGenerated || 0,
+          images: trialUsage.imagesGenerated || 0,
+        });
+        setIsCreditsExhaustedOpen(true);
+        // Still fetch fresh data in background, but don't wait
+        fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
+        return { allowed: false, allCreditsExhausted: true };
+      }
+
+      // Check specific limit for the action using cached data
+      if (action === 'topicDiscovery' && trialUsage.topicDiscoveryRunsRemaining === 0) {
+        setTrialStats({
+          topicSearches: trialUsage.topicDiscoveryRuns || 0,
+          articles: trialUsage.articlesGenerated || 0,
+          images: trialUsage.imagesGenerated || 0,
+        });
+        setIsCreditsExhaustedOpen(true);
+        fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
+        return { allowed: false, allCreditsExhausted: false };
+      }
+
+      if (action === 'article') {
+        const articlesLimitReached = trialUsage.articlesRemaining === 0 || trialUsage.articlesRemaining < articlesToGenerate;
+        if (articlesLimitReached) {
+          setTrialStats({
+            topicSearches: trialUsage.topicDiscoveryRuns || 0,
+            articles: trialUsage.articlesGenerated || 0,
+            images: trialUsage.imagesGenerated || 0,
+          });
+          setIsCreditsExhaustedOpen(true);
+          fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
+          return { allowed: false, allCreditsExhausted: false };
+        }
+      }
+
+      if (action === 'image' && trialUsage.imagesRemaining === 0) {
+        setTrialStats({
+          topicSearches: trialUsage.topicDiscoveryRuns || 0,
+          articles: trialUsage.articlesGenerated || 0,
+          images: trialUsage.imagesGenerated || 0,
+        });
+        setIsCreditsExhaustedOpen(true);
+        fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
+        return { allowed: false, allCreditsExhausted: false };
+      }
+    }
+
     try {
       const apiUrl = `/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`;
       
@@ -178,6 +236,16 @@ export default function Home() {
         // #endregion
         
         if (usageData.isTrial) {
+          // CRITICAL: Update trialUsage state for future instant checks
+          setTrialUsage({
+            isTrial: true,
+            topicDiscoveryRunsRemaining: usageData.topicDiscoveryRunsRemaining,
+            articlesRemaining: usageData.articlesRemaining,
+            imagesRemaining: usageData.imagesRemaining,
+            topicDiscoveryRuns: usageData.topicDiscoveryRuns || 0,
+            articlesGenerated: usageData.articlesGenerated || 0,
+            imagesGenerated: usageData.imagesGenerated || 0,
+          });
           // Check if all credits are exhausted
           const allCreditsExhausted = usageData.topicDiscoveryRunsRemaining === 0 && 
               usageData.articlesRemaining === 0 && 
@@ -305,8 +373,18 @@ export default function Home() {
         const response = await fetch(apiUrl);
         if (response.ok) {
           const data = await response.json();
-          // For trial users, balance is 0. For paid users, get from API
+          
+          // CRITICAL: Update trialUsage state FIRST for instant limit checks
           if (data.isTrial) {
+            setTrialUsage({
+              isTrial: true,
+              topicDiscoveryRunsRemaining: data.topicDiscoveryRunsRemaining,
+              articlesRemaining: data.articlesRemaining,
+              imagesRemaining: data.imagesRemaining,
+              topicDiscoveryRuns: data.topicDiscoveryRuns || 0,
+              articlesGenerated: data.articlesGenerated || 0,
+              imagesGenerated: data.imagesGenerated || 0,
+            });
             setCurrentBalance(0);
             
             // Check if all credits are exhausted - show CreditsExhausted modal
@@ -321,8 +399,26 @@ export default function Home() {
               setIsCreditsExhaustedOpen(true);
             }
           } else if (data.isMaster) {
+            setTrialUsage({
+              isTrial: false,
+              topicDiscoveryRunsRemaining: null,
+              articlesRemaining: null,
+              imagesRemaining: null,
+              topicDiscoveryRuns: 0,
+              articlesGenerated: 0,
+              imagesGenerated: 0,
+            });
             setCurrentBalance(Infinity); // Master has unlimited
           } else {
+            setTrialUsage({
+              isTrial: false,
+              topicDiscoveryRunsRemaining: null,
+              articlesRemaining: null,
+              imagesRemaining: null,
+              topicDiscoveryRuns: 0,
+              articlesGenerated: 0,
+              imagesGenerated: 0,
+            });
             // Paid user - get balance from API (will be implemented in API)
             setCurrentBalance(data.purchasedCredits || 0);
           }
