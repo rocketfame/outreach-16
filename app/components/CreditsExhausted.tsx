@@ -42,17 +42,25 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
     };
   }, [isOpen, onClose]);
 
+  // Log that we're about to render the modal
+  useEffect(() => {
+    if (isOpen) {
+      // Use setTimeout to check DOM after render
+      setTimeout(() => {
+        const modalElement = document.querySelector('[data-testid="credits-exhausted-modal"]');
+        console.log('[CreditsExhausted] Modal rendered, isOpen:', isOpen, 'Modal in DOM:', !!modalElement);
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:54',message:'Component rendering modal - isOpen is true',data:{isOpen,hasTrialStats:!!trialStats,modalInDom:!!modalElement},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
+      }, 0);
+    } else {
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:46',message:'Component returning null - isOpen is false',data:{isOpen},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
+    }
+  }, [isOpen, trialStats]);
+
+  // CRITICAL: Always render when isOpen is true - ensure component is in DOM
   // Simple conditional rendering - same pattern as UpgradeModal
   if (!isOpen) {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:35',message:'Component returning null - isOpen is false',data:{isOpen},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
-    // #endregion
     return null;
   }
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:40',message:'Component rendering modal - isOpen is true',data:{isOpen,hasTrialStats:!!trialStats},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
-  // #endregion
 
   // Colors from Figma
   const overlayBg = "rgba(0, 0, 0, 0.5)";

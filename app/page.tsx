@@ -144,6 +144,45 @@ export default function Home() {
   const [trialStats, setTrialStats] = useState<{ topicSearches: number; articles: number; images: number } | undefined>(undefined);
 
   // Unified function to check trial limits BEFORE starting generation
+  // Helper function to refresh trialUsage from API
+  const refreshTrialUsage = async () => {
+    try {
+      const trialToken = getTrialTokenFromURL();
+      if (!trialToken) return;
+      
+      const apiUrl = `/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`;
+      const response = await fetch(apiUrl);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.isTrial) {
+          setTrialUsage({
+            isTrial: true,
+            topicDiscoveryRunsRemaining: data.topicDiscoveryRunsRemaining,
+            articlesRemaining: data.articlesRemaining,
+            imagesRemaining: data.imagesRemaining,
+            topicDiscoveryRuns: data.topicDiscoveryRuns || 0,
+            articlesGenerated: data.articlesGenerated || 0,
+            imagesGenerated: data.imagesGenerated || 0,
+          });
+          
+          // Check if all credits are exhausted after refresh
+          if (data.topicDiscoveryRunsRemaining === 0 && 
+              data.articlesRemaining === 0 && 
+              data.imagesRemaining === 0) {
+            setTrialStats({
+              topicSearches: data.topicDiscoveryRuns || 0,
+              articles: data.articlesGenerated || 0,
+              images: data.imagesGenerated || 0,
+            });
+            setIsCreditsExhaustedOpen(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing trial usage:", error);
+    }
+  };
+
   const checkTrialLimitsBeforeGeneration = async (action: 'topicDiscovery' | 'article' | 'image', articlesToGenerate: number = 1): Promise<{ allowed: boolean; allCreditsExhausted: boolean }> => {
     // #region agent log
     fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:147',message:'checkTrialLimitsBeforeGeneration called',data:{action,articlesToGenerate},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
@@ -178,6 +217,7 @@ export default function Home() {
       }
 
       // Check specific limit for the action using cached data
+      // CRITICAL: Show widget IMMEDIATELY if limit is exhausted (data from KV)
       if (action === 'topicDiscovery' && trialUsage.topicDiscoveryRunsRemaining !== null && trialUsage.topicDiscoveryRunsRemaining === 0) {
         setTrialStats({
           topicSearches: trialUsage.topicDiscoveryRuns || 0,
@@ -185,7 +225,20 @@ export default function Home() {
           images: trialUsage.imagesGenerated || 0,
         });
         setIsCreditsExhaustedOpen(true);
-        fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
+        // Refresh data in background but don't wait
+        fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).then(r => r.ok && r.json()).then(d => {
+          if (d?.isTrial) {
+            setTrialUsage({
+              isTrial: true,
+              topicDiscoveryRunsRemaining: d.topicDiscoveryRunsRemaining,
+              articlesRemaining: d.articlesRemaining,
+              imagesRemaining: d.imagesRemaining,
+              topicDiscoveryRuns: d.topicDiscoveryRuns || 0,
+              articlesGenerated: d.articlesGenerated || 0,
+              imagesGenerated: d.imagesGenerated || 0,
+            });
+          }
+        }).catch(()=>{});
         return { allowed: false, allCreditsExhausted: false };
       }
 
@@ -198,7 +251,20 @@ export default function Home() {
             images: trialUsage.imagesGenerated || 0,
           });
           setIsCreditsExhaustedOpen(true);
-          fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
+          // Refresh data in background but don't wait
+          fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).then(r => r.ok && r.json()).then(d => {
+            if (d?.isTrial) {
+              setTrialUsage({
+                isTrial: true,
+                topicDiscoveryRunsRemaining: d.topicDiscoveryRunsRemaining,
+                articlesRemaining: d.articlesRemaining,
+                imagesRemaining: d.imagesRemaining,
+                topicDiscoveryRuns: d.topicDiscoveryRuns || 0,
+                articlesGenerated: d.articlesGenerated || 0,
+                imagesGenerated: d.imagesGenerated || 0,
+              });
+            }
+          }).catch(()=>{});
           return { allowed: false, allCreditsExhausted: false };
         }
       }
@@ -210,7 +276,20 @@ export default function Home() {
           images: trialUsage.imagesGenerated || 0,
         });
         setIsCreditsExhaustedOpen(true);
-        fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
+        // Refresh data in background but don't wait
+        fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).then(r => r.ok && r.json()).then(d => {
+          if (d?.isTrial) {
+            setTrialUsage({
+              isTrial: true,
+              topicDiscoveryRunsRemaining: d.topicDiscoveryRunsRemaining,
+              articlesRemaining: d.articlesRemaining,
+              imagesRemaining: d.imagesRemaining,
+              topicDiscoveryRuns: d.topicDiscoveryRuns || 0,
+              articlesGenerated: d.articlesGenerated || 0,
+              imagesGenerated: d.imagesGenerated || 0,
+            });
+          }
+        }).catch(()=>{});
         return { allowed: false, allCreditsExhausted: false };
       }
     }
@@ -387,15 +466,38 @@ export default function Home() {
             });
             setCurrentBalance(0);
             
-            // Check if all credits are exhausted - show CreditsExhausted modal
-            if (data.topicDiscoveryRunsRemaining === 0 && 
+            // CRITICAL: Check if all credits are exhausted - show CreditsExhausted modal IMMEDIATELY
+            // This ensures widget appears right away when user visits trial link with exhausted limits
+            const allCreditsExhausted = data.topicDiscoveryRunsRemaining === 0 && 
                 data.articlesRemaining === 0 && 
-                data.imagesRemaining === 0) {
+                data.imagesRemaining === 0;
+            
+            if (allCreditsExhausted) {
               setTrialStats({
                 topicSearches: data.topicDiscoveryRuns || 0,
                 articles: data.articlesGenerated || 0,
                 images: data.imagesGenerated || 0,
               });
+              // Show widget immediately - limits are exhausted (stored in KV)
+              setIsCreditsExhaustedOpen(true);
+            }
+            
+            // Also check individual limits - show widget if ANY limit is exhausted
+            // CRITICAL: Show widget immediately on page load if ANY limit is exhausted
+            // This ensures widget appears right away when user visits trial link with exhausted limits
+            const topicDiscoveryExhausted = data.topicDiscoveryRunsRemaining === 0;
+            const articlesExhausted = data.articlesRemaining === 0;
+            const imagesExhausted = data.imagesRemaining === 0;
+            
+            // If any limit is exhausted, show widget immediately on page load
+            // This ensures widget appears right away when user visits trial link with exhausted limits
+            if (topicDiscoveryExhausted || articlesExhausted || imagesExhausted) {
+              setTrialStats({
+                topicSearches: data.topicDiscoveryRuns || 0,
+                articles: data.articlesGenerated || 0,
+                images: data.imagesGenerated || 0,
+              });
+              // Show widget immediately - at least one limit is exhausted (stored in KV)
               setIsCreditsExhaustedOpen(true);
             }
           } else if (data.isMaster) {
@@ -835,6 +937,10 @@ export default function Home() {
       // Store the structured response
       updateTopicsData(data);
       
+      // CRITICAL: Refresh trialUsage immediately after successful generation
+      // This ensures next click will show correct limits and widget if exhausted
+      await refreshTrialUsage();
+      
       // Reset selections
       updateSelectedTopicIds([]);
       setExpandedClusterNames(new Set());
@@ -1189,6 +1295,10 @@ export default function Home() {
             visible: true,
           });
           playSuccessSound();
+          
+          // CRITICAL: Refresh trialUsage immediately after successful regeneration
+          // This ensures next click will show correct limits and widget if exhausted
+          await refreshTrialUsage();
           
           // Trigger trial usage update
           if (typeof window !== 'undefined') {
@@ -1910,6 +2020,10 @@ export default function Home() {
       // Play success sound after article generation (always, regardless of timing)
       playSuccessSound();
       
+      // CRITICAL: Refresh trialUsage immediately after successful generation
+      // This ensures next click will show correct limits and widget if exhausted
+      await refreshTrialUsage();
+      
       // Trigger trial usage update
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
@@ -2336,6 +2450,10 @@ export default function Home() {
       // Clear topic input
       updateDirectArticleTopic("");
       
+      // CRITICAL: Refresh trialUsage immediately after successful generation
+      // This ensures next click will show correct limits and widget if exhausted
+      await refreshTrialUsage();
+      
       // Show notification with elapsed time
       const startTime = generationStartTime;
       if (startTime) {
@@ -2363,6 +2481,10 @@ export default function Home() {
       
       // Play success sound after article generation (always, regardless of timing)
       playSuccessSound();
+      
+      // CRITICAL: Refresh trialUsage immediately after successful generation
+      // This ensures next click will show correct limits and widget if exhausted
+      await refreshTrialUsage();
       
       // Trigger trial usage update
       if (typeof window !== 'undefined') {
@@ -4190,6 +4312,10 @@ export default function Home() {
           return next;
         });
         
+        // CRITICAL: Refresh trialUsage immediately after successful generation
+        // This ensures next click will show correct limits and widget if exhausted
+        await refreshTrialUsage();
+        
         // Trigger trial usage update
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
@@ -5943,7 +6069,29 @@ export default function Home() {
           // #region agent log
           fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:5875',message:'CreditsExhausted onClose called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-interaction',hypothesisId:'user-action'})}).catch(()=>{});
           // #endregion
+          // CRITICAL: Close widget, but keep trialUsage state intact
+          // This ensures widget will reappear on next generation attempt if limits are still exhausted
           setIsCreditsExhaustedOpen(false);
+          // Refresh trialUsage in background to ensure state is fresh for next check
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`)
+              .then(r => r.ok && r.json())
+              .then(d => {
+                if (d?.isTrial) {
+                  setTrialUsage({
+                    isTrial: true,
+                    topicDiscoveryRunsRemaining: d.topicDiscoveryRunsRemaining,
+                    articlesRemaining: d.articlesRemaining,
+                    imagesRemaining: d.imagesRemaining,
+                    topicDiscoveryRuns: d.topicDiscoveryRuns || 0,
+                    articlesGenerated: d.articlesGenerated || 0,
+                    imagesGenerated: d.imagesGenerated || 0,
+                  });
+                }
+              })
+              .catch(() => {});
+          }
         }}
         onUpgrade={() => {
           // #region agent log
