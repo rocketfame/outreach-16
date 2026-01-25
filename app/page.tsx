@@ -160,9 +160,9 @@ export default function Home() {
     // OPTIMIZATION: Check cached trialUsage state FIRST for instant response
     // This allows widget to appear immediately without waiting for API call
     if (trialUsage && trialUsage.isTrial) {
-      const allCreditsExhausted = trialUsage.topicDiscoveryRunsRemaining === 0 && 
-          trialUsage.articlesRemaining === 0 && 
-          trialUsage.imagesRemaining === 0;
+      const allCreditsExhausted = trialUsage.topicDiscoveryRunsRemaining !== null && trialUsage.topicDiscoveryRunsRemaining === 0 && 
+          trialUsage.articlesRemaining !== null && trialUsage.articlesRemaining === 0 && 
+          trialUsage.imagesRemaining !== null && trialUsage.imagesRemaining === 0;
       
       if (allCreditsExhausted) {
         // Show widget INSTANTLY using cached data
@@ -178,7 +178,7 @@ export default function Home() {
       }
 
       // Check specific limit for the action using cached data
-      if (action === 'topicDiscovery' && trialUsage.topicDiscoveryRunsRemaining === 0) {
+      if (action === 'topicDiscovery' && trialUsage.topicDiscoveryRunsRemaining !== null && trialUsage.topicDiscoveryRunsRemaining === 0) {
         setTrialStats({
           topicSearches: trialUsage.topicDiscoveryRuns || 0,
           articles: trialUsage.articlesGenerated || 0,
@@ -190,7 +190,7 @@ export default function Home() {
       }
 
       if (action === 'article') {
-        const articlesLimitReached = trialUsage.articlesRemaining === 0 || trialUsage.articlesRemaining < articlesToGenerate;
+        const articlesLimitReached = trialUsage.articlesRemaining !== null && (trialUsage.articlesRemaining === 0 || trialUsage.articlesRemaining < articlesToGenerate);
         if (articlesLimitReached) {
           setTrialStats({
             topicSearches: trialUsage.topicDiscoveryRuns || 0,
@@ -203,7 +203,7 @@ export default function Home() {
         }
       }
 
-      if (action === 'image' && trialUsage.imagesRemaining === 0) {
+      if (action === 'image' && trialUsage.imagesRemaining !== null && trialUsage.imagesRemaining === 0) {
         setTrialStats({
           topicSearches: trialUsage.topicDiscoveryRuns || 0,
           articles: trialUsage.articlesGenerated || 0,
