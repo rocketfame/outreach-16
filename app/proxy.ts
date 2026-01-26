@@ -226,7 +226,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // - Master IP: always allowed
   // - Basic auth: allowed if configured
   // - Others: blocked (for API routes)
+  // CRITICAL: Allow /api/check-access for all users (needed for MaintenanceGate)
   if (!trialToken && request.nextUrl.pathname.startsWith("/api/")) {
+    // Allow check-access endpoint for everyone
+    if (request.nextUrl.pathname === "/api/check-access") {
+      return NextResponse.next();
+    }
     // Master IP always has access
     if (isMasterIPAddress) {
       console.log("[proxy] Master IP detected for API route, granting access:", clientIP);

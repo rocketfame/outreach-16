@@ -63,46 +63,67 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if maintenance is enabled
-    if (!isMaintenanceEnabled()) {
-      setShowGate(false);
-      setIsLoading(false);
-      return;
-    }
+    const checkAccess = async () => {
+      // Check if maintenance is enabled
+      if (!isMaintenanceEnabled()) {
+        setShowGate(false);
+        setIsLoading(false);
+        return;
+      }
 
-    // CRITICAL: Check if user has valid trial token in URL FIRST
-    // This bypasses maintenance gate for trial users
-    if (hasValidTrialToken()) {
-      setShowGate(false);
-      setIsLoading(false);
-      return;
-    }
+      // CRITICAL: Check if user has valid trial token in URL FIRST
+      // This bypasses maintenance gate for trial users
+      if (hasValidTrialToken()) {
+        setShowGate(false);
+        setIsLoading(false);
+        return;
+      }
 
-    // Check if user is master (from cookie)
-    if (isMasterUser()) {
-      console.log("[MaintenanceGate] Master user detected via cookie, bypassing gate");
-      setShowGate(false);
-      setIsLoading(false);
-      return;
-    }
+      // Check if user is master (from cookie) - quick check first
+      if (isMasterUser()) {
+        console.log("[MaintenanceGate] Master user detected via cookie, bypassing gate");
+        setShowGate(false);
+        setIsLoading(false);
+        return;
+      }
 
-    // Check maintenance gate header (set by proxy)
-    const maintenanceHeader = document.querySelector('meta[name="maintenance-gate"]');
-    if (maintenanceHeader?.getAttribute("content") === "false") {
-      console.log("[MaintenanceGate] Maintenance gate disabled via meta tag");
-      setShowGate(false);
-      setIsLoading(false);
-      return;
-    }
-    
-    // Show gate for non-master users without valid trial token
-    console.log("[MaintenanceGate] Showing maintenance gate");
-    setShowGate(true);
-    setIsLoading(false);
+      // CRITICAL: Also check via API to verify IP on server side
+      // This ensures we catch master IP even if cookies aren't set yet
+      try {
+        const response = await fetch('/api/check-access', { 
+          cache: 'no-store',
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log("[MaintenanceGate] API check result:", data);
+          if (data.hasAccess || data.isMaster) {
+            console.log("[MaintenanceGate] Master IP detected via API, bypassing gate");
+            setShowGate(false);
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("[MaintenanceGate] Error checking access:", error);
+      }
 
-    // Show gate for non-master users without valid trial token
-    setShowGate(true);
-    setIsLoading(false);
+      // Check maintenance gate header (set by proxy)
+      const maintenanceHeader = document.querySelector('meta[name="maintenance-gate"]');
+      if (maintenanceHeader?.getAttribute("content") === "false") {
+        console.log("[MaintenanceGate] Maintenance gate disabled via meta tag");
+        setShowGate(false);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Show gate for non-master users without valid trial token
+      console.log("[MaintenanceGate] Showing maintenance gate");
+      setShowGate(true);
+      setIsLoading(false);
+    };
+
+    checkAccess();
   }, []);
 
   // Show loading state while checking
