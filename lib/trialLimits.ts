@@ -104,6 +104,9 @@ async function saveTrialUsage(token: string, usage: TrialUsage): Promise<void> {
 /**
  * Get trial token from environment variables
  * Format: TRIAL_TOKENS=token1,token2,token3
+ * 
+ * @deprecated Use getTrialTokens from @/lib/trialConfig instead
+ * This function is kept for backward compatibility
  */
 export function getTrialTokens(): string[] {
   const tokens = process.env.TRIAL_TOKENS || "";

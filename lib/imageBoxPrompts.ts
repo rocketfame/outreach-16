@@ -1442,6 +1442,24 @@ export function buildImagePromptFromBox(
     contentPurpose?: string; // Optional: content purpose (e.g., "Blog", "Outreach")
   }
 ): string {
+  // CRITICAL: Add context requirements at the BEGINNING of the prompt
+  // This ensures the AI model prioritizes article relevance while maintaining creative freedom
+  const contextHeader = `CONTEXT REQUIREMENTS - READ FIRST:
+
+ARTICLE TOPIC: "${params.articleTitle}"
+NICHE/TOPIC AREA: ${params.niche}
+MAIN PLATFORM: ${params.mainPlatform}${params.brandName ? `\nBRAND: ${params.brandName}` : ""}
+
+RELEVANCE GUIDELINES:
+1. The visual STYLE from the box prompt below should be maintained (composition, colors, mood, aesthetic approach).
+2. ALL visual elements (characters, props, scenes, symbols, objects) should be relevant to the article topic "${params.articleTitle}" and niche "${params.niche}".
+3. Adapt the box prompt's content to match the article's subject matter while preserving the creative style and visual approach.
+4. Use creative interpretation - the box prompt provides a style framework, but you should adapt it to fit the article's context naturally.
+
+The box prompt below provides the VISUAL STYLE and CREATIVE APPROACH. Apply this style to content relevant to "${params.articleTitle}" and "${params.niche}".
+
+---`;
+
   let prompt = boxPrompt.promptTemplate;
   
   // Replace placeholders
@@ -1450,32 +1468,24 @@ export function buildImagePromptFromBox(
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform);
   prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "");
   
-  // Add context-aware instructions to ensure image relevance
-  const contextInstructions = `
+  // Add gentle reminder at the end
+  const contextFooter = `
 
-CRITICAL CONTEXT REQUIREMENTS - IMAGE MUST BE RELEVANT TO ARTICLE TOPIC:
-- The article is about: "${params.articleTitle}"
-- The niche/topic area is: ${params.niche}
-- The main platform is: ${params.mainPlatform}${params.brandName ? `\n- The brand is: ${params.brandName}` : ""}
+--- FINAL CHECK ---
+Ensure the image is relevant to the article topic "${params.articleTitle}" and niche "${params.niche}", while maintaining the creative visual style from the box prompt above.`;
 
-VISUAL RELEVANCE RULES:
-- ALL characters, props, scenes, and visual elements MUST be directly relevant to the article topic "${params.articleTitle}" and the niche "${params.niche}".
-- If the article is about OSINT (Open Source Intelligence), the character should be a researcher, analyst, investigator, or someone working with data/intelligence - NOT a musician, synthesizer user, or unrelated profession.
-- If the article is about music marketing, the character should be related to music (artist, producer, marketer) - NOT a cybersecurity expert or unrelated field.
-- Props, tools, and visual elements must match the article's topic: for OSINT articles, show research tools, data visualization, screens with information; for music articles, show music-related items; for tech articles, show tech-related elements.
-- The scene, setting, and atmosphere must reflect the article's niche and topic, not generic or unrelated themes.
-- The character's appearance, clothing, and accessories should be appropriate for the article's niche and topic area.
-- DO NOT use generic characters or props that don't relate to the article topic - every visual element must support the article's subject matter.
-
-EXAMPLE: If the article is "OSINT Tools for Investigators", the image should show:
-- A character who looks like a researcher/investigator (not a musician or unrelated profession)
-- Props related to investigation/research (screens with data, maps, documents, analysis tools)
-- Setting appropriate for investigation work (office, research environment, not a music studio)
-
-The visual style from the box prompt above should be maintained, but ALL content (characters, props, scenes) must be relevant to the article topic "${params.articleTitle}" and niche "${params.niche}".`;
-
-  // Append context instructions to the prompt
-  prompt = prompt + contextInstructions;
+  // Combine: context header + box prompt + context footer
+  prompt = contextHeader + "\n\n" + prompt + contextFooter;
+  
+  // Log the final prompt for debugging (truncated to avoid console spam)
+  console.log("[buildImagePromptFromBox] Generated prompt for:", {
+    articleTitle: params.articleTitle,
+    niche: params.niche,
+    boxId: boxPrompt.id,
+    boxName: boxPrompt.name,
+    promptLength: prompt.length,
+    promptPreview: prompt.substring(0, 500) + "...",
+  });
   
   return prompt.trim();
 }
@@ -1502,15 +1512,43 @@ export function selectImageBoxPrompt(
     throw new Error("IMAGE_BOX_PROMPTS array is empty. Please add image box prompt components.");
   }
   
+  console.log("[selectImageBoxPrompt] Selection started:", {
+    totalBoxes: IMAGE_BOX_PROMPTS.length,
+    usedBoxIndices: Array.from(usedBoxIndices),
+    usedCount: usedBoxIndices.size,
+  });
+  
   // If all boxes have been used, reset the cycle
   const availableIndices = usedBoxIndices.size >= IMAGE_BOX_PROMPTS.length
-    ? Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i) // All boxes available
+    ? Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i) // All boxes available - cycle reset
     : Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i)
         .filter(i => !usedBoxIndices.has(i)); // Only unused boxes
+  
+  console.log("[selectImageBoxPrompt] Available indices:", availableIndices);
+  
+  if (availableIndices.length === 0) {
+    console.warn("[selectImageBoxPrompt] No available boxes! This should not happen. Resetting cycle.");
+    // Fallback: reset cycle if somehow no boxes are available
+    const allIndices = Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i);
+    const randomIndex = Math.floor(Math.random() * allIndices.length);
+    const selectedIndex = allIndices[randomIndex];
+    console.log("[selectImageBoxPrompt] Fallback selection:", selectedIndex);
+    return {
+      box: IMAGE_BOX_PROMPTS[selectedIndex],
+      index: selectedIndex,
+    };
+  }
   
   // Random selection from available boxes
   const randomIndex = Math.floor(Math.random() * availableIndices.length);
   const selectedIndex = availableIndices[randomIndex];
+  
+  console.log("[selectImageBoxPrompt] Selected box:", {
+    index: selectedIndex,
+    boxId: IMAGE_BOX_PROMPTS[selectedIndex].id,
+    boxName: IMAGE_BOX_PROMPTS[selectedIndex].name,
+    availableCount: availableIndices.length,
+  });
   
   return {
     box: IMAGE_BOX_PROMPTS[selectedIndex],

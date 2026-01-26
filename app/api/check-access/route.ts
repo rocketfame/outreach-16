@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Master IP addresses (must match proxy.ts)
-const MASTER_IPS = [
-  "79.168.81.227",
-  "93.108.241.96",
-  "2001:4860:7:225::fe",
-];
+import { isMasterIP } from "@/lib/accessConfig";
 
 function getClientIP(request: NextRequest): string | null {
   const cfConnectingIP = request.headers.get("cf-connecting-ip");
@@ -25,11 +19,6 @@ function getClientIP(request: NextRequest): string | null {
   }
   
   return null;
-}
-
-function isMasterIP(ip: string | null): boolean {
-  if (!ip) return false;
-  return MASTER_IPS.includes(ip);
 }
 
 export async function GET(req: NextRequest) {

@@ -1,27 +1,17 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { extractTrialToken, isMasterToken, isTrialToken } from "@/lib/trialLimits";
+import { isMasterIP } from "@/lib/accessConfig";
 
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "";
 const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS || "";
-
-// Master IP addresses (IPv4 and IPv6)
-const MASTER_IPS = [
-  "79.168.81.227", // IPv4
-  "93.108.241.96", // IPv4
-  "2001:4860:7:225::fe", // IPv6
-];
 
 // Check if maintenance gate is enabled (can be disabled via env)
 const isMaintenanceEnabled = () => {
   return process.env.MAINTENANCE_ENABLED !== "false";
 };
 
-// Check if IP is master IP
-function isMasterIP(ip: string | null): boolean {
-  if (!ip) return false;
-  return MASTER_IPS.includes(ip);
-}
+// IP checking is now handled by lib/accessConfig.ts
 
 // Get client IP from request
 function getClientIP(request: NextRequest): string | null {

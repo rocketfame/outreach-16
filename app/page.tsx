@@ -90,6 +90,10 @@ export default function Home() {
   // Track used box indices for each article (for random selection without repeats)
   // Key: topicId, Value: Set of box indices already used for this article
   const [articleUsedBoxIndices, setArticleUsedBoxIndices] = useState<Map<string, Set<number>>>(new Map());
+  
+  // CRITICAL: Track used box indices GLOBALLY across all articles in the session
+  // This ensures no box repeats across different articles until all boxes are used
+  const [globalUsedBoxIndices, setGlobalUsedBoxIndices] = useState<Set<number>>(new Set());
 
   // Local UI state (not persisted)
   const [expandedClusterNames, setExpandedClusterNames] = useState<Set<string>>(new Set());
@@ -4111,8 +4115,10 @@ export default function Home() {
       return;
     }
 
-    // Get used box indices for this article (empty Set for first generation)
-    const usedBoxIndices = articleUsedBoxIndices.get(topicId) ?? new Set<number>();
+    // CRITICAL: Use GLOBAL used box indices for the entire session
+    // This ensures no box repeats across different articles until all boxes are used
+    // Only after all boxes are used globally, the cycle resets
+    console.log("[generateArticleImage] Using global used box indices:", Array.from(globalUsedBoxIndices), "for article:", topicId);
 
     setIsGeneratingImage(prev => new Set(prev).add(topicId));
     setImageLoaderMessages(prev => {
@@ -4229,7 +4235,7 @@ export default function Home() {
           contentPurpose,
           brandName,
           customStyle: currentBrief.customStyle || undefined,
-          usedBoxIndices: Array.from(usedBoxIndices),
+          usedBoxIndices: Array.from(globalUsedBoxIndices), // Use GLOBAL list to prevent repeats across all articles in session
         }),
       });
 
@@ -4359,23 +4365,33 @@ export default function Home() {
         
         // Update used box indices after successful generation
         if (data.selectedBoxIndex !== undefined) {
+          // CRITICAL: Update GLOBAL used box indices for the entire session
+          // This ensures no box repeats across different articles until all boxes are used
+          setGlobalUsedBoxIndices(prev => {
+            const updated = new Set(prev);
+            
+            // Check if the returned index is already in the global set
+            // This means the backend reset the cycle (all boxes were used)
+            // In this case, we should also reset on frontend
+            if (updated.has(data.selectedBoxIndex!)) {
+              // Cycle reset - all boxes were used, start fresh with just this index
+              console.log("[generateArticleImage] All boxes used globally, resetting cycle. New box index:", data.selectedBoxIndex);
+              return new Set([data.selectedBoxIndex!]);
+            } else {
+              // Normal case - add the new index to global set
+              updated.add(data.selectedBoxIndex!);
+              console.log("[generateArticleImage] Added box index to global set:", data.selectedBoxIndex, "Total used globally:", updated.size);
+              return updated;
+            }
+          });
+          
+          // Also update per-article tracking for reference (but use global for selection)
           setArticleUsedBoxIndices(prev => {
             const next = new Map(prev);
             const currentUsed = next.get(topicId) ?? new Set<number>();
-            
-            // Check if the returned index is already in the set
-            // This means the backend reset the cycle (all boxes were used)
-            // In this case, we should also reset on frontend
-            if (currentUsed.has(data.selectedBoxIndex!)) {
-              // Cycle reset - start fresh with just this index
-              next.set(topicId, new Set([data.selectedBoxIndex!]));
-            } else {
-              // Normal case - add the new index
-              const updatedUsed = new Set(currentUsed);
-              updatedUsed.add(data.selectedBoxIndex!);
-              next.set(topicId, updatedUsed);
-            }
-            
+            const updatedUsed = new Set(currentUsed);
+            updatedUsed.add(data.selectedBoxIndex!);
+            next.set(topicId, updatedUsed);
             return next;
           });
         }
