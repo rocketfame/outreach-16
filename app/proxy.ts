@@ -25,17 +25,40 @@ function isMasterIP(ip: string | null): boolean {
 // Get client IP from request
 function getClientIP(request: NextRequest): string | null {
   // Try various headers (Vercel, Cloudflare, etc.)
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
+  // Priority order matters - try most reliable first
+  
+  // 1. Cloudflare (if using Cloudflare)
+  const cfConnectingIP = request.headers.get("cf-connecting-ip");
+  if (cfConnectingIP) {
+    console.log("[getClientIP] Using cf-connecting-ip:", cfConnectingIP);
+    return cfConnectingIP;
   }
   
+  // 2. x-real-ip (common in many proxies)
   const realIP = request.headers.get("x-real-ip");
-  if (realIP) return realIP;
+  if (realIP) {
+    console.log("[getClientIP] Using x-real-ip:", realIP);
+    return realIP;
+  }
   
-  const cfConnectingIP = request.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) return cfConnectingIP;
+  // 3. x-forwarded-for (last resort, may contain multiple IPs)
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    // Take the first IP (client IP, before proxies)
+    const firstIP = forwardedFor.split(",")[0].trim();
+    console.log("[getClientIP] Using x-forwarded-for (first):", firstIP, "full:", forwardedFor);
+    return firstIP;
+  }
   
+  // 4. Try Vercel-specific headers
+  const vercelIP = request.headers.get("x-vercel-forwarded-for");
+  if (vercelIP) {
+    const firstIP = vercelIP.split(",")[0].trim();
+    console.log("[getClientIP] Using x-vercel-forwarded-for:", firstIP);
+    return firstIP;
+  }
+  
+  console.log("[getClientIP] No IP found in headers");
   return null;
 }
 
@@ -68,6 +91,18 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Get client IP
   const clientIP = getClientIP(request);
   const isMasterIPAddress = isMasterIP(clientIP);
+  
+  // Debug logging for IP detection
+  if (process.env.NODE_ENV === "development" || request.nextUrl.pathname === "/") {
+    console.log("[proxy] IP Detection:", {
+      clientIP,
+      isMasterIP: isMasterIPAddress,
+      forwardedFor: request.headers.get("x-forwarded-for"),
+      realIP: request.headers.get("x-real-ip"),
+      cfConnectingIP: request.headers.get("cf-connecting-ip"),
+      pathname: request.nextUrl.pathname,
+    });
+  }
   
   // Check for trial token first (allows access without basic auth)
   // Extract trial token from:

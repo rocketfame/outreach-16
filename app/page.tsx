@@ -445,13 +445,27 @@ export default function Home() {
     const fetchBalance = async () => {
       try {
         const trialToken = getTrialTokenFromURL();
+        console.log('[fetchBalance] Starting, trialToken:', trialToken);
         const apiUrl = trialToken 
           ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`
           : `/api/trial-usage?_t=${Date.now()}`;
         
+        console.log('[fetchBalance] Fetching from:', apiUrl);
         const response = await fetch(apiUrl);
+        console.log('[fetchBalance] Response status:', response.status, response.ok);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('[fetchBalance] Data received:', {
+            isTrial: data.isTrial,
+            isMaster: data.isMaster,
+            topicDiscoveryRunsRemaining: data.topicDiscoveryRunsRemaining,
+            articlesRemaining: data.articlesRemaining,
+            imagesRemaining: data.imagesRemaining,
+            topicDiscoveryRuns: data.topicDiscoveryRuns,
+            articlesGenerated: data.articlesGenerated,
+            imagesGenerated: data.imagesGenerated,
+          });
           
           // CRITICAL: Update trialUsage state FIRST for instant limit checks
           if (data.isTrial) {
@@ -472,7 +486,15 @@ export default function Home() {
                 data.articlesRemaining === 0 && 
                 data.imagesRemaining === 0;
             
+            console.log('[fetchBalance] All credits exhausted check:', {
+              allCreditsExhausted,
+              topicDiscoveryRunsRemaining: data.topicDiscoveryRunsRemaining,
+              articlesRemaining: data.articlesRemaining,
+              imagesRemaining: data.imagesRemaining,
+            });
+            
             if (allCreditsExhausted) {
+              console.log('[fetchBalance] All credits exhausted, showing widget');
               setTrialStats({
                 topicSearches: data.topicDiscoveryRuns || 0,
                 articles: data.articlesGenerated || 0,
@@ -480,6 +502,7 @@ export default function Home() {
               });
               // Show widget immediately - limits are exhausted (stored in KV)
               setIsCreditsExhaustedOpen(true);
+              console.log('[fetchBalance] isCreditsExhaustedOpen set to true');
             }
             
             // Also check individual limits - show widget if ANY limit is exhausted
@@ -489,9 +512,17 @@ export default function Home() {
             const articlesExhausted = data.articlesRemaining === 0;
             const imagesExhausted = data.imagesRemaining === 0;
             
+            console.log('[fetchBalance] Individual limits check:', {
+              topicDiscoveryExhausted,
+              articlesExhausted,
+              imagesExhausted,
+              anyExhausted: topicDiscoveryExhausted || articlesExhausted || imagesExhausted,
+            });
+            
             // If any limit is exhausted, show widget immediately on page load
             // This ensures widget appears right away when user visits trial link with exhausted limits
             if (topicDiscoveryExhausted || articlesExhausted || imagesExhausted) {
+              console.log('[fetchBalance] At least one limit exhausted, showing widget');
               setTrialStats({
                 topicSearches: data.topicDiscoveryRuns || 0,
                 articles: data.articlesGenerated || 0,
@@ -499,6 +530,9 @@ export default function Home() {
               });
               // Show widget immediately - at least one limit is exhausted (stored in KV)
               setIsCreditsExhaustedOpen(true);
+              console.log('[fetchBalance] isCreditsExhaustedOpen set to true (individual limit)');
+            } else {
+              console.log('[fetchBalance] No limits exhausted, widget will not show');
             }
           } else if (data.isMaster) {
             setTrialUsage({
@@ -2387,9 +2421,11 @@ export default function Home() {
       }
 
       // Update generated article with result
-      // Preserve titleTag from the generating state if API didn't return one
+      // CRITICAL: For direct article mode, always preserve directArticleTopic as titleTag
+      // This ensures H1 is always displayed correctly in preview
       const existingArticle = generatedArticles.find(a => a.topicTitle === articleId);
-      const preservedTitleTag = existingArticle?.titleTag || data.articles[0]?.titleTag || directArticleTopic;
+      // Priority: 1) existing titleTag (set during generation), 2) API response, 3) directArticleTopic
+      const preservedTitleTag = existingArticle?.titleTag || data.articles[0]?.titleTag || directArticleTopic || articleId;
       
       console.log("[generateDirectArticle] Updating article:", {
         articleId,
@@ -6063,6 +6099,16 @@ export default function Home() {
       })()}
       {/* #endregion */}
       
+      {/* DEBUG: Log before rendering CreditsExhausted */}
+      {(() => {
+        console.log('[page.tsx] About to render CreditsExhausted', {
+          isCreditsExhaustedOpen,
+          hasTrialStats: !!trialStats,
+          trialStats,
+        });
+        return null;
+      })()}
+      
       <CreditsExhausted
         isOpen={isCreditsExhaustedOpen}
         onClose={() => {
@@ -6914,7 +6960,16 @@ export default function Home() {
                                           <span>Close</span>
                                         </button>
                                       </div>
-                                      <h1 className="article-view-title">{article.titleTag || topic?.workingTitle || topicId}</h1>
+                                      <h1 className="article-view-title">
+                                        {(() => {
+                                          // For direct article mode, use titleTag first, then directArticleTopic
+                                          if (mode === "direct") {
+                                            return article.titleTag || directArticleTopic || topicId;
+                                          }
+                                          // For discovery mode, use titleTag, then topic workingTitle
+                                          return article.titleTag || topic?.workingTitle || topicId;
+                                        })()}
+                                      </h1>
                                       {article.createdAt && (
                                         <div className="article-created-date" style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
                                           Created: {new Date(article.createdAt).toLocaleString()}

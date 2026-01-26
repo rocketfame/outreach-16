@@ -296,17 +296,22 @@ export function extractTrialToken(request: Request | { url: string; headers: Hea
   // Try to get from query parameter (for URL-based access)
   const url = new URL(request.url);
   const tokenFromQuery = url.searchParams.get("trial");
+  console.log("[extractTrialToken] Token from query:", tokenFromQuery);
   
   if (tokenFromQuery) {
+    console.log("[extractTrialToken] Returning token from query:", tokenFromQuery);
     return tokenFromQuery;
   }
 
   // Try to get from header
   const tokenFromHeader = request.headers.get("x-trial-token");
+  console.log("[extractTrialToken] Token from header:", tokenFromHeader);
   if (tokenFromHeader) {
+    console.log("[extractTrialToken] Returning token from header:", tokenFromHeader);
     return tokenFromHeader;
   }
 
+  console.log("[extractTrialToken] No token found");
   return null;
 }
 

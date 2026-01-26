@@ -21,6 +21,7 @@ const rgbToHex = (r: number, g: number, b: number): string => {
 export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStats }: CreditsExhaustedProps) {
   // #region agent log
   useEffect(() => {
+    console.log('[CreditsExhausted] Component rendered/re-rendered', { isOpen, hasTrialStats: !!trialStats, trialStats });
     fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:21',message:'Component rendered',data:{isOpen,hasTrialStats:!!trialStats,trialStats},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
   }, [isOpen, trialStats]);
   // #endregion

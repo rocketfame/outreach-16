@@ -54,16 +54,37 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if valid trial token
-    if (!isTrialToken(trialToken)) {
+    console.log('[trial-usage API] Checking if token is valid trial token:', trialToken);
+    const isValidTrial = isTrialToken(trialToken);
+    console.log('[trial-usage API] Is valid trial token:', isValidTrial);
+    
+    if (!isValidTrial) {
+      console.log('[trial-usage API] Invalid trial token, returning 400');
       return NextResponse.json({
         isMaster: false,
         isTrial: false,
         error: "Invalid trial token",
       }, { status: 400 });
     }
+    
+    console.log('[trial-usage API] Token is valid, proceeding to get usage');
 
     // Get usage for trial token
     const usage = await getTrialUsage(trialToken);
+    console.log('[trial-usage API] Usage from KV:', usage);
+    
+    const articlesRemaining = Math.max(0, TRIAL_LIMITS.MAX_ARTICLES - usage.articlesGenerated);
+    const topicDiscoveryRunsRemaining = Math.max(0, TRIAL_LIMITS.MAX_TOPIC_DISCOVERY_RUNS - usage.topicDiscoveryRuns);
+    const imagesRemaining = Math.max(0, TRIAL_LIMITS.MAX_IMAGES - usage.imagesGenerated);
+    
+    console.log('[trial-usage API] Calculated remaining:', {
+      articlesRemaining,
+      topicDiscoveryRunsRemaining,
+      imagesRemaining,
+      articlesGenerated: usage.articlesGenerated,
+      topicDiscoveryRuns: usage.topicDiscoveryRuns,
+      imagesGenerated: usage.imagesGenerated,
+    });
     
     const response = {
       isMaster: false,
@@ -74,10 +95,12 @@ export async function GET(req: NextRequest) {
       maxArticles: TRIAL_LIMITS.MAX_ARTICLES,
       maxTopicDiscoveryRuns: TRIAL_LIMITS.MAX_TOPIC_DISCOVERY_RUNS,
       maxImages: TRIAL_LIMITS.MAX_IMAGES,
-      articlesRemaining: Math.max(0, TRIAL_LIMITS.MAX_ARTICLES - usage.articlesGenerated),
-      topicDiscoveryRunsRemaining: Math.max(0, TRIAL_LIMITS.MAX_TOPIC_DISCOVERY_RUNS - usage.topicDiscoveryRuns),
-      imagesRemaining: Math.max(0, TRIAL_LIMITS.MAX_IMAGES - usage.imagesGenerated),
+      articlesRemaining,
+      topicDiscoveryRunsRemaining,
+      imagesRemaining,
     };
+    
+    console.log('[trial-usage API] Response:', response);
     
     // #region agent log
     const usageLog = {location:'trial-usage/route.ts:67',message:'Trial usage data prepared',data:response,timestamp:Date.now(),sessionId:'debug-session',runId:'api-trial-usage',hypothesisId:'api-endpoint'};
