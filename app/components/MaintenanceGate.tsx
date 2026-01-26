@@ -46,6 +46,15 @@ const isMasterUser = () => {
   const cookies = document.cookie.split(";");
   const isMasterIP = cookies.some(c => c.trim().startsWith("is_master_ip=true"));
   const bypassMaintenance = cookies.some(c => c.trim().startsWith("bypass_maintenance=true"));
+  
+  // Debug logging
+  console.log("[MaintenanceGate] Checking master user:", {
+    cookies: document.cookie,
+    isMasterIP,
+    bypassMaintenance,
+    result: isMasterIP || bypassMaintenance,
+  });
+  
   return isMasterIP || bypassMaintenance;
 };
 
@@ -71,6 +80,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
 
     // Check if user is master (from cookie)
     if (isMasterUser()) {
+      console.log("[MaintenanceGate] Master user detected via cookie, bypassing gate");
       setShowGate(false);
       setIsLoading(false);
       return;
@@ -79,10 +89,16 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
     // Check maintenance gate header (set by proxy)
     const maintenanceHeader = document.querySelector('meta[name="maintenance-gate"]');
     if (maintenanceHeader?.getAttribute("content") === "false") {
+      console.log("[MaintenanceGate] Maintenance gate disabled via meta tag");
       setShowGate(false);
       setIsLoading(false);
       return;
     }
+    
+    // Show gate for non-master users without valid trial token
+    console.log("[MaintenanceGate] Showing maintenance gate");
+    setShowGate(true);
+    setIsLoading(false);
 
     // Show gate for non-master users without valid trial token
     setShowGate(true);

@@ -177,9 +177,21 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   if (request.nextUrl.pathname === "/" && !trialToken) {
     // Master IP always has access
     if (isMasterIPAddress) {
+      console.log("[proxy] Master IP detected, granting access:", clientIP);
       const response = NextResponse.next();
-      response.cookies.set("is_master_ip", "true");
-      response.cookies.set("bypass_maintenance", "true");
+      // Set cookies with proper attributes for cross-domain support
+      response.cookies.set("is_master_ip", "true", {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+      response.cookies.set("bypass_maintenance", "true", {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+      // Also set header for client-side check
+      response.headers.set("x-master-ip", "true");
       return response;
     }
     
@@ -217,9 +229,20 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   if (!trialToken && request.nextUrl.pathname.startsWith("/api/")) {
     // Master IP always has access
     if (isMasterIPAddress) {
+      console.log("[proxy] Master IP detected for API route, granting access:", clientIP);
       const response = NextResponse.next();
-      response.cookies.set("is_master_ip", "true");
-      response.cookies.set("bypass_maintenance", "true");
+      // Set cookies with proper attributes for cross-domain support
+      response.cookies.set("is_master_ip", "true", {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+      response.cookies.set("bypass_maintenance", "true", {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+      response.headers.set("x-master-ip", "true");
       return response;
     }
     
@@ -245,9 +268,20 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   if (!trialToken && !request.nextUrl.pathname.startsWith("/api/") && request.nextUrl.pathname !== "/") {
     // Master IP always has access
     if (isMasterIPAddress) {
+      console.log("[proxy] Master IP detected for other route, granting access:", clientIP);
       const response = NextResponse.next();
-      response.cookies.set("is_master_ip", "true");
-      response.cookies.set("bypass_maintenance", "true");
+      // Set cookies with proper attributes for cross-domain support
+      response.cookies.set("is_master_ip", "true", {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+      response.cookies.set("bypass_maintenance", "true", {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+      response.headers.set("x-master-ip", "true");
       return response;
     }
     
@@ -263,8 +297,19 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next();
   // Mark master IP in cookie for client-side check
   if (isMasterIPAddress) {
-    response.cookies.set("is_master_ip", "true");
-    response.cookies.set("bypass_maintenance", "true");
+    console.log("[proxy] Master IP detected, setting cookies:", clientIP);
+    // Set cookies with proper attributes for cross-domain support
+    response.cookies.set("is_master_ip", "true", {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+    response.cookies.set("bypass_maintenance", "true", {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+    response.headers.set("x-master-ip", "true");
   }
   return response;
 }
