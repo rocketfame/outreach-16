@@ -8,6 +8,7 @@ const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS || "";
 // Master IP addresses (IPv4 and IPv6)
 const MASTER_IPS = [
   "79.168.81.227", // IPv4
+  "93.108.241.96", // IPv4
   "2001:4860:7:225::fe", // IPv6
 ];
 
