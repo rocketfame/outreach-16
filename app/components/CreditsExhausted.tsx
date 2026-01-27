@@ -13,25 +13,34 @@ interface CreditsExhaustedProps {
   };
 }
 
-// Helper function to convert RGB 0-1 to hex
-const rgbToHex = (r: number, g: number, b: number): string => {
-  return `#${Math.round(r * 255).toString(16).padStart(2, '0')}${Math.round(g * 255).toString(16).padStart(2, '0')}${Math.round(b * 255).toString(16).padStart(2, '0')}`;
-};
+/**
+ * Design tokens — sync with Figma OutRea:
+ * https://www.figma.com/design/A5QmFDenHInwQnft6pk8KO/OutRea?node-id=5-1739&m=dev
+ * Update hex/gradient values when refreshing from Figma.
+ */
+const TOKENS = {
+  overlay: "rgba(0, 0, 0, 0.5)",
+  modalBg: "#ffffff",
+  modalRadius: 16,
+  modalShadow: "0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  border: "#E5E7EB",
+  textPrimary: "#4A5568",
+  textSecondary: "#111827",
+  cardBg: "#F7F8FA",
+  cardRadius: 12,
+  /** CTA gradient — Figma: orange → pink */
+  gradientStart: "#FF6900",
+  gradientEnd: "#F73399",
+  gradient: "linear-gradient(90deg, #FF6900 0%, #F73399 100%)",
+  success: "#10b981",
+  iconSize: 80,
+  iconInnerSize: 40,
+} as const;
 
 export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStats }: CreditsExhaustedProps) {
-  // #region agent log
-  useEffect(() => {
-    console.log('[CreditsExhausted] Component rendered/re-rendered', { isOpen, hasTrialStats: !!trialStats, trialStats });
-    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:21',message:'Component rendered',data:{isOpen,hasTrialStats:!!trialStats,trialStats},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
-  }, [isOpen, trialStats]);
-  // #endregion
-  
-  // Close on Escape key and lock body scroll
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
+      if (e.key === "Escape" && isOpen) onClose();
     };
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
@@ -43,41 +52,9 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
     };
   }, [isOpen, onClose]);
 
-  // Log that we're about to render the modal
-  useEffect(() => {
-    if (isOpen) {
-      // Use setTimeout to check DOM after render
-      setTimeout(() => {
-        const modalElement = document.querySelector('[data-testid="credits-exhausted-modal"]');
-        console.log('[CreditsExhausted] Modal rendered, isOpen:', isOpen, 'Modal in DOM:', !!modalElement);
-        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:54',message:'Component rendering modal - isOpen is true',data:{isOpen,hasTrialStats:!!trialStats,modalInDom:!!modalElement},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
-      }, 0);
-    } else {
-      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreditsExhausted.tsx:46',message:'Component returning null - isOpen is false',data:{isOpen},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'component-lifecycle'})}).catch(()=>{});
-    }
-  }, [isOpen, trialStats]);
+  if (!isOpen) return null;
 
-  // CRITICAL: Always render when isOpen is true - ensure component is in DOM
-  // Simple conditional rendering - same pattern as UpgradeModal
-  if (!isOpen) {
-    return null;
-  }
-
-  // Colors from Figma
-  const overlayBg = "rgba(0, 0, 0, 0.5)";
-  const modalBg = "#ffffff";
-  const borderColor = rgbToHex(0.898, 0.906, 0.922);
-  const textPrimary = rgbToHex(0.289, 0.334, 0.396);
-  const textSecondary = rgbToHex(0.065, 0.094, 0.157);
-  const gradientButton = `linear-gradient(90deg, ${rgbToHex(1, 0.411, 0)} 0%, ${rgbToHex(0.966, 0.198, 0.604)} 100%)`;
-  const iconBgGradient = gradientButton;
-  const savingsColor = "#10b981"; // Green
-
-  const stats = trialStats || {
-    topicSearches: 0,
-    articles: 0,
-    images: 0,
-  };
+  const stats = trialStats ?? { topicSearches: 0, articles: 0, images: 0 };
 
   const unlockFeatures = [
     { label: "Unlimited", value: "topic research" },
@@ -91,285 +68,275 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
   return (
     <div
       data-testid="credits-exhausted-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="credits-exhausted-title"
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: overlayBg,
+        inset: 0,
+        backgroundColor: TOKENS.overlay,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 9999,
-        padding: "1rem",
+        padding: 16,
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         style={{
-          backgroundColor: modalBg,
-          borderRadius: "16px",
-          maxWidth: "600px",
+          position: "relative",
+          backgroundColor: TOKENS.modalBg,
+          borderRadius: TOKENS.modalRadius,
+          boxShadow: TOKENS.modalShadow,
+          maxWidth: 480,
           width: "100%",
           maxHeight: "90vh",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04)",
           overflow: "hidden",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Scrollable Content */}
-        <div
+        {/* Close button */}
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
           style={{
-            overflowY: "auto",
-            padding: "24px",
-            flex: 1,
+            position: "absolute",
+            top: 16,
+            right: 16,
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            border: "none",
+            background: TOKENS.cardBg,
+            color: TOKENS.textPrimary,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1,
           }}
         >
-          {/* Header with Icon */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "24px" }}>
-            {/* Icon with gradient background */}
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div style={{ overflowY: "auto", padding: "24px 24px 0", flex: 1 }}>
+          {/* Header */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24 }}>
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: TOKENS.iconSize,
+                height: TOKENS.iconSize,
                 borderRadius: "50%",
-                background: iconBgGradient,
+                background: TOKENS.gradient,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: "16px",
-                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+                marginBottom: 16,
+                boxShadow: "0 4px 14px rgba(255, 105, 0, 0.35)",
               }}
             >
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.33" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                <path d="M12 8V16M8 12H16" />
+              <svg width={TOKENS.iconInnerSize} height={TOKENS.iconInnerSize} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
             </div>
-
-            <h2 style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "24px",
-              fontWeight: 600,
-              lineHeight: "32px",
-              color: textSecondary,
-              margin: "0 0 8px 0",
-              textAlign: "center",
-            }}>
+            <h2
+              id="credits-exhausted-title"
+              style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 24,
+                fontWeight: 600,
+                lineHeight: "32px",
+                color: TOKENS.textSecondary,
+                margin: "0 0 8px",
+                textAlign: "center",
+              }}
+            >
               Your Trial Period Has Ended
             </h2>
-
-            <p style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "14px",
-              fontWeight: 400,
-              lineHeight: "20px",
-              color: textPrimary,
-              margin: 0,
-              textAlign: "center",
-            }}>
+            <p
+              style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 14,
+                fontWeight: 400,
+                lineHeight: "20px",
+                color: TOKENS.textPrimary,
+                margin: 0,
+                textAlign: "center",
+              }}
+            >
               You've explored what our AI content creator can do! Ready to unlock unlimited potential?
             </p>
           </div>
 
           {/* What you accomplished */}
-          <div style={{
-            border: `1px solid ${borderColor}`,
-            borderRadius: "12px",
-            padding: "16px",
-            marginBottom: "24px",
-            backgroundColor: rgbToHex(0.969, 0.973, 0.980),
-          }}>
-            <div style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "14px",
-              fontWeight: 500,
-              lineHeight: "20px",
-              color: textSecondary,
-              marginBottom: "16px",
-            }}>
+          <div
+            style={{
+              backgroundColor: TOKENS.cardBg,
+              border: `1px solid ${TOKENS.border}`,
+              borderRadius: TOKENS.cardRadius,
+              padding: 16,
+              marginBottom: 24,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                lineHeight: "20px",
+                color: TOKENS.textSecondary,
+                marginBottom: 16,
+              }}
+            >
               What you accomplished in trial:
             </div>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "16px",
-            }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "24px",
-                  fontWeight: 600,
-                  lineHeight: "32px",
-                  color: textSecondary,
-                  marginBottom: "4px",
-                }}>
-                  {stats.topicSearches}
-                </div>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "12px",
-                  fontWeight: 400,
-                  lineHeight: "16px",
-                  color: textPrimary,
-                }}>
-                  Topic Searches
-                </div>
-              </div>
-
-              <div style={{ textAlign: "center" }}>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "24px",
-                  fontWeight: 600,
-                  lineHeight: "32px",
-                  color: textSecondary,
-                  marginBottom: "4px",
-                }}>
-                  {stats.articles}
-                </div>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "12px",
-                  fontWeight: 400,
-                  lineHeight: "16px",
-                  color: textPrimary,
-                }}>
-                  Articles
-                </div>
-              </div>
-
-              <div style={{ textAlign: "center" }}>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "24px",
-                  fontWeight: 600,
-                  lineHeight: "32px",
-                  color: textSecondary,
-                  marginBottom: "4px",
-                }}>
-                  {stats.images}
-                </div>
-                <div style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: "12px",
-                  fontWeight: 400,
-                  lineHeight: "16px",
-                  color: textPrimary,
-                }}>
-                  Image
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Upgrade to unlock */}
-          <div style={{
-            border: `1px solid ${borderColor}`,
-            borderRadius: "12px",
-            padding: "16px",
-            marginBottom: "24px",
-          }}>
-            <div style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "14px",
-              fontWeight: 500,
-              lineHeight: "20px",
-              color: textSecondary,
-              marginBottom: "16px",
-            }}>
-              Upgrade to unlock:
-            </div>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
-              gap: "12px",
-            }}>
-              {unlockFeatures.map((feature, index) => (
-                <div key={index} style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "8px",
-                }}>
-                  {/* Checkmark Icon */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={savingsColor} strokeWidth="2" style={{ flexShrink: 0, marginTop: "2px" }}>
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
-                  <div>
-                    <div style={{
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+              {[
+                { value: stats.topicSearches, label: "Topic Searches" },
+                { value: stats.articles, label: "Articles" },
+                { value: stats.images, label: "Images" },
+              ].map(({ value, label }) => (
+                <div key={label} style={{ textAlign: "center" }}>
+                  <div
+                    style={{
                       fontFamily: "Inter, system-ui, sans-serif",
-                      fontSize: "12px",
-                      fontWeight: 500,
-                      lineHeight: "16px",
-                      color: textSecondary,
-                    }}>
-                      {feature.label}
-                    </div>
-                    <div style={{
+                      fontSize: 24,
+                      fontWeight: 600,
+                      lineHeight: "32px",
+                      color: TOKENS.textSecondary,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {value}
+                  </div>
+                  <div
+                    style={{
                       fontFamily: "Inter, system-ui, sans-serif",
-                      fontSize: "12px",
+                      fontSize: 12,
                       fontWeight: 400,
                       lineHeight: "16px",
-                      color: textPrimary,
-                    }}>
-                      {feature.value}
-                    </div>
+                      color: TOKENS.textPrimary,
+                    }}
+                  >
+                    {label}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Pricing */}
-          <div style={{
-            textAlign: "center",
-            marginBottom: "24px",
-          }}>
-            <div style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "14px",
-              fontWeight: 400,
-              lineHeight: "20px",
-              color: textPrimary,
-            }}>
-              Starting at $19/month
+          {/* Upgrade to unlock */}
+          <div
+            style={{
+              border: `1px solid ${TOKENS.border}`,
+              borderRadius: TOKENS.cardRadius,
+              padding: 16,
+              marginBottom: 24,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                lineHeight: "20px",
+                color: TOKENS.textSecondary,
+                marginBottom: 16,
+              }}
+            >
+              Upgrade to unlock:
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px 16px" }}>
+              {unlockFeatures.map(({ label, value }) => (
+                <div key={`${label}-${value}`} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <svg
+                    width={16}
+                    height={16}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={TOKENS.success}
+                    strokeWidth="2"
+                    style={{ flexShrink: 0, marginTop: 2 }}
+                  >
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                  <div>
+                    <span
+                      style={{
+                        fontFamily: "Inter, system-ui, sans-serif",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        lineHeight: "16px",
+                        color: TOKENS.textSecondary,
+                      }}
+                    >
+                      {label}{" "}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "Inter, system-ui, sans-serif",
+                        fontSize: 12,
+                        fontWeight: 400,
+                        lineHeight: "16px",
+                        color: TOKENS.textPrimary,
+                      }}
+                    >
+                      {value}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <span
+              style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 14,
+                fontWeight: 400,
+                lineHeight: "20px",
+                color: TOKENS.textPrimary,
+              }}
+            >
+              Starting at $19/month
+            </span>
           </div>
         </div>
 
-        {/* Fixed Footer with Upgrade Button */}
-        <div style={{
-          padding: "24px",
-          borderTop: `1px solid ${borderColor}`,
-          backgroundColor: modalBg,
-        }}>
+        {/* Footer CTA */}
+        <div
+          style={{
+            padding: 24,
+            borderTop: `1px solid ${TOKENS.border}`,
+            backgroundColor: TOKENS.modalBg,
+          }}
+        >
           <button
+            type="button"
             onClick={onUpgrade}
             style={{
               width: "100%",
               padding: "12px 24px",
-              background: gradientButton,
-              color: "#ffffff",
+              background: TOKENS.gradient,
+              color: "#fff",
               border: "none",
-              borderRadius: "8px",
+              borderRadius: 8,
               fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "14px",
+              fontSize: 14,
               fontWeight: 500,
               lineHeight: "20px",
               cursor: "pointer",
-              transition: "opacity 0.2s",
+              transition: "opacity 0.2s, transform 0.05s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = "0.9";
+              e.currentTarget.style.opacity = "0.92";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = "1";
