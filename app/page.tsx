@@ -9,6 +9,7 @@ import CreditsExhausted from "./components/CreditsExhausted";
 import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
+import { PLATFORM_PRESETS, NICHE_TO_PRESET_KEY, NICHE_PRESET_LABELS } from "@/config/platformPresets";
 import { copyArticleAsPlainText, downloadArticleAsTxt, extractPlainTextFromElement } from "@/lib/articlePlainText";
 import { cleanText } from "@/lib/textPostProcessing";
 
@@ -67,6 +68,10 @@ export default function Home() {
   const brief = mode === "discovery" 
     ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
     : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
+
+  // Platform presets depend on selected niche; custom niche ⇒ default (Multi-platform only)
+  const selectedNicheKey = (brief.niche && NICHE_TO_PRESET_KEY[brief.niche]) ? NICHE_TO_PRESET_KEY[brief.niche] : "default";
+  const platformPresetsList = PLATFORM_PRESETS[selectedNicheKey] ?? PLATFORM_PRESETS.default;
   
   
   // Ensure language has a default value if empty (for backward compatibility)
@@ -5249,17 +5254,7 @@ export default function Home() {
               
               {/* Niche Preset Chips */}
               <div className="niche-presets">
-                {[
-                  "Music industry",
-                  "IT",
-                  "Med tech",
-                  "Mil tech",
-                  "Casino",
-                  "Gambling",
-                  "Astrology",
-                  "VPN",
-                  "HR"
-                ].map((preset) => (
+                {NICHE_PRESET_LABELS.map((preset) => (
                   <TagPill
                     key={preset}
                     label={preset}
@@ -5344,20 +5339,9 @@ export default function Home() {
               />
               <small>Select a preset or enter a custom platform/query. This value will be used to search for relevant topics via Tavily browsing.</small>
               
-              {/* Platform Preset Chips */}
+              {/* Platform Preset Chips — depend on selected niche (see config/platformPresets.ts) */}
               <div className="niche-presets">
-                {[
-                  "Multi-platform",
-                  "Spotify",
-                  "YouTube",
-                  "TikTok",
-                  "Instagram",
-                  "SoundCloud",
-                  "Beatport",
-                  "Deezer",
-                  "Tidal",
-                  "Music industry"
-                ].map((preset) => (
+                {platformPresetsList.map((preset) => (
                   <TagPill
                     key={preset}
                     label={preset}
