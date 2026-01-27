@@ -451,7 +451,7 @@ export default function Home() {
         const trialToken = getTrialTokenFromURL();
         console.log('[fetchBalance] Starting, trialToken:', trialToken);
         const apiUrl = trialToken 
-          ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`
+          ? `/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`
           : `/api/trial-usage?_t=${Date.now()}`;
         
         console.log('[fetchBalance] Fetching from:', apiUrl);
@@ -576,6 +576,43 @@ export default function Home() {
     }
   }, [isHydrated]);
 
+  // CRITICAL: For trial URLs, fetch trial-usage as soon as component mounts (before hydration)
+  // so "already exhausted" links show CreditsExhausted immediately on load or on first click
+  useEffect(() => {
+    const token = getTrialTokenFromURL();
+    if (!token) return;
+    let cancelled = false;
+    fetch(`/api/trial-usage?trial=${encodeURIComponent(token)}&_t=${Date.now()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.isTrial) return;
+        setTrialUsage({
+          isTrial: true,
+          topicDiscoveryRunsRemaining: data.topicDiscoveryRunsRemaining,
+          articlesRemaining: data.articlesRemaining,
+          imagesRemaining: data.imagesRemaining,
+          topicDiscoveryRuns: data.topicDiscoveryRuns || 0,
+          articlesGenerated: data.articlesGenerated || 0,
+          imagesGenerated: data.imagesGenerated || 0,
+        });
+        const anyExhausted =
+          data.topicDiscoveryRunsRemaining === 0 ||
+          data.articlesRemaining === 0 ||
+          data.imagesRemaining === 0;
+        if (anyExhausted) {
+          setTrialStats({
+            topicSearches: data.topicDiscoveryRuns || 0,
+            articles: data.articlesGenerated || 0,
+            images: data.imagesGenerated || 0,
+          });
+          setIsCreditsExhaustedOpen(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Listen for openUpgradeModal event
   useEffect(() => {
