@@ -147,6 +147,15 @@ export default function Home() {
   const [isCreditsExhaustedOpen, setIsCreditsExhaustedOpen] = useState(false);
   const [trialStats, setTrialStats] = useState<{ topicSearches: number; articles: number; images: number } | undefined>(undefined);
 
+  const isUpgradeModalOpenRef = useRef(false);
+  useEffect(() => {
+    isUpgradeModalOpenRef.current = isUpgradeModalOpen;
+  }, [isUpgradeModalOpen]);
+  /** Open CreditsExhausted only when Upgrade modal is closed — never show "Trial ended" on top of Upgrade. */
+  const openCreditsExhaustedModal = () => {
+    if (!isUpgradeModalOpenRef.current) setIsCreditsExhaustedOpen(true);
+  };
+
   // Unified function to check trial limits BEFORE starting generation
   // Helper function to refresh trialUsage from API
   const refreshTrialUsage = async () => {
@@ -178,7 +187,7 @@ export default function Home() {
               articles: data.articlesGenerated || 0,
               images: data.imagesGenerated || 0,
             });
-            setIsCreditsExhaustedOpen(true);
+            openCreditsExhaustedModal();
           }
         }
       }
@@ -214,7 +223,7 @@ export default function Home() {
           articles: trialUsage.articlesGenerated || 0,
           images: trialUsage.imagesGenerated || 0,
         });
-        setIsCreditsExhaustedOpen(true);
+        openCreditsExhaustedModal();
         // Still fetch fresh data in background, but don't wait
         fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).catch(()=>{});
         return { allowed: false, allCreditsExhausted: true };
@@ -228,7 +237,7 @@ export default function Home() {
           articles: trialUsage.articlesGenerated || 0,
           images: trialUsage.imagesGenerated || 0,
         });
-        setIsCreditsExhaustedOpen(true);
+        openCreditsExhaustedModal();
         // Refresh data in background but don't wait
         fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).then(r => r.ok && r.json()).then(d => {
           if (d?.isTrial) {
@@ -254,7 +263,7 @@ export default function Home() {
             articles: trialUsage.articlesGenerated || 0,
             images: trialUsage.imagesGenerated || 0,
           });
-          setIsCreditsExhaustedOpen(true);
+          openCreditsExhaustedModal();
           // Refresh data in background but don't wait
           fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).then(r => r.ok && r.json()).then(d => {
             if (d?.isTrial) {
@@ -279,7 +288,7 @@ export default function Home() {
           articles: trialUsage.articlesGenerated || 0,
           images: trialUsage.imagesGenerated || 0,
         });
-        setIsCreditsExhaustedOpen(true);
+        openCreditsExhaustedModal();
         // Refresh data in background but don't wait
         fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`).then(r => r.ok && r.json()).then(d => {
           if (d?.isTrial) {
@@ -344,7 +353,7 @@ export default function Home() {
               articles: usageData.articlesGenerated || 0,
               images: usageData.imagesGenerated || 0,
             });
-            setIsCreditsExhaustedOpen(true);
+            openCreditsExhaustedModal();
             return { allowed: false, allCreditsExhausted: true };
           }
 
@@ -359,7 +368,7 @@ export default function Home() {
               articles: usageData.articlesGenerated || 0,
               images: usageData.imagesGenerated || 0,
             });
-            setIsCreditsExhaustedOpen(true);
+            openCreditsExhaustedModal();
             return { allowed: false, allCreditsExhausted: false };
           }
 
@@ -377,7 +386,7 @@ export default function Home() {
                 articles: usageData.articlesGenerated || 0,
                 images: usageData.imagesGenerated || 0,
               });
-              setIsCreditsExhaustedOpen(true);
+              openCreditsExhaustedModal();
               return { allowed: false, allCreditsExhausted: false };
             }
           }
@@ -392,7 +401,7 @@ export default function Home() {
               articles: usageData.articlesGenerated || 0,
               images: usageData.imagesGenerated || 0,
             });
-            setIsCreditsExhaustedOpen(true);
+            openCreditsExhaustedModal();
             return { allowed: false, allCreditsExhausted: false };
           }
         }
@@ -409,7 +418,7 @@ export default function Home() {
           articles: 2,
           images: 1,
         });
-        setIsCreditsExhaustedOpen(true);
+        openCreditsExhaustedModal();
         return { allowed: false, allCreditsExhausted: true };
       }
     } catch (error) {
@@ -424,7 +433,7 @@ export default function Home() {
         articles: 2,
         images: 1,
       });
-      setIsCreditsExhaustedOpen(true);
+      openCreditsExhaustedModal();
       return { allowed: false, allCreditsExhausted: true };
     }
 
@@ -505,7 +514,7 @@ export default function Home() {
                 images: data.imagesGenerated || 0,
               });
               // Show widget immediately - limits are exhausted (stored in KV)
-              setIsCreditsExhaustedOpen(true);
+              openCreditsExhaustedModal();
               console.log('[fetchBalance] isCreditsExhaustedOpen set to true');
             }
             
@@ -533,7 +542,7 @@ export default function Home() {
                 images: data.imagesGenerated || 0,
               });
               // Show widget immediately - at least one limit is exhausted (stored in KV)
-              setIsCreditsExhaustedOpen(true);
+              openCreditsExhaustedModal();
               console.log('[fetchBalance] isCreditsExhaustedOpen set to true (individual limit)');
             } else {
               console.log('[fetchBalance] No limits exhausted, widget will not show');
@@ -605,7 +614,7 @@ export default function Home() {
             articles: data.articlesGenerated || 0,
             images: data.imagesGenerated || 0,
           });
-          setIsCreditsExhaustedOpen(true);
+          openCreditsExhaustedModal();
         }
       })
       .catch(() => {});
@@ -952,7 +961,7 @@ export default function Home() {
                       articles: usageData.articlesGenerated || 0,
                       images: usageData.imagesGenerated || 0,
                     });
-                    setIsCreditsExhaustedOpen(true);
+                    openCreditsExhaustedModal();
                     setIsGeneratingTopics(false);
                     setLoadingStep(null);
                   };
@@ -999,7 +1008,7 @@ export default function Home() {
                     articles: usageData.articlesGenerated || 0,
                     images: usageData.imagesGenerated || 0,
                   });
-                  setIsCreditsExhaustedOpen(true);
+                  openCreditsExhaustedModal();
                   setIsGeneratingTopics(false);
                   setLoadingStep(null);
                   return;
@@ -1284,7 +1293,7 @@ export default function Home() {
                         articles: usageData.articlesGenerated || 0,
                         images: usageData.imagesGenerated || 0,
                       });
-                      setIsCreditsExhaustedOpen(true);
+                      openCreditsExhaustedModal();
                       updateGeneratedArticles(
                         generatedArticles.map(a =>
                           a.topicTitle === topicId
@@ -1322,7 +1331,7 @@ export default function Home() {
                       articles: usageData.articlesGenerated || 0,
                       images: usageData.imagesGenerated || 0,
                     });
-                    setIsCreditsExhaustedOpen(true);
+                    openCreditsExhaustedModal();
                     updateGeneratedArticles(
                       generatedArticles.map(a =>
                         a.topicTitle === topicId
@@ -1965,7 +1974,7 @@ export default function Home() {
                         articles: usageData.articlesGenerated || 0,
                         images: usageData.imagesGenerated || 0,
                       });
-                      setIsCreditsExhaustedOpen(true);
+                      openCreditsExhaustedModal();
                       setIsGeneratingArticles(new Set());
                       setLoadingStep(null);
                       updateGeneratedArticles(
@@ -2008,7 +2017,7 @@ export default function Home() {
                       articles: usageData.articlesGenerated || 0,
                       images: usageData.imagesGenerated || 0,
                     });
-                    setIsCreditsExhaustedOpen(true);
+                    openCreditsExhaustedModal();
                     setIsGeneratingArticles(new Set());
                     setLoadingStep(null);
                     updateGeneratedArticles(
@@ -2397,7 +2406,7 @@ export default function Home() {
                       articles: usageData.articlesGenerated || 0,
                       images: usageData.imagesGenerated || 0,
                     });
-                    setIsCreditsExhaustedOpen(true);
+                    openCreditsExhaustedModal();
                     updateGeneratedArticles(
                       generatedArticles.map(a =>
                         a.topicTitle === articleId
@@ -2438,7 +2447,7 @@ export default function Home() {
                     articles: usageData.articlesGenerated || 0,
                     images: usageData.imagesGenerated || 0,
                   });
-                  setIsCreditsExhaustedOpen(true);
+                  openCreditsExhaustedModal();
                   updateGeneratedArticles(
                     generatedArticles.map(a =>
                       a.topicTitle === articleId
@@ -4344,7 +4353,7 @@ export default function Home() {
                       articles: usageData.articlesGenerated || 0,
                       images: usageData.imagesGenerated || 0,
                     });
-                    setIsCreditsExhaustedOpen(true);
+                    openCreditsExhaustedModal();
                     setIsGeneratingImage(prev => {
                       const next = new Set(prev);
                       next.delete(topicId);
@@ -4372,7 +4381,7 @@ export default function Home() {
                       articles: usageData.articlesGenerated || 0,
                       images: usageData.imagesGenerated || 0,
                     });
-                    setIsCreditsExhaustedOpen(true);
+                    openCreditsExhaustedModal();
                     setIsGeneratingImage(prev => {
                       const next = new Set(prev);
                       next.delete(topicId);
@@ -4411,7 +4420,7 @@ export default function Home() {
                     articles: usageData.articlesGenerated || 0,
                     images: usageData.imagesGenerated || 0,
                   });
-                  setIsCreditsExhaustedOpen(true);
+                  openCreditsExhaustedModal();
                   setIsGeneratingImage(prev => {
                     const next = new Set(prev);
                     next.delete(topicId);
@@ -4524,7 +4533,7 @@ export default function Home() {
                     articles: usageData.articlesGenerated || 0,
                     images: usageData.imagesGenerated || 0,
                   });
-                  setIsCreditsExhaustedOpen(true);
+                  openCreditsExhaustedModal();
                   setIsGeneratingImage(prev => {
                     const next = new Set(prev);
                     next.delete(topicId);
