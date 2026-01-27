@@ -5159,6 +5159,38 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Credits Exhausted Modal - MUST be at top level so it shows in all modes (discovery/direct) and when topicsData is empty */}
+      <CreditsExhausted
+        isOpen={isCreditsExhaustedOpen}
+        onClose={() => {
+          setIsCreditsExhaustedOpen(false);
+          const trialToken = getTrialTokenFromURL();
+          if (trialToken) {
+            fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((d) => {
+                if (d?.isTrial) {
+                  setTrialUsage({
+                    isTrial: true,
+                    topicDiscoveryRunsRemaining: d.topicDiscoveryRunsRemaining,
+                    articlesRemaining: d.articlesRemaining,
+                    imagesRemaining: d.imagesRemaining,
+                    topicDiscoveryRuns: d.topicDiscoveryRuns || 0,
+                    articlesGenerated: d.articlesGenerated || 0,
+                    imagesGenerated: d.imagesGenerated || 0,
+                  });
+                }
+              })
+              .catch(() => {});
+          }
+        }}
+        onUpgrade={() => {
+          setIsCreditsExhaustedOpen(false);
+          setIsUpgradeModalOpen(true);
+        }}
+        trialStats={trialStats ?? undefined}
+      />
+
       <main className="content">
           
           {/* Mode Switch */}
@@ -6187,82 +6219,6 @@ export default function Home() {
                                           <span className="competition-explanation">{topic.competitionNote}</span>
         </div>
       </div>
-      
-      {/* Credits Exhausted Modal */}
-      {/* DEBUG: Show state in UI */}
-      {process.env.NODE_ENV === "development" && (
-        <div style={{
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          background: "rgba(0,0,0,0.8)",
-          color: "white",
-          padding: "10px",
-          borderRadius: "5px",
-          fontSize: "12px",
-          zIndex: 10000,
-        }}>
-          <div>isCreditsExhaustedOpen: {isCreditsExhaustedOpen ? "✅ true" : "❌ false"}</div>
-          <div>trialStats: {trialStats ? JSON.stringify(trialStats) : "null"}</div>
-        </div>
-      )}
-      
-      {/* #region agent log */}
-      {(() => {
-        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:5869',message:'About to render CreditsExhausted in JSX',data:{isCreditsExhaustedOpen,hasTrialStats:!!trialStats},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-render',hypothesisId:'jsx-render'})}).catch(()=>{});
-        return null;
-      })()}
-      {/* #endregion */}
-      
-      {/* DEBUG: Log before rendering CreditsExhausted */}
-      {(() => {
-        console.log('[page.tsx] About to render CreditsExhausted', {
-          isCreditsExhaustedOpen,
-          hasTrialStats: !!trialStats,
-          trialStats,
-        });
-        return null;
-      })()}
-      
-      <CreditsExhausted
-        isOpen={isCreditsExhaustedOpen}
-        onClose={() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:5875',message:'CreditsExhausted onClose called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-interaction',hypothesisId:'user-action'})}).catch(()=>{});
-          // #endregion
-          // CRITICAL: Close widget, but keep trialUsage state intact
-          // This ensures widget will reappear on next generation attempt if limits are still exhausted
-          setIsCreditsExhaustedOpen(false);
-          // Refresh trialUsage in background to ensure state is fresh for next check
-          const trialToken = getTrialTokenFromURL();
-          if (trialToken) {
-            fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`)
-              .then(r => r.ok && r.json())
-              .then(d => {
-                if (d?.isTrial) {
-                  setTrialUsage({
-                    isTrial: true,
-                    topicDiscoveryRunsRemaining: d.topicDiscoveryRunsRemaining,
-                    articlesRemaining: d.articlesRemaining,
-                    imagesRemaining: d.imagesRemaining,
-                    topicDiscoveryRuns: d.topicDiscoveryRuns || 0,
-                    articlesGenerated: d.articlesGenerated || 0,
-                    imagesGenerated: d.imagesGenerated || 0,
-                  });
-                }
-              })
-              .catch(() => {});
-          }
-        }}
-        onUpgrade={() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:5881',message:'CreditsExhausted onUpgrade called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'widget-interaction',hypothesisId:'user-action'})}).catch(()=>{});
-          // #endregion
-          setIsCreditsExhaustedOpen(false);
-          setIsUpgradeModalOpen(true);
-        }}
-        trialStats={trialStats ?? undefined}
-      />
       
       {/* Notification */}
       {notification && (
