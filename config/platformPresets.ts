@@ -5,7 +5,6 @@
  */
 export const PLATFORM_PRESETS: Record<string, string[]> = {
   music_industry: [
-    "Multi-platform",
     "Spotify",
     "YouTube",
     "TikTok",
@@ -22,50 +21,38 @@ export const PLATFORM_PRESETS: Record<string, string[]> = {
     "Facebook",
     "X (Twitter)",
     "LinkedIn",
-    "Multi-platform",
   ],
   it: [
     "Web app",
     "Mobile app",
     "API product",
     "Developer tools",
-    "Multi-platform",
   ],
   med_tech: [
     "Med app",
     "Telehealth platform",
     "EHR system",
-    "Multi-platform",
   ],
   mil_tech: [
     "Defense SaaS",
     "Simulation platform",
     "Hardware + software stack",
-    "Multi-platform",
   ],
   casino: [
     "Casino brand",
     "Sportsbook",
     "Slots",
     "Poker room",
-    "Multi-platform",
   ],
   gambling: [
     "Casino brand",
     "Sportsbook",
     "Slots",
     "Poker room",
-    "Multi-platform",
   ],
-  astrology: [
-    "Content website",
-    "Mobile app",
-    "Newsletter",
-    "Multi-platform",
-  ],
-  vpn: ["VPN app", "Browser extension", "Multi-platform"],
-  hr: ["HR SaaS", "ATS platform", "Job board", "Multi-platform"],
-  default: ["Multi-platform"],
+  vpn: ["VPN app", "Browser extension"],
+  hr: ["HR SaaS", "ATS platform", "Job board"],
+  default: [],
 };
 
 /**
@@ -81,7 +68,6 @@ export const NICHE_TO_PRESET_KEY: Record<string, string> = {
   "Mil tech": "mil_tech",
   Casino: "casino",
   Gambling: "gambling",
-  Astrology: "astrology",
   VPN: "vpn",
   HR: "hr",
 };
@@ -95,7 +81,6 @@ export const NICHE_PRESET_LABELS: string[] = [
   "Mil tech",
   "Casino",
   "Gambling",
-  "Astrology",
   "VPN",
   "HR",
 ];

@@ -5,17 +5,16 @@
  */
 
 const PLATFORM_PRESETS = {
-  music_industry: ["Multi-platform", "Spotify", "YouTube", "TikTok", "Instagram", "SoundCloud", "Beatport", "Deezer", "Tidal"],
-  social_media: ["TikTok", "Instagram", "YouTube", "Facebook", "X (Twitter)", "LinkedIn", "Multi-platform"],
-  it: ["Web app", "Mobile app", "API product", "Developer tools", "Multi-platform"],
-  med_tech: ["Med app", "Telehealth platform", "EHR system", "Multi-platform"],
-  mil_tech: ["Defense SaaS", "Simulation platform", "Hardware + software stack", "Multi-platform"],
-  casino: ["Casino brand", "Sportsbook", "Slots", "Poker room", "Multi-platform"],
-  gambling: ["Casino brand", "Sportsbook", "Slots", "Poker room", "Multi-platform"],
-  astrology: ["Content website", "Mobile app", "Newsletter", "Multi-platform"],
-  vpn: ["VPN app", "Browser extension", "Multi-platform"],
-  hr: ["HR SaaS", "ATS platform", "Job board", "Multi-platform"],
-  default: ["Multi-platform"],
+  music_industry: ["Spotify", "YouTube", "TikTok", "Instagram", "SoundCloud", "Beatport", "Deezer", "Tidal"],
+  social_media: ["TikTok", "Instagram", "YouTube", "Facebook", "X (Twitter)", "LinkedIn"],
+  it: ["Web app", "Mobile app", "API product", "Developer tools"],
+  med_tech: ["Med app", "Telehealth platform", "EHR system"],
+  mil_tech: ["Defense SaaS", "Simulation platform", "Hardware + software stack"],
+  casino: ["Casino brand", "Sportsbook", "Slots", "Poker room"],
+  gambling: ["Casino brand", "Sportsbook", "Slots", "Poker room"],
+  vpn: ["VPN app", "Browser extension"],
+  hr: ["HR SaaS", "ATS platform", "Job board"],
+  default: [],
 };
 
 const NICHE_TO_PRESET_KEY = {
@@ -26,7 +25,6 @@ const NICHE_TO_PRESET_KEY = {
   "Mil tech": "mil_tech",
   Casino: "casino",
   Gambling: "gambling",
-  Astrology: "astrology",
   VPN: "vpn",
   HR: "hr",
 };
@@ -39,7 +37,6 @@ const NICHE_PRESET_LABELS = [
   "Mil tech",
   "Casino",
   "Gambling",
-  "Astrology",
   "VPN",
   "HR",
 ];
@@ -54,7 +51,7 @@ function getPlatformPresetsList(selectedNicheKey) {
 
 let failed = 0;
 
-// 1) Every niche label must have a key and that key must have a non-empty platform list
+// 1) Every niche label must have a key and that key must have a non-empty platform list (default can be empty)
 for (const label of NICHE_PRESET_LABELS) {
   const key = NICHE_TO_PRESET_KEY[label];
   const list = PLATFORM_PRESETS[key];
@@ -62,22 +59,20 @@ for (const label of NICHE_PRESET_LABELS) {
     console.error("FAIL: No NICHE_TO_PRESET_KEY for label:", JSON.stringify(label));
     failed++;
   } else if (!list || !Array.isArray(list) || list.length === 0) {
-    console.error("FAIL: No/bad PLATFORM_PRESETS for key:", key);
+    console.error("FAIL: No/bad or empty PLATFORM_PRESETS for key:", key);
     failed++;
   } else {
     console.log("OK  ", label, "->", key, "(", list.length, "platforms)");
   }
 }
 
-// 2) Simulate UI: niche preset click -> platform list
+// 2) Simulate UI: niche preset click -> platform list (no Multi-platform in any list)
 const cases = [
-  { niche: "Music industry", expectFirst: "Multi-platform", expectContains: "Spotify" },
+  { niche: "Music industry", expectFirst: "Spotify", expectContains: "Spotify" },
   { niche: "Social media / SMM", expectFirst: "TikTok", expectContains: "LinkedIn" },
-  { niche: "IT", expectFirst: "Web app", expectContains: "Multi-platform" },
+  { niche: "IT", expectFirst: "Web app", expectContains: "Developer tools" },
   { niche: "Casino", expectFirst: "Casino brand", expectContains: "Slots" },
-  { niche: "VPN", expectFirst: "VPN app", expectContains: "Multi-platform" },
-  { niche: "", expectFirst: "Multi-platform", expectContains: "Multi-platform" },
-  { niche: "Custom Niche XYZ", expectFirst: "Multi-platform", expectContains: "Multi-platform" },
+  { niche: "VPN", expectFirst: "VPN app", expectContains: "Browser extension" },
 ];
 
 for (const { niche, expectFirst, expectContains } of cases) {
@@ -93,13 +88,22 @@ for (const { niche, expectFirst, expectContains } of cases) {
   }
 }
 
-// 3) default must be exactly ["Multi-platform"]
+// 3) Custom/empty niche -> default -> empty list (no chips)
 const defaultList = PLATFORM_PRESETS.default;
-if (!Array.isArray(defaultList) || defaultList.length !== 1 || defaultList[0] !== "Multi-platform") {
-  console.error("FAIL: PLATFORM_PRESETS.default must be [\"Multi-platform\"]", defaultList);
+if (!Array.isArray(defaultList) || defaultList.length !== 0) {
+  console.error("FAIL: PLATFORM_PRESETS.default must be []", defaultList);
   failed++;
 } else {
-  console.log("OK  default presets = [\"Multi-platform\"]");
+  console.log("OK  default presets = [] (custom niche shows no platform chips)");
+}
+
+const emptyKey = getSelectedNicheKey("");
+const emptyList = getPlatformPresetsList(emptyKey);
+if (emptyList.length !== 0) {
+  console.error("FAIL: empty/custom niche should yield empty platform list", emptyList);
+  failed++;
+} else {
+  console.log("OK  empty/custom niche -> empty platform list");
 }
 
 if (failed) {

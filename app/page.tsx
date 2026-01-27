@@ -69,7 +69,7 @@ export default function Home() {
     ? (persistedState.discoveryProjectBasics || persistedState.projectBasics || defaultBrief) // Fallback to legacy projectBasics
     : (persistedState.directProjectBasics || persistedState.projectBasics || defaultBrief); // Fallback to legacy projectBasics
 
-  // Platform presets depend on selected niche; custom niche ⇒ default (Multi-platform only)
+  // Platform presets depend on selected niche; custom niche ⇒ default (no platform chips)
   const selectedNicheKey = (brief.niche && NICHE_TO_PRESET_KEY[brief.niche]) ? NICHE_TO_PRESET_KEY[brief.niche] : "default";
   const platformPresetsList = PLATFORM_PRESETS[selectedNicheKey] ?? PLATFORM_PRESETS.default;
   
@@ -5335,7 +5335,7 @@ export default function Home() {
                 type="text"
                 value={brief.platform || ""}
                 onChange={handleBriefChange("platform")}
-                placeholder="e.g. Multi-platform, Spotify, YouTube, TikTok, Instagram, SoundCloud, Beatport, or any custom query"
+                placeholder="e.g. Spotify, YouTube, TikTok, Instagram, SoundCloud, Beatport, or any custom query"
               />
               <small>Select a preset or enter a custom platform/query. This value will be used to search for relevant topics via Tavily browsing.</small>
               
