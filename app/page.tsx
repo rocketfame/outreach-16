@@ -1204,11 +1204,10 @@ export default function Home() {
         // These fields are used by API to detect Topic Discovery Mode
         
         // CRITICAL: Use saved humanization settings from existing article if available
-        // This ensures regeneration uses the same settings as the original generation
+        // Direct Article: no "humanize on write" — fallback is Human Mode only (same as generation).
         const savedHumanizeSettings = article?.humanizeSettingsUsed;
         
-        // Use saved settings if available, otherwise fall back to global settings
-        const regenerateHumanizeOnWrite = savedHumanizeSettings?.humanizeOnWrite ?? humanizeOnWriteEnabled;
+        const regenerateHumanizeOnWrite = savedHumanizeSettings?.humanizeOnWrite ?? (writingMode === "human");
         const regenerateHumanizeSettings = savedHumanizeSettings 
           ? {
               model: savedHumanizeSettings.model,
@@ -1218,7 +1217,6 @@ export default function Home() {
           : humanizeSettings;
         
         // CRITICAL: Check if Project Basics have changed since article creation
-        // Use current brief (which may have been updated) instead of saved briefUsed
         const previousBrief = article?.briefUsed;
         const briefChanged = previousBrief ? (
           previousBrief.anchorText !== brief.anchorText ||
@@ -2346,9 +2344,8 @@ export default function Home() {
       // CRITICAL: For Direct Article Creation Mode, do NOT include shortAngle, whyNonGeneric, howAnchorFits
       // These fields are used by API to detect Topic Discovery Mode
       // IMPORTANT: Pass articleId in the topic title so we can match it on response
-      // CRITICAL: For Human Mode, humanization is ALWAYS enabled (force ON)
-      // The API will automatically enable humanization for Human Mode regardless of UI toggle
-      const effectiveHumanizeForRequest = writingMode === "human" ? true : humanizeOnWriteEnabled;
+      // Direct Article: humanization only via Human Mode (no "humanize on write" — same as Topic Discovery).
+      const effectiveHumanizeForRequest = writingMode === "human";
       
       const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/articles", {
@@ -2523,16 +2520,14 @@ export default function Home() {
           metaDescription: cleanText(data.articles[0]?.metaDescription || ''),
           fullArticleText: cleanText(data.articles[0]?.fullArticleText || ''),
           articleBodyHtml: cleanText(data.articles[0]?.articleBodyHtml || data.articles[0]?.fullArticleText || ''),
-          // CRITICAL: Save humanization settings used for this article
-          // This allows regeneration to use the same settings
+          // CRITICAL: Save humanization settings used for this article (Direct Article: only Human Mode)
           humanizeSettingsUsed: {
-            humanizeOnWrite: humanizeOnWriteEnabled,
+            humanizeOnWrite: effectiveHumanizeForRequest,
             model: humanizeSettings.model,
             style: humanizeSettings.style,
             mode: humanizeSettings.mode,
           },
           // CRITICAL: Save Project Basics used when creating this article
-          // This allows tracking changes and using updated settings on regeneration
           briefUsed: { ...brief },
         };
         
@@ -5673,128 +5668,7 @@ export default function Home() {
                       </div>
                     )}
 
-                    {/* Humanize Settings - Only shown in SEO Mode (or if feature flag is disabled) */}
-                    {(writingMode === "seo" || !HUMAN_MODE_EXPERIMENT) && (
-                      <div className="humanize-on-write-toggle" style={{ marginTop: "1.25rem" }}>
-                        <label className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={humanizeOnWriteEnabled}
-                            onChange={(e) => {
-                              setPersistedState(prev => ({
-                                ...prev,
-                                humanizeOnWriteEnabled: e.target.checked
-                              }));
-                            }}
-                            disabled={isGeneratingArticles.size > 0}
-                          />
-                          <span className="checkbox-text">
-                            <strong>Humanize on write</strong> (recommended)
-                            <span className="checkbox-hint">Passes article sections through AIHumanize during generation</span>
-                          </span>
-                        </label>
-                      </div>
-                    )}
-                    
-                    {/* Expanded Humanize Settings - Only shown in SEO Mode when humanizer is enabled */}
-                    {((writingMode === "seo" || !HUMAN_MODE_EXPERIMENT) && humanizeOnWriteEnabled) && (
-                      <div className="humanize-settings-expanded" style={{ marginTop: "0.75rem" }}>
-                        <button
-                          type="button"
-                          className="humanize-settings-toggle-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedHumanizeTopicId(expandedHumanizeTopicId === "direct" ? null : "direct");
-                          }}
-                          style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", cursor: "pointer", fontSize: "0.9rem" }}
-                        >
-                          {expandedHumanizeTopicId === "direct" ? "Hide settings" : "Show settings"}
-                          <span className={`toggle-icon ${expandedHumanizeTopicId === "direct" ? "expanded" : ""}`} style={{ marginLeft: "0.5rem" }}>▼</span>
-                        </button>
-                        
-                        {expandedHumanizeTopicId === "direct" && (
-                          <div className="humanize-settings-panel" style={{ marginTop: "0.75rem", padding: "1rem", background: "var(--secondary)", borderRadius: "10px" }}>
-                            {/* Model Selection */}
-                            <div className="humanize-setting-group" style={{ marginBottom: "1rem" }}>
-                              <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Model Quality</label>
-                              <div className="humanize-setting-options" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                                <button
-                                  type="button"
-                                  className={`humanize-option-btn ${humanizeSettings.model === 0 ? "active" : ""}`}
-                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 0 }))}
-                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 0 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 0 ? "white" : "var(--foreground)", cursor: "pointer" }}
-                                >
-                                  Quality
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`humanize-option-btn ${humanizeSettings.model === 1 ? "active" : ""}`}
-                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 1 }))}
-                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 1 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 1 ? "white" : "var(--foreground)", cursor: "pointer" }}
-                                >
-                                  Balance
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`humanize-option-btn ${humanizeSettings.model === 2 ? "active" : ""}`}
-                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, model: 2 }))}
-                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.model === 2 ? "var(--primary)" : "var(--card)", color: humanizeSettings.model === 2 ? "white" : "var(--foreground)", cursor: "pointer" }}
-                                >
-                                  Enhanced
-                                </button>
-                              </div>
-                            </div>
-                            
-                            {/* Style Selection */}
-                            <div className="humanize-setting-group" style={{ marginBottom: "1rem" }}>
-                              <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Writing Style</label>
-                              <select
-                                className="humanize-style-select"
-                                value={humanizeSettings.style}
-                                onChange={(e) => setHumanizeSettings(prev => ({ ...prev, style: e.target.value }))}
-                                style={{ width: "100%", padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }}
-                              >
-                                <option value="General">General</option>
-                                <option value="Blog">Blog</option>
-                                <option value="Formal">Formal</option>
-                                <option value="Informal">Informal</option>
-                                <option value="Academic">Academic</option>
-                                <option value="Expand">Expand</option>
-                                <option value="Simplify">Simplify</option>
-                              </select>
-                            </div>
-                            
-                            {/* Mode Selection */}
-                            <div className="humanize-setting-group">
-                              <label className="humanize-setting-label" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>Mode</label>
-                              <div className="humanize-setting-options" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                                <button
-                                  type="button"
-                                  className={`humanize-option-btn ${humanizeSettings.mode === "Basic" ? "active" : ""}`}
-                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, mode: "Basic" }))}
-                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.mode === "Basic" ? "var(--primary)" : "var(--card)", color: humanizeSettings.mode === "Basic" ? "white" : "var(--foreground)", cursor: "pointer" }}
-                                >
-                                  Basic
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`humanize-option-btn ${humanizeSettings.mode === "Autopilot" ? "active" : ""}`}
-                                  onClick={() => setHumanizeSettings(prev => ({ ...prev, mode: "Autopilot" }))}
-                                  style={{ padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border)", background: humanizeSettings.mode === "Autopilot" ? "var(--primary)" : "var(--card)", color: humanizeSettings.mode === "Autopilot" ? "white" : "var(--foreground)", cursor: "pointer" }}
-                                >
-                                  Autopilot
-                                </button>
-                              </div>
-                              <p className="humanize-setting-hint" style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                                {humanizeSettings.mode === "Basic" 
-                                  ? "Single rewrite per request (70% basic detection bypass)" 
-                                  : "Rewrites multiple times until 0% AI (99% all detection bypass)"}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Direct Article: no "Humanize on write" UI — Human Mode covers humanization (same as Topic Discovery). */}
 
                     <div style={{ marginTop: "1.25rem" }}>
                       <button
