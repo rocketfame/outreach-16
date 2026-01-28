@@ -24,9 +24,15 @@ export const DESIGN_TOKENS = {
   gradientEnd: "#F73399",
   gradient: "linear-gradient(90deg, #FF6900 0%, #F73399 100%)",
   success: "#10b981",
-  /** Credits exhausted modal icon */
-  iconSize: 80,
-  iconInnerSize: 40,
+  /** Credits exhausted modal — header circle and icon inside */
+  iconSize: 88,
+  iconInnerSize: 46,
+  /** Section title icons (What you accomplished, Upgrade to unlock) */
+  sectionIconSize: 16,
+  /** Checkmarks in unlock list */
+  listIconSize: 14,
+  /** Icon in CTA button (Upgrade Now) */
+  buttonIconSize: 18,
 } as const;
 
 export type DesignTokens = typeof DESIGN_TOKENS;
