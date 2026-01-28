@@ -40,13 +40,13 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
 
   const stats = trialStats ?? { topicSearches: 0, articles: 0, images: 0 };
 
-  /** Order matches Figma 5-1739: left col = topic research, image creation, priority support; right col = article generation, editing tools, export */
+  /** Order matches Figma 5-1739: topic research, image creation, priority support, article generation, editing tools, export */
   const unlockFeatures = [
     { label: "Unlimited", value: "topic research" },
-    { label: "Unlimited", value: "article generation" },
     { label: "Unlimited", value: "image creation" },
-    { label: "Advanced", value: "editing tools" },
     { label: "Priority", value: "support" },
+    { label: "Unlimited", value: "article generation" },
+    { label: "Advanced", value: "editing tools" },
     { label: "Export", value: "in multiple formats" },
   ];
 
@@ -133,10 +133,13 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                 justifyContent: "center",
                 marginBottom: 20,
                 boxShadow: "0 8px 24px rgba(255, 105, 0, 0.28)",
+                position: "relative",
               }}
             >
-              <svg width={TOKENS.iconInnerSize} height={TOKENS.iconInnerSize} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              {/* Crown icon — Figma 5-1739 */}
+              <svg width={TOKENS.iconInnerSize} height={TOKENS.iconInnerSize} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 17l3-5 4 2 5-8 4 6 3-2 1 7H2z" />
+                <path d="M12 9v6" />
               </svg>
             </div>
             <h2
@@ -170,7 +173,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             </p>
           </div>
 
-          {/* What you accomplished — Figma 5-1739 */}
+          {/* What you accomplished — Figma 5-1739 (lightning icon) */}
           <div
             style={{
               backgroundColor: TOKENS.cardBg,
@@ -182,15 +185,26 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           >
             <div
               style={{
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 14,
-                fontWeight: 600,
-                lineHeight: 1.4,
-                color: TOKENS.textSecondary,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
                 marginBottom: 16,
               }}
             >
-              What you accomplished in trial:
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={TOKENS.textPrimary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+              <span
+                style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  color: TOKENS.textSecondary,
+                }}
+              >
+                What you accomplished in trial:
+              </span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
               {[
@@ -205,7 +219,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                       fontSize: 24,
                       fontWeight: 600,
                       lineHeight: "32px",
-                      color: TOKENS.textSecondary,
+                      color: TOKENS.gradientStart,
                       marginBottom: 4,
                     }}
                   >
@@ -227,7 +241,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             </div>
           </div>
 
-          {/* Upgrade to unlock — Figma 5-1739 */}
+          {/* Upgrade to unlock — Figma 5-1739 (crown icon) */}
           <div
             style={{
               border: `1px solid ${TOKENS.border}`,
@@ -238,15 +252,27 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           >
             <div
               style={{
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 14,
-                fontWeight: 600,
-                lineHeight: 1.4,
-                color: TOKENS.textSecondary,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
                 marginBottom: 16,
               }}
             >
-              Upgrade to unlock:
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={TOKENS.textPrimary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M2 17l3-5 4 2 5-8 4 6 3-2 1 7H2z" />
+                <path d="M12 9v6" />
+              </svg>
+              <span
+                style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  color: TOKENS.textSecondary,
+                }}
+              >
+                Upgrade to unlock:
+              </span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px 16px" }}>
               {unlockFeatures.map(({ label, value }) => (
@@ -291,58 +317,123 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             </div>
           </div>
 
-          <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <span
+          {/* Pricing CTA — Figma: gradient button */}
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <button
+              type="button"
+              onClick={onUpgrade}
               style={{
+                padding: "12px 28px",
+                background: TOKENS.gradient,
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontSize: 15,
-                fontWeight: 500,
-                lineHeight: 1.4,
-                color: TOKENS.textPrimary,
+                fontWeight: 600,
+                lineHeight: 1.35,
+                cursor: "pointer",
+                transition: "opacity 0.2s, transform 0.05s",
+                boxShadow: "0 2px 8px rgba(255, 105, 0, 0.25)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.92";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
               }}
             >
               Starting at $19/month
-            </span>
+            </button>
           </div>
         </div>
 
-        {/* Footer CTA — Figma 5-1739 */}
+        {/* Footer CTA — Figma 5-1739: Upgrade Now (crown) + Maybe Later */}
         <div
           style={{
-            padding: 28,
+            padding: "24px 28px 20px",
             borderTop: `1px solid ${TOKENS.border}`,
             backgroundColor: TOKENS.modalBg,
           }}
         >
-          <button
-            type="button"
-            onClick={onUpgrade}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <button
+              type="button"
+              onClick={onUpgrade}
+              style={{
+                width: "100%",
+                padding: "14px 24px",
+                background: TOKENS.gradient,
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 15,
+                fontWeight: 600,
+                lineHeight: 1.35,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                transition: "opacity 0.2s, transform 0.05s",
+                boxShadow: "0 2px 8px rgba(255, 105, 0, 0.25)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.92";
+                e.currentTarget.style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 17l3-5 4 2 5-8 4 6 3-2 1 7H2z" />
+                <path d="M12 9v6" />
+              </svg>
+              Upgrade Now
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: "100%",
+                padding: "12px 24px",
+                background: "#fff",
+                color: TOKENS.textSecondary,
+                border: `1px solid ${TOKENS.border}`,
+                borderRadius: 10,
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                lineHeight: 1.35,
+                cursor: "pointer",
+                transition: "background 0.2s, color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = TOKENS.cardBg;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#fff";
+              }}
+            >
+              Maybe Later
+            </button>
+          </div>
+          <p
             style={{
-              width: "100%",
-              padding: "14px 24px",
-              background: TOKENS.gradient,
-              color: "#fff",
-              border: "none",
-              borderRadius: 10,
               fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: 15,
-              fontWeight: 600,
-              lineHeight: 1.35,
-              cursor: "pointer",
-              transition: "opacity 0.2s, transform 0.05s",
-              boxShadow: "0 2px 8px rgba(255, 105, 0, 0.25)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = "0.92";
-              e.currentTarget.style.transform = "translateY(-1px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = "1";
-              e.currentTarget.style.transform = "translateY(0)";
+              fontSize: 12,
+              fontWeight: 400,
+              lineHeight: 1.45,
+              color: TOKENS.textPrimary,
+              margin: "16px 0 0",
+              textAlign: "center",
             }}
           >
-            Upgrade Now
-          </button>
+            No credit card required to start • Cancel anytime • 14-day money-back guarantee
+          </p>
         </div>
       </div>
     </div>
