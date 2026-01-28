@@ -25,8 +25,8 @@ export const DESIGN_TOKENS = {
   gradient: "linear-gradient(90deg, #FF6900 0%, #F73399 100%)",
   success: "#10b981",
   /** Credits exhausted modal — header circle and icon inside */
-  iconSize: 88,
-  iconInnerSize: 46,
+  iconSize: 72,
+  iconInnerSize: 38,
   /** Section title icons (What you accomplished, Upgrade to unlock) */
   sectionIconSize: 16,
   /** Checkmarks in unlock list */

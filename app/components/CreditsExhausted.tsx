@@ -90,11 +90,11 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           onClick={onClose}
           style={{
             position: "absolute",
-            top: 20,
-            right: 20,
-            width: 36,
-            height: 36,
-            borderRadius: 10,
+            top: 12,
+            right: 12,
+            width: 32,
+            height: 32,
+            borderRadius: 8,
             border: "none",
             background: TOKENS.cardBg,
             color: TOKENS.textPrimary,
@@ -119,9 +119,9 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           </svg>
         </button>
 
-        <div style={{ overflowY: "auto", padding: "28px 28px 0", flex: 1 }}>
+        <div style={{ overflowY: "auto", padding: "20px 20px 0", flex: 1 }}>
           {/* Header — Figma 5-1739 */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 28 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16 }}>
             <div
               style={{
                 width: TOKENS.iconSize,
@@ -131,8 +131,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: 20,
-                boxShadow: "0 8px 24px rgba(255, 105, 0, 0.28)",
+                marginBottom: 12,
+                boxShadow: "0 6px 18px rgba(255, 105, 0, 0.25)",
                 position: "relative",
               }}
             >
@@ -146,12 +146,12 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               id="credits-exhausted-title"
               style={{
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 600,
-                lineHeight: 1.3,
+                lineHeight: 1.25,
                 letterSpacing: "-0.02em",
                 color: TOKENS.textSecondary,
-                margin: "0 0 10px",
+                margin: "0 0 6px",
                 textAlign: "center",
               }}
             >
@@ -160,13 +160,13 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             <p
               style={{
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: 400,
-                lineHeight: 1.45,
+                lineHeight: 1.4,
                 color: TOKENS.textPrimary,
                 margin: 0,
                 textAlign: "center",
-                maxWidth: 360,
+                maxWidth: 320,
               }}
             >
               You've explored what our AI content creator can do! Ready to unlock unlimited potential?
@@ -179,16 +179,16 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               backgroundColor: TOKENS.cardBg,
               border: `1px solid ${TOKENS.border}`,
               borderRadius: TOKENS.cardRadius,
-              padding: 20,
-              marginBottom: 24,
+              padding: 14,
+              marginBottom: 14,
             }}
           >
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
-                marginBottom: 16,
+                gap: 6,
+                marginBottom: 10,
               }}
             >
               {/* Icon.svg — lightning */}
@@ -198,16 +198,16 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               <span
                 style={{
                   fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 600,
-                  lineHeight: 1.4,
+                  lineHeight: 1.3,
                   color: TOKENS.textSecondary,
                 }}
               >
                 What you accomplished in trial:
               </span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
               {[
                 { value: stats.topicSearches, label: "Topic Searches" },
                 { value: stats.articles, label: "Articles" },
@@ -217,11 +217,11 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                   <div
                     style={{
                       fontFamily: "Inter, system-ui, sans-serif",
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: 600,
-                      lineHeight: "32px",
+                      lineHeight: 1.2,
                       color: TOKENS.gradientStart,
-                      marginBottom: 4,
+                      marginBottom: 2,
                     }}
                   >
                     {value}
@@ -229,9 +229,9 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                   <div
                     style={{
                       fontFamily: "Inter, system-ui, sans-serif",
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: 400,
-                      lineHeight: "16px",
+                      lineHeight: 1.3,
                       color: TOKENS.textPrimary,
                     }}
                   >
@@ -247,16 +247,16 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             style={{
               border: `1px solid ${TOKENS.border}`,
               borderRadius: TOKENS.cardRadius,
-              padding: 20,
-              marginBottom: 24,
+              padding: 14,
+              marginBottom: 14,
             }}
           >
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
-                marginBottom: 16,
+                gap: 6,
+                marginBottom: 10,
               }}
             >
               {/* Icon upgrade.svg — Upgrade to unlock */}
@@ -267,26 +267,26 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               <span
                 style={{
                   fontFamily: "Inter, system-ui, sans-serif",
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 600,
-                  lineHeight: 1.4,
+                  lineHeight: 1.3,
                   color: TOKENS.textSecondary,
                 }}
               >
                 Upgrade to unlock:
               </span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px 16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px 12px" }}>
               {unlockFeatures.map(({ label, value }) => (
-                <div key={`${label}-${value}`} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <div key={`${label}-${value}`} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                   <svg
                     width={TOKENS.listIconSize}
                     height={TOKENS.listIconSize}
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke={TOKENS.success}
-                    strokeWidth="2"
-                    style={{ flexShrink: 0, marginTop: 2 }}
+                    strokeWidth="2.5"
+                    style={{ flexShrink: 0, marginTop: 1 }}
                   >
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
@@ -294,9 +294,9 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                     <span
                       style={{
                         fontFamily: "Inter, system-ui, sans-serif",
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 500,
-                        lineHeight: "16px",
+                        lineHeight: 1.35,
                         color: TOKENS.textSecondary,
                       }}
                     >
@@ -305,9 +305,9 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                     <span
                       style={{
                         fontFamily: "Inter, system-ui, sans-serif",
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 400,
-                        lineHeight: "16px",
+                        lineHeight: 1.35,
                         color: TOKENS.textPrimary,
                       }}
                     >
@@ -320,23 +320,23 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           </div>
 
           {/* Pricing CTA — Figma: gradient button */}
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
             <button
               type="button"
               onClick={onUpgrade}
               style={{
-                padding: "12px 28px",
+                padding: "10px 22px",
                 background: TOKENS.gradient,
                 color: "#fff",
                 border: "none",
-                borderRadius: 10,
+                borderRadius: 8,
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: 600,
-                lineHeight: 1.35,
+                lineHeight: 1.3,
                 cursor: "pointer",
                 transition: "opacity 0.2s, transform 0.05s",
-                boxShadow: "0 2px 8px rgba(255, 105, 0, 0.25)",
+                boxShadow: "0 2px 6px rgba(255, 105, 0, 0.22)",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = "0.92";
@@ -353,33 +353,33 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
         {/* Footer CTA — Upgrade Now (lightning) + Maybe Later, in one row */}
         <div
           style={{
-            padding: "24px 28px 20px",
+            padding: "16px 20px 14px",
             borderTop: `1px solid ${TOKENS.border}`,
             backgroundColor: TOKENS.modalBg,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "row", gap: 12, alignItems: "stretch" }}>
+          <div style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "stretch" }}>
             <button
               type="button"
               onClick={onUpgrade}
               style={{
                 flex: 1,
-                padding: "14px 20px",
+                padding: "10px 16px",
                 background: TOKENS.gradient,
                 color: "#fff",
                 border: "none",
-                borderRadius: 10,
+                borderRadius: 8,
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: 600,
-                lineHeight: 1.35,
+                lineHeight: 1.3,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
+                gap: 6,
                 transition: "opacity 0.2s, transform 0.05s",
-                boxShadow: "0 2px 8px rgba(255, 105, 0, 0.25)",
+                boxShadow: "0 2px 6px rgba(255, 105, 0, 0.22)",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = "0.92";
@@ -402,15 +402,15 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               onClick={onClose}
               style={{
                 flex: 1,
-                padding: "12px 20px",
+                padding: "10px 16px",
                 background: "#fff",
                 color: TOKENS.textSecondary,
                 border: `1px solid ${TOKENS.border}`,
-                borderRadius: 10,
+                borderRadius: 8,
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 500,
-                lineHeight: 1.35,
+                lineHeight: 1.3,
                 cursor: "pointer",
                 transition: "background 0.2s, color 0.2s",
               }}
@@ -427,11 +427,11 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           <p
             style={{
               fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 400,
-              lineHeight: 1.45,
+              lineHeight: 1.4,
               color: TOKENS.textPrimary,
-              margin: "16px 0 0",
+              margin: "10px 0 0",
               textAlign: "center",
             }}
           >
