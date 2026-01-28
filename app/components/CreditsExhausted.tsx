@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { DESIGN_TOKENS } from "@/lib/designTokens";
 
 interface CreditsExhaustedProps {
   isOpen: boolean;
@@ -14,28 +15,11 @@ interface CreditsExhaustedProps {
 }
 
 /**
- * Design tokens — sync with Figma OutRea:
+ * Design & logic — Figma OutRea, node 5-1739 (Your Trial Period Has Ended modal):
  * https://www.figma.com/design/A5QmFDenHInwQnft6pk8KO/OutRea?node-id=5-1739&m=dev
- * Update hex/gradient values when refreshing from Figma.
+ * Tokens: lib/designTokens.ts (single source for Figma tokens).
  */
-const TOKENS = {
-  overlay: "rgba(0, 0, 0, 0.5)",
-  modalBg: "#ffffff",
-  modalRadius: 16,
-  modalShadow: "0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04)",
-  border: "#E5E7EB",
-  textPrimary: "#4A5568",
-  textSecondary: "#111827",
-  cardBg: "#F7F8FA",
-  cardRadius: 12,
-  /** CTA gradient — Figma: orange → pink */
-  gradientStart: "#FF6900",
-  gradientEnd: "#F73399",
-  gradient: "linear-gradient(90deg, #FF6900 0%, #F73399 100%)",
-  success: "#10b981",
-  iconSize: 80,
-  iconInnerSize: 40,
-} as const;
+const TOKENS = DESIGN_TOKENS;
 
 export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStats }: CreditsExhaustedProps) {
   useEffect(() => {
@@ -56,6 +40,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
 
   const stats = trialStats ?? { topicSearches: 0, articles: 0, images: 0 };
 
+  /** Order matches Figma 5-1739: left col = topic research, image creation, priority support; right col = article generation, editing tools, export */
   const unlockFeatures = [
     { label: "Unlimited", value: "topic research" },
     { label: "Unlimited", value: "article generation" },
@@ -98,18 +83,18 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close button — Figma 5-1739 */}
         <button
           type="button"
           aria-label="Close"
           onClick={onClose}
           style={{
             position: "absolute",
-            top: 16,
-            right: 16,
-            width: 32,
-            height: 32,
-            borderRadius: 8,
+            top: 20,
+            right: 20,
+            width: 36,
+            height: 36,
+            borderRadius: 10,
             border: "none",
             background: TOKENS.cardBg,
             color: TOKENS.textPrimary,
@@ -118,16 +103,25 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             alignItems: "center",
             justifyContent: "center",
             zIndex: 1,
+            transition: "background 0.2s, color 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = TOKENS.border;
+            e.currentTarget.style.color = TOKENS.textSecondary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = TOKENS.cardBg;
+            e.currentTarget.style.color = TOKENS.textPrimary;
           }}
         >
-          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
 
-        <div style={{ overflowY: "auto", padding: "24px 24px 0", flex: 1 }}>
-          {/* Header */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24 }}>
+        <div style={{ overflowY: "auto", padding: "28px 28px 0", flex: 1 }}>
+          {/* Header — Figma 5-1739 */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 28 }}>
             <div
               style={{
                 width: TOKENS.iconSize,
@@ -137,8 +131,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: 16,
-                boxShadow: "0 4px 14px rgba(255, 105, 0, 0.35)",
+                marginBottom: 20,
+                boxShadow: "0 8px 24px rgba(255, 105, 0, 0.28)",
               }}
             >
               <svg width={TOKENS.iconInnerSize} height={TOKENS.iconInnerSize} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -149,11 +143,12 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               id="credits-exhausted-title"
               style={{
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: 600,
-                lineHeight: "32px",
+                lineHeight: 1.3,
+                letterSpacing: "-0.02em",
                 color: TOKENS.textSecondary,
-                margin: "0 0 8px",
+                margin: "0 0 10px",
                 textAlign: "center",
               }}
             >
@@ -162,25 +157,26 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             <p
               style={{
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 400,
-                lineHeight: "20px",
+                lineHeight: 1.45,
                 color: TOKENS.textPrimary,
                 margin: 0,
                 textAlign: "center",
+                maxWidth: 360,
               }}
             >
               You've explored what our AI content creator can do! Ready to unlock unlimited potential?
             </p>
           </div>
 
-          {/* What you accomplished */}
+          {/* What you accomplished — Figma 5-1739 */}
           <div
             style={{
               backgroundColor: TOKENS.cardBg,
               border: `1px solid ${TOKENS.border}`,
               borderRadius: TOKENS.cardRadius,
-              padding: 16,
+              padding: 20,
               marginBottom: 24,
             }}
           >
@@ -188,8 +184,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               style={{
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontSize: 14,
-                fontWeight: 500,
-                lineHeight: "20px",
+                fontWeight: 600,
+                lineHeight: 1.4,
                 color: TOKENS.textSecondary,
                 marginBottom: 16,
               }}
@@ -200,7 +196,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               {[
                 { value: stats.topicSearches, label: "Topic Searches" },
                 { value: stats.articles, label: "Articles" },
-                { value: stats.images, label: "Images" },
+                { value: stats.images, label: "Image" },
               ].map(({ value, label }) => (
                 <div key={label} style={{ textAlign: "center" }}>
                   <div
@@ -231,12 +227,12 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             </div>
           </div>
 
-          {/* Upgrade to unlock */}
+          {/* Upgrade to unlock — Figma 5-1739 */}
           <div
             style={{
               border: `1px solid ${TOKENS.border}`,
               borderRadius: TOKENS.cardRadius,
-              padding: 16,
+              padding: 20,
               marginBottom: 24,
             }}
           >
@@ -244,8 +240,8 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
               style={{
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontSize: 14,
-                fontWeight: 500,
-                lineHeight: "20px",
+                fontWeight: 600,
+                lineHeight: 1.4,
                 color: TOKENS.textSecondary,
                 marginBottom: 16,
               }}
@@ -295,13 +291,13 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             </div>
           </div>
 
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
             <span
               style={{
                 fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 14,
-                fontWeight: 400,
-                lineHeight: "20px",
+                fontSize: 15,
+                fontWeight: 500,
+                lineHeight: 1.4,
                 color: TOKENS.textPrimary,
               }}
             >
@@ -310,10 +306,10 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           </div>
         </div>
 
-        {/* Footer CTA */}
+        {/* Footer CTA — Figma 5-1739 */}
         <div
           style={{
-            padding: 24,
+            padding: 28,
             borderTop: `1px solid ${TOKENS.border}`,
             backgroundColor: TOKENS.modalBg,
           }}
@@ -323,23 +319,26 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             onClick={onUpgrade}
             style={{
               width: "100%",
-              padding: "12px 24px",
+              padding: "14px 24px",
               background: TOKENS.gradient,
               color: "#fff",
               border: "none",
-              borderRadius: 8,
+              borderRadius: 10,
               fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: 14,
-              fontWeight: 500,
-              lineHeight: "20px",
+              fontSize: 15,
+              fontWeight: 600,
+              lineHeight: 1.35,
               cursor: "pointer",
               transition: "opacity 0.2s, transform 0.05s",
+              boxShadow: "0 2px 8px rgba(255, 105, 0, 0.25)",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.opacity = "0.92";
+              e.currentTarget.style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = "1";
+              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
             Upgrade Now

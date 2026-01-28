@@ -20,11 +20,13 @@ This guide explains how to set up Figma MCP (Model Context Protocol) integration
 
 ## Step 2: Configure Figma MCP in Cursor
 
+**Token:** Figma token is already in project `.env.local` as `FIGMA_PERSONAL_ACCESS_TOKEN`. Use that value in the MCP config below (copy from `.env.local` into `FIGMA_PERSONAL_ACCESS_TOKEN` in env).
+
 ### Option A: Using Cursor Settings (Recommended)
 
 1. Open Cursor Settings (Cmd/Ctrl + ,)
 2. Navigate to "Features" → "MCP Servers"
-3. Add a new MCP server with the following configuration:
+3. Add a new MCP server with the following configuration (paste your token from `.env.local`):
 
 ```json
 {
@@ -35,7 +37,7 @@ This guide explains how to set up Figma MCP (Model Context Protocol) integration
     "@modelcontextprotocol/server-figma"
   ],
   "env": {
-    "FIGMA_PERSONAL_ACCESS_TOKEN": "your-figma-token-here"
+    "FIGMA_PERSONAL_ACCESS_TOKEN": "your-token-from-env-local"
   }
 }
 ```
