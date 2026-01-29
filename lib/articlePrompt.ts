@@ -228,9 +228,10 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
-	1.	WORD COUNT REQUIREMENT (MANDATORY):
-• Target length: [[WORD_COUNT]] words. Aim for within roughly 10-15% of the target (slightly under or over is acceptable).
-• Do NOT write a short article (300-400 words) when a long one is required (1000+ words). Do NOT write 2000+ words when target is ~1300.
+	1.	WORD COUNT REQUIREMENT (MANDATORY – MAX 20% ERROR):
+• Target length: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120% of target). You MUST stay within this range.
+• HARD MAX: Do NOT exceed [[WORD_COUNT_MAX]] words. If your draft is longer, you MUST shorten it (trim paragraphs or lists) before outputting.
+• Before outputting: count the words in articleBlocks (plain text). If below [[WORD_COUNT_MIN]], add content; if above [[WORD_COUNT_MAX]], cut content. Maximum allowed error: 20%.
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -649,7 +650,7 @@ After generating the article, perform a quick human QA:
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
 
 FINAL CHECKLIST BEFORE OUTPUT:
-• Word count is within the accepted range of [[WORD_COUNT]] (counted across all text in articleBlocks as plain text).
+• Word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] and does NOT exceed [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text).
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned 1-2 times in the article body (main sections, not just intro/conclusion). The brand should appear as a natural solution or helper, NOT as advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
@@ -856,7 +857,7 @@ SEO & OUTPUT
 
 Language & length:
 • All output must be in [[LANGUAGE]]
-• Target length: [[WORD_COUNT]] words (aim for within roughly 10–15% of target)
+• Target length: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120%). HARD MAX: do NOT exceed [[WORD_COUNT_MAX]] words; if draft is longer, shorten it before outputting.
 
 [[EXACT_KEYWORDS_SECTION]]
 
@@ -899,7 +900,7 @@ FINAL SELF-CHECK BEFORE OUTPUT
 • Can a reader diagnose their issue in under 2 minutes?
 • Is every section directly related to the core problem?
 • Did I remove anything that adds noise but no clarity?
-• Word count within accepted range of [[WORD_COUNT]]?
+• Word count between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] and not over [[WORD_COUNT_MAX]]?
 • 4–8 (or all provided) trust source placeholders from [[TRUST_SOURCES_LIST]] (if list not empty), each under a key claim?
 • If anchor was provided: [A1] placed once in first 2–3 paragraphs. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only?
 • If [[BRAND_NAME]] provided: 1–2 mentions in main body?
@@ -1036,18 +1037,20 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
   
-  // Parse wordCount to determine if it's a number or range
+  // Parse wordCount: single number or range. Allowed output range = 80%-120% of target (max 20% error).
   const wordCountStr = params.wordCount || "1500";
   const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);
-  let wordCountMin = 1500;
-  let wordCountMax = 1500;
-  
+  let targetWords = 1500;
   if (wordCountMatch) {
-    wordCountMin = parseInt(wordCountMatch[1]);
-    wordCountMax = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : wordCountMin;
+    const low = parseInt(wordCountMatch[1]);
+    const high = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : low;
+    targetWords = Math.round((low + high) / 2);
   }
-  // Replace WORD_COUNT with the actual value
+  const wordCountMinAllowed = Math.floor(targetWords * 0.8);
+  const wordCountMaxAllowed = Math.ceil(targetWords * 1.2);
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
+  prompt = prompt.replaceAll("[[WORD_COUNT_MIN]]", String(wordCountMinAllowed));
+  prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowed));
 
   // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
   const writingModeTopicDiscovery = params.writingMode || "seo";
@@ -1192,9 +1195,10 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
-	1.	WORD COUNT REQUIREMENT (MANDATORY):
-• Target length: [[WORD_COUNT]] words. Aim for within roughly 10-15% of the target (slightly under or over is acceptable).
-• Do NOT write a short article (300-400 words) when a long one is required (1000+ words). Do NOT write 2000+ words when target is ~1300.
+	1.	WORD COUNT REQUIREMENT (MANDATORY – MAX 20% ERROR):
+• Target length: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120% of target). You MUST stay within this range.
+• HARD MAX: Do NOT exceed [[WORD_COUNT_MAX]] words. If your draft is longer, you MUST shorten it (trim paragraphs or lists) before outputting.
+• Before outputting: count the words in articleBlocks (plain text). If below [[WORD_COUNT_MIN]], add content; if above [[WORD_COUNT_MAX]], cut content. Maximum allowed error: 20%.
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -1252,7 +1256,7 @@ Article brief:
 
 Language & length:
 • Language: [[LANGUAGE]]
-• Target word count: [[WORD_COUNT]] words (aim for within roughly 10-15% of target).
+• Target word count: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120%). Do NOT exceed [[WORD_COUNT_MAX]] words.
 
 Commercial branded link (may be empty):
 • Anchor text: [[ANCHOR_TEXT]]
@@ -1819,7 +1823,7 @@ Note: This check is a reminder for post-processing. Focus on generating naturall
 FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
-• Ensure word count is within the accepted range of [[WORD_COUNT]] (counted as plain text across all text in articleBlocks).
+• Ensure word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] and does NOT exceed [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text).
 • CRITICAL - Brand integration verification: 
   - If [[BRAND_NAME]] is provided and NOT empty/NONE: Verify that [[BRAND_NAME]] is mentioned according to the brand integration rules for your content purpose (see section "1. CONTENT PURPOSE & BRAND VOICE"):
     * "Blog": Guide topics - 2-3 mentions max; List topics - one short mention in final paragraph ONLY.
@@ -1931,17 +1935,20 @@ Before outputting, verify that every phrase above appears in your article text w
   }
   prompt = prompt.replaceAll("[[EXACT_KEYWORDS_SECTION]]", exactKeywordsSection);
 
-  // Parse wordCount
+  // Parse wordCount: 80%-120% of target (max 20% error)
   const wordCountStr = params.wordCount || "1500";
   const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);
-  let wordCountMin = 1500;
-  let wordCountMax = 1500;
-  
+  let targetWordsDirect = 1500;
   if (wordCountMatch) {
-    wordCountMin = parseInt(wordCountMatch[1]);
-    wordCountMax = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : wordCountMin;
+    const low = parseInt(wordCountMatch[1]);
+    const high = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : low;
+    targetWordsDirect = Math.round((low + high) / 2);
   }
+  const wordCountMinAllowedDirect = Math.floor(targetWordsDirect * 0.8);
+  const wordCountMaxAllowedDirect = Math.ceil(targetWordsDirect * 1.2);
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
+  prompt = prompt.replaceAll("[[WORD_COUNT_MIN]]", String(wordCountMinAllowedDirect));
+  prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowedDirect));
 
   // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt
   const writingModeDirect = params.writingMode || "seo";
