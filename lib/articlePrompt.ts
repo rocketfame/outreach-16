@@ -1051,6 +1051,12 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   prompt = prompt.replaceAll("[[WORD_COUNT_MIN]]", String(wordCountMinAllowed));
   prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowed));
+  // #region agent log
+  const unreplacedMin = prompt.includes("[[WORD_COUNT_MIN]]");
+  const unreplacedMax = prompt.includes("[[WORD_COUNT_MAX]]");
+  const hasMaxNum = prompt.includes(String(wordCountMaxAllowed));
+  fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articlePrompt.ts:buildArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWords,wordCountMinAllowed,wordCountMaxAllowed,unreplacedMin,unreplacedMax,hasMaxNum,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H2-H3'})}).catch(()=>{});
+  // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
   const writingModeTopicDiscovery = params.writingMode || "seo";
@@ -1949,6 +1955,12 @@ Before outputting, verify that every phrase above appears in your article text w
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   prompt = prompt.replaceAll("[[WORD_COUNT_MIN]]", String(wordCountMinAllowedDirect));
   prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowedDirect));
+  // #region agent log
+  const unreplacedMinD = prompt.includes("[[WORD_COUNT_MIN]]");
+  const unreplacedMaxD = prompt.includes("[[WORD_COUNT_MAX]]");
+  const hasMaxNumD = prompt.includes(String(wordCountMaxAllowedDirect));
+  fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articlePrompt.ts:buildDirectArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWordsDirect,wordCountMinAllowedDirect,wordCountMaxAllowedDirect,unreplacedMinD,unreplacedMaxD,hasMaxNumD,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H4-H5'})}).catch(()=>{});
+  // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt
   const writingModeDirect = params.writingMode || "seo";

@@ -120,7 +120,10 @@ export async function POST(req: Request) {
   try {
     const body: ArticleRequest = await req.json();
     const { brief, selectedTopics, keywordList = [], exactKeywordList = [], trustSourcesList = [], writingMode = "seo" } = body;
-    
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:122',message:'wordCount audit request',data:{briefWordCount:brief?.wordCount,typeofWordCount:typeof brief?.wordCount,briefKeys:brief?Object.keys(brief):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+
     // Check trial limits AFTER parsing body to know how many articles will be generated
     const trialToken = extractTrialToken(req);
     const articlesToGenerate = selectedTopics?.length || 1;
@@ -524,6 +527,12 @@ export async function POST(req: Request) {
         // #region agent log
         const promptLog = {location:'articles/route.ts:75',message:'Article prompt built',data:{promptLength:prompt.length,topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
         debugLog(promptLog);
+        // #endregion
+        // #region agent log
+        const expectedMax = Math.ceil((Number(brief.wordCount) || 1500) * 1.2);
+        const idx = prompt.indexOf('WORD_COUNT');
+        const snippet = idx >= 0 ? prompt.slice(idx, idx + 350) : 'no WORD_COUNT';
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articles/route.ts:528',message:'wordCount audit prompt',data:{briefWordCount:brief?.wordCount,expectedMax,promptHasUnreplacedMax:prompt.includes('[[WORD_COUNT_MAX]]'),promptHasMaxNum:prompt.includes(String(expectedMax)),snippet},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H3-H4'})}).catch(()=>{});
         // #endregion
 
         // Extract brand name for system message
