@@ -1,2 +1,0 @@
-{"location":"page.tsx:147","message":"checkTrialLimitsBeforeGeneration called","data":{"action":"image","articlesToGenerate":1},"timestamp":1769697960323,"sessionId":"debug-session","runId":"trial-limits","hypothesisId":"limit-check"}
-{"location":"page.tsx:150","message":"No trial token, allowing generation","data":{"action":"image"},"timestamp":1769697960323,"sessionId":"debug-session","runId":"trial-limits","hypothesisId":"limit-check"}

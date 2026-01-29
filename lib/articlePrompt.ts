@@ -1,6 +1,18 @@
 // lib/articlePrompt.ts
 
 import { TrustSourceSpec } from "@/lib/articleStructure";
+// @ts-expect-error Node built-in for debug logging
+import path from "path";
+// @ts-expect-error Node built-in for debug logging
+import fs from "fs";
+
+const writeDebugLine = (payload: Record<string, unknown>) => {
+  try {
+    // @ts-expect-error process is Node global
+    const p = path.join(process.cwd(), ".cursor", "debug.log");
+    fs.appendFileSync(p, JSON.stringify(payload) + "\n");
+  } catch (_) {}
+};
 
 /**
  * ============================================================================
@@ -1055,7 +1067,7 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   const unreplacedMin = prompt.includes("[[WORD_COUNT_MIN]]");
   const unreplacedMax = prompt.includes("[[WORD_COUNT_MAX]]");
   const hasMaxNum = prompt.includes(String(wordCountMaxAllowed));
-  fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articlePrompt.ts:buildArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWords,wordCountMinAllowed,wordCountMaxAllowed,unreplacedMin,unreplacedMax,hasMaxNum,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H2-H3'})}).catch(()=>{});
+  writeDebugLine({location:'articlePrompt.ts:buildArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWords,wordCountMinAllowed,wordCountMaxAllowed,unreplacedMin,unreplacedMax,hasMaxNum,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H2-H3'});
   // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
@@ -1959,7 +1971,7 @@ Before outputting, verify that every phrase above appears in your article text w
   const unreplacedMinD = prompt.includes("[[WORD_COUNT_MIN]]");
   const unreplacedMaxD = prompt.includes("[[WORD_COUNT_MAX]]");
   const hasMaxNumD = prompt.includes(String(wordCountMaxAllowedDirect));
-  fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'articlePrompt.ts:buildDirectArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWordsDirect,wordCountMinAllowedDirect,wordCountMaxAllowedDirect,unreplacedMinD,unreplacedMaxD,hasMaxNumD,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H4-H5'})}).catch(()=>{});
+  writeDebugLine({location:'articlePrompt.ts:buildDirectArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWordsDirect,wordCountMinAllowedDirect,wordCountMaxAllowedDirect,unreplacedMinD,unreplacedMaxD,hasMaxNumD,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H4-H5'});
   // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt
