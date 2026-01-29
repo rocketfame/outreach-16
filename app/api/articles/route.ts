@@ -131,6 +131,7 @@ export async function POST(req: Request) {
     const { brief, selectedTopics, keywordList = [], exactKeywordList = [], trustSourcesList = [], writingMode = "seo" } = body;
     // #region agent log
     writeDebugLine({location:'articles/route.ts:122',message:'wordCount audit request',data:{briefWordCount:brief?.wordCount,typeofWordCount:typeof brief?.wordCount,briefKeys:brief?Object.keys(brief):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H1'});
+    console.log("[wordcount-audit] Request brief.wordCount:", brief?.wordCount, "type:", typeof brief?.wordCount);
     // #endregion
 
     // Check trial limits AFTER parsing body to know how many articles will be generated
@@ -542,6 +543,7 @@ export async function POST(req: Request) {
         const idx = prompt.indexOf('WORD_COUNT');
         const snippet = idx >= 0 ? prompt.slice(idx, idx + 350) : 'no WORD_COUNT';
         writeDebugLine({location:'articles/route.ts:528',message:'wordCount audit prompt',data:{briefWordCount:brief?.wordCount,expectedMax,promptHasUnreplacedMax:prompt.includes('[[WORD_COUNT_MAX]]'),promptHasMaxNum:prompt.includes(String(expectedMax)),snippet},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H3-H4'});
+        console.log("[wordcount-audit] Prompt check: brief.wordCount=", brief?.wordCount, "expectedMax=", expectedMax, "unreplacedMax=", prompt.includes("[[WORD_COUNT_MAX]]"), "hasMaxNum=", prompt.includes(String(expectedMax)));
         // #endregion
 
         // Extract brand name for system message
@@ -553,13 +555,18 @@ export async function POST(req: Request) {
             : brief.clientSite.trim()
           : "";
 
-        // Build system message
+        // Build system message (include strict word count so model sees it upfront)
+        const targetWords = Number(brief.wordCount) || 1500;
+        const wordCountMinSys = Math.floor(targetWords * 0.8);
+        const wordCountMaxSys = Math.ceil(targetWords * 1.2);
         const systemMessage = `You are an expert SEO Content Strategist and outreach content writer, native English speaker (US), with deep experience in social media, music marketing and creator economy. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
 
 Target audience: B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms.
 ${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific brand to feature."}
 Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
-Language: US English.`;
+Language: US English.
+
+CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${wordCountMaxSys} words. Do NOT exceed ${wordCountMaxSys} words. If your draft is longer, shorten it before outputting. This is mandatory.`;
 
         // API parameters for OpenAI
         const apiParams = { 

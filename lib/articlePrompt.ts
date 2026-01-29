@@ -669,6 +669,8 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • All formatting rules are followed (plain text with newlines, markdown-style bold, placeholder rules, character rules).
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 
+MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. Do not output if over — shorten the article first.
+
 Now generate the response as JSON only, with no explanations:
 {
   "titleTag": "Your SEO title tag here (max 60 characters)",
@@ -1065,6 +1067,7 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   const unreplacedMax = prompt.includes("[[WORD_COUNT_MAX]]");
   const hasMaxNum = prompt.includes(String(wordCountMaxAllowed));
   writeDebugLine({location:'articlePrompt.ts:buildArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWords,wordCountMinAllowed,wordCountMaxAllowed,unreplacedMin,unreplacedMax,hasMaxNum,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H2-H3'});
+  console.log("[wordcount-audit] buildArticlePrompt: wordCountStr=", wordCountStr, "targetWords=", targetWords, "min=", wordCountMinAllowed, "max=", wordCountMaxAllowed, "unreplacedMin/Max=", unreplacedMin, unreplacedMax, "hasMaxNum=", hasMaxNum);
   // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
@@ -1853,6 +1856,8 @@ FINAL VERIFICATION BEFORE OUTPUT:
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 • Make sure there is NO extra text outside the JSON object.
 
+MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. Do not output if over — shorten the article first.
+
 Now generate ONLY the JSON object, nothing else.
 `.trim();
 
@@ -1969,6 +1974,7 @@ Before outputting, verify that every phrase above appears in your article text w
   const unreplacedMaxD = prompt.includes("[[WORD_COUNT_MAX]]");
   const hasMaxNumD = prompt.includes(String(wordCountMaxAllowedDirect));
   writeDebugLine({location:'articlePrompt.ts:buildDirectArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWordsDirect,wordCountMinAllowedDirect,wordCountMaxAllowedDirect,unreplacedMinD,unreplacedMaxD,hasMaxNumD,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H4-H5'});
+  console.log("[wordcount-audit] buildDirectArticlePrompt: wordCountStr=", wordCountStr, "targetWords=", targetWordsDirect, "min=", wordCountMinAllowedDirect, "max=", wordCountMaxAllowedDirect, "unreplacedMin/Max=", unreplacedMinD, unreplacedMaxD, "hasMaxNum=", hasMaxNumD);
   // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt

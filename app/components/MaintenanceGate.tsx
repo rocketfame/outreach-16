@@ -2,10 +2,19 @@
 
 import { useEffect, useState } from "react";
 
+// Allow full access on localhost for local testing
+const isLocalhost = () => {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
+};
+
 // Check if maintenance gate should be shown
 // Can be disabled via environment variable or localStorage
 const isMaintenanceEnabled = () => {
   if (typeof window === "undefined") return true;
+  // Localhost: never show gate (for local testing)
+  if (isLocalhost()) return false;
   // Check if disabled via localStorage (for quick testing)
   const disabled = localStorage.getItem("maintenance_disabled");
   if (disabled === "true") return false;
