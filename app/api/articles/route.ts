@@ -45,9 +45,7 @@ import {
   type RawSearchResult,
   type TrustedSource 
 } from "@/lib/sourceClassifier";
-// @ts-expect-error Node built-in for debug logging
 import path from "path";
-// @ts-expect-error Node built-in for debug logging
 import fs from "fs";
 
 // Simple debug logger that works in both local and production (Vercel)
@@ -57,7 +55,6 @@ const debugLog = (...args: any[]) => {
 
 const writeDebugLine = (payload: Record<string, unknown>) => {
   try {
-    // @ts-expect-error process is Node global
     const p = path.join(process.cwd(), ".cursor", "debug.log");
     fs.appendFileSync(p, JSON.stringify(payload) + "\n");
   } catch (_) {}
