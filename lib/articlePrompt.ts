@@ -229,11 +229,10 @@ Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
-• The article MUST be approximately [[WORD_COUNT]] words long. This is NOT a suggestion, it is a HARD REQUIREMENT.
-• Before outputting the final article, count the words in articleBodyText (as plain text).
-• If the count is far off (more than a 10 percent difference), extend or trim the content until it is close to [[WORD_COUNT]].
-• The final article MUST be within 90-110 percent of the target length (for example, for 1000 words the article must be 900-1100 words).
-• Do NOT write a short article (300-400 words) when a long one is required (1000+ words).
+• Target length: [[WORD_COUNT]] words. Accepted range: 90-115% of target (e.g. for 1300 words: 1170-1495 words).
+• HARD MAXIMUM: Do NOT exceed [[WORD_COUNT_MAX]] words. If your draft is longer, you MUST shorten it before outputting.
+• Before outputting, count the words in articleBodyText (as plain text). If below 90% of target, add content; if above [[WORD_COUNT_MAX]], trim content.
+• Do NOT write a short article (300-400 words) when a long one is required (1000+ words). Do NOT write 2000+ words when target is ~1300.
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -652,7 +651,7 @@ After generating the article, perform a quick human QA:
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
 
 FINAL CHECKLIST BEFORE OUTPUT:
-• Word count is approximately [[WORD_COUNT]] words (counted across all text in articleBlocks as plain text).
+• Word count is within 90-115% of [[WORD_COUNT]] and does NOT exceed [[WORD_COUNT_MAX]] words (counted across all text in articleBlocks as plain text).
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned 1-2 times in the article body (main sections, not just intro/conclusion). The brand should appear as a natural solution or helper, NOT as advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
@@ -805,10 +804,12 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
     wordCountMin = parseInt(wordCountMatch[1]);
     wordCountMax = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : wordCountMin;
   }
-  
-  // Replace WORD_COUNT with the actual value
+  const wordCountMaxAllowed = Math.ceil(Math.max(wordCountMin, wordCountMax) * 1.15);
+
+  // Replace WORD_COUNT and WORD_COUNT_MAX with the actual values
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
-  
+  prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowed));
+
   // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
   const writingModeTopicDiscovery = params.writingMode || "seo";
   prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeTopicDiscovery);
@@ -953,11 +954,10 @@ Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
 	1.	WORD COUNT REQUIREMENT (MANDATORY):
-• The article MUST be approximately [[WORD_COUNT]] words long. This is NOT a suggestion, it is a HARD REQUIREMENT.
-• Before outputting the final article, count the words in articleBlocks (as plain text across all text fields, items, and cells).
-• If the count is far off (more than a 10 percent difference), extend or trim the content until it is close to [[WORD_COUNT]].
-• The final article MUST be within 90-110 percent of the target length (for example, for 1200 words the article must be 1080-1320 words).
-• Do NOT write a short article (300-400 words) when a long one is required (1000+ words).
+• Target length: [[WORD_COUNT]] words. Accepted range: 90-115% of target (e.g. for 1300 words: 1170-1495 words).
+• HARD MAXIMUM: Do NOT exceed [[WORD_COUNT_MAX]] words. If your draft is longer, you MUST shorten it before outputting.
+• Before outputting, count the words in articleBlocks (as plain text across all text fields, items, and cells). If below 90% of target, add content; if above [[WORD_COUNT_MAX]], trim content.
+• Do NOT write a short article (300-400 words) when a long one is required (1000+ words). Do NOT write 2000+ words when target is ~1300.
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -1016,7 +1016,7 @@ Article brief:
 Language & length:
 • Language: [[LANGUAGE]]
 • Target word count: [[WORD_COUNT]] words
-	•	Accepted range: 90-110% of [[WORD_COUNT]].
+	•	Accepted range: 90-115% of target. Maximum allowed: [[WORD_COUNT_MAX]] words. Do NOT exceed the maximum.
 	•	You must consciously stay inside this range and add or trim content if needed.
 
 Commercial branded link (may be empty):
@@ -1584,7 +1584,7 @@ Note: This check is a reminder for post-processing. Focus on generating naturall
 FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
-• Ensure word count is within 90-110% of [[WORD_COUNT]] (counted as plain text across all text in articleBlocks).
+• Ensure word count is within 90-115% of [[WORD_COUNT]] and does NOT exceed [[WORD_COUNT_MAX]] words (counted as plain text across all text in articleBlocks).
 • CRITICAL - Brand integration verification: 
   - If [[BRAND_NAME]] is provided and NOT empty/NONE: Verify that [[BRAND_NAME]] is mentioned according to the brand integration rules for your content purpose (see section "1. CONTENT PURPOSE & BRAND VOICE"):
     * "Blog": Guide topics - 2-3 mentions max; List topics - one short mention in final paragraph ONLY.
@@ -1595,6 +1595,7 @@ FINAL VERIFICATION BEFORE OUTPUT:
   - If [[BRAND_NAME]] is empty/NONE/placeholder: Verify that NO client brands are mentioned (only generic platforms like Spotify, YouTube, TikTok when part of factual topic).
 • If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in the first 2-3 paragraphs.
 • Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
+[[EXACT_KEYWORDS_VERIFICATION]]
 • Scan all block texts/items/cells for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 • Make sure there is NO extra text outside the JSON object.
@@ -1676,24 +1677,31 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
 
-  // Exact keywords block (Direct Article only): when provided, writer must include each phrase with exact match
+  // Exact keywords block (Direct Article only): when provided, writer must include 100% of phrases with exact match
   let exactKeywordsSection = "";
+  let exactKeywordsVerification = "";
   if (params.exactKeywordList && params.exactKeywordList.length > 0) {
     const list = params.exactKeywordList.map((k, i) => `${i + 1}. ${k}`).join("\n");
+    const count = params.exactKeywordList.length;
     exactKeywordsSection = `
 ================================
-MANDATORY EXACT KEYWORDS (CRITICAL)
+MANDATORY EXACT KEYWORDS (100% INCLUSION - CRITICAL)
 ================================
-You MUST include each of the following phrases in the article EXACTLY as written below. No variation, no synonym, no paraphrase.
-Each phrase must appear at least once in the article body with identical wording.
+• 100% INCLUSION REQUIRED: Every single phrase below MUST appear in the article verbatim. None may be skipped, omitted, or replaced with a synonym or paraphrase.
+• There are ${count} mandatory phrase(s). The article is INVALID if even one is missing.
+• Each phrase must appear at least once with IDENTICAL wording (same characters, same order). Do not change spelling, hyphenation, or word order.
+• If you cannot fit a phrase naturally in one place, add it in another (e.g. in a different paragraph or list item). Every phrase must appear somewhere.
 
-List of exact phrases:
+List of exact phrases (ALL must appear in the article):
 ${list}
 
-Before outputting, verify that every phrase above appears in your article text with exact match.
+• Before writing: plan where each phrase will appear.
+• Before outputting: go through the list and confirm each of the ${count} phrases appears verbatim in your article. If any is missing, add a sentence that contains it.
 `;
+    exactKeywordsVerification = `• CRITICAL - Exact keywords: Verify that ALL ${count} phrase(s) from the MANDATORY EXACT KEYWORDS section appear in your article with exact wording. If any phrase is missing, add it before outputting. Do NOT output until every phrase is present.\n`;
   }
   prompt = prompt.replaceAll("[[EXACT_KEYWORDS_SECTION]]", exactKeywordsSection);
+  prompt = prompt.replaceAll("[[EXACT_KEYWORDS_VERIFICATION]]", exactKeywordsVerification);
 
   // Parse wordCount
   const wordCountStr = params.wordCount || "1500";
@@ -1705,9 +1713,11 @@ Before outputting, verify that every phrase above appears in your article text w
     wordCountMin = parseInt(wordCountMatch[1]);
     wordCountMax = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : wordCountMin;
   }
-  
+  const wordCountMaxAllowedDirect = Math.ceil(Math.max(wordCountMin, wordCountMax) * 1.15);
+
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
-  
+  prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowedDirect));
+
   // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt
   const writingModeDirect = params.writingMode || "seo";
   prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeDirect);
