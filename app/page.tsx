@@ -5587,23 +5587,16 @@ export default function Home() {
                     
                     <div className="form-fields" style={{ marginTop: "1.25rem" }}>
                       <label>
-                        <span>Article brief / instructions <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "#666" }}>(optional)</span></span>
+                        <span>Article brief / instructions <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "var(--text-muted)" }}>(optional)</span></span>
                         <textarea
+                          className="instruction-block-textarea"
                           value={directArticleBrief}
                           onChange={(e) => updateDirectArticleBrief(e.target.value)}
                           placeholder="Describe what you want in this article: type (list/guide), regions, number of items, angle, required subheadings, keywords, what to avoid, etc."
                           rows={5}
-                          style={{
-                            width: "100%",
-                            padding: "0.75rem",
-                            fontSize: "0.9375rem",
-                            fontFamily: "inherit",
-                            border: "1px solid #ddd",
-                            borderRadius: "6px",
-                            resize: "vertical",
-                          }}
+                          style={{ width: "100%", resize: "vertical" }}
                         />
-                        <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8125rem", color: "#666" }}>
+                        <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                           If you fill this in, the AI will treat it as a high-priority brief and follow your structure and constraints where possible.
                         </span>
                       </label>
@@ -5611,23 +5604,16 @@ export default function Home() {
 
                     <div className="form-fields" style={{ marginTop: "1.25rem" }}>
                       <label>
-                        <span>Keywords to include (exact match) <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "#666" }}>(optional)</span></span>
+                        <span>Keywords to include (exact match) <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "var(--text-muted)" }}>(optional)</span></span>
                         <textarea
+                          className="instruction-block-textarea"
                           value={directArticleKeywords}
                           onChange={(e) => updateDirectArticleKeywords(e.target.value)}
                           placeholder="One per line or comma-separated. Each phrase will be included in the article exactly as written, with no variation."
                           rows={3}
-                          style={{
-                            width: "100%",
-                            padding: "0.75rem",
-                            fontSize: "0.9375rem",
-                            fontFamily: "inherit",
-                            border: "1px solid #ddd",
-                            borderRadius: "6px",
-                            resize: "vertical",
-                          }}
+                          style={{ width: "100%", resize: "vertical" }}
                         />
-                        <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8125rem", color: "#666" }}>
+                        <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                           If you leave this empty, the article is written from the brief and topic only. If you provide keywords, each must appear in the article with exact wording.
                         </span>
                       </label>

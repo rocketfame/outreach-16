@@ -582,6 +582,40 @@ body {
   min-height: 80px;
 }
 
+/* Instruction / brief textareas: distinct block so content doesn’t blend with the page */
+.instruction-block-textarea {
+  background-color: #faf7f5 !important;
+  border: 1px solid var(--border) !important;
+  border-left: 3px solid rgba(255, 107, 157, 0.45) !important;
+  border-radius: 10px;
+  padding: 0.875rem 1rem !important;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--foreground);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.instruction-block-textarea::placeholder {
+  color: var(--text-muted);
+}
+.instruction-block-textarea:focus::placeholder {
+  color: transparent;
+}
+.instruction-block-textarea:focus {
+  outline: none;
+  border-color: var(--primary) !important;
+  border-left-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.12);
+}
+[data-theme="dark"] .instruction-block-textarea {
+  background-color: #222 !important;
+  border-color: #404040 !important;
+  border-left-color: rgba(255, 107, 157, 0.5) !important;
+}
+[data-theme="dark"] .instruction-block-textarea:focus {
+  border-left-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.2);
+}
+
 .form-fields small {
   color: var(--text-light);
   font-size: 0.85rem;
