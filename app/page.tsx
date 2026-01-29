@@ -49,6 +49,7 @@ export default function Home() {
   const lightHumanEditEnabled = persistedState.lightHumanEditEnabled;
   const directArticleTopic = persistedState.directArticleTopic || "";
   const directArticleBrief = persistedState.directArticleBrief || "";
+  const directArticleKeywords = persistedState.directArticleKeywords || "";
   const theme = persistedState.theme || "light";
   const writingMode = persistedState.writingMode || "seo"; // Default to "seo"
   
@@ -818,6 +819,13 @@ export default function Home() {
     setPersistedState(prev => ({
       ...prev,
       directArticleBrief: brief,
+    }));
+  };
+
+  const updateDirectArticleKeywords = (keywords: string) => {
+    setPersistedState(prev => ({
+      ...prev,
+      directArticleKeywords: keywords,
     }));
   };
 
@@ -2352,6 +2360,12 @@ export default function Home() {
       // Direct Article: humanization only via Human Mode (no "humanize on write" — same as Topic Discovery).
       const effectiveHumanizeForRequest = writingMode === "human";
       
+      // Parse exact keywords: newline or comma separated, trimmed, non-empty
+      const exactKeywordList = (directArticleKeywords || "")
+        .split(/[\n,]+/)
+        .map((k) => k.trim())
+        .filter(Boolean);
+
       const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/articles", {
         method: "POST",
@@ -2369,7 +2383,8 @@ export default function Home() {
             // DO NOT include: shortAngle, whyNonGeneric, howAnchorFits - these indicate Topic Discovery Mode
             primaryKeyword: directArticleTopic.split(" ")[0] || directArticleTopic,
           }],
-          keywordList: [directArticleTopic],
+          keywordList: exactKeywordList.length > 0 ? exactKeywordList : [directArticleTopic],
+          exactKeywordList: exactKeywordList.length > 0 ? exactKeywordList : undefined, // Optional: writer must include these with exact match
           trustSourcesList: trustSourcesList,
           lightHumanEdit: !effectiveHumanizeForRequest, // Automatically enable lightHumanEdit if humanization is disabled
           humanizeOnWrite: effectiveHumanizeForRequest, // Pass effective humanize state (forced ON for Human Mode)
@@ -5590,6 +5605,30 @@ export default function Home() {
                         />
                         <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8125rem", color: "#666" }}>
                           If you fill this in, the AI will treat it as a high-priority brief and follow your structure and constraints where possible.
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="form-fields" style={{ marginTop: "1.25rem" }}>
+                      <label>
+                        <span>Keywords to include (exact match) <span style={{ fontWeight: "normal", fontSize: "0.875rem", color: "#666" }}>(optional)</span></span>
+                        <textarea
+                          value={directArticleKeywords}
+                          onChange={(e) => updateDirectArticleKeywords(e.target.value)}
+                          placeholder="One per line or comma-separated. Each phrase will be included in the article exactly as written, with no variation."
+                          rows={3}
+                          style={{
+                            width: "100%",
+                            padding: "0.75rem",
+                            fontSize: "0.9375rem",
+                            fontFamily: "inherit",
+                            border: "1px solid #ddd",
+                            borderRadius: "6px",
+                            resize: "vertical",
+                          }}
+                        />
+                        <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8125rem", color: "#666" }}>
+                          If you leave this empty, the article is written from the brief and topic only. If you provide keywords, each must appear in the article with exact wording.
                         </span>
                       </label>
                     </div>

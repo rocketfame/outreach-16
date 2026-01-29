@@ -875,6 +875,8 @@ export interface DirectArticlePromptParams {
   anchorUrl: string;
   brandName: string;
   keywordList: string[];
+  /** When provided, each phrase MUST appear in the article with exact wording (no variation). */
+  exactKeywordList?: string[];
   trustSourcesList: string[]; // Old format: "Name|URL" for backward compatibility
   trustSourcesJSON?: string; // New format: JSON array with id, url, title, type
   trustSourcesSpecs?: TrustSourceSpec[]; // Optional: explicit placeholder mapping with anchor text
@@ -962,6 +964,8 @@ CRITICAL REQUIREMENTS - READ CAREFULLY:
 • Do NOT ignore or deviate from the brief - it is the foundation of the article.
 • All major points mentioned in the brief MUST be present in the text.
 • The structure, tone, and content of the article must match what is specified in [[TOPIC_BRIEF]].
+
+[[EXACT_KEYWORDS_SECTION]]
 
 ================================
 PROJECT CONTEXT
@@ -1671,7 +1675,26 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   prompt = prompt.replaceAll("[[LANGUAGE]]", params.language || "English");
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
-  
+
+  // Exact keywords block (Direct Article only): when provided, writer must include each phrase with exact match
+  let exactKeywordsSection = "";
+  if (params.exactKeywordList && params.exactKeywordList.length > 0) {
+    const list = params.exactKeywordList.map((k, i) => `${i + 1}. ${k}`).join("\n");
+    exactKeywordsSection = `
+================================
+MANDATORY EXACT KEYWORDS (CRITICAL)
+================================
+You MUST include each of the following phrases in the article EXACTLY as written below. No variation, no synonym, no paraphrase.
+Each phrase must appear at least once in the article body with identical wording.
+
+List of exact phrases:
+${list}
+
+Before outputting, verify that every phrase above appears in your article text with exact match.
+`;
+  }
+  prompt = prompt.replaceAll("[[EXACT_KEYWORDS_SECTION]]", exactKeywordsSection);
+
   // Parse wordCount
   const wordCountStr = params.wordCount || "1500";
   const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);

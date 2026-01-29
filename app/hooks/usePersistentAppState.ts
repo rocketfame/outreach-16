@@ -77,6 +77,7 @@ export type AppPersistedState = {
   directArticles: GeneratedArticle[]; // Articles generated in DirectArticleCreation Mode
   directArticleTopic: string; // Topic for direct article creation
   directArticleBrief: string; // Optional detailed brief/instructions for direct article creation
+  directArticleKeywords: string; // Optional: exact keywords to include (one per line or comma-separated). If empty, article follows brief only.
   // Note: articleImages removed from persisted state to avoid localStorage quota issues
   // Images are stored in component state only and can be regenerated if needed
   referenceImageBase64?: string; // Reference image for style personalization (base64, stored only if small)
@@ -113,6 +114,7 @@ const defaultState: AppPersistedState = {
   directArticles: [], // Articles for DirectArticleCreation Mode
   directArticleTopic: "", // Topic input for direct article creation
   directArticleBrief: "", // Optional detailed brief/instructions for direct article creation
+  directArticleKeywords: "", // Optional: exact keywords list for direct article
   referenceImageBase64: undefined, // Reference image for style personalization
   mode: "discovery",
   lightHumanEditEnabled: true, // Default to enabled (recommended)

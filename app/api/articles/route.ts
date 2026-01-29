@@ -73,6 +73,8 @@ export interface ArticleRequest {
     competitionNote?: string;
   }>;
   keywordList?: string[];
+  /** Direct Article only: keywords that must appear in the article with exact match (no variation). */
+  exactKeywordList?: string[];
   trustSourcesList?: string[];
   lightHumanEdit?: boolean; // Optional: enable light human edit post-processing
   humanizeOnWrite?: boolean; // NEW: enable live humanization during generation
@@ -117,7 +119,7 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleRequest = await req.json();
-    const { brief, selectedTopics, keywordList = [], trustSourcesList = [], writingMode = "seo" } = body;
+    const { brief, selectedTopics, keywordList = [], exactKeywordList = [], trustSourcesList = [], writingMode = "seo" } = body;
     
     // Check trial limits AFTER parsing body to know how many articles will be generated
     const trialToken = extractTrialToken(req);
@@ -429,6 +431,7 @@ export async function POST(req: Request) {
             anchorUrl: brief.anchorUrl || brief.clientSite || "",
             brandName: brandName,
             keywordList: keywordList.length > 0 ? keywordList : (topic.primaryKeyword ? [topic.primaryKeyword] : []),
+            exactKeywordList: Array.isArray(exactKeywordList) && exactKeywordList.length > 0 ? exactKeywordList : undefined, // Direct only: must appear with exact match
             trustSourcesList: filteredTrustSourcesList, // Old format for backward compatibility
             trustSourcesJSON: trustSourcesForPrompt, // New structured format with types
             trustSourcesSpecs: trustedSources.map(ts => ({ id: ts.id, text: ts.title, url: ts.url })), // Pass TrustSourceSpec[] for explicit placeholder mapping
