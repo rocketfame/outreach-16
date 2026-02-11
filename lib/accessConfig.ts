@@ -17,6 +17,8 @@ export const MASTER_IPS = [
   "79.168.81.227", // IPv4
   "93.108.241.96", // IPv4
   "2001:4860:7:225::fe", // IPv6
+  "85.244.18.181", // IPv4 (Lisbon / MEO)
+  "2001:8a0:57f9:1300:cd1a:f3a9:aafb:ee3b", // IPv6 (Lisbon / MEO)
 ] as const;
 
 /**
