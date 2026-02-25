@@ -112,6 +112,7 @@ Trial tokens allow access via URL parameter:
 - `2001:8a0:57f9:1300:cd1a:f3a9:aafb:ee3b` (IPv6, Lisbon / MEO)
 - `87.196.74.244` (IPv4, Lisbon / Google)
 - `2001:4860:7:1525::f7` (IPv6, Lisbon / Google)
+- `87.196.74.249` (IPv4)
 
 ### Trial Tokens Count
 Check `.env.local` for current count and list.
