@@ -4268,6 +4268,8 @@ export default function Home() {
           ? currentBrief.clientSite.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").trim()
           : currentBrief.clientSite.trim()
         : "";
+      // Use fallback for empty brand (optional field) - API accepts "Generic" when no brand
+      const brandNameForApi = brandName || "Generic";
 
       console.log("[generateArticleImage] Data collected", { 
         mode: currentMode,
@@ -4294,15 +4296,15 @@ export default function Home() {
         }
       });
 
-      // Validate all required fields before sending request
-      if (!articleTitle || !niche || !mainPlatform || !contentPurpose || !brandName) {
-        const errorMsg = `Missing required fields for image generation: articleTitle=${!!articleTitle}, niche=${!!niche}, mainPlatform=${!!mainPlatform}, contentPurpose=${!!contentPurpose}, brandName=${!!brandName}`;
+      // Validate required fields (brandName is optional - we use "Generic" when empty)
+      if (!articleTitle || !niche || !mainPlatform || !contentPurpose) {
+        const errorMsg = `Missing required fields for image generation: articleTitle=${!!articleTitle}, niche=${!!niche}, mainPlatform=${!!mainPlatform}, contentPurpose=${!!contentPurpose}`;
         console.error("[generateArticleImage]", errorMsg, {
           articleTitle,
           niche,
           mainPlatform,
           contentPurpose,
-          brandName,
+          brandName: brandNameForApi,
           currentBrief,
           mode
         });
@@ -4321,7 +4323,7 @@ export default function Home() {
           niche,
           mainPlatform,
           contentPurpose,
-          brandName,
+          brandName: brandNameForApi,
           customStyle: currentBrief.customStyle || undefined,
           usedBoxIndices: Array.from(globalUsedBoxIndices), // Use GLOBAL list to prevent repeats across all articles in session
         }),

@@ -337,17 +337,19 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleImageRequest = await req.json();
-    const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, usedBoxIndices = [] } = body;
+    const { articleTitle, niche, mainPlatform, contentPurpose, brandName: rawBrandName, customStyle, usedBoxIndices = [] } = body;
+    // Brand is optional - use "Generic" when empty (e.g. Direct mode without clientSite)
+    const brandName = rawBrandName && rawBrandName.trim() ? rawBrandName.trim() : "Generic";
 
     // #region agent log
     const bodyLog = {location:'article-image/route.ts:POST',message:'Request body parsed',data:{articleTitle,niche,mainPlatform,contentPurpose,brandName,customStyle:customStyle?.substring(0,100),usedBoxIndices},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(bodyLog);
     // #endregion
 
-    // Basic validation
-    if (!articleTitle || !niche || !mainPlatform || !contentPurpose || !brandName) {
+    // Basic validation (brandName is optional - we use "Generic" when empty)
+    if (!articleTitle || !niche || !mainPlatform || !contentPurpose) {
       return new Response(
-        JSON.stringify({ success: false, error: "Missing required fields" }),
+        JSON.stringify({ success: false, error: "Missing required fields: articleTitle, niche, mainPlatform, contentPurpose" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
