@@ -590,7 +590,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
 
         // API parameters for OpenAI
         const apiParams = { 
-          max_completion_tokens: 8000
+          max_completion_tokens: 12000
         };
 
         // Call OpenAI API with system + user messages
@@ -774,8 +774,28 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
         try {
           // Try to extract JSON from response (remove markdown code fences if present)
           jsonContent = content.trim();
-          // Remove markdown code fences if present
           jsonContent = jsonContent.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+          
+          // Robust extraction: if content has text before/after JSON, find the JSON object
+          const firstBrace = jsonContent.indexOf('{');
+          if (firstBrace >= 0) {
+            let depth = 0;
+            let end = -1;
+            for (let i = firstBrace; i < jsonContent.length; i++) {
+              const c = jsonContent[i];
+              if (c === '{') depth++;
+              else if (c === '}') {
+                depth--;
+                if (depth === 0) {
+                  end = i;
+                  break;
+                }
+              }
+            }
+            if (end > firstBrace) {
+              jsonContent = jsonContent.slice(firstBrace, end + 1);
+            }
+          }
           
           parsedResponse = JSON.parse(jsonContent);
           
@@ -786,14 +806,38 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
           if (!parsedResponse.articleBlocks && !parsedResponse.articleBodyText && !parsedResponse.articleBodyHtml) {
             throw new Error("Missing required field (articleBlocks, articleBodyText, or articleBodyHtml) in JSON response");
           }
+          
+          // CRITICAL: When we expect articleBlocks format, ensure it's present and non-empty
+          const hasBlocks = Array.isArray(parsedResponse.articleBlocks) && parsedResponse.articleBlocks.length > 0;
+          const hasBodyText = !!parsedResponse.articleBodyText?.trim();
+          const hasBodyHtml = !!parsedResponse.articleBodyHtml?.trim();
+          if (!hasBlocks && !hasBodyText && !hasBodyHtml) {
+            console.error("[articles-api] articleBlocks missing or empty after parsing. Raw OpenAI response:", {
+              contentLength: content.length,
+              contentPreview: content.substring(0, 800),
+              parsedKeys: Object.keys(parsedResponse),
+              articleBlocksType: typeof parsedResponse.articleBlocks,
+              articleBlocksLength: Array.isArray(parsedResponse.articleBlocks) ? parsedResponse.articleBlocks.length : 'N/A',
+            });
+            throw new Error(
+              "Model returned JSON without articleBlocks (or with empty articleBlocks). " +
+              "The response may have been truncated. Raw response logged above."
+            );
+          }
         } catch (parseError) {
           // #region agent log
           const parseErrorLog = {location:'articles/route.ts:150',message:'JSON parse error',data:{error:(parseError as Error).message,errorName:(parseError as Error).name,contentLength:content.length,contentPreview:content.substring(0,500),jsonContentPreview:jsonContent ? jsonContent.substring(0,500) : 'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
           debugLog(parseErrorLog);
           // #endregion
-          console.error("JSON parse error:", parseError);
-          console.error("Content that failed to parse:", content.substring(0, 500));
-          // Fallback: use topic title
+          console.error("[articles-api] JSON parse/validation error:", parseError);
+          console.error("[articles-api] Raw OpenAI response content (first 800 chars):", content.substring(0, 800));
+          // Do NOT use raw content as articleBodyText when it looks like JSON - that would display raw JSON in article body
+          const isValidationError = (parseError as Error).message?.includes("articleBlocks") ||
+            (parseError as Error).message?.includes("Missing required");
+          const contentLooksLikeJson = content.trim().startsWith("{") || content.trim().startsWith("```");
+          if (isValidationError || contentLooksLikeJson) {
+            throw parseError;
+          }
           parsedResponse = {
             titleTag: topic.title,
             metaDescription: "",
