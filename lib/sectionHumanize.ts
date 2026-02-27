@@ -212,6 +212,7 @@ export function chunkTextForHumanization(text: string): string[] {
  *   Placeholders like [A1], [T1] are already short tokens that should survive humanization.
  * @param style Optional writing style (General, Blog, Formal, Informal, Academic, Expand, Simplify).
  * @param mode Optional mode (Basic or Autopilot).
+ * @param previousBlockText Optional text of the previous block for context (only the second part is rewritten).
  * @returns The humanized text, or the original text on error.
  */
 export async function humanizeSectionText(
@@ -220,7 +221,8 @@ export async function humanizeSectionText(
   registeredEmail: string,
   frozenPhrases: string[] = [],
   style?: string,
-  mode?: "Basic" | "Autopilot"
+  mode?: "Basic" | "Autopilot",
+  previousBlockText?: string
 ): Promise<{ humanizedText: string; wordsUsed: number }> {
   if (!text || text.trim().length === 0) {
     return { humanizedText: text, wordsUsed: 0 };
@@ -237,44 +239,59 @@ export async function humanizeSectionText(
     return { humanizedText: text, wordsUsed: 0 };
   }
 
+  const contextPrefix = previousBlockText
+    ? `[CONTEXT ONLY - DO NOT REWRITE]: ${previousBlockText}\n\n[REWRITE THIS PART]: `
+    : "";
+
+  function extractRewrittenPart(responseText: string): string {
+    if (contextPrefix && responseText.startsWith(contextPrefix)) {
+      return responseText.slice(contextPrefix.length);
+    }
+    return responseText;
+  }
+
   try {
     // Use the local humanizeText function (which calls AIHumanize API)
-    // For now, send text as-is if it's within limits
-    // Future: implement chunking here if needed for very long sections
     if (text.length > 10000) {
       // Chunk the text
       const chunks = chunkTextForHumanization(text);
       let totalWordsUsed = 0;
       const humanizedChunks: string[] = [];
 
-      for (const chunk of chunks) {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkFitsWithContext = contextPrefix && (contextPrefix.length + chunks[i].length) <= 10000;
+        const dataToSend = i === 0 && chunkFitsWithContext ? contextPrefix + chunks[i] : chunks[i];
         const result = await humanizeText({
-          text: chunk,
+          text: dataToSend,
           model,
           style,
           mode,
           registeredEmail
         });
-        humanizedChunks.push(result.text);
+        const rewrittenPart = i === 0 && chunkFitsWithContext ? extractRewrittenPart(result.text) : result.text;
+        humanizedChunks.push(rewrittenPart);
         totalWordsUsed += result.wordsUsed;
       }
 
-      return { 
-        humanizedText: humanizedChunks.join('\n\n'), 
-        wordsUsed: totalWordsUsed 
+      return {
+        humanizedText: humanizedChunks.join('\n\n'),
+        wordsUsed: totalWordsUsed
       };
     } else {
+      const dataToSend = contextPrefix + text;
       const result = await humanizeText({
-        text,
+        text: dataToSend,
         model,
         style,
         mode,
         registeredEmail
       });
 
-      return { 
-        humanizedText: result.text, 
-        wordsUsed: result.wordsUsed 
+      const humanizedText = extractRewrittenPart(result.text);
+
+      return {
+        humanizedText,
+        wordsUsed: result.wordsUsed
       };
     }
   } catch (error) {

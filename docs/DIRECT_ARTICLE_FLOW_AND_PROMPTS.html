@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Article Creation — Flow, Humanization, Prompts</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #222; }
+    h1 { font-size: 1.75rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; color: #333; }
+    pre, code { background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; }
+    pre { padding: 1rem; overflow-x: auto; white-space: pre-wrap; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #f5f5f5; font-weight: 600; }
+    ul { margin: 0.5rem 0; }
+    .note { background: #f0f7ff; border-left: 4px solid #0066cc; padding: 1rem; margin: 1rem 0; }
+    @media print { body { padding: 1rem; } pre { white-space: pre-wrap; } }
+  </style>
+</head>
+<body>
+<h1>Direct Article Creation Mode — Flow, Humanization, Prompts</h1>
+<p>Документ для передачі агенту: повний опис флоу Direct Article Creation, х'юманізації та промптів.</p>
+
+<h2>1. Флоу Direct Article Creation</h2>
+<pre>┌─────────────────────────────────────────────────────────────────────────────┐
+│ UI (page.tsx)                                                                │
+│ • Користувач вводить: Article Topic, опційно Brief, опційно Exact Keywords   │
+│ • Project Basics: niche, platform, contentPurpose, clientSite, wordCount      │
+│ • Writing Mode: SEO або Human (тільки Human дає humanize)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Крок 1: Tavily — пошук trust sources                                         │
+│ • POST /api/find-links                                                       │
+│ • Query: directArticleTopic + niche + platform + "2024 2025"                  │
+│ • Результат: trustSourcesList (Name|URL)                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Крок 2: POST /api/articles                                                   │
+│ • selectedTopics: [{ title: articleId, brief, primaryKeyword }]              │
+│   БЕЗ shortAngle, whyNonGeneric, howAnchorFits → API визначає Direct Mode    │
+│ • keywordList: exactKeywordList або [directArticleTopic]                    │
+│ • exactKeywordList: якщо є — фрази дослівно в текст                           │
+│ • trustSourcesList, writingMode, humanizeOnWrite, humanizeSettings           │
+│ • humanizeOnWrite: тільки true для Human Mode (Direct не має тоглу)          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ API (articles/route.ts)                                                      │
+│ 1. isDirectMode = true (немає shortAngle/whyNonGeneric/howAnchorFits)        │
+│ 2. Класифікація trust sources (LLM або filterAndSelectTrustSources)         │
+│ 3. buildDirectArticlePrompt() → user prompt                                  │
+│ 4. OpenAI chat.completions.create (system + user, gpt-5.2, json_object)     │
+│ 5. Парсинг JSON → articleBlocks → modelBlocksToArticleStructure()            │
+│ 6. cleanText() по блоках                                                     │
+│ 7. Якщо effectiveHumanizeOnWrite → humanize блоків (AIHumanize API)          │
+│ 8. blocksToHtml() → інжекція [A1], [T1]–[T3] → фінальний HTML                │
+└─────────────────────────────────────────────────────────────────────────────┘</pre>
+
+<h2>2. Флоу х'юманізації</h2>
+<pre>effectiveHumanizeOnWrite = (writingMode === "human") ? true : (body.humanizeOnWrite || false)</pre>
+<p>У Direct Mode humanize увімкнено <strong>тільки</strong> при Human Mode (немає тоглу "Humanize on write").</p>
+<pre>┌─────────────────────────────────────────────────────────────────────────────┐
+│ Якщо effectiveHumanizeOnWrite === true                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Для кожного блоку articleStructure.blocks:                                   │
+│ • ul/ol: для кожного item.text (якщо ≥100 символів)                          │
+│   - Замінити [A1],[T1],[T2],[T3] на LINKREF000, LINKREF001...                │
+│   - humanizeSectionText(protectedText) → AIHumanize API                      │
+│   - Відновити плейсхолдери з токенів                                         │
+│ • table: для caption, headers, rows — аналогічно                              │
+│ • p, h1–h4: якщо text ≥100 символів — humanizeSectionText()                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ AIHumanize API (lib/sectionHumanize.ts)                                       │
+│ • POST https://aihumanize.io/api/v1/rewrite                                   │
+│ • Body: { model: "0"|"1"|"2", mail: email, data: text }                      │
+│ • model: 0=Quality, 1=Balance, 2=Enhanced                                    │
+│ • Обмеження: 100–10000 символів на запит                                      │
+└─────────────────────────────────────────────────────────────────────────────┘</pre>
+
+<h2>3. System Prompt</h2>
+<pre>You are an expert SEO Content Strategist and outreach content writer, native English speaker (US), with deep experience in social media, music marketing and creator economy. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
+
+Target audience: B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms.
+${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific brand to feature."}
+Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
+Language: US English.
+
+CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${wordCountMaxSys} words. Do NOT exceed ${wordCountMaxSys} words. If your draft is longer, shorten it before outputting. This is mandatory.</pre>
+
+<h2>4. User Prompt — Placeholders</h2>
+<table>
+<tr><th>Placeholder</th><th>Джерело</th></tr>
+<tr><td><code>[[TOPIC_TITLE]]</code></td><td>topic.title (directArticleTopic)</td></tr>
+<tr><td><code>[[TOPIC_BRIEF]]</code></td><td>directArticleBrief або directArticleTopic</td></tr>
+<tr><td><code>[[WRITING_MODE]]</code></td><td>"seo" або "human"</td></tr>
+<tr><td><code>[[WORD_COUNT]]</code>, <code>[[WORD_COUNT_MIN]]</code>, <code>[[WORD_COUNT_MAX]]</code></td><td>brief.wordCount (80%–120%)</td></tr>
+<tr><td><code>[[NICHE]]</code></td><td>brief.niche</td></tr>
+<tr><td><code>[[MAIN_PLATFORM]]</code></td><td>brief.platform</td></tr>
+<tr><td><code>[[CONTENT_PURPOSE]]</code></td><td>brief.contentPurpose</td></tr>
+<tr><td><code>[[BRAND_NAME]]</code></td><td>домен з clientSite або "NONE"</td></tr>
+<tr><td><code>[[ANCHOR_TEXT]]</code>, <code>[[ANCHOR_URL]]</code></td><td>brief.anchorText, brief.anchorUrl</td></tr>
+<tr><td><code>[[TRUST_SOURCES_LIST]]</code></td><td>trust sources (JSON або Name|URL)</td></tr>
+<tr><td><code>[[EXACT_KEYWORDS_SECTION]]</code></td><td>блок exact keywords (якщо є)</td></tr>
+<tr><td><code>[[LANGUAGE]]</code></td><td>brief.language</td></tr>
+<tr><td><code>[[TARGET_AUDIENCE]]</code></td><td>фіксований текст</td></tr>
+</table>
+
+<h2>5. User Prompt — Direct Article Template (початок)</h2>
+<p>Шаблон: <code>DIRECT_ARTICLE_PROMPT_TEMPLATE</code> в <code>lib/articlePrompt.ts</code> (рядки 1159–1868). Якщо <code>contentPurpose === "Blog"</code> — використовується <code>BLOG_ARTICLE_PROMPT_TEMPLATE</code>.</p>
+<pre>You are an experienced SEO and editorial writer with 10+ years of practice across different industries.
+Your job in Direct Article Creation is simple:
+take a prepared topic brief and generate a clean, human article that:
+	1.	strictly matches the topic [[TOPIC_TITLE]] and description [[TOPIC_BRIEF]],
+	2.	respects the project context,
+	3.	follows the chosen content purpose [[CONTENT_PURPOSE]],
+	4.	always chooses the correct structural format (list or guide) according to the rules below.
+
+WRITING MODE LOGIC
+- "seo" → use the existing strict SEO article behavior.
+- "human" → write in Human Mode (editorial / founder-style).
+
+If WritingMode == "human":
+- Content must stay accurate, useful, and on-topic.
+- SEO is allowed but secondary: focus on voice and flow first, structure second.
+- Use one H1, 2–5 H2s, vary paragraph length, prefer narrative over bullet checklists.
+- Mix long and short sentences, allow light subjectivity.
+- Sound like a smart peer, not a tutorial.
+
+Current WritingMode: [[WRITING_MODE]]
+
+CRITICAL REQUIREMENTS:
+	1. WORD COUNT: Target [[WORD_COUNT]] words. Range [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]]. Do NOT exceed [[WORD_COUNT_MAX]].
+	2. TOPIC BRIEF: You MUST follow [[TOPIC_BRIEF]] EXACTLY. All major points MUST be present.
+
+[[EXACT_KEYWORDS_SECTION]]
+
+================================
+PROJECT CONTEXT
+• Niche: [[NICHE]]
+• Main platform: [[MAIN_PLATFORM]]
+• Content purpose: [[CONTENT_PURPOSE]]
+• Brand: [[BRAND_NAME]]
+• Topic: [[TOPIC_TITLE]]
+• Brief: [[TOPIC_BRIEF]]
+• Language: [[LANGUAGE]]
+• Word count: [[WORD_COUNT]] (range [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]])
+• Anchor: [[ANCHOR_TEXT]] → [[ANCHOR_URL]]
+• Trust sources: [[TRUST_SOURCES_LIST]]</pre>
+
+<h2>6. Основні секції шаблону</h2>
+<ul>
+<li><strong>0. BRAND PRESENCE LOGIC</strong> — як обробляти порожній/валідний BRAND_NAME</li>
+<li><strong>1. CONTENT PURPOSE & BRAND VOICE</strong> — Blog, Guest post, Educational guide, Partner blog, News Hook, Other</li>
+<li><strong>2. CHOOSING FORMAT: LIST OR GUIDE</strong> — правила вибору формату</li>
+<li><strong>3. STRUCTURE FOR LIST / DIRECTORY TOPICS</strong> — intro, main list, external sources, brand, conclusion</li>
+<li><strong>4. STRUCTURE FOR ADVICE / GUIDE TOPICS</strong> — intro, main body, brand integration, conclusion</li>
+<li><strong>5. COMMERCIAL BRANDED LINK LOGIC</strong> — [A1], коли використовувати, формат</li>
+<li><strong>6. EXTERNAL SOURCES & REFERENCES</strong> — [T1], [T2], [T3], anchor rules</li>
+<li><strong>6.5. OUTREACH-SPECIFIC REQUIREMENTS</strong> — для Guest post / outreach</li>
+<li><strong>7. HUMAN-WRITTEN STYLE AND ANTI-AI-SIGNATURE RULES</strong> — perplexity, burstiness, pattern breaking</li>
+<li><strong>8. SEO META AND OUTPUT FORMAT</strong> — JSON з titleTag, metaDescription, articleBlocks</li>
+</ul>
+<p><strong>Output format:</strong></p>
+<pre>{
+  "titleTag": "…",
+  "metaDescription": "…",
+  "articleBlocks": [
+    { "type": "h1", "text": "..." },
+    { "type": "p", "text": "..." },
+    { "type": "h2", "text": "..." }
+  ]
+}</pre>
+<p>MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]].</p>
+
+<h2>7. Файли в проєкті</h2>
+<table>
+<tr><th>Файл</th><th>Призначення</th></tr>
+<tr><td><code>app/page.tsx</code></td><td>UI, generateDirectArticle(), виклики find-links і /api/articles</td></tr>
+<tr><td><code>app/api/articles/route.ts</code></td><td>Визначення Direct Mode, humanize, виклик OpenAI</td></tr>
+<tr><td><code>lib/articlePrompt.ts</code></td><td>DIRECT_ARTICLE_PROMPT_TEMPLATE, buildDirectArticlePrompt()</td></tr>
+<tr><td><code>lib/sectionHumanize.ts</code></td><td>humanizeSectionText(), виклик AIHumanize API</td></tr>
+</table>
+
+<h2>8. Визначення режиму в API</h2>
+<pre>const hasHowAnchorFits = topic.howAnchorFits && 
+  topic.howAnchorFits.trim() && 
+  !topic.howAnchorFits.includes("N/A");
+const isDirectMode = !topic.shortAngle && 
+  !topic.whyNonGeneric && 
+  !hasHowAnchorFits;</pre>
+<p>Якщо <code>isDirectMode === true</code> → використовується <code>buildDirectArticlePrompt()</code>.</p>
+
+<div class="note">
+<strong>Як зберегти в PDF:</strong> Відкрийте цей HTML-файл у браузері → File → Print (або Cmd+P) → оберіть "Save as PDF" / "Зберегти як PDF".
+</div>
+</body>
+</html>

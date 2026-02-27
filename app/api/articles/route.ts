@@ -25,7 +25,7 @@
  * ============================================================================
  */
 
-import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
+import { buildArticlePrompt, buildDirectArticlePrompt, getEditorialAngle } from "@/lib/articlePrompt";
 import { cleanText, lightHumanEdit, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
@@ -390,6 +390,26 @@ export async function POST(req: Request) {
             : brief.clientSite.trim()
           : "";
 
+        // Editorial angle (Human Mode only) — non-blocking: null on error, article continues without it
+        let editorialAngle: { thesis: string; counterintuitive_angle: string; opening_hook: string } | null = null;
+        if (writingMode === "human") {
+          const topicBriefForAngle = isDirectMode
+            ? (topic.brief || topic.title)
+            : [
+                topic.brief || "",
+                topic.shortAngle || "",
+                topic.whyNonGeneric || "",
+                topic.howAnchorFits || "",
+              ].filter(Boolean).join("\n\n") || topic.title;
+          editorialAngle = await getEditorialAngle({
+            topicTitle: topic.title,
+            topicBrief: topicBriefForAngle,
+            niche: brief.niche || "",
+            contentPurpose: brief.contentPurpose || "",
+            openaiClient: openai,
+          });
+        }
+
         let prompt: string;
 
         if (isDirectMode) {
@@ -452,6 +472,7 @@ export async function POST(req: Request) {
             targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
             wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
             writingMode: writingMode, // Pass writing mode from request
+            editorialAngle: editorialAngle,
           });
         } else {
           // ========================================================================
@@ -526,6 +547,7 @@ export async function POST(req: Request) {
           targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
           wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
           writingMode: writingMode, // Pass writing mode from request
+          editorialAngle: editorialAngle,
         });
         }
         
@@ -559,13 +581,11 @@ export async function POST(req: Request) {
         const targetWords = Number(brief.wordCount) || 1500;
         const wordCountMinSys = Math.floor(targetWords * 0.8);
         const wordCountMaxSys = Math.ceil(targetWords * 1.2);
-        const systemMessage = `You are an expert SEO Content Strategist and outreach content writer, native English speaker (US), with deep experience in social media, music marketing and creator economy. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
-
-Target audience: B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms.
+        const systemMessage = `You are an expert content strategist and editorial writer with deep experience in ${brief.niche || "general topics"}.
+You write articles that feel like an experienced practitioner wrote them — not AI.
 ${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific brand to feature."}
-Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
+Goal: Create a useful, non-pushy article that educates, builds trust and naturally integrates the provided anchor link.
 Language: US English.
-
 CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${wordCountMaxSys} words. Do NOT exceed ${wordCountMaxSys} words. If your draft is longer, shorten it before outputting. This is mandatory.`;
 
         // API parameters for OpenAI
@@ -1032,9 +1052,11 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
 
             if (registeredEmail && apiKey) {
               try {
-                const humanizedBlocks = await Promise.all(
-                  articleStructure.blocks.map(async (block) => {
-                    // Lists: humanize each item
+                const humanizedBlocks: typeof articleStructure.blocks = [];
+                let previousBlockText: string | undefined = undefined;
+
+                for (const block of articleStructure.blocks) {
+                  // Lists: humanize each item (do NOT pass previousBlockText)
                     if (block.type === 'ul' || block.type === 'ol') {
                       const listBlock = block as any;
                       let listWordsUsed = 0;
@@ -1133,7 +1155,8 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                         })
                       );
                       totalHumanizeWordsUsed += listWordsUsed;
-                      return { ...listBlock, items: humanizedItems };
+                      humanizedBlocks.push({ ...listBlock, items: humanizedItems });
+                      continue;
                     }
 
                     // Tables: humanize long cell text (and caption if long)
@@ -1317,16 +1340,68 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       );
 
                       totalHumanizeWordsUsed += tableWordsUsed;
-                      return { ...t, caption, rows: humanizedRows };
+                      humanizedBlocks.push({ ...t, caption, rows: humanizedRows });
+                      continue;
                     }
 
-                    // Headings: don't humanize
-                    if (block.type === 'h1' || block.type === 'h2' || block.type === 'h3' || block.type === 'h4') {
-                      return block;
+                    // Headings: h1 not humanized; h2/h3/h4 humanized with no length threshold (only skip if empty)
+                    if (block.type === 'h1') {
+                      humanizedBlocks.push(block);
+                      continue;
+                    }
+                    if (block.type === 'h2' || block.type === 'h3' || block.type === 'h4') {
+                      if (!block.text || block.text.length === 0) {
+                        humanizedBlocks.push(block);
+                        continue;
+                      }
+                      try {
+                        const cleanedText = cleanText(block.text);
+                        const placeholderMap = new Map<string, string>();
+                        let protectedText = cleanedText;
+                        const placeholderPattern = /\[([AT][1-3])\]/g;
+                        let match;
+                        let tokenIndex = 0;
+                        while ((match = placeholderPattern.exec(cleanedText)) !== null) {
+                          const placeholder = match[0];
+                          const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
+                          placeholderMap.set(token, placeholder);
+                          protectedText = protectedText.replace(placeholder, token);
+                          tokenIndex++;
+                        }
+                        const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                        totalHumanizeWordsUsed += result.wordsUsed;
+                        previousBlockText = block.text;
+                        let restoredText = result.humanizedText;
+                        const placeholdersBeforeRestore = Array.from(placeholderMap.values());
+                        placeholderMap.forEach((placeholder, token) => {
+                          let beforeReplace = restoredText.includes(token);
+                          if (!beforeReplace) {
+                            const variations = [token.replace(/_/g, ''), token.replace(/_/g, ' '), token.toLowerCase(), token.toUpperCase(), token.substring(0, token.length - 2), token.substring(0, token.length - 1), token.replace(/LINKREF/g, 'LINK'), token.replace(/LINKREF/g, 'REF')];
+                            for (const variant of variations) {
+                              if (restoredText.includes(variant)) {
+                                restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                                beforeReplace = true;
+                                break;
+                              }
+                            }
+                          } else {
+                            restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
+                          }
+                        });
+                        const finalText = cleanText(restoredText);
+                        humanizedBlocks.push({ ...block, text: finalText });
+                      } catch {
+                        previousBlockText = block.text;
+                        humanizedBlocks.push(block);
+                      }
+                      continue;
                     }
 
-                    // Paragraphs: humanize if long enough
-                    if (!block.text || block.text.length < 100) return block;
+                    // Paragraphs: humanize if long enough (pass previousBlockText for context)
+                    if (!block.text || block.text.length < 60) {
+                      humanizedBlocks.push(block);
+                      continue;
+                    }
                     try {
                       // Clean invisible characters BEFORE humanization
                       const cleanedText = cleanText(block.text);
@@ -1348,9 +1423,11 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                         tokenIndex++;
                       }
                       
-                      const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                      const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
                       totalHumanizeWordsUsed += result.wordsUsed;
-                      
+
+                      previousBlockText = block.text;
+
                       // Restore placeholders after humanization
                       let restoredText = result.humanizedText;
                       const placeholdersBeforeRestore = Array.from(placeholderMap.values());
@@ -1412,12 +1489,12 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                         console.error(`[articles-api] Placeholders lost after cleanText in paragraph: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}. Block text preview: ${finalText.substring(0, 200)}`);
                       }
                       
-                      return { ...block, text: finalText };
+                      humanizedBlocks.push({ ...block, text: finalText });
                     } catch {
-                      return block;
+                      previousBlockText = block.text;
+                      humanizedBlocks.push(block);
                     }
-                  })
-                );
+                }
 
                 // Check if any blocks were actually humanized (not all failed)
                 const anyHumanized = totalHumanizeWordsUsed > 0 || humanizedBlocks.some((block, i) => {

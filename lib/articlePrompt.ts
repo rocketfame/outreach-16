@@ -62,6 +62,7 @@ export interface ArticlePromptParams {
   targetAudience: string;
   wordCount?: string;
   writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
+  editorialAngle?: { thesis: string; counterintuitive_angle: string; opening_hook: string } | null;
 }
 
 /**
@@ -95,6 +96,8 @@ You will receive:
 • TRUST_SOURCES_LIST: pre validated external sources from Tavily search in the format "Name|URL".
   Each item has at least: title, url, and a short snippet.
 All sources come from the Tavily search API - use only these URLs, do not invent new ones.
+
+[[EDITORIAL_ANGLE]]
 
 Audience:
 • Specific groups depend on [[NICHE]] and [[MAIN_PLATFORM]]: these may be individual users, specialists, entrepreneurs, content creators, small teams, startups, or agencies who want better results on the chosen platform.
@@ -237,10 +240,22 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
-	1.	WORD COUNT REQUIREMENT (MANDATORY – MAX 20% ERROR):
-• Target length: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120% of target). You MUST stay within this range.
-• HARD MAX: Do NOT exceed [[WORD_COUNT_MAX]] words. If your draft is longer, you MUST shorten it (trim paragraphs or lists) before outputting.
-• Before outputting: count the words in articleBlocks (plain text). If below [[WORD_COUNT_MIN]], add content; if above [[WORD_COUNT_MAX]], cut content. Maximum allowed error: 20%.
+	1.	WORD COUNT REQUIREMENT:
+Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+
+Do NOT distribute words evenly across sections. Some sections should be
+dense and detailed where the topic demands it. Others should be deliberately
+short — even 2–3 sentences — when the point has been made.
+
+Uneven section density is correct. A 400-word section followed by a
+80-word section is better than two 240-word sections of identical weight.
+
+If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+(intro fluff, conclusion restatements, redundant examples).
+Do NOT compress sections that carry the core argument.
+
+If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
+
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -659,7 +674,7 @@ After generating the article, perform a quick human QA:
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
 
 FINAL CHECKLIST BEFORE OUTPUT:
-• Word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] and does NOT exceed [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text).
+• Word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text). If over [[WORD_COUNT_MAX]], shorten weakest sections first before outputting.
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned 1-2 times in the article body (main sections, not just intro/conclusion). The brand should appear as a natural solution or helper, NOT as advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
@@ -669,7 +684,7 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • All formatting rules are followed (plain text with newlines, markdown-style bold, placeholder rules, character rules).
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 
-MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. Do not output if over — shorten the article first.
+MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. If over, shorten the weakest sections first (intro fluff, conclusion restatements, redundant examples) before outputting.
 
 Now generate the response as JSON only, with no explanations:
 {
@@ -716,6 +731,8 @@ Inputs:
 • Commercial anchor URL (use EXACTLY as given): [[ANCHOR_URL]]
 • Trusted external sources (pre-validated): [[TRUST_SOURCES_LIST]]
   Use ONLY these sources for external links. Do not invent URLs.
+
+[[EDITORIAL_ANGLE]]
 
 ⸻
 
@@ -837,6 +854,31 @@ ANCHOR LOGIC (same as main app):
 • Correct: "... according to Instagram Help [T1], stories expire after 24 hours."
 • Incorrect: "... according to Instagram's official help article about stories [T1]..." (too long).
 
+---
+TRUST SOURCE PLACEMENT RULE (strictly enforced):
+
+Each trust source placeholder [T1], [T2], [T3] (and [T4]-[T8] if provided)
+must be placed IMMEDIATELY after a specific factual claim, statistic, or
+instruction that the source directly supports.
+
+WRONG placement examples:
+- "Audio quality has a significant impact on learning. For more details, see [T1]."
+- "There are several reasons why this happens. Read more here [T1]."
+- Placing [T1] at the end of a section as a general reference
+
+CORRECT placement examples:
+- "Learners who study with inconsistent audio retain significantly less content [T1]."
+- "According to platform guidelines, stories expire after 24 hours [T1]."
+- "Cache issues account for the majority of playback errors on mobile devices [T1]."
+
+The rule: if you remove the placeholder from the sentence, the sentence must
+still contain a specific verifiable claim. If the sentence only says
+"read more" or "learn more" or "for details" — it is WRONG placement.
+
+Do NOT use [T1]/[T2]/[T3] as "see also" links.
+Do NOT place more than one trust source placeholder in the same sentence.
+---
+
 ⸻
 
 COMMERCIAL ANCHOR [A1] – CRITICAL (NO STUBS)
@@ -868,7 +910,21 @@ SEO & OUTPUT
 
 Language & length:
 • All output must be in [[LANGUAGE]]
-• Target length: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120%). HARD MAX: do NOT exceed [[WORD_COUNT_MAX]] words; if draft is longer, shorten it before outputting.
+• WORD COUNT REQUIREMENT:
+  Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+
+  Do NOT distribute words evenly across sections. Some sections should be
+  dense and detailed where the topic demands it. Others should be deliberately
+  short — even 2–3 sentences — when the point has been made.
+
+  Uneven section density is correct. A 400-word section followed by a
+  80-word section is better than two 240-word sections of identical weight.
+
+  If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+  (intro fluff, conclusion restatements, redundant examples).
+  Do NOT compress sections that carry the core argument.
+
+  If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
 
 [[EXACT_KEYWORDS_SECTION]]
 
@@ -911,7 +967,7 @@ FINAL SELF-CHECK BEFORE OUTPUT
 • Can a reader diagnose their issue in under 2 minutes?
 • Is every section directly related to the core problem?
 • Did I remove anything that adds noise but no clarity?
-• Word count between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] and not over [[WORD_COUNT_MAX]]?
+• Word count between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]]? If over, shorten weakest sections first.
 • 4–8 (or all provided) trust source placeholders from [[TRUST_SOURCES_LIST]] (if list not empty), each under a key claim?
 • If anchor was provided: [A1] placed once in first 2–3 paragraphs. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only?
 • If [[BRAND_NAME]] provided: 1–2 mentions in main body?
@@ -938,6 +994,24 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   if (!params.niche || !params.niche.trim()) {
     throw new Error("Niche is required. Please fill it in Project basics.");
   }
+
+  // Build editorial angle block (Human Mode only - injected when editorialAngle provided)
+  const editorialAngleBlock = params.editorialAngle
+    ? `
+EDITORIAL ANGLE (mandatory — use this to guide the entire article):
+
+Thesis (the core claim your article must argue): ${params.editorialAngle.thesis}
+
+Counterintuitive angle (address this somewhere in the article — it's what makes
+this article different from every other article on this topic): ${params.editorialAngle.counterintuitive_angle}
+
+Opening hook (use this EXACTLY as the first sentence of the article body,
+after H1): ${params.editorialAngle.opening_hook}
+
+These are not suggestions. The thesis must be the backbone of the article.
+The opening hook must be used verbatim as the first sentence.
+`
+    : "";
 
   // Topic Discovery does not use exact keywords block; clear placeholder when Blog template is used
   if (isBlogContentPurpose) {
@@ -1073,7 +1147,10 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
   // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
   const writingModeTopicDiscovery = params.writingMode || "seo";
   prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeTopicDiscovery);
-  
+
+  // Replace editorial angle placeholder
+  prompt = prompt.replaceAll("[[EDITORIAL_ANGLE]]", editorialAngleBlock);
+
   // Format trust sources - prefer JSON format if available, otherwise use old format
   let trustSourcesFormatted = "";
   if (params.trustSourcesJSON) {
@@ -1121,6 +1198,84 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
 }
 
 /**
+ * Build prompt for editorial angle generation (Human Mode only).
+ * Used to generate thesis, counterintuitive_angle, and opening_hook before article generation.
+ */
+export function buildEditorialAnglePrompt(params: {
+  topicTitle: string;
+  topicBrief: string;
+  niche: string;
+  contentPurpose: string;
+}): string {
+  return `You are an experienced editorial strategist.
+
+Given the following article topic, return a short editorial angle object in JSON.
+
+Topic: ${params.topicTitle}
+Brief: ${params.topicBrief}
+Niche: ${params.niche}
+Content purpose: ${params.contentPurpose}
+
+Return ONLY valid JSON, no explanations:
+
+{
+  "thesis": "One sentence — the single most important claim this article should make. Must be specific, not generic.",
+  "counterintuitive_angle": "One sentence — something about this topic that most articles get wrong or ignore entirely.",
+  "opening_hook": "One sentence — the first sentence of the article. Must NOT start with the topic name, must NOT be a question, must NOT start with 'In', 'When', 'Whether', 'If'."
+}
+
+Rules:
+- thesis must take a position, not just describe the topic
+- counterintuitive_angle must be genuinely unexpected, not obvious
+- opening_hook must create tension or curiosity without being clickbait
+- All three must be directly relevant to the topic
+- Total output: JSON only, no markdown, no backticks`;
+}
+
+/**
+ * Fetch editorial angle from OpenAI (gpt-4o-mini) for Human Mode.
+ * Non-blocking: returns null on error; article generation continues without it.
+ */
+export async function getEditorialAngle(params: {
+  topicTitle: string;
+  topicBrief: string;
+  niche: string;
+  contentPurpose: string;
+  openaiClient: any;
+}): Promise<{ thesis: string; counterintuitive_angle: string; opening_hook: string } | null> {
+  try {
+    const prompt = buildEditorialAnglePrompt({
+      topicTitle: params.topicTitle,
+      topicBrief: params.topicBrief,
+      niche: params.niche,
+      contentPurpose: params.contentPurpose,
+    });
+
+    const response = await params.openaiClient.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 300,
+      temperature: 0.9,
+    });
+
+    const raw = response.choices?.[0]?.message?.content;
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+
+    if (!parsed.thesis || !parsed.counterintuitive_angle || !parsed.opening_hook) {
+      return null;
+    }
+
+    return parsed;
+  } catch (e) {
+    console.error("getEditorialAngle failed:", e);
+    return null;
+  }
+}
+
+/**
  * DIRECT ARTICLE CREATION MODE - Interface for direct article generation
  * 
  * This interface is EXCLUSIVELY for Direct Article Creation Mode.
@@ -1145,6 +1300,7 @@ export interface DirectArticlePromptParams {
   targetAudience: string;
   wordCount?: string;
   writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
+  editorialAngle?: { thesis: string; counterintuitive_angle: string; opening_hook: string } | null;
 }
 
 /**
@@ -1213,10 +1369,22 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
-	1.	WORD COUNT REQUIREMENT (MANDATORY – MAX 20% ERROR):
-• Target length: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120% of target). You MUST stay within this range.
-• HARD MAX: Do NOT exceed [[WORD_COUNT_MAX]] words. If your draft is longer, you MUST shorten it (trim paragraphs or lists) before outputting.
-• Before outputting: count the words in articleBlocks (plain text). If below [[WORD_COUNT_MIN]], add content; if above [[WORD_COUNT_MAX]], cut content. Maximum allowed error: 20%.
+	1.	WORD COUNT REQUIREMENT:
+Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+
+Do NOT distribute words evenly across sections. Some sections should be
+dense and detailed where the topic demands it. Others should be deliberately
+short — even 2–3 sentences — when the point has been made.
+
+Uneven section density is correct. A 400-word section followed by a
+80-word section is better than two 240-word sections of identical weight.
+
+If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+(intro fluff, conclusion restatements, redundant examples).
+Do NOT compress sections that carry the core argument.
+
+If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
+
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
 • The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
@@ -1274,7 +1442,21 @@ Article brief:
 
 Language & length:
 • Language: [[LANGUAGE]]
-• Target word count: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120%). Do NOT exceed [[WORD_COUNT_MAX]] words.
+• WORD COUNT REQUIREMENT:
+  Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+
+  Do NOT distribute words evenly across sections. Some sections should be
+  dense and detailed where the topic demands it. Others should be deliberately
+  short — even 2–3 sentences — when the point has been made.
+
+  Uneven section density is correct. A 400-word section followed by a
+  80-word section is better than two 240-word sections of identical weight.
+
+  If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+  (intro fluff, conclusion restatements, redundant examples).
+  Do NOT compress sections that carry the core argument.
+
+  If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
 
 Commercial branded link (may be empty):
 • Anchor text: [[ANCHOR_TEXT]]
@@ -1296,6 +1478,8 @@ If there is any conflict, follow this priority:
 	4.	Content purpose [[CONTENT_PURPOSE]] (tone and structure),
 	5.	Explicit instructions from [[TOPIC_BRIEF]],
 	6.	Generic list/guide templates and SEO/meta preferences.
+
+[[EDITORIAL_ANGLE]]
 
 ================================
 0. BRAND PRESENCE LOGIC (GLOBAL RULE)
@@ -1611,6 +1795,31 @@ Examples of INCORRECT usage:
 - "According to official Spotify fan engagement guide published in 2025 [T1]..." (full title - FORBIDDEN)
 - "According toofficial guide [T1]..." (no spaces - FORBIDDEN)
 
+---
+TRUST SOURCE PLACEMENT RULE (strictly enforced):
+
+Each trust source placeholder [T1], [T2], [T3] (and [T4]-[T8] if provided)
+must be placed IMMEDIATELY after a specific factual claim, statistic, or
+instruction that the source directly supports.
+
+WRONG placement examples:
+- "Audio quality has a significant impact on learning. For more details, see [T1]."
+- "There are several reasons why this happens. Read more here [T1]."
+- Placing [T1] at the end of a section as a general reference
+
+CORRECT placement examples:
+- "Learners who study with inconsistent audio retain significantly less content [T1]."
+- "According to platform guidelines, stories expire after 24 hours [T1]."
+- "Cache issues account for the majority of playback errors on mobile devices [T1]."
+
+The rule: if you remove the placeholder from the sentence, the sentence must
+still contain a specific verifiable claim. If the sentence only says
+"read more" or "learn more" or "for details" — it is WRONG placement.
+
+Do NOT use [T1]/[T2]/[T3] as "see also" links.
+Do NOT place more than one trust source placeholder in the same sentence.
+---
+
 5. Consistency check before final answer
 Before you output the final article, verify:
 - You used at most 3 placeholders [T1]–[T3].
@@ -1760,6 +1969,41 @@ AI detection evasion techniques (CRITICAL - based on perplexity and burstiness a
 	•	Include tangents or asides: brief digressions that a human writer might naturally include (e.g., "This reminds me of a similar situation I saw...", "One thing to watch here is...", "A quick note on this...", "Side note: this is where many creators trip up...").
 	•	Mix declarative and imperative sentences: balance statements ("This works because...") with direct commands ("Try this approach", "Avoid that trap", "Test this first").
 
+If WritingMode == "human", additionally enforce these FORBIDDEN PATTERNS (strictly):
+
+---
+FORBIDDEN PATTERNS (Human Mode — strictly enforced):
+
+Forbidden opening phrases — do NOT start any paragraph or section with:
+- "In today's world..."
+- "It's no secret that..."
+- "Whether you're..."
+- "In the digital age..."
+- "When it comes to..."
+- "One of the most..."
+- "It's worth noting that..."
+- "It's important to..."
+
+Forbidden closing patterns — do NOT end paragraphs with:
+- A one-sentence moral summary that restates what was just said
+- A rhetorical question used as a transition
+- "...and that makes all the difference."
+- "...and that's exactly why it matters."
+
+Forbidden structural patterns:
+- Do NOT write two consecutive paragraphs of identical or near-identical length
+- Do NOT create a 3-item list where every item follows the same grammatical structure
+- Do NOT place a summary sentence at the end of every H2 section
+- Do NOT use "ultimately", "in conclusion", "to summarize", "at the end of the day"
+- Do NOT use "seamless", "leverage", "robust", "dive into", "game-changer", "unlock"
+
+Sentence rhythm rules:
+- Vary sentence length deliberately: short sentences (under 10 words) must appear
+  regularly, not only at the start of sections
+- After a long complex sentence (25+ words), the next sentence should be short
+- Do NOT write three or more sentences of similar length in a row
+---
+
 Character rules for the FINAL OUTPUT (articleBodyText):
 	•	NEVER use em dash (—) or en dash (–).
 	•	Use ONLY regular hyphen "-" for ranges (for example "5-10 items") or normal commas/periods for pauses.
@@ -1841,7 +2085,7 @@ Note: This check is a reminder for post-processing. Focus on generating naturall
 FINAL VERIFICATION BEFORE OUTPUT:
 • Confirm the article clearly matches [[TOPIC_TITLE]] and [[TOPIC_BRIEF]].
 • Check that the chosen structure (list or guide) follows the rules above and respects [[CONTENT_PURPOSE]].
-• Ensure word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] and does NOT exceed [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text).
+• Ensure word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text). If over [[WORD_COUNT_MAX]], shorten weakest sections first before outputting.
 • CRITICAL - Brand integration verification: 
   - If [[BRAND_NAME]] is provided and NOT empty/NONE: Verify that [[BRAND_NAME]] is mentioned according to the brand integration rules for your content purpose (see section "1. CONTENT PURPOSE & BRAND VOICE"):
     * "Blog": Guide topics - 2-3 mentions max; List topics - one short mention in final paragraph ONLY.
@@ -1856,7 +2100,7 @@ FINAL VERIFICATION BEFORE OUTPUT:
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
 • Make sure there is NO extra text outside the JSON object.
 
-MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. Do not output if over — shorten the article first.
+MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. If over, shorten the weakest sections first (intro fluff, conclusion restatements, redundant examples) before outputting.
 
 Now generate ONLY the JSON object, nothing else.
 `.trim();
@@ -1877,6 +2121,24 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
   if (!params.niche || !params.niche.trim()) {
     throw new Error("Niche is required. Please fill it in Project basics.");
   }
+
+  // Build editorial angle block (Human Mode only - injected when editorialAngle provided)
+  const editorialAngleBlock = params.editorialAngle
+    ? `
+EDITORIAL ANGLE (mandatory — use this to guide the entire article):
+
+Thesis (the core claim your article must argue): ${params.editorialAngle.thesis}
+
+Counterintuitive angle (address this somewhere in the article — it's what makes
+this article different from every other article on this topic): ${params.editorialAngle.counterintuitive_angle}
+
+Opening hook (use this EXACTLY as the first sentence of the article body,
+after H1): ${params.editorialAngle.opening_hook}
+
+These are not suggestions. The thesis must be the backbone of the article.
+The opening hook must be used verbatim as the first sentence.
+`
+    : "";
 
   // Replace placeholders
   prompt = prompt.replaceAll("[[TOPIC_TITLE]]", params.topicTitle);
@@ -1980,7 +2242,10 @@ Before outputting, verify that every phrase above appears in your article text w
   // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt
   const writingModeDirect = params.writingMode || "seo";
   prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeDirect);
-  
+
+  // Replace editorial angle placeholder
+  prompt = prompt.replaceAll("[[EDITORIAL_ANGLE]]", editorialAngleBlock);
+
   // Format trust sources - prefer JSON format if available, otherwise use old format
   let trustSourcesFormatted = "";
   if (params.trustSourcesJSON) {

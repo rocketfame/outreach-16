@@ -1,0 +1,821 @@
+<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><title>Outreach App — Agent Handoff</title><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:900px;margin:0 auto;padding:2rem;line-height:1.6;color:#222}h1{font-size:1.75rem;border-bottom:2px solid #333;padding-bottom:.5rem}h2{font-size:1.25rem;margin-top:2rem;color:#333}pre,code{background:#f5f5f5;padding:.2em .4em;border-radius:4px;font-size:.9em}pre{padding:1rem;overflow-x:auto;white-space:pre-wrap}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #ddd;padding:.5rem .75rem;text-align:left}th{background:#f5f5f5;font-weight:600}.print-note{background:#f0f7ff;border-left:4px solid #0066cc;padding:1rem;margin:1rem 0}@media print{body{padding:1rem}.print-note{display:none}}</style></head><body>
+<h1>Outreach App — Agent Handoff Documentation</h1>
+<p>Документ для передачі агенту: повний опис флоу створення статей, х&#39;юманізації, промптів та логіки.</p>
+<hr>
+<h1>Частина 1: Direct Article Creation Mode — Flow, Humanization, Prompts</h1>
+<h2>1. Флоу Direct Article Creation</h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────────────┐
+│ UI (page.tsx)                                                                │
+│ • Користувач вводить: Article Topic, опційно Brief, опційно Exact Keywords  │
+│ • Project Basics: niche, platform, contentPurpose, clientSite, wordCount    │
+│ • Writing Mode: SEO або Human (тільки Human дає humanize)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Крок 1: Tavily — пошук trust sources                                        │
+│ • POST /api/find-links                                                       │
+│ • Query: directArticleTopic + niche + platform + &quot;2024 2025&quot;                  │
+│ • Результат: trustSourcesList (Name|URL)                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Крок 2: POST /api/articles                                                   │
+│ • selectedTopics: [{ title: articleId, brief, primaryKeyword }]            │
+│   БЕЗ shortAngle, whyNonGeneric, howAnchorFits → API визначає Direct Mode    │
+│ • keywordList: exactKeywordList або [directArticleTopic]                     │
+│ • exactKeywordList: якщо є — фрази дослівно в текст                          │
+│ • trustSourcesList, writingMode, humanizeOnWrite, humanizeSettings          │
+│ • humanizeOnWrite: тільки true для Human Mode (Direct не має тоглу)          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ API (articles/route.ts)                                                      │
+│ 1. isDirectMode = true (немає shortAngle/whyNonGeneric/howAnchorFits)        │
+│ 2. Класифікація trust sources (LLM або filterAndSelectTrustSources)          │
+│ 3. buildDirectArticlePrompt() → user prompt                                  │
+│ 4. OpenAI chat.completions.create (system + user, gpt-5.2, json_object)     │
+│ 5. Парсинг JSON → articleBlocks → modelBlocksToArticleStructure()            │
+│ 6. cleanText() по блоках                                                     │
+│ 7. Якщо effectiveHumanizeOnWrite → humanize блоків (AIHumanize API)         │
+│ 8. blocksToHtml() → інжекція [A1], [T1]–[T3] → фінальний HTML                │
+└─────────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h2>2. Флоу х&#39;юманізації</h2>
+<pre><code>effectiveHumanizeOnWrite = (writingMode === &quot;human&quot;) ? true : (body.humanizeOnWrite || false)
+</code></pre>
+<p>У Direct Mode humanize увімкнено <strong>тільки</strong> при Human Mode (немає тоглу &quot;Humanize on write&quot;).</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────────────┐
+│ Якщо effectiveHumanizeOnWrite === true                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Для кожного блоку articleStructure.blocks:                                   │
+│                                                                              │
+│ • ul/ol: для кожного item.text (якщо ≥100 символів):                         │
+│   - Замінити [A1],[T1],[T2],[T3] на LINKREF000, LINKREF001...                │
+│   - humanizeSectionText(protectedText) → AIHumanize API                     │
+│   - Відновити плейсхолдери з токенів                                         │
+│                                                                              │
+│ • table: для caption, headers, rows — аналогічно                             │
+│                                                                              │
+│ • p, h1–h4: якщо text ≥100 символів — humanizeSectionText()                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ AIHumanize API (lib/sectionHumanize.ts)                                      │
+│ • POST https://aihumanize.io/api/v1/rewrite                                  │
+│ • Body: { model: &quot;0&quot;|&quot;1&quot;|&quot;2&quot;, mail: email, data: text }                      │
+│ • model: 0=Quality, 1=Balance, 2=Enhanced                                   │
+│ • Обмеження: 100–10000 символів на запит                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h2>3. System Prompt</h2>
+<pre><code>You are an expert SEO Content Strategist and outreach content writer, native English speaker (US), with deep experience in social media, music marketing and creator economy. You write SEO-optimized, human-sounding articles that feel like an experienced practitioner, not AI, wrote them.
+
+Target audience: B2C — beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms.
+${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : &quot;No specific brand to feature.&quot;}
+Goal: Create a useful, non-pushy outreach article that educates, builds trust and naturally promotes the provided link via a contextual anchor.
+Language: US English.
+
+CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${wordCountMaxSys} words. Do NOT exceed ${wordCountMaxSys} words. If your draft is longer, shorten it before outputting. This is mandatory.
+</code></pre>
+<h2>4. User Prompt — Placeholders</h2>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Джерело</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>[[TOPIC_TITLE]]</code></td>
+<td>topic.title (directArticleTopic)</td>
+</tr>
+<tr>
+<td><code>[[TOPIC_BRIEF]]</code></td>
+<td>directArticleBrief або directArticleTopic</td>
+</tr>
+<tr>
+<td><code>[[WRITING_MODE]]</code></td>
+<td>&quot;seo&quot; або &quot;human&quot;</td>
+</tr>
+<tr>
+<td><code>[[WORD_COUNT]]</code>, <code>[[WORD_COUNT_MIN]]</code>, <code>[[WORD_COUNT_MAX]]</code></td>
+<td>brief.wordCount (80%–120%)</td>
+</tr>
+<tr>
+<td><code>[[NICHE]]</code></td>
+<td>brief.niche</td>
+</tr>
+<tr>
+<td><code>[[MAIN_PLATFORM]]</code></td>
+<td>brief.platform</td>
+</tr>
+<tr>
+<td><code>[[CONTENT_PURPOSE]]</code></td>
+<td>brief.contentPurpose</td>
+</tr>
+<tr>
+<td><code>[[BRAND_NAME]]</code></td>
+<td>домен з clientSite або &quot;NONE&quot;</td>
+</tr>
+<tr>
+<td><code>[[ANCHOR_TEXT]]</code>, <code>[[ANCHOR_URL]]</code></td>
+<td>brief.anchorText, brief.anchorUrl</td>
+</tr>
+<tr>
+<td><code>[[TRUST_SOURCES_LIST]]</code></td>
+<td>trust sources (JSON або Name</td>
+</tr>
+<tr>
+<td><code>[[EXACT_KEYWORDS_SECTION]]</code></td>
+<td>блок exact keywords (якщо є)</td>
+</tr>
+<tr>
+<td><code>[[LANGUAGE]]</code></td>
+<td>brief.language</td>
+</tr>
+<tr>
+<td><code>[[TARGET_AUDIENCE]]</code></td>
+<td>фіксований текст</td>
+</tr>
+</tbody></table>
+<h2>5. User Prompt — Direct Article Template (початок)</h2>
+<p>Шаблон: <code>DIRECT_ARTICLE_PROMPT_TEMPLATE</code> в <code>lib/articlePrompt.ts</code> (рядки 1159–1868).</p>
+<p>Якщо <code>contentPurpose === &quot;Blog&quot;</code> — використовується <code>BLOG_ARTICLE_PROMPT_TEMPLATE</code>.</p>
+<pre><code>You are an experienced SEO and editorial writer with 10+ years of practice across different industries.
+Your job in Direct Article Creation is simple:
+take a prepared topic brief and generate a clean, human article that:
+	1.	strictly matches the topic [[TOPIC_TITLE]] and description [[TOPIC_BRIEF]],
+	2.	respects the project context,
+	3.	follows the chosen content purpose [[CONTENT_PURPOSE]],
+	4.	always chooses the correct structural format (list or guide) according to the rules below.
+
+WRITING MODE LOGIC
+
+WritingMode can be:
+- &quot;seo&quot; → use the existing strict SEO article behavior (headings, subheadings, lists, strong structure).
+- &quot;human&quot; → write in Human Mode (editorial / founder-style) as described below.
+
+If WritingMode == &quot;seo&quot;:
+- Behave exactly as in the current live version of the app.
+- Do NOT change tone, structure rules, or article templates.
+
+If WritingMode == &quot;human&quot;:
+You are writing like a real human editor, strategist, or founder, not like an SEO template.
+
+Core principles:
+- Content must stay accurate, useful, and on-topic.
+- SEO is allowed but secondary: focus on voice and flow first, structure second.
+
+STRUCTURE (HUMAN MODE)
+- Use one H1 for the title.
+- Use a small number of H2s (2–5), only when they genuinely help the flow.
+- Avoid rigid patterns where every H2 has the same internal layout.
+- Paragraph length should vary: some 1–2 sentence paragraphs, some longer.
+- Lists are allowed, but use them rarely and irregularly. Prefer narrative text over big bullet checklists.
+- Do NOT force a classic &#39;Intro → 3 sections → Conclusion&#39; skeleton. Let the article breathe.
+
+STYLE &amp; VOICE (HUMAN MODE)
+- Mix long, flowing sentences with very short ones.
+- Allow light subjectivity and opinions (e.g. &#39;I keep seeing…&#39;, &#39;Honestly…&#39;, &#39;What usually happens is…&#39;).
+- It&#39;s okay to leave some thoughts slightly open-ended instead of explaining everything step by step.
+- Avoid ultra-formal, neutral tone. Sound like a smart peer explaining their view, not a tutorial.
+
+Current WritingMode: [[WRITING_MODE]]
+
+CRITICAL REQUIREMENTS - READ CAREFULLY:
+	1.	WORD COUNT REQUIREMENT (MANDATORY – MAX 20% ERROR):
+• Target length: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words (80%–120% of target). You MUST stay within this range.
+• HARD MAX: Do NOT exceed [[WORD_COUNT_MAX]] words. If your draft is longer, you MUST shorten it (trim paragraphs or lists) before outputting.
+	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
+• You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
+• The brief contains specific requirements, structure, angles, and key points that MUST be addressed.
+• Do NOT ignore or deviate from the brief - it is the foundation of the article.
+• All major points mentioned in the brief MUST be present in the text.
+
+[[EXACT_KEYWORDS_SECTION]]
+
+================================
+PROJECT CONTEXT
+
+• Niche / theme: [[NICHE]]
+• Main platform / service focus: [[MAIN_PLATFORM]]
+• Content purpose (tone / POV): [[CONTENT_PURPOSE]]
+• Client / brand name (may be empty): [[BRAND_NAME]]
+• Topic title: [[TOPIC_TITLE]]
+• Topic description / detailed brief: [[TOPIC_BRIEF]]
+• Language: [[LANGUAGE]]
+• Target word count: [[WORD_COUNT]] words. Accepted range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+• Anchor text: [[ANCHOR_TEXT]]
+• URL: [[ANCHOR_URL]]
+• Trusted external sources: [[TRUST_SOURCES_LIST]]
+</code></pre>
+<h2>6. User Prompt — Основні секції шаблону</h2>
+<ul>
+<li><strong>0. BRAND PRESENCE LOGIC</strong> — як обробляти порожній/валідний BRAND_NAME</li>
+<li><strong>1. CONTENT PURPOSE &amp; BRAND VOICE</strong> — Blog, Guest post, Educational guide, Partner blog, News Hook, Other</li>
+<li><strong>2. CHOOSING FORMAT: LIST OR GUIDE</strong> — правила вибору формату</li>
+<li><strong>3. STRUCTURE FOR LIST / DIRECTORY TOPICS</strong> — intro, main list, external sources, brand, conclusion</li>
+<li><strong>4. STRUCTURE FOR ADVICE / GUIDE TOPICS</strong> — intro, main body, brand integration, conclusion</li>
+<li><strong>5. COMMERCIAL BRANDED LINK LOGIC</strong> — [A1], коли використовувати, формат</li>
+<li><strong>6. EXTERNAL SOURCES &amp; REFERENCES</strong> — [T1], [T2], [T3], anchor rules</li>
+<li><strong>6.5. OUTREACH-SPECIFIC REQUIREMENTS</strong> — для Guest post / outreach</li>
+<li><strong>7. HUMAN-WRITTEN STYLE AND ANTI-AI-SIGNATURE RULES</strong> — perplexity, burstiness, pattern breaking</li>
+<li><strong>8. SEO META AND OUTPUT FORMAT</strong> — JSON з titleTag, metaDescription, articleBlocks</li>
+</ul>
+<p><strong>Output format:</strong></p>
+<pre><code class="language-json">{
+  &quot;titleTag&quot;: &quot;…&quot;,
+  &quot;metaDescription&quot;: &quot;…&quot;,
+  &quot;articleBlocks&quot;: [
+    { &quot;type&quot;: &quot;h1&quot;, &quot;text&quot;: &quot;...&quot; },
+    { &quot;type&quot;: &quot;p&quot;, &quot;text&quot;: &quot;...&quot; },
+    { &quot;type&quot;: &quot;h2&quot;, &quot;text&quot;: &quot;...&quot; }
+  ]
+}
+</code></pre>
+<p>MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]].</p>
+<h2>7. Файли в проєкті</h2>
+<table>
+<thead>
+<tr>
+<th>Файл</th>
+<th>Призначення</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>app/page.tsx</code></td>
+<td>UI, generateDirectArticle(), виклики find-links і /api/articles</td>
+</tr>
+<tr>
+<td><code>app/api/articles/route.ts</code></td>
+<td>Визначення Direct Mode, humanize, виклик OpenAI</td>
+</tr>
+<tr>
+<td><code>lib/articlePrompt.ts</code></td>
+<td>DIRECT_ARTICLE_PROMPT_TEMPLATE, buildDirectArticlePrompt()</td>
+</tr>
+<tr>
+<td><code>lib/sectionHumanize.ts</code></td>
+<td>humanizeSectionText(), виклик AIHumanize API</td>
+</tr>
+</tbody></table>
+<h2>8. Визначення режиму в API</h2>
+<pre><code class="language-javascript">const hasHowAnchorFits = topic.howAnchorFits &amp;&amp; 
+  topic.howAnchorFits.trim() &amp;&amp; 
+  !topic.howAnchorFits.includes(&quot;N/A&quot;);
+const isDirectMode = !topic.shortAngle &amp;&amp; 
+  !topic.whyNonGeneric &amp;&amp; 
+  !hasHowAnchorFits;
+</code></pre>
+<p>Якщо <code>isDirectMode === true</code> → використовується <code>buildDirectArticlePrompt()</code>.</p>
+<hr>
+<h1>Частина 2: Логіка створення статті (поточний потік)</h1>
+<p>Опис етапів створення статті: де додаються SEO-ключі, коли вмикається humanizer / Human Mode тощо. <strong>Тільки опис логіки, без змін коду.</strong></p>
+<h2>1. Два режими статті</h2>
+<p>Стаття може створюватися в <strong>двох режимах</strong>; режим визначається <strong>на бекенді</strong> по структурі топика:</p>
+<table>
+<thead>
+<tr>
+<th>Режим</th>
+<th>Умова визначення</th>
+<th>Промпт</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Topic Discovery</strong></td>
+<td>У топика є хоча б одне з полів: <code>shortAngle</code>, <code>whyNonGeneric</code>, або валідний <code>howAnchorFits</code> (не порожній і не &quot;N/A&quot;)</td>
+<td><code>buildArticlePrompt()</code> → <code>TOPIC_DISCOVERY_ARTICLE_PROMPT_TEMPLATE</code></td>
+</tr>
+<tr>
+<td><strong>Direct Article</strong></td>
+<td>У топика <strong>немає</strong> цих полів (немає <code>shortAngle</code>, <code>whyNonGeneric</code>, немає валідного <code>howAnchorFits</code>)</td>
+<td><code>buildDirectArticlePrompt()</code> → <code>DIRECT_ARTICLE_PROMPT_TEMPLATE</code></td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>Topic Discovery</strong>: топики з кластерів (з брифом: shortAngle, whyNonGeneric, howAnchorFits тощо).</li>
+<li><strong>Direct Article</strong>: один топик з UI &quot;Direct Article&quot; (title + опційно brief + exact keywords); у запиті топик передається <strong>без</strong> shortAngle/whyNonGeneric/howAnchorFits.</li>
+</ul>
+<p>Перевірка в API: <code>app/api/articles/route.ts</code> (бл. 186–195).</p>
+<h2>2. Загальний потік (з UI до відповіді)</h2>
+<h3>2.1 Topic Discovery (статті з кластерів топиків)</h3>
+<ol>
+<li><p><strong>UI (page.tsx)</strong><br>Користувач обирає топики з кластерів і натискає генерацію статтей.</p>
+</li>
+<li><p><strong>Крок 1: пошук trust sources (Tavily)</strong>  </p>
+<ul>
+<li>Для <strong>кожного</strong> обраного топика викликається <code>POST /api/find-links</code> з query: <code>topic.title + brief.niche + brief.platform + topic.primaryKeyword + &quot;2024 2025&quot;</code>.  </li>
+<li>Результати збираються в один набір <code>allTrustSources</code> (унікальні рядки <code>title|url</code>).  </li>
+<li>Якщо після всіх топиків список порожній — генерація не запускається.</li>
+</ul>
+</li>
+<li><p><strong>Крок 2: запит на статті</strong>  </p>
+<ul>
+<li><code>POST /api/articles</code> з тілом:  <ul>
+<li><code>brief</code> (Project Basics),  </li>
+<li><code>selectedTopics</code> (обрані топики з полями title, brief, shortAngle, primaryKeyword тощо),  </li>
+<li><code>keywordList</code>: масив <code>selectedTopicsData.map(t =&gt; t.primaryKeyword).filter(Boolean)</code> — тобто <strong>SEO-ключі з топиків</strong> збираються тут і передаються один раз на весь запит.</li>
+</ul>
+</li>
+<li>Також передаються:  <ul>
+<li><code>trustSourcesList</code>,  </li>
+<li><code>writingMode</code> (&quot;seo&quot; | &quot;human&quot;),  </li>
+<li><code>humanizeOnWrite</code>: для Human Mode завжди <code>true</code>, інакше — значення тоглу &quot;Humanize on write&quot;.  </li>
+<li><code>humanizeSettings</code> (якщо humanize увімкнено).</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h3>2.2 Direct Article (одна стаття з форми)</h3>
+<ol>
+<li><p><strong>UI (page.tsx)</strong><br>Користувач вводить тему, опційно бриф і &quot;exact keywords&quot; (одне на рядок або через кому).</p>
+</li>
+<li><p><strong>Крок 1: trust sources (Tavily)</strong>  </p>
+<ul>
+<li>Один виклик <code>POST /api/find-links</code> з query на основі теми (direct article topic).  </li>
+<li>Отримані джерела — <code>trustSourcesList</code>.</li>
+</ul>
+</li>
+<li><p><strong>Крок 2: запит на статтю</strong>  </p>
+<ul>
+<li><code>POST /api/articles</code> з одним топиком у <code>selectedTopics</code>, <strong>без</strong> shortAngle/whyNonGeneric/howAnchorFits (щоб API визначив Direct Mode).  </li>
+<li><code>keywordList</code>: якщо є exact keywords — <code>exactKeywordList</code>, інакше <code>[directArticleTopic]</code>.  </li>
+<li><code>exactKeywordList</code>: якщо користувач заповнив &quot;exact keywords&quot; — масив цих фраз (обов&#39;язково включити в текст без змін).  </li>
+<li><code>writingMode</code> і humanize — аналогічно: Human Mode ⇒ <code>humanizeOnWrite: true</code>, інакше з тоглу.</li>
+</ul>
+</li>
+</ol>
+<h2>3. API <code>/api/articles</code>: що відбувається по кроках</h2>
+<p>(Усе в <code>app/api/articles/route.ts</code>.)</p>
+<ol>
+<li><p><strong>Парсинг тіла</strong>  </p>
+<ul>
+<li><code>keywordList</code>, <code>exactKeywordList</code>, <code>trustSourcesList</code>, <code>writingMode</code>, <code>humanizeOnWrite</code>, <code>humanizeSettings</code>.</li>
+</ul>
+</li>
+<li><p><strong>Тріал-ліміти</strong>  </p>
+<ul>
+<li>Перевірка, чи можна згенерувати N статтей; при порушенні — 403.</li>
+</ul>
+</li>
+<li><p><strong>Effective Humanize</strong>  </p>
+<ul>
+<li><code>effectiveHumanizeOnWrite = (writingMode === &quot;human&quot;) ? true : (body.humanizeOnWrite || false)</code>.  </li>
+<li>Тобто <strong>Human Mode завжди вмикає humanize</strong> незалежно від тоглу &quot;Humanize on write&quot;.</li>
+</ul>
+</li>
+<li><p><strong>Цикл по кожному топику з <code>selectedTopics</code></strong><br>Для кожного топика:</p>
+<ul>
+<li><p><strong>Визначення режиму</strong>: <code>isDirectMode = !topic.shortAngle &amp;&amp; !topic.whyNonGeneric &amp;&amp; !hasHowAnchorFits</code>.</p>
+</li>
+<li><p><strong>Trust sources</strong>  </p>
+<ul>
+<li><code>trustSourcesList</code> з запиту перетворюється в <code>rawSources</code>, потім йде <strong>LLM-класифікація</strong> (<code>getTrustedSourcesFromTavily</code>) або fallback <code>filterAndSelectTrustSources</code>.  </li>
+<li>Результат — список <code>trustedSources</code> (формат з id, url, title, type), він потім підставляється в промпт (JSON + старий формат &quot;Name|URL&quot;).</li>
+</ul>
+</li>
+<li><p><strong>Побудова промпту</strong>  </p>
+<ul>
+<li><strong>Direct</strong>: <code>buildDirectArticlePrompt({ ..., keywordList, exactKeywordList, trustSourcesList/JSON/specs, writingMode, ... })</code>.  </li>
+<li><strong>Topic Discovery</strong>: збирається <code>topicBrief</code> з shortAngle, whyNonGeneric, howAnchorFits тощо, потім <code>buildArticlePrompt({ ..., keywordList, trustSourcesList/JSON/specs, writingMode, ... })</code>.  </li>
+<li><strong>SEO-ключі в промпті</strong>:  <ul>
+<li><code>keywordList</code> у API береться так: якщо в тілі є непорожній <code>keywordList</code> — він, інакше для топика використовується <code>topic.primaryKeyword</code> (масив з одним елементом або порожній).  </li>
+<li>У промпті список підставляється як заміна плейсхолдера <code>[[KEYWORD_LIST]]</code> (у білдерах: <code>params.keywordList.join(&quot;, &quot;)</code>).  </li>
+<li>Точне місце використання в тексті промпту залежить від шаблону (SEO title, meta, контекст).</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>Direct-режим — exact keywords</strong>  </p>
+<ul>
+<li>Якщо передано <code>exactKeywordList</code>, у <code>buildDirectArticlePrompt</code> формується блок <code>[[EXACT_KEYWORDS_SECTION]]</code> з інструкцією обов&#39;язково включити ці фрази в текст <strong>дослівно</strong>. Інакше цей блок порожній.</li>
+</ul>
+</li>
+<li><p><strong>Writing mode</strong>  </p>
+<ul>
+<li>У промпт підставляється <code>[[WRITING_MODE]]</code> = <code>writingMode</code> (&quot;seo&quot; або &quot;human&quot;).  </li>
+<li>У шаблонах описані окремі правила для &quot;seo&quot; (жорстка SEO-структура) та &quot;human&quot; (editorial/founder style, менше шаблонності).</li>
+</ul>
+</li>
+<li><p><strong>Виклик OpenAI</strong>  </p>
+<ul>
+<li>Один виклик <code>openai.chat.completions.create</code> (system + user з побудованим промптом), модель &quot;gpt-5.2&quot;, <code>response_format: { type: &quot;json_object&quot; }</code>, max_completion_tokens 8000.</li>
+</ul>
+</li>
+<li><p><strong>Парсинг відповіді</strong>  </p>
+<ul>
+<li>JSON → titleTag, metaDescription, articleBlocks (або articleBodyText/articleBodyHtml).  </li>
+<li>Валідація обов&#39;язкових полів.</li>
+</ul>
+</li>
+<li><p><strong>Структура статті</strong>  </p>
+<ul>
+<li>Якщо є <code>articleBlocks</code> — <code>modelBlocksToArticleStructure(...)</code> → <code>ArticleStructure</code>.  </li>
+<li>Інакше, якщо є articleBodyText — <code>parsePlainTextToStructure(...)</code>.  </li>
+<li>Плейсхолдери [A1], [T1]–[T3] підставляються з brief і trust sources.</li>
+</ul>
+</li>
+<li><p><strong>Очистка тексту</strong>  </p>
+<ul>
+<li>У всіх блоках викликається <code>cleanText(...)</code> (невидимі символи тощо).</li>
+</ul>
+</li>
+<li><p><strong>Humanizer (AI Humanize)</strong>  </p>
+<ul>
+<li>Виконується <strong>тільки якщо</strong> <code>effectiveHumanizeOnWrite === true</code>.  </li>
+<li>Тобто коли увімкнено <strong>Human Mode</strong> або окремо увімкнено &quot;Humanize on write&quot;.  </li>
+<li>Для кожного блоку: списки — humanize по пунктах; таблиці — по комірках/підписах; параграфи — якщо довгі.  </li>
+<li>Плейсхолдери [A1], [T1]–[T3] захищаються (замінюються на тимчасові токени, після humanize — відновлюються).  </li>
+<li>Використовуються <code>humanizeSettings</code> (model, style, mode); виклик зовнішнього API (sectionHumanize).  </li>
+<li>Після humanize знову clean по тексту. Результат зберігається в <code>articleStructure.blocks</code>, в відповідь додається прапорець <code>humanizedOnWrite</code>.</li>
+</ul>
+</li>
+<li><p><strong>Фінальний HTML і текст</strong>  </p>
+<ul>
+<li>З блоків генерується HTML, збирається fullArticleText.  </li>
+<li>Відповідь: topicTitle, titleTag, metaDescription, fullArticleText, articleBodyHtml, humanizedOnWrite.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h2>4. На якому етапі додаються SEO-ключі</h2>
+<ul>
+<li><p><strong>Джерело ключів</strong>  </p>
+<ul>
+<li><strong>Topic Discovery</strong>: з топиків — <code>primaryKeyword</code> по кожному топику → в UI збирається <code>keywordList = selectedTopicsData.map(t =&gt; t.primaryKeyword).filter(Boolean)</code> і передається в API.  </li>
+<li><strong>Direct Article</strong>: у запиті передається <code>keywordList</code> (або з exact keywords, або <code>[directArticleTopic]</code>) і опційно <code>exactKeywordList</code>.</li>
+</ul>
+</li>
+<li><p><strong>Де використовуються</strong>  </p>
+<ul>
+<li>На етапі <strong>побудови промпту</strong> в API: для кожного топика формується <code>keywordList</code> (з body або з <code>topic.primaryKeyword</code>) і передається в <code>buildArticlePrompt</code> / <code>buildDirectArticlePrompt</code>.  </li>
+<li>У промпті список підставляється в плейсхолдер <code>[[KEYWORD_LIST]]</code> (значення: <code>params.keywordList.join(&quot;, &quot;)</code>) у білдерах <code>buildArticlePrompt</code> / <code>buildDirectArticlePrompt</code>. Якщо в шаблоні промпту немає тексту з <code>[[KEYWORD_LIST]]</code>, заміна нічого не змінює в тексті, але <code>keywordList</code> у параметрах є.  </li>
+<li>Точна інструкція для моделі (наприклад, &quot;включити в title/meta або в текст&quot;) задається в тексті шаблону в <code>lib/articlePrompt.ts</code> (SEO requirements: &quot;includes the main keyword&quot; для title tag тощо).  </li>
+<li>У Direct-режимі <strong>exact keywords</strong> додаються окремим блоком інструкцій (EXACT_KEYWORDS_SECTION) — вони мають бути в тексті дослівно.</li>
+</ul>
+</li>
+</ul>
+<p>Підсумок: SEO-ключі додаються <strong>до генерації</strong> — на етапі формування промпту (підстановка <code>[[KEYWORD_LIST]]</code> і, для Direct, блоку exact keywords). Після генерації окремого кроку &quot;додавання ключів&quot; немає.</p>
+<h2>5. Коли вмикається Human Mode / humanizer</h2>
+<ul>
+<li><p><strong>Human Mode (writingMode === &quot;human&quot;)</strong>  </p>
+<ul>
+<li>Обирається в UI (наприклад, перемикач SEO / Human).  </li>
+<li>У промпті підставляється <code>[[WRITING_MODE]]</code> = &quot;human&quot; → модель пише в editorial/founder стилі (менш шаблонна структура).  </li>
+<li>Одночасно <strong>humanize при генерації завжди вмикається</strong>: в API <code>effectiveHumanizeOnWrite = true</code> при <code>writingMode === &quot;human&quot;</code>, незалежно від тоглу &quot;Humanize on write&quot;.</li>
+</ul>
+</li>
+<li><p><strong>Humanize on write (без Human Mode)</strong>  </p>
+<ul>
+<li>Якщо режим &quot;seo&quot;, але в UI увімкнено &quot;Humanize on write&quot;, тоді <code>humanizeOnWrite: true</code> і <code>effectiveHumanizeOnWrite === true</code>.  </li>
+<li>Humanizer запускається після отримання JSON від OpenAI: проход по блоках, виклик AI Humanize API для відповідних фрагментів, захист плейсхолдерів, підстановка назад.</li>
+</ul>
+</li>
+<li><p><strong>Direct Article</strong>  </p>
+<ul>
+<li>Humanize доступний <strong>тільки через Human Mode</strong> (немає окремого тоглу &quot;Humanize on write&quot; для Direct); тобто humanizer працює тоді, коли обрано Human Mode.</li>
+</ul>
+</li>
+</ul>
+<p>Підсумок:  </p>
+<ul>
+<li><strong>Human Mode</strong> = стиль промпту &quot;human&quot; + <strong>завжди</strong> humanize після генерації.  </li>
+<li><strong>Humanize on write</strong> = окремий тогл тільки в Topic Discovery; вмикає той самий пост-обробник humanize після отримання статті з OpenAI.</li>
+</ul>
+<h2>6. Коротка схема по етапах</h2>
+<pre><code>UI (Topic Discovery)
+  → збір trust sources (Tavily /api/find-links по кожному топику)
+  → POST /api/articles (brief, selectedTopics, keywordList з primaryKeyword, trustSourcesList, writingMode, humanizeOnWrite, humanizeSettings)
+
+UI (Direct Article)
+  → trust sources (Tavily один раз)
+  → POST /api/articles (один топик без shortAngle/…, keywordList, exactKeywordList, trustSourcesList, writingMode, humanizeOnWrite тільки з Human Mode)
+
+API /api/articles (на кожен топик):
+  1. Визначити isDirectMode
+  2. Класифікація/фільтр trust sources
+  3. Побудувати промпт (buildArticlePrompt або buildDirectArticlePrompt)
+     → тут підставляються SEO-ключі [[KEYWORD_LIST]] і, для Direct, exact keywords
+     → підставляється [[WRITING_MODE]] (seo | human)
+  4. OpenAI chat completions (один виклик)
+  5. Парсинг JSON → структура блоків
+  6. cleanText по блоках
+  7. Якщо effectiveHumanizeOnWrite — humanize блоків (AI Humanize API), захист [A1]/[T1–T3]
+  8. Збір HTML і fullArticleText → відповідь
+</code></pre>
+<p>Файли для деталей:  </p>
+<ul>
+<li><code>app/page.tsx</code> — збір даних, виклики find-links і /api/articles, keywordList/exactKeywordList, writingMode, humanizeOnWrite.  </li>
+<li><code>app/api/articles/route.ts</code> — режим, trust sources, побудова промпту, OpenAI, humanize.  </li>
+<li><code>lib/articlePrompt.ts</code> — шаблони промптів, підстановка KEYWORD_LIST, WRITING_MODE, EXACT_KEYWORDS_SECTION.</li>
+</ul>
+<hr>
+<h1>Частина 3: Blog Content Purpose — промпт (активовано)</h1>
+<p>Цей промпт <strong>активовано</strong> і викликається, коли <strong>Content Purpose = &quot;Blog&quot;</strong> у Direct Article Creation або в Topic Discovery Mode.<br>Побудований на UNIVERSAL BLOG ARTICLE PROMPT з повною інтеграцією: зовнішні джерела (пріоритет офіційні help/support, 4–8 посилань під ключові твердження), комерційний якір, бренд, word count, мова, той самий JSON-вивід і character rules.</p>
+<p>Реалізація: константа <code>BLOG_ARTICLE_PROMPT_TEMPLATE</code> у <code>lib/articlePrompt.ts</code>; перемикання в <code>buildArticlePrompt</code> і <code>buildDirectArticlePrompt</code> при <code>contentPurpose === &quot;Blog&quot;</code>.</p>
+<h2>BLOG_ARTICLE_PROMPT_TEMPLATE (текст для інтеграції)</h2>
+<pre><code class="language-text">You are a senior content writer and SEO specialist who writes diagnostic, problem-solving blog articles designed to rank, be trusted, and feel human.
+
+You understand:
+• search intent
+• semantic coverage (entities and properties)
+• embeddings and vector relevance
+• E-E-A-T
+• how to reduce topical noise
+
+You do NOT write marketing fluff or generic AI-style explanations.
+
+Context:
+• Niche: [[NICHE]]
+• Target audience: [[TARGET_AUDIENCE]]
+• Main platform/service focus: [[MAIN_PLATFORM]]
+• Content purpose: [[CONTENT_PURPOSE]] (Blog – diagnostic/problem-solving structure)
+• Brand to feature (optional): [[BRAND_NAME]]
+• If [[BRAND_NAME]] is empty or &quot;NONE&quot;, you MUST NOT mention any specific brand in the article.
+
+Inputs:
+• Article topic: [[TOPIC_TITLE]]
+• Article brief (requirements, angle, key points): [[TOPIC_BRIEF]]
+• Commercial anchor text (use EXACTLY as given): [[ANCHOR_TEXT]]
+• Commercial anchor URL (use EXACTLY as given): [[ANCHOR_URL]]
+• Trusted external sources (pre-validated): [[TRUST_SOURCES_LIST]]
+  Use ONLY these sources for external links. Do not invent URLs.
+
+⸻
+
+GOAL OF THE ARTICLE
+
+Write a blog article that:
+1. Directly answers the main user query
+2. Diagnoses the problem (what it means)
+3. Explains causes (grouped logically)
+4. Provides a fast decision path
+5. Gives clear fixes
+6. Builds trust via structure and sources
+7. Stays tightly on-topic (no drift)
+
+The article must feel like: &quot;This is the clearest explanation on the internet for this problem.&quot;
+
+⸻
+
+REQUIRED STRUCTURE (MANDATORY)
+
+1) Clear Meaning (No Fluff)
+• Explain what the issue/message/problem means
+• Explicitly state: when it is normal, when it is a real error
+• Keep this section concise and factual
+
+2) Where / When the Problem Appears
+• Describe contexts, not theory
+• Where users usually see it; how context changes interpretation
+
+3) Causes – Grouped by Category (VERY IMPORTANT)
+Group causes into clear buckets, for example:
+• Content-related (expired, deleted, limited)
+• Access-related (privacy, blocks, audience settings)
+• App/device-related (cache, version, network)
+• Platform-related (processing, outages)
+
+Do NOT mix causes randomly. Each bucket = one mental model.
+
+4) Decision Tree / Diagnostic Block (MANDATORY)
+Include a short &quot;If / Then&quot; diagnostic section, for example:
+• If X happens → most likely cause is Y
+• If X happens on one device but not another → likely Z
+• If others can see it but you cannot → access/privacy
+
+This section should allow the reader to identify the cause in under 2 minutes. Critical for embeddings, user satisfaction, and rankings.
+
+5) Fix Checklist (Actionable, Ordered)
+• Clear, ordered steps
+• Minimal repetition
+• Fixes mapped to causes explained earlier
+Avoid generic advice. Each fix must correspond to a real cause.
+
+6) What NOT to Do (Trust Section)
+Briefly explain:
+• Unsafe actions
+• Hacks to avoid
+• Policy/privacy boundaries
+This builds E-E-A-T and credibility.
+
+7) Summary (No New Info)
+• Short recap
+• Reassurance
+• No new concepts
+
+⸻
+
+ENTITY &amp; SEMANTIC REQUIREMENTS
+
+For niche [[NICHE]], ensure:
+• Core object/entity is clearly defined
+• Its properties are explained (lifecycle, visibility, access, limits)
+• Related entities are connected logically (user, platform, device, settings)
+
+Avoid: vague metaphors, unrelated anecdotes, personal speculation unless it adds diagnostic value.
+
+⸻
+
+STYLE &amp; TONE RULES (CRITICAL)
+
+✔ Human, calm, professional
+✔ Clear and direct
+✔ Slightly conversational, not chatty
+✔ No marketing language
+✔ No &quot;AI artifacts&quot; or meta statements
+
+❌ No filler
+❌ No generic intros
+❌ No off-topic brand promotion inside troubleshooting
+❌ No system-like or detector-related phrases
+
+⸻
+
+EXTERNAL SOURCES &amp; TRUST (BLOG MODE – PRIORITY: OFFICIAL HELP, NOT WIKIS)
+
+You receive a pre-filtered list of trusted external sources in [[TRUST_SOURCES_LIST]]. Use ONLY these sources. Do NOT invent URLs.
+
+PRIORITY (CRITICAL):
+• Prefer links to OFFICIAL HELP / SUPPORT pages (Meta, Facebook, Instagram, TikTok, YouTube, etc.), NOT wiki or generic sites.
+• Target: 4–8 links, placed precisely under key claims (one link per claim where it adds proof or guidance).
+• Sources must be from help/support sections of platforms (e.g. Instagram Help, Downdetector for outage signals). Relevant, maximum trust. This raises E-E-A-T because you cite primary sources, not invented ones.
+
+MANDATORY OFFICIAL (when topic fits – place under the right cause/section):
+• E.g. &quot;Stories disappear after 24 hours&quot; (under cause &quot;expired&quot;) → link to official help.
+• E.g. &quot;Close Friends stories&quot; (under cause &quot;moved to close friends&quot;) → official help.
+• E.g. &quot;Hide your story from someone&quot; (under cause &quot;creator hid it&quot;) → official help.
+• Troubleshooting / restart / connection / update → under Fix Checklist; &quot;Report a technical problem&quot; → under escalation.
+• Useful outage signals (unofficial but practical): Downdetector for &quot;is platform down&quot;, Meta Status for Meta products (especially for business/creators). Use when the list provides them.
+
+RULES:
+• Use between 4 and 8 sources when the list provides enough; otherwise use all provided (minimum 1–3). Integrate inside the MAIN BODY (not in H1 or final conclusion).
+• For each reference: short anchor phrase (1–3 words) then the placeholder [T1], [T2], [T3] (and [T4]–[T8] when provided in the list) with ONE space between anchor and placeholder.
+• Do NOT use full article titles as anchor text. Examples: &quot;official guide [T1]&quot;, &quot;Instagram Help [T2]&quot;, &quot;Downdetector [T3]&quot;.
+• Every placeholder must correspond to an existing item in [[TRUST_SOURCES_LIST]]. Before output, verify: each placeholder matches a source from the list; each is attached to a short, meaningful anchor.
+• If [[TRUST_SOURCES_LIST]] is empty, write the article WITHOUT external links.
+
+ANCHOR LOGIC (same as main app):
+• Anchor = maximum 3 words (e.g. &quot;Instagram Help&quot;, &quot;Downdetector&quot;, &quot;official guide&quot;).
+• After the anchor, ONE space, then [T1], [T2], or [T3]. Do NOT glue: wordanchor[T1].
+• Correct: &quot;... according to Instagram Help [T1], stories expire after 24 hours.&quot;
+• Incorrect: &quot;... according to Instagram&#39;s official help article about stories [T1]...&quot; (too long).
+
+⸻
+
+COMMERCIAL ANCHOR [A1] – CRITICAL (NO STUBS)
+
+[A1] is a technical placeholder that gets replaced with the client&#39;s real link. It must NEVER appear as a bare stub in the article.
+
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are NOT provided (empty): You MUST NOT use [A1] anywhere. Do NOT write sentences like &quot;see creator tools [A1]&quot; or &quot;for more see [A1]&quot;. For links to official resources (creator tools, help pages, guides) use trust source placeholders [T1], [T2], [T3] from [[TRUST_SOURCES_LIST]] instead (e.g. &quot;For more details, see TikTok Creator tools [T1]&quot; or &quot;See the official guide [T2]&quot;). If no suitable trust source exists, omit the sentence or rephrase without a link.
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: Place [A1] EXACTLY ONCE in the FIRST 2–3 paragraphs. The sentence must clearly refer to the client&#39;s link – use the actual anchor text in context (e.g. &quot;Some teams use [A1] to streamline workflow&quot;), not a generic phrase like &quot;see creator tools [A1]&quot; that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
+• Do NOT use &quot;click here&quot;, &quot;learn more&quot;, or vague &quot;see X [A1]&quot; – either a real trust link [T1]/[T2]/[T3] or a clear client anchor sentence. Do not mention [A1] again after using it once.
+
+⸻
+
+BRAND INTEGRATION (IF [[BRAND_NAME]] PROVIDED)
+
+If [[BRAND_NAME]] is provided and NOT empty/NONE:
+• Mention [[BRAND_NAME]] 1–2 times in the MAIN BODY sections (not only intro/conclusion)
+• Tie the brand to concrete benefits; avoid aggressive sales tone
+If [[BRAND_NAME]] is empty or &quot;NONE&quot;: do NOT mention any client brand.
+
+⸻
+
+SEO &amp; OUTPUT
+
+• Stay tightly aligned with one core intent; reduce semantic noise
+• Prefer clarity over length
+• Use headings as logic markers, not decoration
+• Write an SEO title tag (max 60 characters) that matches search intent and fits [[NICHE]]
+• Write a meta description (150–160 characters), clear and concrete, with at least one number where possible. Use regular hyphen &quot;-&quot; only
+
+Language &amp; length:
+• All output must be in [[LANGUAGE]]
+• Target length: [[WORD_COUNT]] words (aim for within roughly 10–15% of target)
+
+[[EXACT_KEYWORDS_SECTION]]
+
+⸻
+
+TECHNICAL OUTPUT (MANDATORY)
+
+Output MUST be valid JSON only, no explanations:
+
+{
+  &quot;titleTag&quot;: &quot;...&quot;,
+  &quot;metaDescription&quot;: &quot;...&quot;,
+  &quot;articleBlocks&quot;: [
+    { &quot;type&quot;: &quot;h1&quot;, &quot;text&quot;: &quot;...&quot; },
+    { &quot;type&quot;: &quot;p&quot;, &quot;text&quot;: &quot;...&quot; },
+    { &quot;type&quot;: &quot;h2&quot;, &quot;text&quot;: &quot;...&quot; },
+    { &quot;type&quot;: &quot;p&quot;, &quot;text&quot;: &quot;...&quot; },
+    { &quot;type&quot;: &quot;ul&quot;, &quot;items&quot;: [&quot;...&quot;, &quot;...&quot;] },
+    { &quot;type&quot;: &quot;ol&quot;, &quot;items&quot;: [&quot;...&quot;, &quot;...&quot;] }
+  ]
+}
+
+• articleBlocks MUST start with { &quot;type&quot;: &quot;h1&quot;, ... }
+• All text fields: PLAIN TEXT ONLY (no HTML). Use **bold** or *italic* markdown-style sparingly
+• [A1]: use ONLY when anchor was provided ([[ANCHOR_TEXT]] and [[ANCHOR_URL]] non-empty); then exactly once in first 2–3 paragraphs. If no anchor provided, do NOT output [A1] – use [T1]/[T2]/[T3] for official/help links instead.
+• Use [T1], [T2], [T3] (and [T4]–[T8] when provided) for trust sources – aim for 4–8 when list provides enough.
+• Lists: { &quot;type&quot;: &quot;ul&quot; } or { &quot;type&quot;: &quot;ol&quot; } with &quot;items&quot;: [&quot;...&quot;]
+• Tables (only when topic requires comparison/structured data): { &quot;type&quot;: &quot;table&quot;, &quot;caption&quot;: &quot;...&quot;, &quot;headers&quot;: [...], &quot;rows&quot;: [[...], ...] }
+
+Character rules (CRITICAL):
+• Use ONLY regular hyphen &quot;-&quot;. No em dash or en dash
+• Use ONLY straight quotes (&quot; and &#39;)
+• Use three dots &quot;...&quot; not the ellipsis character
+• No invisible Unicode characters
+
+⸻
+
+FINAL SELF-CHECK BEFORE OUTPUT
+
+• Can a reader diagnose their issue in under 2 minutes?
+• Is every section directly related to the core problem?
+• Did I remove anything that adds noise but no clarity?
+• Word count within accepted range of [[WORD_COUNT]]?
+• 4–8 (or all provided) trust source placeholders from [[TRUST_SOURCES_LIST]] (if list not empty), each under a key claim?
+• If anchor was provided: [A1] placed once in first 2–3 paragraphs. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only?
+• If [[BRAND_NAME]] provided: 1–2 mentions in main body?
+
+Current WritingMode: [[WRITING_MODE]]
+(Respect the same tone and structure rules for &quot;seo&quot; vs &quot;human&quot; as in the rest of the app; Blog structure above stays mandatory.)
+</code></pre>
+<h2>Плейсхолдери (ті самі, що в основних промптах)</h2>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Джерело</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>[[NICHE]]</code></td>
+<td>brief.niche</td>
+</tr>
+<tr>
+<td><code>[[TARGET_AUDIENCE]]</code></td>
+<td>params.targetAudience</td>
+</tr>
+<tr>
+<td><code>[[MAIN_PLATFORM]]</code></td>
+<td>brief.platform</td>
+</tr>
+<tr>
+<td><code>[[CONTENT_PURPOSE]]</code></td>
+<td>&quot;Blog&quot;</td>
+</tr>
+<tr>
+<td><code>[[BRAND_NAME]]</code></td>
+<td>з clientSite</td>
+</tr>
+<tr>
+<td><code>[[TOPIC_TITLE]]</code></td>
+<td>topic.title</td>
+</tr>
+<tr>
+<td><code>[[TOPIC_BRIEF]]</code></td>
+<td>topic.brief / topicBrief</td>
+</tr>
+<tr>
+<td><code>[[ANCHOR_TEXT]]</code></td>
+<td>brief.anchorText</td>
+</tr>
+<tr>
+<td><code>[[ANCHOR_URL]]</code></td>
+<td>brief.anchorUrl</td>
+</tr>
+<tr>
+<td><code>[[TRUST_SOURCES_LIST]]</code></td>
+<td>trustSourcesFormatted + mapping + verification (як зараз)</td>
+</tr>
+<tr>
+<td><code>[[WORD_COUNT]]</code></td>
+<td>brief.wordCount</td>
+</tr>
+<tr>
+<td><code>[[LANGUAGE]]</code></td>
+<td>brief.language</td>
+</tr>
+<tr>
+<td><code>[[WRITING_MODE]]</code></td>
+<td>writingMode (&quot;seo&quot;</td>
+</tr>
+<tr>
+<td><code>[[EXACT_KEYWORDS_SECTION]]</code></td>
+<td>тільки для Direct: блок exact keywords або порожній рядок</td>
+</tr>
+</tbody></table>
+<p>Інтеграція з додатком: той самий flow (Tavily → trust sources, humanizer при Human Mode / humanize on write), той самий JSON-парсинг і обробка блоків. При виборі <strong>Content for post: Blog</strong> у обох режимах (Topic Discovery і Direct Article) використовується саме цей Blog-промпт.</p>
+<div class="print-note"><strong>Як зберегти в PDF:</strong> File → Print (Cmd+P) → "Save as PDF"</div></body></html>
