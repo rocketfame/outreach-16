@@ -240,12 +240,22 @@ export async function humanizeSectionText(
   }
 
   const contextPrefix = previousBlockText
-    ? `[CONTEXT ONLY - DO NOT REWRITE]: ${previousBlockText}\n\n[REWRITE THIS PART]: `
+    ? `Previous paragraph for context: ${previousBlockText}\n\nRewrite only the following:\n`
     : "";
 
   function extractRewrittenPart(responseText: string): string {
-    if (contextPrefix && responseText.startsWith(contextPrefix)) {
-      return responseText.slice(contextPrefix.length);
+    const ctxMarker = "[CONTEXT ONLY - DO NOT REWRITE]:";
+    const rewriteMarker = "[REWRITE THIS PART]:";
+
+    if (responseText.includes(ctxMarker)) {
+      const rewritePos = responseText.indexOf(rewriteMarker);
+      if (rewritePos >= 0) {
+        return responseText.slice(rewritePos + rewriteMarker.length).trim();
+      }
+      const lastCtxPos = responseText.lastIndexOf(ctxMarker);
+      const afterCtx = responseText.slice(lastCtxPos + ctxMarker.length);
+      const newlinePos = afterCtx.indexOf("\n");
+      return (newlinePos >= 0 ? afterCtx.slice(newlinePos + 1) : afterCtx).trim();
     }
     return responseText;
   }
