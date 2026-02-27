@@ -408,6 +408,9 @@ export async function POST(req: Request) {
             contentPurpose: brief.contentPurpose || "",
             openaiClient: openai,
           });
+          if (editorialAngle) {
+            console.log("Editorial angle generated:", JSON.stringify(editorialAngle, null, 2));
+          }
         }
 
         let prompt: string;
