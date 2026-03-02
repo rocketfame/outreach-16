@@ -62,7 +62,6 @@ export interface ArticlePromptParams {
   targetAudience: string;
   wordCount?: string;
   writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
-  editorialAngle?: { thesis: string; counterintuitive_angle: string; opening_hook: string } | null;
 }
 
 /**
@@ -77,6 +76,8 @@ export interface ArticlePromptParams {
 const TOPIC_DISCOVERY_ARTICLE_PROMPT_TEMPLATE = `
 You are an expert outreach and content writer for articles across different niches.
 Your task is to turn a prepared topic brief into a full article that sounds human, professional, and non generic.
+
+[[EDITORIAL_ANGLE]]
 
 Context:
 • Niche: [[NICHE]]
@@ -96,8 +97,6 @@ You will receive:
 • TRUST_SOURCES_LIST: pre validated external sources from Tavily search in the format "Name|URL".
   Each item has at least: title, url, and a short snippet.
 All sources come from the Tavily search API - use only these URLs, do not invent new ones.
-
-[[EDITORIAL_ANGLE]]
 
 Audience:
 • Specific groups depend on [[NICHE]] and [[MAIN_PLATFORM]]: these may be individual users, specialists, entrepreneurs, content creators, small teams, startups, or agencies who want better results on the chosen platform.
@@ -309,6 +308,7 @@ Commercial anchor link (user's brand/service):
   • REQUIRED: use short, natural anchor text that fits smoothly into the sentence.
   • Anchor text examples: brand names ("RouteNote", "Spotify"), short descriptive phrases ("recent analysis", "this tool").
 • CRITICAL: Use the [A1] placeholder EXACTLY ONCE in the entire article. You MUST NOT use it twice, even if it looks very natural.
+• [A1] MUST appear EXACTLY ONCE in the entire article. Before outputting, scan all articleBlocks and verify [A1] appears only once. If it appears more than once, remove all occurrences except the first one.
 • Do not change or translate the anchor text; the placeholder [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
 • Make the sentence around the placeholder natural, specific, and relevant to the topic.
 • After using it once, never mention [A1] or [[ANCHOR_TEXT]] again in the article.
@@ -389,10 +389,14 @@ Your rules:
     - long sentences;
     - half a paragraph.
 
-- ATTACHING PLACEHOLDERS:
-  - After the anchor, immediately place the source placeholder: [T1], [T2], or [T3].
-  - Between anchor and placeholder — exactly ONE space.
-  - Do NOT merge anchor with previous/next word: no gluing like wordanchor[T1].
+- ANCHOR FORMAT — STRICTLY ENFORCED:
+  - Write the anchor phrase, then ONE space, then the placeholder
+  - The space between anchor and placeholder is MANDATORY
+  - CORRECT: "audio guidelines [T1]" or "Elearningindustry [T1]"
+  - WRONG: "audio guidelines[T1]" or "Elearningindustry[T1]"
+  - WRONG: "Linking reference number Elearningindustry [T1]"
+  - The anchor must be 1-3 natural words from the sentence context
+  - Never write "Linking reference", "click here", "read more", "reference number" or any meta-language around the placeholder
 
 - Format examples:
   - "... according to official guide [T1] the platform continues ..." (anchor = "official guide")
@@ -467,10 +471,14 @@ Before you output the final article, verify:
     - long sentences;
     - half a paragraph.
 
-• ATTACHING PLACEHOLDERS:
-  - After the anchor, immediately place the source placeholder: [T1], [T2], or [T3].
-  - Between anchor and placeholder — exactly ONE space.
-  - Do NOT merge anchor with previous/next word: no gluing like wordanchor[T1].
+• ANCHOR FORMAT — STRICTLY ENFORCED:
+  - Write the anchor phrase, then ONE space, then the placeholder
+  - The space between anchor and placeholder is MANDATORY
+  - CORRECT: "audio guidelines [T1]" or "Elearningindustry [T1]"
+  - WRONG: "audio guidelines[T1]" or "Elearningindustry[T1]"
+  - WRONG: "Linking reference number Elearningindustry [T1]"
+  - The anchor must be 1-3 natural words from the sentence context
+  - Never write "Linking reference", "click here", "read more", "reference number" or any meta-language around the placeholder
 
 • Every external source must appear as a placeholder INSIDE a natural sentence.
 • Use placeholders [T1], [T2], [T3] for trust sources (in order of appearance).
@@ -707,6 +715,8 @@ Now generate the response as JSON only, with no explanations:
 const BLOG_ARTICLE_PROMPT_TEMPLATE = `
 You are a senior content writer and SEO specialist who writes diagnostic, problem-solving blog articles designed to rank, be trusted, and feel human.
 
+[[EDITORIAL_ANGLE]]
+
 You understand:
 • search intent
 • semantic coverage (entities and properties)
@@ -731,8 +741,6 @@ Inputs:
 • Commercial anchor URL (use EXACTLY as given): [[ANCHOR_URL]]
 • Trusted external sources (pre-validated): [[TRUST_SOURCES_LIST]]
   Use ONLY these sources for external links. Do not invent URLs.
-
-[[EDITORIAL_ANGLE]]
 
 ⸻
 
@@ -848,11 +856,14 @@ RULES:
 • Every placeholder must correspond to an existing item in [[TRUST_SOURCES_LIST]]. Before output, verify: each placeholder matches a source from the list; each is attached to a short, meaningful anchor.
 • If [[TRUST_SOURCES_LIST]] is empty, write the article WITHOUT external links.
 
-ANCHOR LOGIC (same as main app):
-• Anchor = maximum 3 words (e.g. "Instagram Help", "Downdetector", "official guide").
-• After the anchor, ONE space, then [T1], [T2], or [T3]. Do NOT glue: wordanchor[T1].
-• Correct: "... according to Instagram Help [T1], stories expire after 24 hours."
-• Incorrect: "... according to Instagram's official help article about stories [T1]..." (too long).
+ANCHOR FORMAT — STRICTLY ENFORCED:
+• Write the anchor phrase, then ONE space, then the placeholder
+• The space between anchor and placeholder is MANDATORY
+• CORRECT: "audio guidelines [T1]" or "Elearningindustry [T1]"
+• WRONG: "audio guidelines[T1]" or "Elearningindustry[T1]"
+• WRONG: "Linking reference number Elearningindustry [T1]"
+• The anchor must be 1-3 natural words from the sentence context
+• Never write "Linking reference", "click here", "read more", "reference number" or any meta-language around the placeholder
 
 ---
 TRUST SOURCE PLACEMENT RULE (strictly enforced):
@@ -995,23 +1006,31 @@ export function buildArticlePrompt(params: ArticlePromptParams): string {
     throw new Error("Niche is required. Please fill it in Project basics.");
   }
 
-  // Build editorial angle block (Human Mode only - injected when editorialAngle provided)
-  const editorialAngleBlock = params.editorialAngle
-    ? `
-EDITORIAL ANGLE (mandatory — use this to guide the entire article):
+  const editorialAngleBlock = `
+================================================================
+OPENING SENTENCE RULE — MANDATORY
+================================================================
+The first "p" block after "h1" must be a single sentence that:
+- Is under 15 words
+- States a specific, uncomfortable truth about the topic
+- Contains zero metaphors, zero poetic language
+- Sounds like something a frustrated practitioner would say out loud
+- Does NOT start with: "In", "When", "Whether", "Many", "Most", "The moment"
 
-Thesis (the core claim your article must argue): ${params.editorialAngle.thesis}
+GOOD examples of this style:
+"Bad audio costs more learner trust than a bad slide ever will."
+"Nobody quits a course because of a poorly designed button."
+"Most e-learning audio sounds like it was recorded as an afterthought."
 
-Counterintuitive angle (address this somewhere in the article — it's what makes
-this article different from every other article on this topic): ${params.editorialAngle.counterintuitive_angle}
+BAD examples — never write anything like these:
+"A gentle whisper sets the emotional backdrop for learning."
+"Sound weaves through the silence, creating connection."
+"The moment the course begins, something subtle shifts."
 
-Opening hook (use this EXACTLY as the first sentence of the article body,
-after H1): ${params.editorialAngle.opening_hook}
-
-These are not suggestions. The thesis must be the backbone of the article.
-The opening hook must be used verbatim as the first sentence.
-`
-    : "";
+This is not optional. This is the first thing the reader sees after
+the title. It must create tension or curiosity through a plain fact.
+================================================================
+`;
 
   // Topic Discovery does not use exact keywords block; clear placeholder when Blog template is used
   if (isBlogContentPurpose) {
@@ -1198,84 +1217,6 @@ The opening hook must be used verbatim as the first sentence.
 }
 
 /**
- * Build prompt for editorial angle generation (Human Mode only).
- * Used to generate thesis, counterintuitive_angle, and opening_hook before article generation.
- */
-export function buildEditorialAnglePrompt(params: {
-  topicTitle: string;
-  topicBrief: string;
-  niche: string;
-  contentPurpose: string;
-}): string {
-  return `You are an experienced editorial strategist.
-
-Given the following article topic, return a short editorial angle object in JSON.
-
-Topic: ${params.topicTitle}
-Brief: ${params.topicBrief}
-Niche: ${params.niche}
-Content purpose: ${params.contentPurpose}
-
-Return ONLY valid JSON, no explanations:
-
-{
-  "thesis": "One sentence — the single most important claim this article should make. Must be specific, not generic.",
-  "counterintuitive_angle": "One sentence — something about this topic that most articles get wrong or ignore entirely.",
-  "opening_hook": "One sentence — the first sentence of the article. Must NOT start with the topic name, must NOT be a question, must NOT start with 'In', 'When', 'Whether', 'If'."
-}
-
-Rules:
-- thesis must take a position, not just describe the topic
-- counterintuitive_angle must be genuinely unexpected, not obvious
-- opening_hook must create tension or curiosity without being clickbait
-- All three must be directly relevant to the topic
-- Total output: JSON only, no markdown, no backticks`;
-}
-
-/**
- * Fetch editorial angle from OpenAI (gpt-4o-mini) for Human Mode.
- * Non-blocking: returns null on error; article generation continues without it.
- */
-export async function getEditorialAngle(params: {
-  topicTitle: string;
-  topicBrief: string;
-  niche: string;
-  contentPurpose: string;
-  openaiClient: any;
-}): Promise<{ thesis: string; counterintuitive_angle: string; opening_hook: string } | null> {
-  try {
-    const prompt = buildEditorialAnglePrompt({
-      topicTitle: params.topicTitle,
-      topicBrief: params.topicBrief,
-      niche: params.niche,
-      contentPurpose: params.contentPurpose,
-    });
-
-    const response = await params.openaiClient.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 300,
-      temperature: 0.9,
-    });
-
-    const raw = response.choices?.[0]?.message?.content;
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-
-    if (!parsed.thesis || !parsed.counterintuitive_angle || !parsed.opening_hook) {
-      return null;
-    }
-
-    return parsed;
-  } catch (e) {
-    console.error("getEditorialAngle failed:", e);
-    return null;
-  }
-}
-
-/**
  * DIRECT ARTICLE CREATION MODE - Interface for direct article generation
  * 
  * This interface is EXCLUSIVELY for Direct Article Creation Mode.
@@ -1300,7 +1241,6 @@ export interface DirectArticlePromptParams {
   targetAudience: string;
   wordCount?: string;
   writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
-  editorialAngle?: { thesis: string; counterintuitive_angle: string; opening_hook: string } | null;
 }
 
 /**
@@ -1314,6 +1254,9 @@ export interface DirectArticlePromptParams {
  */
 const DIRECT_ARTICLE_PROMPT_TEMPLATE = `
 You are an experienced SEO and editorial writer with 10+ years of practice across different industries.
+
+[[EDITORIAL_ANGLE]]
+
 Your job in Direct Article Creation is simple:
 take a prepared topic brief and generate a clean, human article that:
 	1.	strictly matches the topic [[TOPIC_TITLE]] and description [[TOPIC_BRIEF]],
@@ -1478,8 +1421,6 @@ If there is any conflict, follow this priority:
 	4.	Content purpose [[CONTENT_PURPOSE]] (tone and structure),
 	5.	Explicit instructions from [[TOPIC_BRIEF]],
 	6.	Generic list/guide templates and SEO/meta preferences.
-
-[[EDITORIAL_ANGLE]]
 
 ================================
 0. BRAND PRESENCE LOGIC (GLOBAL RULE)
@@ -1702,6 +1643,7 @@ treat the article as if no commercial link was requested.
 	  •	REQUIRED: use short, natural anchor text that fits smoothly into the sentence.
 	  •	Anchor text examples: brand names ("RouteNote", "Spotify"), short descriptive phrases ("recent analysis", "this tool").
 	•	CRITICAL: Use [A1] placeholder only once in the whole article.
+	•	[A1] MUST appear EXACTLY ONCE in the entire article. Before outputting, scan all articleBlocks and verify [A1] appears only once. If it appears more than once, remove all occurrences except the first one.
 	•	The placeholder will be replaced with the actual anchor link during processing.
 	•	Do not translate or modify the anchor text - the placeholder represents [[ANCHOR_TEXT]].
 	•	Examples of CORRECT anchor integration:
@@ -1758,10 +1700,14 @@ Your rules:
     - long sentences;
     - half a paragraph.
 
-- ATTACHING PLACEHOLDERS:
-  - After the anchor, immediately place the source placeholder: [T1], [T2], or [T3].
-  - Between anchor and placeholder — exactly ONE space.
-  - Do NOT merge anchor with previous/next word: no gluing like wordanchor[T1].
+- ANCHOR FORMAT — STRICTLY ENFORCED:
+  - Write the anchor phrase, then ONE space, then the placeholder
+  - The space between anchor and placeholder is MANDATORY
+  - CORRECT: "audio guidelines [T1]" or "Elearningindustry [T1]"
+  - WRONG: "audio guidelines[T1]" or "Elearningindustry[T1]"
+  - WRONG: "Linking reference number Elearningindustry [T1]"
+  - The anchor must be 1-3 natural words from the sentence context
+  - Never write "Linking reference", "click here", "read more", "reference number" or any meta-language around the placeholder
 
 - Format examples:
   - "... according to official guide [T1] the platform continues ..." (anchor = "official guide")
@@ -2122,23 +2068,31 @@ export function buildDirectArticlePrompt(params: DirectArticlePromptParams): str
     throw new Error("Niche is required. Please fill it in Project basics.");
   }
 
-  // Build editorial angle block (Human Mode only - injected when editorialAngle provided)
-  const editorialAngleBlock = params.editorialAngle
-    ? `
-EDITORIAL ANGLE (mandatory — use this to guide the entire article):
+  const editorialAngleBlock = `
+================================================================
+OPENING SENTENCE RULE — MANDATORY
+================================================================
+The first "p" block after "h1" must be a single sentence that:
+- Is under 15 words
+- States a specific, uncomfortable truth about the topic
+- Contains zero metaphors, zero poetic language
+- Sounds like something a frustrated practitioner would say out loud
+- Does NOT start with: "In", "When", "Whether", "Many", "Most", "The moment"
 
-Thesis (the core claim your article must argue): ${params.editorialAngle.thesis}
+GOOD examples of this style:
+"Bad audio costs more learner trust than a bad slide ever will."
+"Nobody quits a course because of a poorly designed button."
+"Most e-learning audio sounds like it was recorded as an afterthought."
 
-Counterintuitive angle (address this somewhere in the article — it's what makes
-this article different from every other article on this topic): ${params.editorialAngle.counterintuitive_angle}
+BAD examples — never write anything like these:
+"A gentle whisper sets the emotional backdrop for learning."
+"Sound weaves through the silence, creating connection."
+"The moment the course begins, something subtle shifts."
 
-Opening hook (use this EXACTLY as the first sentence of the article body,
-after H1): ${params.editorialAngle.opening_hook}
-
-These are not suggestions. The thesis must be the backbone of the article.
-The opening hook must be used verbatim as the first sentence.
-`
-    : "";
+This is not optional. This is the first thing the reader sees after
+the title. It must create tension or curiosity through a plain fact.
+================================================================
+`;
 
   // Replace placeholders
   prompt = prompt.replaceAll("[[TOPIC_TITLE]]", params.topicTitle);

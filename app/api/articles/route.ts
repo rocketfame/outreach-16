@@ -25,7 +25,7 @@
  * ============================================================================
  */
 
-import { buildArticlePrompt, buildDirectArticlePrompt, getEditorialAngle } from "@/lib/articlePrompt";
+import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
 import { cleanText, lightHumanEdit, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
@@ -390,29 +390,6 @@ export async function POST(req: Request) {
             : brief.clientSite.trim()
           : "";
 
-        // Editorial angle (Human Mode only) — non-blocking: null on error, article continues without it
-        let editorialAngle: { thesis: string; counterintuitive_angle: string; opening_hook: string } | null = null;
-        if (writingMode === "human") {
-          const topicBriefForAngle = isDirectMode
-            ? (topic.brief || topic.title)
-            : [
-                topic.brief || "",
-                topic.shortAngle || "",
-                topic.whyNonGeneric || "",
-                topic.howAnchorFits || "",
-              ].filter(Boolean).join("\n\n") || topic.title;
-          editorialAngle = await getEditorialAngle({
-            topicTitle: topic.title,
-            topicBrief: topicBriefForAngle,
-            niche: brief.niche || "",
-            contentPurpose: brief.contentPurpose || "",
-            openaiClient: openai,
-          });
-          if (editorialAngle) {
-            console.log("Editorial angle generated:", JSON.stringify(editorialAngle, null, 2));
-          }
-        }
-
         let prompt: string;
 
         if (isDirectMode) {
@@ -475,7 +452,6 @@ export async function POST(req: Request) {
             targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
             wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
             writingMode: writingMode, // Pass writing mode from request
-            editorialAngle: editorialAngle,
           });
         } else {
           // ========================================================================
@@ -550,7 +526,6 @@ export async function POST(req: Request) {
           targetAudience: "B2C - beginner and mid-level musicians, content creators, influencers, bloggers, and small brands that want more visibility and growth on social platforms",
           wordCount: brief.wordCount, // Pass wordCount from Project Basics (default: 1500)
           writingMode: writingMode, // Pass writing mode from request
-          editorialAngle: editorialAngle,
         });
         }
         
@@ -971,6 +946,37 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
 
         if (hasBlocksFormat) {
           // BLOCK FORMAT (preferred): deterministic structure -> HTML
+          // Enforce [A1] appears maximum once (BUG 1 fix)
+          if (parsedResponse.articleBlocks && Array.isArray(parsedResponse.articleBlocks)) {
+            let a1Count = 0;
+            for (const block of parsedResponse.articleBlocks) {
+              if (block.text && block.text.includes("[A1]")) {
+                a1Count++;
+                if (a1Count > 1) {
+                  block.text = block.text.replace(/\[A1\]/g, "");
+                  console.log("[anchor] Removed duplicate [A1] from block");
+                }
+              }
+              if (block.items && Array.isArray(block.items)) {
+                for (let i = 0; i < block.items.length; i++) {
+                  const item = block.items[i];
+                  const itemText = typeof item === "string" ? item : (item?.text ?? "");
+                  if (itemText.includes("[A1]")) {
+                    a1Count++;
+                    if (a1Count > 1) {
+                      const cleaned = itemText.replace(/\[A1\]/g, "");
+                      if (typeof item === "string") {
+                        block.items[i] = cleaned;
+                      } else if (item && typeof item === "object") {
+                        block.items[i] = { ...item, text: cleaned };
+                      }
+                      console.log("[anchor] Removed duplicate [A1] from list item");
+                    }
+                  }
+                }
+              }
+            }
+          }
           // Use trusted sources (convert to "Name|URL" format for backward compatibility)
           const trustSourcesListForStructure = trustedSources.map(ts => `${ts.title}|${ts.url}`);
           articleStructure = modelBlocksToArticleStructure(
@@ -1111,90 +1117,10 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                         (listBlock.items || []).map(async (item: any) => {
                           if (!item?.text || item.text.length < 100) return item;
                           try {
-                            // Clean invisible characters BEFORE humanization
                             const cleanedText = cleanText(item.text);
-                            
-                            // CRITICAL: Protect placeholders during humanization
-                            // Replace placeholders with temporary tokens that AIHumanize won't modify
-                            const placeholderMap = new Map<string, string>();
-                            let protectedText = cleanedText;
-                            const placeholderPattern = /\[([AT][1-3])\]/g;
-                            let match;
-                            let tokenIndex = 0;
-                            
-                            while ((match = placeholderPattern.exec(cleanedText)) !== null) {
-                              const placeholder = match[0]; // [A1], [T1], etc.
-                              // Use more robust token that looks like a real word/term (AIHumanize is less likely to modify it)
-                              const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
-                              placeholderMap.set(token, placeholder);
-                              protectedText = protectedText.replace(placeholder, token);
-                              tokenIndex++;
-                            }
-                            
-                            const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                            const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                             listWordsUsed += result.wordsUsed;
-                            
-                            // Restore placeholders after humanization
-                            let restoredText = result.humanizedText;
-                            const tokensBeforeRestore = Array.from(placeholderMap.keys());
-                            const placeholdersBeforeRestore = Array.from(placeholderMap.values());
-                            
-                            placeholderMap.forEach((placeholder, token) => {
-                              // Try exact match first
-                              let beforeReplace = restoredText.includes(token);
-                              
-                              // Fallback: try variations if exact match fails (AIHumanize might modify the token)
-                              if (!beforeReplace) {
-                                // Try variations: without underscores, with spaces, with different casing
-                                const variations = [
-                                  token.replace(/_/g, ''),
-                                  token.replace(/_/g, ' '),
-                                  token.toLowerCase(),
-                                  token.toUpperCase(),
-                                  token.replace(/LINKREF/g, 'LINKREF'),
-                                  // Try partial matches (in case only part was modified)
-                                  token.substring(0, token.length - 2),
-                                  token.substring(0, token.length - 1),
-                                ];
-                                
-                                for (const variant of variations) {
-                                  if (restoredText.includes(variant)) {
-                                    restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                                    beforeReplace = true;
-                                    console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder}, restored successfully`);
-                                    break;
-                                  }
-                                }
-                              } else {
-                                // Exact match found, replace normally
-                                restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                              }
-                              
-                              const afterReplace = restoredText.includes(placeholder);
-                              
-                              if (!beforeReplace && placeholderMap.size > 0) {
-                                console.warn(`[articles-api] Token ${token} not found in humanized text for list item. Original placeholder: ${placeholder}`);
-                              }
-                              if (!afterReplace) {
-                                console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in list item`);
-                              }
-                            });
-                            
-                            // Verify placeholders are restored
-                            const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
-                            if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
-                              console.warn(`[articles-api] Placeholder count mismatch in list item: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
-                            }
-                            
-                            // Clean invisible characters AFTER humanization (in case API returns them)
-                            const finalText = cleanText(restoredText);
-                            
-                            // Final verification after cleanText
-                            const finalPlaceholders = (finalText.match(/\[([AT][1-3])\]/g) || []).length;
-                            if (finalPlaceholders !== placeholdersBeforeRestore.length) {
-                              console.error(`[articles-api] Placeholders lost after cleanText in list item: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}`);
-                            }
-                            
+                            const finalText = cleanText(result.humanizedText);
                             return { ...item, text: finalText };
                           } catch {
                             return item;
@@ -1214,79 +1140,9 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       let caption = t.caption;
                       if (caption && caption.length >= 100) {
                         try {
-                          // Clean invisible characters BEFORE humanization
                           const cleanedCaption = cleanText(caption);
-                          
-                          // CRITICAL: Protect placeholders during humanization
-                          const placeholderMap = new Map<string, string>();
-                          let protectedText = cleanedCaption;
-                          const placeholderPattern = /\[([AT][1-3])\]/g;
-                          let match;
-                          let tokenIndex = 0;
-                          
-                          while ((match = placeholderPattern.exec(cleanedCaption)) !== null) {
-                            const placeholder = match[0];
-                            const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
-                            placeholderMap.set(token, placeholder);
-                            protectedText = protectedText.replace(placeholder, token);
-                            tokenIndex++;
-                          }
-                          
-                          const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
-                          
-                          // Restore placeholders after humanization
-                          let restoredText = result.humanizedText;
-                          const placeholdersBeforeRestore = Array.from(placeholderMap.values());
-                          
-                          placeholderMap.forEach((placeholder, token) => {
-                            let beforeReplace = restoredText.includes(token);
-                            
-                            if (!beforeReplace) {
-                              const variations = [
-                                token.replace(/_/g, ''),
-                                token.replace(/_/g, ' '),
-                                token.toLowerCase(),
-                                token.toUpperCase(),
-                                token.substring(0, token.length - 2),
-                                token.substring(0, token.length - 1),
-                              ];
-                              
-                              for (const variant of variations) {
-                                if (restoredText.includes(variant)) {
-                                  restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                                  beforeReplace = true;
-                                  console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder} in caption, restored successfully`);
-                                  break;
-                                }
-                              }
-                            } else {
-                              restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                            }
-                            
-                            const afterReplace = restoredText.includes(placeholder);
-                            
-                            if (!beforeReplace && placeholderMap.size > 0) {
-                              console.warn(`[articles-api] Token ${token} not found in humanized text for table caption. Original placeholder: ${placeholder}`);
-                            }
-                            if (!afterReplace) {
-                              console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in table caption`);
-                            }
-                          });
-                          
-                          // Verify placeholders are restored
-                          const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
-                          if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
-                            console.warn(`[articles-api] Placeholder count mismatch in table caption: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
-                          }
-                          
-                          // Clean invisible characters AFTER humanization
-                          caption = cleanText(restoredText);
-                          
-                          // Final verification after cleanText
-                          const finalPlaceholders = (caption.match(/\[([AT][1-3])\]/g) || []).length;
-                          if (finalPlaceholders !== placeholdersBeforeRestore.length) {
-                            console.error(`[articles-api] Placeholders lost after cleanText in table caption: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}`);
-                          }
+                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                          caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
                         } catch {
                           // keep original
@@ -1301,82 +1157,10 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                             cells.map(async (cell) => {
                               if (!cell || cell.length < 100) return cell;
                               try {
-                                // Clean invisible characters BEFORE humanization
                                 const cleanedCell = cleanText(cell);
-                                
-                                // CRITICAL: Protect placeholders during humanization
-                                const placeholderMap = new Map<string, string>();
-                                let protectedText = cleanedCell;
-                                const placeholderPattern = /\[([AT][1-3])\]/g;
-                                let match;
-                                let tokenIndex = 0;
-                                
-                                while ((match = placeholderPattern.exec(cleanedCell)) !== null) {
-                                  const placeholder = match[0];
-                                  const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
-                                  placeholderMap.set(token, placeholder);
-                                  protectedText = protectedText.replace(placeholder, token);
-                                  tokenIndex++;
-                                }
-                                
-                                const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                                const result = await humanizeSectionText(cleanedCell, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                                 tableWordsUsed += result.wordsUsed;
-                                
-                                // Restore placeholders after humanization
-                                let restoredText = result.humanizedText;
-                                const placeholdersBeforeRestore = Array.from(placeholderMap.values());
-                                
-                                placeholderMap.forEach((placeholder, token) => {
-                                  let beforeReplace = restoredText.includes(token);
-                                  
-                                  if (!beforeReplace) {
-                                    const variations = [
-                                      token.replace(/_/g, ''),
-                                      token.replace(/_/g, ' '),
-                                      token.toLowerCase(),
-                                      token.toUpperCase(),
-                                      token.substring(0, token.length - 2),
-                                      token.substring(0, token.length - 1),
-                                    ];
-                                    
-                                    for (const variant of variations) {
-                                      if (restoredText.includes(variant)) {
-                                        restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                                        beforeReplace = true;
-                                        console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder} in table cell, restored successfully`);
-                                        break;
-                                      }
-                                    }
-                                  } else {
-                                    restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                                  }
-                                  
-                                  const afterReplace = restoredText.includes(placeholder);
-                                  
-                                  if (!beforeReplace && placeholderMap.size > 0) {
-                                    console.warn(`[articles-api] Token ${token} not found in humanized text for table cell. Original placeholder: ${placeholder}`);
-                                  }
-                                  if (!afterReplace) {
-                                    console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in table cell`);
-                                  }
-                                });
-                                
-                                // Verify placeholders are restored
-                                const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
-                                if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
-                                  console.warn(`[articles-api] Placeholder count mismatch in table cell: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
-                                }
-                                
-                                // Clean invisible characters AFTER humanization
-                                const finalText = cleanText(restoredText);
-                                
-                                // Final verification after cleanText
-                                const finalPlaceholders = (finalText.match(/\[([AT][1-3])\]/g) || []).length;
-                                if (finalPlaceholders !== placeholdersBeforeRestore.length) {
-                                  console.error(`[articles-api] Placeholders lost after cleanText in table cell: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}`);
-                                }
-                                
-                                return finalText;
+                                return cleanText(result.humanizedText);
                               } catch {
                                 return cell;
                               }
@@ -1403,40 +1187,10 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       }
                       try {
                         const cleanedText = cleanText(block.text);
-                        const placeholderMap = new Map<string, string>();
-                        let protectedText = cleanedText;
-                        const placeholderPattern = /\[([AT][1-3])\]/g;
-                        let match;
-                        let tokenIndex = 0;
-                        while ((match = placeholderPattern.exec(cleanedText)) !== null) {
-                          const placeholder = match[0];
-                          const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
-                          placeholderMap.set(token, placeholder);
-                          protectedText = protectedText.replace(placeholder, token);
-                          tokenIndex++;
-                        }
-                        const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                        const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
                         totalHumanizeWordsUsed += result.wordsUsed;
                         previousBlockText = block.text;
-                        let restoredText = result.humanizedText;
-                        const placeholdersBeforeRestore = Array.from(placeholderMap.values());
-                        placeholderMap.forEach((placeholder, token) => {
-                          let beforeReplace = restoredText.includes(token);
-                          if (!beforeReplace) {
-                            const variations = [token.replace(/_/g, ''), token.replace(/_/g, ' '), token.toLowerCase(), token.toUpperCase(), token.substring(0, token.length - 2), token.substring(0, token.length - 1), token.replace(/LINKREF/g, 'LINK'), token.replace(/LINKREF/g, 'REF')];
-                            for (const variant of variations) {
-                              if (restoredText.includes(variant)) {
-                                restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                                beforeReplace = true;
-                                break;
-                              }
-                            }
-                          } else {
-                            restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                          }
-                        });
-                        const finalText = cleanText(restoredText);
-                        humanizedBlocks.push({ ...block, text: finalText });
+                        humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
                       } catch {
                         previousBlockText = block.text;
                         humanizedBlocks.push(block);
@@ -1450,93 +1204,11 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       continue;
                     }
                     try {
-                      // Clean invisible characters BEFORE humanization
                       const cleanedText = cleanText(block.text);
-                      
-                      // CRITICAL: Protect placeholders during humanization
-                      // Replace placeholders with temporary tokens that AIHumanize won't modify
-                      const placeholderMap = new Map<string, string>();
-                      let protectedText = cleanedText;
-                      const placeholderPattern = /\[([AT][1-3])\]/g;
-                      let match;
-                      let tokenIndex = 0;
-                      
-                      while ((match = placeholderPattern.exec(cleanedText)) !== null) {
-                        const placeholder = match[0]; // [A1], [T1], etc.
-                        // Use more robust token that looks like a real word/term (AIHumanize is less likely to modify it)
-                        const token = `LINKREF${String(tokenIndex).padStart(3, '0')}`;
-                        placeholderMap.set(token, placeholder);
-                        protectedText = protectedText.replace(placeholder, token);
-                        tokenIndex++;
-                      }
-                      
-                      const result = await humanizeSectionText(protectedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                      const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
                       totalHumanizeWordsUsed += result.wordsUsed;
-
                       previousBlockText = block.text;
-
-                      // Restore placeholders after humanization
-                      let restoredText = result.humanizedText;
-                      const placeholdersBeforeRestore = Array.from(placeholderMap.values());
-                      
-                      placeholderMap.forEach((placeholder, token) => {
-                        // Try exact match first
-                        let beforeReplace = restoredText.includes(token);
-                        
-                        // Fallback: try variations if exact match fails (AIHumanize might modify the token)
-                        if (!beforeReplace) {
-                          // Try variations: without underscores, with spaces, with different casing, partial matches
-                          const variations = [
-                            token.replace(/_/g, ''),
-                            token.replace(/_/g, ' '),
-                            token.toLowerCase(),
-                            token.toUpperCase(),
-                            token.substring(0, token.length - 2),
-                            token.substring(0, token.length - 1),
-                            // Try to find partial token (in case AIHumanize removed part of it)
-                            token.replace(/LINKREF/g, 'LINK'),
-                            token.replace(/LINKREF/g, 'REF'),
-                          ];
-                          
-                          for (const variant of variations) {
-                            if (restoredText.includes(variant)) {
-                              restoredText = restoredText.replace(new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                              beforeReplace = true;
-                              console.log(`[articles-api] Found modified token variant "${variant}" for ${placeholder} in paragraph, restored successfully`);
-                              break;
-                            }
-                          }
-                        } else {
-                          // Exact match found, replace normally
-                          restoredText = restoredText.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), placeholder);
-                        }
-                        
-                        const afterReplace = restoredText.includes(placeholder);
-                        
-                        if (!beforeReplace && placeholderMap.size > 0) {
-                          console.warn(`[articles-api] Token ${token} not found in humanized text for paragraph. Original placeholder: ${placeholder}`);
-                        }
-                        if (!afterReplace) {
-                          console.error(`[articles-api] Failed to restore placeholder ${placeholder} from token ${token} in paragraph`);
-                        }
-                      });
-                      
-                      // Verify placeholders are restored
-                      const restoredPlaceholders = (restoredText.match(/\[([AT][1-3])\]/g) || []).length;
-                      if (restoredPlaceholders !== placeholdersBeforeRestore.length) {
-                        console.warn(`[articles-api] Placeholder count mismatch in paragraph: expected ${placeholdersBeforeRestore.length}, found ${restoredPlaceholders}`);
-                      }
-                      
-                      // Clean invisible characters AFTER humanization (in case API returns them)
-                      const finalText = cleanText(restoredText);
-                      
-                      // Final verification after cleanText
-                      const finalPlaceholders = (finalText.match(/\[([AT][1-3])\]/g) || []).length;
-                      if (finalPlaceholders !== placeholdersBeforeRestore.length) {
-                        console.error(`[articles-api] Placeholders lost after cleanText in paragraph: expected ${placeholdersBeforeRestore.length}, found ${finalPlaceholders}. Block text preview: ${finalText.substring(0, 200)}`);
-                      }
-                      
-                      humanizedBlocks.push({ ...block, text: finalText });
+                      humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
                     } catch {
                       previousBlockText = block.text;
                       humanizedBlocks.push(block);
@@ -2017,8 +1689,21 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
       }
     }
 
+    // When all topics failed, return 500 so client gets proper error (not 200 with empty array)
+    if (generatedArticles.length === 0) {
+      console.error("[articles-api] No articles generated — all topics failed. Check logs above for parse/validation errors.");
+      return new Response(
+        JSON.stringify({
+          error: "All articles failed to generate. This may be due to JSON parse errors, missing articleBlocks, or model truncation. Check the server terminal for details.",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const responseBody = { articles: generatedArticles };
+    console.log("[articles-api] Returning success:", { articlesCount: generatedArticles.length, status: 200 });
     return new Response(
-      JSON.stringify({ articles: generatedArticles }),
+      JSON.stringify(responseBody),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {

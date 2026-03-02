@@ -2491,41 +2491,55 @@ export default function Home() {
         throw new Error(errorData.error ?? "Failed to generate article.");
       }
 
-      const data = await response.json() as { articles: Array<{
+      const responseText = await response.text();
+      let data: { articles?: Array<{
         topicTitle: string;
         titleTag: string;
         metaDescription: string;
         fullArticleText: string;
         articleBodyHtml?: string;
       }> };
+      try {
+        data = responseText ? (JSON.parse(responseText) as typeof data) : {};
+      } catch (parseErr) {
+        console.error("[generateDirectArticle] Failed to parse response JSON:", parseErr);
+        console.error("[generateDirectArticle] Raw response (first 500 chars):", responseText?.substring(0, 500));
+        throw new Error("Invalid JSON response from server. Check server logs for errors.");
+      }
 
       console.log("[generateDirectArticle] Response received:", {
-        articlesCount: data.articles?.length || 0,
-        firstArticleTopicTitle: data.articles?.[0]?.topicTitle,
+        articlesCount: data?.articles?.length ?? 0,
+        firstArticleTopicTitle: data?.articles?.[0]?.topicTitle,
         articleId,
-        hasTitleTag: !!data.articles?.[0]?.titleTag,
-        hasMetaDescription: !!data.articles?.[0]?.metaDescription,
-        hasFullArticleText: !!data.articles?.[0]?.fullArticleText,
+        hasTitleTag: !!data?.articles?.[0]?.titleTag,
+        hasMetaDescription: !!data?.articles?.[0]?.metaDescription,
+        hasFullArticleText: !!data?.articles?.[0]?.fullArticleText,
       });
 
       // Validate response data
-      if (!data.articles || !Array.isArray(data.articles) || data.articles.length === 0) {
+      if (!data?.articles || !Array.isArray(data.articles) || data.articles.length === 0) {
         console.error("[generateDirectArticle] Invalid response:", data);
-        throw new Error("Invalid response from server: articles array is empty or missing");
+        console.error("[generateDirectArticle] Response status:", response.status, "Keys received:", data ? Object.keys(data) : "null");
+        throw new Error(
+          "Invalid response from server: articles array is empty or missing. " +
+          "The article may have failed to generate (e.g. JSON parse error, missing articleBlocks). Check the server terminal for details."
+        );
       }
+
+      const firstArticle = data.articles[0];
 
       // Update generated article with result
       // CRITICAL: For direct article mode, always preserve directArticleTopic as titleTag
       // This ensures H1 is always displayed correctly in preview
       const existingArticle = generatedArticles.find(a => a.topicTitle === articleId);
       // Priority: 1) existing titleTag (set during generation), 2) API response, 3) directArticleTopic
-      const preservedTitleTag = existingArticle?.titleTag || data.articles[0]?.titleTag || directArticleTopic || articleId;
+      const preservedTitleTag = existingArticle?.titleTag || firstArticle?.titleTag || directArticleTopic || articleId;
       
       console.log("[generateDirectArticle] Updating article:", {
         articleId,
         existingArticleFound: !!existingArticle,
         preservedTitleTag,
-        responseTopicTitle: data.articles[0]?.topicTitle,
+        responseTopicTitle: firstArticle?.topicTitle,
       });
       
       updateGeneratedArticles(prev => {
@@ -2534,12 +2548,12 @@ export default function Home() {
         // CRITICAL: Clean invisible Unicode characters before saving
         // This ensures all hidden characters are removed even if they come from API
         const cleanedArticle = {
-          ...data.articles[0],
+          ...firstArticle,
           // Clean all text fields that might contain hidden characters
           titleTag: cleanText(preservedTitleTag || ''),
-          metaDescription: cleanText(data.articles[0]?.metaDescription || ''),
-          fullArticleText: cleanText(data.articles[0]?.fullArticleText || ''),
-          articleBodyHtml: cleanText(data.articles[0]?.articleBodyHtml || data.articles[0]?.fullArticleText || ''),
+          metaDescription: cleanText(firstArticle?.metaDescription || ''),
+          fullArticleText: cleanText(firstArticle?.fullArticleText || ''),
+          articleBodyHtml: cleanText(firstArticle?.articleBodyHtml || firstArticle?.fullArticleText || ''),
           // CRITICAL: Save humanization settings used for this article (Direct Article: only Human Mode)
           humanizeSettingsUsed: {
             humanizeOnWrite: effectiveHumanizeForRequest,
@@ -2575,8 +2589,7 @@ export default function Home() {
         setExpandedHumanizeTopicId(null);
       }
       
-      // Clear topic input
-      updateDirectArticleTopic("");
+      // Keep topic in field for easy regeneration — do NOT clear directArticleTopic
       
       // CRITICAL: Refresh trialUsage immediately after successful generation
       // This ensures next click will show correct limits and widget if exhausted

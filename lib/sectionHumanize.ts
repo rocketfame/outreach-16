@@ -202,14 +202,40 @@ export function chunkTextForHumanization(text: string): string[] {
 }
 
 /**
+ * Protect [A1], [T1]-[T8] placeholders before humanization.
+ * AIHumanize may modify or destroy these; we replace with stable tokens and restore after.
+ */
+function createPlaceholderProtection() {
+  const placeholderMap: Record<string, string> = {};
+  let placeholderIndex = 0;
+
+  const protectPlaceholders = (text: string): string => {
+    return text.replace(/\[(A1|T[1-8])\]/g, (match) => {
+      const token = `LINKREF${String(placeholderIndex++).padStart(3, "0")}`;
+      placeholderMap[token] = match;
+      return token;
+    });
+  };
+
+  const restorePlaceholders = (text: string): string => {
+    return Object.entries(placeholderMap).reduce(
+      (t, [token, original]) => t.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), original),
+      text
+    );
+  };
+
+  return { protectPlaceholders, restorePlaceholders };
+}
+
+/**
  * Humanizes a single section of plain text using AIHumanize.io.
  * Includes fallback to original text if humanization fails.
+ * Placeholders [A1], [T1]-[T8] are protected before sending and restored after.
  * @param text The plain text section to humanize.
  * @param model The AIHumanize model to use (0: quality, 1: balance, 2: enhanced).
  * @param registeredEmail The registered email for AIHumanize API.
  * @param frozenPhrases Phrases to protect from alteration (e.g., brand names, anchor text).
  *   Note: Currently not used as AIHumanize API doesn't support frozen phrases directly.
- *   Placeholders like [A1], [T1] are already short tokens that should survive humanization.
  * @param style Optional writing style (General, Blog, Formal, Informal, Academic, Expand, Simplify).
  * @param mode Optional mode (Basic or Autopilot).
  * @param previousBlockText Optional text of the previous block for context (only the second part is rewritten).
@@ -261,6 +287,9 @@ export async function humanizeSectionText(
   }
 
   try {
+    // Protect [A1], [T1]-[T8] before humanization (reset per block)
+    const { protectPlaceholders, restorePlaceholders } = createPlaceholderProtection();
+
     // Use the local humanizeText function (which calls AIHumanize API)
     if (text.length > 10000) {
       // Chunk the text
@@ -271,14 +300,16 @@ export async function humanizeSectionText(
       for (let i = 0; i < chunks.length; i++) {
         const chunkFitsWithContext = contextPrefix && (contextPrefix.length + chunks[i].length) <= 10000;
         const dataToSend = i === 0 && chunkFitsWithContext ? contextPrefix + chunks[i] : chunks[i];
+        const protectedData = protectPlaceholders(dataToSend);
         const result = await humanizeText({
-          text: dataToSend,
+          text: protectedData,
           model,
           style,
           mode,
           registeredEmail
         });
-        const rewrittenPart = i === 0 && chunkFitsWithContext ? extractRewrittenPart(result.text) : result.text;
+        let rewrittenPart = i === 0 && chunkFitsWithContext ? extractRewrittenPart(result.text) : result.text;
+        rewrittenPart = restorePlaceholders(rewrittenPart);
         humanizedChunks.push(rewrittenPart);
         totalWordsUsed += result.wordsUsed;
       }
@@ -289,15 +320,17 @@ export async function humanizeSectionText(
       };
     } else {
       const dataToSend = contextPrefix + text;
+      const protectedData = protectPlaceholders(dataToSend);
       const result = await humanizeText({
-        text: dataToSend,
+        text: protectedData,
         model,
         style,
         mode,
         registeredEmail
       });
 
-      const humanizedText = extractRewrittenPart(result.text);
+      let humanizedText = extractRewrittenPart(result.text);
+      humanizedText = restorePlaceholders(humanizedText);
 
       return {
         humanizedText,
