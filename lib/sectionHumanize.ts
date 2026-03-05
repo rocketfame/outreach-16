@@ -227,6 +227,28 @@ function createPlaceholderProtection() {
   return { protectPlaceholders, restorePlaceholders };
 }
 
+const cleanHumanizedText = (text: string): string => {
+  // Remove humanizer meta-commentary patterns
+  const metaPatterns = [
+    /please note that this was written by[^.]*\./gi,
+    /this (text|content|paragraph|sentence) (has been|was) (rewritten|humanized|paraphrased)[^.]*\./gi,
+    /the (following|above) (text|content) (has been|was)[^.]*\./gi,
+    /note[:]\s*[^.]*rewritten[^.]*\./gi,
+    /\(note:[^)]*\)/gi,
+    /\[note:[^\]]*\]/gi,
+  ];
+
+  let cleaned = text;
+  for (const pattern of metaPatterns) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+
+  // Clean up double spaces left after removal
+  cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
+
+  return cleaned;
+};
+
 /**
  * Humanizes a single section of plain text using AIHumanize.io.
  * Includes fallback to original text if humanization fails.
@@ -310,6 +332,7 @@ export async function humanizeSectionText(
         });
         let rewrittenPart = i === 0 && chunkFitsWithContext ? extractRewrittenPart(result.text) : result.text;
         rewrittenPart = restorePlaceholders(rewrittenPart);
+        rewrittenPart = cleanHumanizedText(rewrittenPart);
         humanizedChunks.push(rewrittenPart);
         totalWordsUsed += result.wordsUsed;
       }
@@ -331,6 +354,7 @@ export async function humanizeSectionText(
 
       let humanizedText = extractRewrittenPart(result.text);
       humanizedText = restorePlaceholders(humanizedText);
+      humanizedText = cleanHumanizedText(humanizedText);
 
       return {
         humanizedText,
