@@ -568,7 +568,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
 
         // API parameters for OpenAI
         const apiParams = { 
-          max_completion_tokens: 12000
+          max_completion_tokens: 18000
         };
 
         // Call OpenAI API with system + user messages
@@ -976,6 +976,43 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                 }
               }
             }
+          }
+          // Clean up truncated/incomplete blocks
+          if (parsedResponse.articleBlocks && Array.isArray(parsedResponse.articleBlocks)) {
+            let articleBlocks = parsedResponse.articleBlocks as any[];
+            articleBlocks = articleBlocks.filter((block: any) => {
+              if (block.type === "p" && block.text) {
+                const text = block.text.trim();
+                // Remove blocks that are clearly incomplete sentences
+                // (end with preposition, conjunction, or colon with no content)
+                if (text.endsWith(":") && text.split(" ").length < 8) return false;
+                if (text.length < 15) return false;
+                return true;
+              }
+              if (block.type === "h2" || block.type === "h3") {
+                const text = block.text?.trim() || "";
+                // Remove empty headings
+                if (text.length === 0) return false;
+                return true;
+              }
+              return true;
+            });
+
+            // Fix missing spaces before common words (e.g. "instead ofconversion")
+            for (const block of articleBlocks) {
+              if (block.text) {
+                block.text = block.text.replace(/([a-z])([A-Z])/g, "$1 $2");
+                block.text = block.text.replace(/\s{2,}/g, " ");
+              }
+              if (block.items && Array.isArray(block.items)) {
+                block.items = block.items.map((item: any) =>
+                  typeof item === "string"
+                    ? item.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\s{2,}/g, " ")
+                    : item
+                );
+              }
+            }
+            parsedResponse.articleBlocks = articleBlocks;
           }
           // Use trusted sources (convert to "Name|URL" format for backward compatibility)
           const trustSourcesListForStructure = trustedSources.map(ts => `${ts.title}|${ts.url}`);
