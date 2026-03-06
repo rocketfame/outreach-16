@@ -293,13 +293,23 @@ Repetition:
 • Do not overuse transitions like "In conclusion", "Overall", "At the end of the day".
 • Vary how you introduce tips, examples, and sections.
 
-Commercial anchor link (user's brand/service):
+================================
+CRITICAL DISTINCTION: TWO TYPES OF LINKS
+================================
+• [A1] = COMMERCIAL ANCHOR from Project basics (Branded link details). User's link - MUST be published when provided.
+• [T1], [T2], [T3] = EXTERNAL SOURCES from Tavily. Citations to third-party articles, guides, reports. Place in MAIN BODY only, NOT in intro.
+DO NOT confuse these. They serve different purposes and have different placement rules.
+
+================================
+COMMERCIAL ANCHOR [A1] – FROM PROJECT BASICS (MANDATORY WHEN PROVIDED)
+================================
+
 • The topic brief may already contain anchor phrases that must link to a specific product or service via [[ANCHOR_TEXT]] and [[ANCHOR_URL]].
-• When such anchors are provided, integrate them naturally into the article body as parts of sentences, not as ads or isolated CTAs.
-• CRITICAL - Anchor placement (MANDATORY):
-  • You MUST place the placeholder [A1] in the FIRST 2-3 paragraphs of the article.
-  • Do NOT place it later in the article - it must appear near the beginning.
-  • The anchor must be in one of the first three paragraph blocks (type "p") in articleBlocks.
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, you MUST include [A1] in the article. NEVER skip it. This is NOT optional.
+• CRITICAL - Anchor placement (MANDATORY - STRICT):
+  • You MUST place the placeholder [A1] in the FIRST or SECOND paragraph of the article. No exceptions.
+  • The anchor MUST appear in paragraph 1 (first "p" block) or paragraph 2 (second "p" block) in articleBlocks.
+  • Do NOT place it in paragraph 3 or later. Do NOT place it in the main body. It belongs in the intro only.
 • CRITICAL - Anchor format (MANDATORY):
   • [[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
   • Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
@@ -686,8 +696,8 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned 1-2 times in the article body (main sections, not just intro/conclusion). The brand should appear as a natural solution or helper, NOT as advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
-• EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty).
-• The commercial anchor [[ANCHOR_TEXT]] → [[ANCHOR_URL]] is integrated naturally (if provided).
+• EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty). These [T1]-[T3] go in MAIN BODY only, NOT in intro.
+• CRITICAL - Commercial anchor from Project basics: If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, [A1] MUST appear EXACTLY ONCE in paragraph 1 or 2. Verify before output. NEVER skip the anchor.
 • The article structure matches the brief requirements.
 • All formatting rules are followed (plain text with newlines, markdown-style bold, placeholder rules, character rules).
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
@@ -892,12 +902,14 @@ Do NOT place more than one trust source placeholder in the same sentence.
 
 ⸻
 
-COMMERCIAL ANCHOR [A1] – CRITICAL (NO STUBS)
+COMMERCIAL ANCHOR [A1] – FROM PROJECT BASICS (CRITICAL - NO STUBS)
+
+CRITICAL DISTINCTION: [A1] = commercial link from Project basics (Branded link details). [T1]-[T3] = external sources (Tavily). Different placement rules.
 
 [A1] is a technical placeholder that gets replaced with the client's real link. It must NEVER appear as a bare stub in the article.
 
 • When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are NOT provided (empty): You MUST NOT use [A1] anywhere. Do NOT write sentences like "see creator tools [A1]" or "for more see [A1]". For links to official resources (creator tools, help pages, guides) use trust source placeholders [T1], [T2], [T3] from [[TRUST_SOURCES_LIST]] instead (e.g. "For more details, see TikTok Creator tools [T1]" or "See the official guide [T2]"). If no suitable trust source exists, omit the sentence or rephrase without a link.
-• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: Place [A1] EXACTLY ONCE in the FIRST 2–3 paragraphs. The sentence must clearly refer to the client's link – use the actual anchor text in context (e.g. "Some teams use [A1] to streamline workflow"), not a generic phrase like "see creator tools [A1]" that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: You MUST include [A1]. NEVER skip it. Place [A1] EXACTLY ONCE in the FIRST or SECOND paragraph. The anchor MUST be in paragraph 1 or 2 (first two "p" blocks). Do NOT place it later. The sentence must clearly refer to the client's link – use the actual anchor text in context (e.g. "Some teams use [A1] to streamline workflow"), not a generic phrase like "see creator tools [A1]" that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
 • Do NOT use "click here", "learn more", or vague "see X [A1]" – either a real trust link [T1]/[T2]/[T3] or a clear client anchor sentence. Do not mention [A1] again after using it once.
 
 ⸻
@@ -960,7 +972,7 @@ Output MUST be valid JSON only, no explanations:
 
 • articleBlocks MUST start with { "type": "h1", ... }
 • All text fields: PLAIN TEXT ONLY (no HTML). Use **bold** or *italic* markdown-style sparingly
-• [A1]: use ONLY when anchor was provided ([[ANCHOR_TEXT]] and [[ANCHOR_URL]] non-empty); then exactly once in first 2–3 paragraphs. If no anchor provided, do NOT output [A1] – use [T1]/[T2]/[T3] for official/help links instead.
+• [A1]: use ONLY when anchor was provided ([[ANCHOR_TEXT]] and [[ANCHOR_URL]] non-empty); then exactly once in paragraph 1 or 2 (first or second "p" block). MANDATORY when provided – never skip. If no anchor provided, do NOT output [A1] – use [T1]/[T2]/[T3] for official/help links instead.
 • Use [T1], [T2], [T3] (and [T4]–[T8] when provided) for trust sources – aim for 4–8 when list provides enough.
 • Lists: { "type": "ul" } or { "type": "ol" } with "items": ["..."]
 • Tables (only when topic requires comparison/structured data): { "type": "table", "caption": "...", "headers": [...], "rows": [[...], ...] }
@@ -980,7 +992,7 @@ FINAL SELF-CHECK BEFORE OUTPUT
 • Did I remove anything that adds noise but no clarity?
 • Word count between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]]? If over, shorten weakest sections first.
 • 4–8 (or all provided) trust source placeholders from [[TRUST_SOURCES_LIST]] (if list not empty), each under a key claim?
-• If anchor was provided: [A1] placed once in first 2–3 paragraphs. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only?
+• If anchor was provided: [A1] MUST appear EXACTLY ONCE in paragraph 1 or 2. NEVER skip it. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only.
 • If [[BRAND_NAME]] provided: 1–2 mentions in main body?
 
 Current WritingMode: [[WRITING_MODE]]
@@ -1043,19 +1055,20 @@ the title. It must create tension or curiosity through a plain fact.
   prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform || "multi-platform");
   prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
-  // Check if anchors are provided and if topic brief indicates no anchors needed
+  // Project basics (Branded link details) is the source of truth for anchors.
+  // If user filled in anchorText and anchorUrl, ALWAYS use them - regardless of topic brief content.
+  // Topic's howAnchorFits may contain "N/A" from topic generation (when anchors weren't provided yet) - that must NOT override user's explicit input.
   const hasAnchors = !!(params.anchorText && params.anchorText.trim() && params.anchorUrl && params.anchorUrl.trim());
-  const topicBriefIndicatesNoAnchors = params.topicBrief.includes("N/A") && params.topicBrief.includes("anchor");
-  const shouldUseAnchors = hasAnchors && !topicBriefIndicatesNoAnchors;
+  const shouldUseAnchors = hasAnchors;
+  if (hasAnchors) {
+    console.log("[buildArticlePrompt] Anchors from Project basics WILL be used:", { anchorText: params.anchorText?.slice(0, 50), anchorUrl: params.anchorUrl?.slice(0, 50) });
+  }
   
-  prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText || "");
-  prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl || "");
-  
-  // If no anchors should be used, modify anchor-related instructions
+  // If no anchors should be used, modify anchor-related instructions BEFORE replacing placeholders
   if (!shouldUseAnchors) {
     // Remove or modify anchor placement requirements
     prompt = prompt.replaceAll(
-      /• CRITICAL - Anchor placement \(MANDATORY\):[\s\S]*?• The anchor must be in one of the first three paragraph blocks \(type "p"\) in articleBlocks\./g,
+      /• CRITICAL - Anchor placement \(MANDATORY[^)]*\):[\s\S]*?• Do NOT place it in paragraph 3 or later\. Do NOT place it in the main body\. It belongs in the intro only\./g,
       "• CRITICAL - Anchor placement: NOT REQUIRED - This article does not include anchor links. Focus on providing valuable content without commercial links."
     );
     prompt = prompt.replaceAll(
@@ -1067,8 +1080,8 @@ the title. It must create tension or curiosity through a plain fact.
       "• This article does not require anchor links. Focus on providing valuable, educational content."
     );
     prompt = prompt.replaceAll(
-      /• When such anchors are provided, integrate them naturally into the article body as parts of sentences, not as ads or isolated CTAs\./g,
-      "• Write the article as a standalone piece of content without commercial links."
+      /• When \[\[ANCHOR_TEXT\]\] and \[\[ANCHOR_URL\]\] are provided, you MUST include \[A1\] in the article\. NEVER skip it\. This is NOT optional\./g,
+      "• This article does not require anchor links. Write the article as a standalone piece of content without commercial links."
     );
     prompt = prompt.replaceAll(
       /• Do not change or translate the anchor text; the placeholder \[A1\] will be replaced with \[\[ANCHOR_TEXT\]\] linking to \[\[ANCHOR_URL\]\] during processing\./g,
@@ -1091,6 +1104,10 @@ the title. It must create tension or curiosity through a plain fact.
       "• Commercial anchor: NOT REQUIRED - Do not use [A1] placeholder. This article does not include anchor links."
     );
   }
+  
+  prompt = prompt.replaceAll("[[ANCHOR_TEXT]]", params.anchorText || "");
+  prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl || "");
+  
   // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
   const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
   console.log("[buildArticlePrompt] Brand name processing:", {
@@ -1620,7 +1637,9 @@ or when [[CONTENT_PURPOSE]] = "Educational guide" and the brief does not demand 
 or "end with a short checklist"), follow that as long as it stays concise.
 
 ================================
-5. COMMERCIAL BRANDED LINK LOGIC
+5. COMMERCIAL BRANDED LINK LOGIC (PROJECT BASICS – BRANDED LINK DETAILS)
+
+CRITICAL DISTINCTION: [A1] = commercial anchor from Project basics. [T1]-[T3] = external sources (Tavily). Different placement: [A1] in intro (para 1-2), [T1]-[T3] in main body only.
 
 The commercial anchor is independent from [[BRAND_NAME]].
 	1.	If anchor text OR URL are invalid
@@ -1631,10 +1650,10 @@ The commercial anchor is independent from [[BRAND_NAME]].
 	•	If you see [[ANCHOR_TEXT]] or [[ANCHOR_URL]] in the prompt but they are empty/invalid,
 treat the article as if no commercial link was requested.
 	2.	If BOTH [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid (non empty, not placeholders):
-	•	CRITICAL - Anchor placement (MANDATORY):
-	  •	You MUST place the placeholder [A1] in the FIRST 2-3 paragraphs of the article.
-	  •	Do NOT place it later in the article - it must appear near the beginning.
-	  •	The anchor must be in one of the first three paragraph blocks (type "p") in articleBlocks.
+	•	CRITICAL - Anchor placement (MANDATORY - STRICT):
+	  •	You MUST place the placeholder [A1] in the FIRST or SECOND paragraph of the article. No exceptions.
+	  •	The anchor MUST be in paragraph 1 (first "p" block) or paragraph 2 (second "p" block) in articleBlocks.
+	  •	Do NOT place it in paragraph 3 or later. Do NOT place it in the main body. It belongs in the intro only.
 	•	CRITICAL - Anchor format (MANDATORY):
 	  •	[[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
 	  •	Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
@@ -2040,7 +2059,7 @@ FINAL VERIFICATION BEFORE OUTPUT:
     * "Educational guide" / "News Hook" / "Other": 0-1 subtle mention if natural.
   - Brand mentions should appear in MAIN BODY sections (not just intro/conclusion) and feel natural, not like advertising.
   - If [[BRAND_NAME]] is empty/NONE/placeholder: Verify that NO client brands are mentioned (only generic platforms like Spotify, YouTube, TikTok when part of factual topic).
-• If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in the first 2-3 paragraphs.
+• If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in paragraph 1 or 2. NEVER skip it.
 • Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
 • Scan all block texts/items/cells for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.

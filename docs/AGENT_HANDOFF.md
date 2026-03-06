@@ -588,12 +588,14 @@ ANCHOR LOGIC (same as main app):
 
 ⸻
 
-COMMERCIAL ANCHOR [A1] – CRITICAL (NO STUBS)
+COMMERCIAL ANCHOR [A1] – FROM PROJECT BASICS (CRITICAL - NO STUBS)
+
+CRITICAL DISTINCTION: [A1] = commercial link from Project basics (Branded link details). [T1]-[T3] = external sources (Tavily). Different placement: [A1] in intro (para 1-2), [T1]-[T3] in main body only.
 
 [A1] is a technical placeholder that gets replaced with the client's real link. It must NEVER appear as a bare stub in the article.
 
 • When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are NOT provided (empty): You MUST NOT use [A1] anywhere. Do NOT write sentences like "see creator tools [A1]" or "for more see [A1]". For links to official resources (creator tools, help pages, guides) use trust source placeholders [T1], [T2], [T3] from [[TRUST_SOURCES_LIST]] instead (e.g. "For more details, see TikTok Creator tools [T1]" or "See the official guide [T2]"). If no suitable trust source exists, omit the sentence or rephrase without a link.
-• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: Place [A1] EXACTLY ONCE in the FIRST 2–3 paragraphs. The sentence must clearly refer to the client's link – use the actual anchor text in context (e.g. "Some teams use [A1] to streamline workflow"), not a generic phrase like "see creator tools [A1]" that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: You MUST include [A1]. NEVER skip it. Place [A1] EXACTLY ONCE in the FIRST or SECOND paragraph. The anchor MUST be in paragraph 1 or 2 (first two "p" blocks). Do NOT place it later. The sentence must clearly refer to the client's link – use the actual anchor text in context (e.g. "Some teams use [A1] to streamline workflow"), not a generic phrase like "see creator tools [A1]" that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
 • Do NOT use "click here", "learn more", or vague "see X [A1]" – either a real trust link [T1]/[T2]/[T3] or a clear client anchor sentence. Do not mention [A1] again after using it once.
 
 ⸻
@@ -642,7 +644,7 @@ Output MUST be valid JSON only, no explanations:
 
 • articleBlocks MUST start with { "type": "h1", ... }
 • All text fields: PLAIN TEXT ONLY (no HTML). Use **bold** or *italic* markdown-style sparingly
-• [A1]: use ONLY when anchor was provided ([[ANCHOR_TEXT]] and [[ANCHOR_URL]] non-empty); then exactly once in first 2–3 paragraphs. If no anchor provided, do NOT output [A1] – use [T1]/[T2]/[T3] for official/help links instead.
+• [A1]: use ONLY when anchor was provided ([[ANCHOR_TEXT]] and [[ANCHOR_URL]] non-empty); then exactly once in paragraph 1 or 2 (first or second "p" block). MANDATORY when provided – never skip. If no anchor provided, do NOT output [A1] – use [T1]/[T2]/[T3] for official/help links instead.
 • Use [T1], [T2], [T3] (and [T4]–[T8] when provided) for trust sources – aim for 4–8 when list provides enough.
 • Lists: { "type": "ul" } or { "type": "ol" } with "items": ["..."]
 • Tables (only when topic requires comparison/structured data): { "type": "table", "caption": "...", "headers": [...], "rows": [[...], ...] }
