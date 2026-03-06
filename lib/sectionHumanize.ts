@@ -243,6 +243,43 @@ const cleanHumanizedText = (text: string): string => {
     cleaned = cleaned.replace(pattern, "");
   }
 
+  // Normalize social media and tech brand names
+  const brandNormalizations: [RegExp, string][] = [
+    [/\bTik\s*Tok\b/gi, "TikTok"],
+    [/\bInsta\s*gram\b/gi, "Instagram"],
+    [/\bYou\s*Tube\b/gi, "YouTube"],
+    [/\byoutube\b/g, "YouTube"],
+    [/\bFace\s*book\b/gi, "Facebook"],
+    [/\bLinked\s*In\b/gi, "LinkedIn"],
+    [/\blinkedin\b/g, "LinkedIn"],
+    [/\bPinter\s*est\b/gi, "Pinterest"],
+    [/\bSnap\s*chat\b/gi, "Snapchat"],
+    [/\bWhat\s*s\s*App\b/gi, "WhatsApp"],
+    [/\bwhatsapp\b/g, "WhatsApp"],
+    [/\bspotify\b/g, "Spotify"],
+    [/\bSound\s*Cloud\b/gi, "SoundCloud"],
+    [/\bsoundcloud\b/g, "SoundCloud"],
+    [/\bApple\s*music\b/gi, "Apple Music"],
+    [/\bpatreon\b/g, "Patreon"],
+    [/\bsubstack\b/g, "Substack"],
+    [/\btwitch\b/g, "Twitch"],
+    [/\bdiscord\b/g, "Discord"],
+    [/\breddit\b/g, "Reddit"],
+    [/\btwitter\b/g, "Twitter"],
+    [/\bgoogle\b/g, "Google"],
+    [/\bWord\s*Press\b/gi, "WordPress"],
+    [/\bwordpress\b/g, "WordPress"],
+    [/\bshopify\b/g, "Shopify"],
+    [/\bPay\s*Pal\b/gi, "PayPal"],
+    [/\bpaypal\b/g, "PayPal"],
+    [/\bChat\s*GPT\b/gi, "ChatGPT"],
+    [/\bchatgpt\b/g, "ChatGPT"],
+  ];
+
+  for (const [pattern, replacement] of brandNormalizations) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+
   // Clean up double spaces left after removal
   cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
 

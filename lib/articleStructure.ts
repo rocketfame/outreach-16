@@ -71,6 +71,26 @@ function escapeHtmlAttr(text: string): string {
   return escapeHtml(text);
 }
 
+const isValidTrustUrl = (url: string): boolean => {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
+};
+
+/** Extract main brand from URL (e.g. creators.spotify.com → Spotify, not Creators) */
+function getBrandFromUrl(url: string): string | null {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./i, "");
+    const parts = host.split(".");
+    // subdomain.brand.tld → use brand (index 1); domain.tld → use domain (index 0)
+    const brandPart = parts.length >= 3 ? parts[parts.length - 2] : parts[0];
+    if (brandPart && brandPart.length > 1 && brandPart.length < 25) {
+      return brandPart.charAt(0).toUpperCase() + brandPart.slice(1).toLowerCase();
+    }
+  } catch {}
+  return null;
+}
+
 /**
  * Injects anchor and trust source links into text by replacing placeholders
  * Also converts markdown-style bold (**text**) to HTML <b> tags
@@ -239,35 +259,24 @@ export function injectAnchorsIntoText(
   trusts.forEach(t => {
     const placeholder = `[${t.id}]`;
     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const safeUrl = escapeHtmlAttr(t.url);
-    
+    if (!isValidTrustUrl(t.url)) {
+      console.warn("[trust-source] Invalid URL skipped:", t.url);
+    }
+    const safeUrl = isValidTrustUrl(t.url) ? escapeHtmlAttr(t.url.trim()) : "";
+
     // CRITICAL: Trim anchor text to 1-3 words (enforce maximum)
     // This ensures short, natural anchor text instead of long article titles
     const words = t.text.trim().split(/\s+/);
     let anchorText = t.text;
     if (words.length > 3) {
       // Take first 1-3 words, preferring shorter if it makes sense
-      // Try to extract brand name from URL if possible
-      try {
-        const urlObj = new URL(t.url);
-        const domain = urlObj.hostname.replace('www.', '');
-        const domainName = domain.split('.')[0];
-        // Use domain name if it's a recognizable brand (1-2 words max)
-        if (domainName.length > 2 && domainName.length < 20) {
-          anchorText = domainName.charAt(0).toUpperCase() + domainName.slice(1);
-        } else {
-          // Fallback: use first 1-2 words from title (prefer shorter)
-          const shortWords = words.slice(0, 2).join(' ');
-          if (shortWords.length < 5 || /^(the|a|an|this|that|how|what|why|when|where)\s/i.test(shortWords)) {
-            anchorText = words.slice(0, 3).join(' ');
-          } else {
-            anchorText = shortWords;
-          }
-        }
-      } catch {
-        // If URL parsing fails, use first 1-2 words (prefer shorter)
+      // Extract MAIN brand from URL (creators.spotify.com → Spotify, not Creators)
+      const brandFromUrl = isValidTrustUrl(t.url) ? getBrandFromUrl(t.url) : null;
+      if (brandFromUrl) {
+        anchorText = brandFromUrl;
+      } else {
         const shortWords = words.slice(0, 2).join(' ');
-        if (shortWords.length < 5 || /^(the|a|an|this|that)\s/i.test(shortWords)) {
+        if (shortWords.length < 5 || /^(the|a|an|this|that|how|what|why|when|where)\s/i.test(shortWords)) {
           anchorText = words.slice(0, 3).join(' ');
         } else {
           anchorText = shortWords;
@@ -279,15 +288,17 @@ export function injectAnchorsIntoText(
     }
     
     const safeText = escapeHtml(anchorText);
-    const trustHtml = `<a href="${safeUrl}">${safeText}</a>`;
-    
+    const trustHtml = isValidTrustUrl(t.url)
+      ? `<a href="${safeUrl}">${safeText}</a>`
+      : safeText;
+
     // DEBUG: Check if placeholder exists in text before replacement
     const placeholderExists = result.includes(placeholder);
     if (!placeholderExists) {
       console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text after restoration. Text preview: ${result.substring(0, 200)}`);
       return; // Skip if placeholder not found
     }
-    
+
     // CRITICAL: Always ensure spaces around anchors BEFORE replacing
     // First, add spaces around placeholder if needed
     // Pattern: word[placeholder]word -> word [placeholder] word
@@ -515,15 +526,10 @@ export function modelBlocksToArticleStructure(
       const words = name.trim().split(/\s+/);
       if (words.length > 3) {
         // Take first 1-3 words, preferring shorter if it makes sense
-        // Try to extract brand name from URL if possible
-        try {
-          const urlObj = new URL(url);
-          const domain = urlObj.hostname.replace('www.', '');
-          const domainName = domain.split('.')[0];
-          // Use domain name if it's a recognizable brand (1-2 words max)
-          if (domainName.length > 2 && domainName.length < 20) {
-            name = domainName.charAt(0).toUpperCase() + domainName.slice(1);
-          } else {
+        const brandFromUrl = getBrandFromUrl(url);
+        if (brandFromUrl) {
+          name = brandFromUrl;
+        } else {
             // Fallback: use first 1-2 words from title (prefer shorter)
             const shortWords = words.slice(0, 2).join(' ');
             // If first 2 words are too generic or short, use first 3
@@ -532,15 +538,6 @@ export function modelBlocksToArticleStructure(
             } else {
               name = shortWords;
             }
-          }
-        } catch {
-          // If URL parsing fails, use first 1-2 words (prefer shorter)
-          const shortWords = words.slice(0, 2).join(' ');
-          if (shortWords.length < 5 || /^(the|a|an|this|that)\s/i.test(shortWords)) {
-          name = words.slice(0, 3).join(' ');
-          } else {
-            name = shortWords;
-          }
         }
       } else if (words.length > 2) {
         // If 3 words, keep as is (within limit)
@@ -702,21 +699,10 @@ export function parsePlainTextToStructure(
       // This ensures short, natural anchor text instead of long article titles
       const words = name.trim().split(/\s+/);
       if (words.length > 5) {
-        // Take first 2-5 words, preferring shorter if it makes sense
-        // Try to extract brand name from URL if possible
-        try {
-          const urlObj = new URL(url);
-          const domain = urlObj.hostname.replace('www.', '');
-          const domainName = domain.split('.')[0];
-          // Use domain name if it's a recognizable brand (2-3 words max)
-          if (domainName.length > 2 && domainName.length < 20) {
-            name = domainName.charAt(0).toUpperCase() + domainName.slice(1);
-          } else {
-            // Fallback: use first 2-3 words from title
-            name = words.slice(0, 3).join(' ');
-          }
-        } catch {
-          // If URL parsing fails, use first 2-3 words from title
+        const brandFromUrl = getBrandFromUrl(url);
+        if (brandFromUrl) {
+          name = brandFromUrl;
+        } else {
           name = words.slice(0, 3).join(' ');
         }
       } else if (words.length > 2) {

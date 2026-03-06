@@ -60,6 +60,52 @@ const writeDebugLine = (payload: Record<string, unknown>) => {
   } catch (_) {}
 };
 
+function hasGluedWords(text: string): boolean {
+  return (
+    /[a-z]{8,}[A-Z][a-z]/.test(text) ||
+    /\b(saves|shares|likes|views|clicks|comments|follows)([a-z])/.test(text)
+  );
+}
+
+function normalizeBrandNames(text: string): string {
+  const brandNormalizations: [RegExp, string][] = [
+    [/\bTik\s*Tok\b/gi, "TikTok"],
+    [/\bInsta\s*gram\b/gi, "Instagram"],
+    [/\bYou\s*Tube\b/gi, "YouTube"],
+    [/\byoutube\b/g, "YouTube"],
+    [/\bFace\s*book\b/gi, "Facebook"],
+    [/\bLinked\s*In\b/gi, "LinkedIn"],
+    [/\blinkedin\b/g, "LinkedIn"],
+    [/\bPinter\s*est\b/gi, "Pinterest"],
+    [/\bSnap\s*chat\b/gi, "Snapchat"],
+    [/\bWhat\s*s\s*App\b/gi, "WhatsApp"],
+    [/\bwhatsapp\b/g, "WhatsApp"],
+    [/\bspotify\b/g, "Spotify"],
+    [/\bSound\s*Cloud\b/gi, "SoundCloud"],
+    [/\bsoundcloud\b/g, "SoundCloud"],
+    [/\bApple\s*music\b/gi, "Apple Music"],
+    [/\bpatreon\b/g, "Patreon"],
+    [/\bsubstack\b/g, "Substack"],
+    [/\btwitch\b/g, "Twitch"],
+    [/\bdiscord\b/g, "Discord"],
+    [/\breddit\b/g, "Reddit"],
+    [/\btwitter\b/g, "Twitter"],
+    [/\bgoogle\b/g, "Google"],
+    [/\bWord\s*Press\b/gi, "WordPress"],
+    [/\bwordpress\b/g, "WordPress"],
+    [/\bshopify\b/g, "Shopify"],
+    [/\bPay\s*Pal\b/gi, "PayPal"],
+    [/\bpaypal\b/g, "PayPal"],
+    [/\bChat\s*GPT\b/gi, "ChatGPT"],
+    [/\bchatgpt\b/g, "ChatGPT"],
+  ];
+  let result = text;
+  for (const [pattern, replacement] of brandNormalizations) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
 export interface ArticleRequest {
   brief: {
     niche: string;
@@ -1003,13 +1049,20 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
               if (block.text) {
                 block.text = block.text.replace(/([a-z])([A-Z])/g, "$1 $2");
                 block.text = block.text.replace(/\s{2,}/g, " ");
+                block.text = normalizeBrandNames(block.text);
               }
               if (block.items && Array.isArray(block.items)) {
-                block.items = block.items.map((item: any) =>
-                  typeof item === "string"
-                    ? item.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\s{2,}/g, " ")
-                    : item
-                );
+                block.items = block.items.map((item: any) => {
+                  if (typeof item === "string") {
+                    const cleaned = item.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\s{2,}/g, " ");
+                    return normalizeBrandNames(cleaned);
+                  }
+                  if (item && typeof item === "object" && item.text) {
+                    const cleaned = item.text.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\s{2,}/g, " ");
+                    return { ...item, text: normalizeBrandNames(cleaned) };
+                  }
+                  return item;
+                });
               }
             }
             parsedResponse.articleBlocks = articleBlocks;
@@ -1044,6 +1097,31 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
         }
 
         if (articleStructure) {
+          // Enforce brand presence: if brand was provided but model didn't include it, inject into first body paragraph
+          const brandToEnforce = brandName && brandName.trim() && brandName.trim().toUpperCase() !== "NONE" ? brandName.trim() : null;
+          if (brandToEnforce) {
+            const allText = articleStructure.blocks
+              .map((b: any) => (b.text || "") + (b.items ? (b.items.map((i: any) => typeof i === "string" ? i : i?.text || "").join(" ")) : ""))
+              .join(" ");
+            const brandAppears = new RegExp(brandToEnforce.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(allText);
+            if (!brandAppears) {
+              const firstH2Idx = articleStructure.blocks.findIndex((b: any) => b.type === "h2" || b.type === "h3");
+              const pBlocks = articleStructure.blocks
+                .map((b: any, i) => ({ b, i }))
+                .filter(({ b }) => b.type === "p" && (b as any).text?.length > 40);
+              const targetIdx =
+                firstH2Idx >= 0
+                  ? pBlocks.find(({ i }) => i > firstH2Idx)?.i ?? pBlocks[1]?.i ?? pBlocks[0]?.i
+                  : pBlocks[1]?.i ?? pBlocks[0]?.i ?? articleStructure.blocks.findIndex((b: any) => b.type === "p" && (b as any).text?.length > 30);
+              if (targetIdx >= 0) {
+                const target = articleStructure.blocks[targetIdx] as any;
+                const prefix = `Tools like ${brandToEnforce} can help streamline this process. `;
+                target.text = prefix + (target.text || "").trim();
+                console.log("[articles-api] Brand injection: added", brandToEnforce, "to block", targetIdx);
+              }
+            }
+          }
+
           // Clean invisible characters from all block text (regardless of humanization)
           // This removes AI-generated hidden Unicode characters from GPT output
           articleStructure.blocks = articleStructure.blocks.map(block => {
@@ -1154,11 +1232,16 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                         (listBlock.items || []).map(async (item: any) => {
                           if (!item?.text || item.text.length < 100) return item;
                           try {
+                            const originalItem = item.text;
                             const cleanedText = cleanText(item.text);
                             const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
                             listWordsUsed += result.wordsUsed;
-                            const finalText = cleanText(result.humanizedText);
-                            return { ...item, text: finalText };
+                            const humanizedText = cleanText(result.humanizedText);
+                            if (hasGluedWords(humanizedText) || humanizedText.length < originalItem.length * 0.6) {
+                              console.warn("[humanizer] List item rejected, keeping original:", originalItem.substring(0, 80));
+                              return item;
+                            }
+                            return { ...item, text: humanizedText };
                           } catch {
                             return item;
                           }
