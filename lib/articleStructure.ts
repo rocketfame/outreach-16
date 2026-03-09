@@ -102,8 +102,11 @@ export function injectAnchorsIntoText(
 ): string {
   if (!text) return '';
 
-  // FIX 1: Normalize spacing around placeholders BEFORE any replacement
+  // BUG 1 FIX: Normalize spacing around placeholders BEFORE any replacement
   // Ensures exactly one space before and after [A1], [T1]-[T8] to prevent glued words in final HTML
+  // Use two-pass: (1) add space before if non-space char before placeholder (2) add space after if non-space char after
+  text = text.replace(/([^\s])\[(A1|T[1-8])\]/g, '$1 [$2]');
+  text = text.replace(/\[(A1|T[1-8])\]([^\s])/g, '[$1] $2');
   text = text.replace(/\s*\[(A1|T[1-8])\]\s*/g, ' [$1] ');
 
   // CRITICAL: First, check if placeholders exist in the original text
@@ -206,25 +209,11 @@ export function injectAnchorsIntoText(
       return; // Skip if placeholder not found
     }
     
-    // CRITICAL: Always ensure spaces around anchors BEFORE replacing
-    // First, add spaces around placeholder if needed
-    // Pattern: word[placeholder]word -> word [placeholder] word
-    result = result.replace(
-      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
-      `$1 ${placeholder} $2`
-    );
-    // Pattern: word[placeholder] -> word [placeholder]
-    result = result.replace(
-      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}(\\s|$)`, 'g'),
-      `$1 ${placeholder}$2`
-    );
-    // Pattern: [placeholder]word -> [placeholder] word
-    result = result.replace(
-      new RegExp(`(^|\\s)${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
-      `$1${placeholder} $2`
-    );
+    // BUG 1: Normalize spacing RIGHT BEFORE substitution (catches humanization/modification edge cases)
+    result = result.replace(new RegExp(`([^\\s])${escapedPlaceholder}`, 'g'), `$1 ${placeholder}`);
+    result = result.replace(new RegExp(`${escapedPlaceholder}([^\\s])`, 'g'), `${placeholder} $1`);
     
-    // Now replace placeholder with HTML anchor (already has spaces)
+    // Now replace placeholder with HTML anchor
     const beforeReplace = result;
     // CRITICAL: escapedPlaceholder is already escaped, don't escape it again!
     const placeholderRegex = new RegExp(escapedPlaceholder, 'g');
@@ -241,9 +230,9 @@ export function injectAnchorsIntoText(
         console.error(`[injectAnchorsIntoText] CRITICAL: Placeholder ${placeholder} exists in text but regex finds 0 matches! Text sample: ${result.substring(result.indexOf(placeholder) - 50, result.indexOf(placeholder) + 50)}`);
       }
     } else {
-      result = result.replace(placeholderRegex, anchorHtml);
+    result = result.replace(placeholderRegex, anchorHtml);
     }
-    
+
     const matchesAfter = (result.match(placeholderRegex) || []).length;
     const linksAfter = (result.match(new RegExp(`<a[^>]*>.*?</a>`, 'g')) || []).length;
     
@@ -263,6 +252,10 @@ export function injectAnchorsIntoText(
   trusts.forEach(t => {
     const placeholder = `[${t.id}]`;
     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // BUG 2: Debug logging for trust source substitution
+    console.log("[trust-source] Substituting", placeholder, "with url:", t?.url, "text:", t?.text);
+    
     if (!isValidTrustUrl(t.url)) {
       console.warn("[trust-source] Invalid URL skipped:", t.url);
     }
@@ -292,9 +285,14 @@ export function injectAnchorsIntoText(
     }
     
     const safeText = escapeHtml(anchorText);
+    // BUG 2: If no valid URL, use <strong> instead of broken link
     const trustHtml = isValidTrustUrl(t.url)
       ? `<a href="${safeUrl}">${safeText}</a>`
-      : safeText;
+      : `<strong>${safeText}</strong>`;
+
+    // BUG 1: Normalize spacing RIGHT BEFORE trust source substitution
+    result = result.replace(new RegExp(`([^\\s])${escapedPlaceholder}`, 'g'), `$1 ${placeholder}`);
+    result = result.replace(new RegExp(`${escapedPlaceholder}([^\\s])`, 'g'), `${placeholder} $1`);
 
     // DEBUG: Check if placeholder exists in text before replacement
     const placeholderExists = result.includes(placeholder);
@@ -302,26 +300,8 @@ export function injectAnchorsIntoText(
       console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text after restoration. Text preview: ${result.substring(0, 200)}`);
       return; // Skip if placeholder not found
     }
-
-    // CRITICAL: Always ensure spaces around anchors BEFORE replacing
-    // First, add spaces around placeholder if needed
-    // Pattern: word[placeholder]word -> word [placeholder] word
-    result = result.replace(
-      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
-      `$1 ${placeholder} $2`
-    );
-    // Pattern: word[placeholder] -> word [placeholder]
-    result = result.replace(
-      new RegExp(`([A-Za-z0-9])${escapedPlaceholder}(\\s|$)`, 'g'),
-      `$1 ${placeholder}$2`
-    );
-    // Pattern: [placeholder]word -> [placeholder] word
-    result = result.replace(
-      new RegExp(`(^|\\s)${escapedPlaceholder}([A-Za-z0-9])`, 'g'),
-      `$1${placeholder} $2`
-    );
     
-    // Now replace placeholder with HTML anchor (already has spaces)
+    // Replace placeholder with trust source HTML
     const beforeReplace = result;
     // CRITICAL: escapedPlaceholder is already escaped, don't escape it again!
     const placeholderRegex = new RegExp(escapedPlaceholder, 'g');

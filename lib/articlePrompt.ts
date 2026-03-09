@@ -314,12 +314,14 @@ COMMERCIAL ANCHOR [A1] – FROM PROJECT BASICS (MANDATORY WHEN PROVIDED)
 
 • The topic brief may already contain anchor phrases that must link to a specific product or service via [[ANCHOR_TEXT]] and [[ANCHOR_URL]].
 • When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, you MUST include [A1] in the article. NEVER skip it. This is NOT optional.
-• CRITICAL - Anchor placement (MANDATORY - STRICT):
-  • You MUST place the placeholder [A1] in the FIRST or SECOND paragraph of the article. No exceptions.
-  • The anchor MUST appear in paragraph 1 (first "p" block) or paragraph 2 (second "p" block) in articleBlocks.
-  • Do NOT place it in paragraph 3 or later. Do NOT place it in the main body. It belongs in the intro only.
-  • START writing with [A1] in mind: plan your second paragraph to naturally include it. Example: First p = hook. Second p = "...teams use [A1] to scale..." — [A1] MUST be there.
-  • If you place [A1] in paragraph 3 or later, the article is INVALID for outreach.
+• [A1] PLACEMENT RULE (MANDATORY - STRICT):
+  • Place [A1] in the SECOND or THIRD section of the article (under h2 #2 or h2 #3).
+  • NEVER place [A1] in the very first paragraph after h1.
+  • NEVER place [A1] in the introduction section.
+  • NEVER place [A1] as the first mention of the brand.
+  • The brand name may appear naturally in the intro if needed for context, but [A1] with the hyperlink must appear mid-article.
+  • [A1] should appear in a paragraph where the service is mentioned as a practical tool in context (e.g. under "How to..." or "Tools that help..." section).
+  • If you place [A1] in the intro or first section, the article is INVALID for outreach.
 • CRITICAL - Anchor format (MANDATORY):
   • [[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
   • Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
@@ -350,6 +352,7 @@ IF [[BRAND_NAME]] IS PROVIDED AND NOT EMPTY/NONE:
 • CRITICAL: You MUST mention [[BRAND_NAME]] 1-2 times in the article (2 maximum, minimum 1 if brand is provided). This is NOT optional when a brand is provided.
 • Tie the brand to concrete benefits that make sense in [[NICHE]] and on [[MAIN_PLATFORM]].
 • You may use the brand in one H2/H3 subheading if it feels natural (e.g., "How [[BRAND_NAME]] helps with...").
+• NEVER mention [[BRAND_NAME]] in the first paragraph after h1 or in the first content section (right after the first h2). Brand must appear in the second or third section (h2 #2 or #3), naturally embedded.
 • CRITICAL - Placement: Brand mentions MUST appear in the MAIN BODY sections of the article (middle sections with H2/H3 headings), NOT just in the intro or conclusion. The brand should appear where it naturally helps solve problems discussed in those sections.
 • Avoid aggressive sales tone. Focus on "how this helps" or "how some teams use [[BRAND_NAME]] to solve..." rather than "buy now" or direct promotion.
 • Example natural integration in body: "When you need to scale your reach, some teams use [[BRAND_NAME]] to automate their distribution process."
@@ -688,7 +691,7 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned 1-2 times in the article body (main sections, not just intro/conclusion). The brand should appear as a natural solution or helper, NOT as advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
 • EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty). These [T1]-[T3] go in MAIN BODY only, NOT in intro.
-• CRITICAL - Commercial anchor from Project basics: If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, [A1] MUST appear EXACTLY ONCE in paragraph 1 or 2. Verify before output. NEVER skip the anchor.
+• CRITICAL - Commercial anchor from Project basics: If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, [A1] MUST appear EXACTLY ONCE in the second or third section (h2 #2 or #3), NOT in the intro. Verify before output. NEVER skip the anchor.
 • The article structure matches the brief requirements.
 • All formatting rules are followed (plain text with newlines, markdown-style bold, placeholder rules, character rules).
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
@@ -916,7 +919,7 @@ CRITICAL DISTINCTION: [A1] = commercial link from Project basics (Branded link d
 [A1] is a technical placeholder that gets replaced with the client's real link. It must NEVER appear as a bare stub in the article.
 
 • When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are NOT provided (empty): You MUST NOT use [A1] anywhere. Do NOT write sentences like "see creator tools [A1]" or "for more see [A1]". For links to official resources (creator tools, help pages, guides) use trust source placeholders [T1], [T2], [T3] from [[TRUST_SOURCES_LIST]] instead (e.g. "For more details, see TikTok Creator tools [T1]" or "See the official guide [T2]"). If no suitable trust source exists, omit the sentence or rephrase without a link.
-• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: You MUST include [A1]. NEVER skip it. Place [A1] EXACTLY ONCE in the FIRST or SECOND paragraph. The anchor MUST be in paragraph 1 or 2 (first two "p" blocks). Do NOT place it later. START writing with [A1] in mind: plan your second paragraph to naturally include it. If you place [A1] in paragraph 3 or later, the article is INVALID for outreach. The sentence must clearly refer to the client's link – use the actual anchor text in context (e.g. "Some teams use [A1] to streamline workflow"), not a generic phrase like "see creator tools [A1]" that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: You MUST include [A1]. NEVER skip it. [A1] PLACEMENT RULE: Place [A1] EXACTLY ONCE in the SECOND or THIRD section (h2 #2 or h2 #3). NEVER in the first paragraph after h1. NEVER in the introduction. NEVER as the first mention of the brand. The brand may appear in the intro for context, but [A1] with the hyperlink must appear mid-article, in a paragraph where the service is mentioned as a practical tool (e.g. "Some teams use [A1] to streamline workflow"). [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
 • Do NOT use "click here", "learn more", "see this link", "read more", "for more details see", "check out this link" – either a real trust link [T1]/[T2]/[T3] or a clear client anchor sentence. Do not mention [A1] again after using it once.
 
 ⸻
@@ -979,7 +982,7 @@ Output MUST be valid JSON only, no explanations:
 
 • articleBlocks MUST start with { "type": "h1", ... }
 • All text fields: PLAIN TEXT ONLY (no HTML). Use **bold** or *italic* markdown-style sparingly
-• [A1]: use ONLY when anchor was provided ([[ANCHOR_TEXT]] and [[ANCHOR_URL]] non-empty); then exactly once in paragraph 1 or 2 (first or second "p" block). MANDATORY when provided – never skip. If no anchor provided, do NOT output [A1] – use [T1]/[T2]/[T3] for official/help links instead.
+• [A1]: use ONLY when anchor was provided ([[ANCHOR_TEXT]] and [[ANCHOR_URL]] non-empty); then exactly once in the second or third section (h2 #2 or #3), NOT in the intro. MANDATORY when provided – never skip. If no anchor provided, do NOT output [A1] – use [T1]/[T2]/[T3] for official/help links instead.
 • Use [T1], [T2], [T3] (and [T4]–[T8] when provided) for trust sources – aim for 4–8 when list provides enough.
 • Lists: { "type": "ul" } or { "type": "ol" } with "items": ["..."]
 • Tables (only when topic requires comparison/structured data): { "type": "table", "caption": "...", "headers": [...], "rows": [[...], ...] }
@@ -999,7 +1002,7 @@ FINAL SELF-CHECK BEFORE OUTPUT
 • Did I remove anything that adds noise but no clarity?
 • Word count between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]]? If over, shorten weakest sections first.
 • 4–8 (or all provided) trust source placeholders from [[TRUST_SOURCES_LIST]] (if list not empty), each under a key claim?
-• If anchor was provided: [A1] MUST appear EXACTLY ONCE in paragraph 1 or 2. NEVER skip it. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only.
+• If anchor was provided: [A1] MUST appear EXACTLY ONCE in the second or third section (h2 #2 or #3), NOT in the intro. NEVER skip it. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only.
 • If [[BRAND_NAME]] provided: 1–2 mentions in main body?
 
 Current WritingMode: [[WRITING_MODE]]
@@ -1659,11 +1662,14 @@ The commercial anchor is independent from [[BRAND_NAME]].
 	•	If you see [[ANCHOR_TEXT]] or [[ANCHOR_URL]] in the prompt but they are empty/invalid,
 treat the article as if no commercial link was requested.
 	2.	If BOTH [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid (non empty, not placeholders):
-	•	CRITICAL - Anchor placement (MANDATORY - STRICT):
-	  •	You MUST place the placeholder [A1] in the FIRST or SECOND paragraph of the article. No exceptions.
-	  •	The anchor MUST be in paragraph 1 (first "p" block) or paragraph 2 (second "p" block) in articleBlocks.
-	  •	Do NOT place it in paragraph 3 or later. Do NOT place it in the main body. It belongs in the intro only.
-	  •	START writing with [A1] in mind: plan your second paragraph to naturally include it. If you place [A1] in paragraph 3 or later, the article is INVALID for outreach.
+	•	[A1] PLACEMENT RULE (MANDATORY - STRICT):
+	  •	Place [A1] in the SECOND or THIRD section of the article (under h2 #2 or h2 #3).
+	  •	NEVER place [A1] in the very first paragraph after h1.
+	  •	NEVER place [A1] in the introduction section.
+	  •	NEVER place [A1] as the first mention of the brand.
+	  •	The brand name may appear naturally in the intro if needed for context, but [A1] with the hyperlink must appear mid-article.
+	  •	[A1] should appear in a paragraph where the service is mentioned as a practical tool in context.
+	  •	If you place [A1] in the intro or first section, the article is INVALID for outreach.
 	•	CRITICAL - Anchor format (MANDATORY):
 	  •	[[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
 	  •	Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
@@ -2052,7 +2058,7 @@ FINAL VERIFICATION BEFORE OUTPUT:
     * "Educational guide" / "News Hook" / "Other": 0-1 subtle mention if natural.
   - Brand mentions should appear in MAIN BODY sections (not just intro/conclusion) and feel natural, not like advertising.
   - If [[BRAND_NAME]] is empty/NONE/placeholder: Verify that NO client brands are mentioned (only generic platforms like Spotify, YouTube, TikTok when part of factual topic).
-• If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in paragraph 1 or 2. NEVER skip it.
+• If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once in the second or third section (h2 #2 or #3), NOT in the intro. NEVER skip it.
 • Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
 • Scan all block texts/items/cells for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
 • The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.

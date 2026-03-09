@@ -1105,16 +1105,22 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
         }
 
         if (articleStructure) {
-          // VALIDATION: [A1] must be in first or second paragraph when anchor is provided
+          // VALIDATION: [A1] must be in second or third section (after first h2), NOT in intro
           const hasAnchor = !!(brief.anchorText?.trim() && (brief.anchorUrl || brief.clientSite)?.trim());
           if (hasAnchor) {
-            const pBlocks = articleStructure.blocks
-              .filter((b: any) => b.type === "p")
-              .slice(0, 2)
-              .map((b: any) => (b.text || "").toLowerCase());
-            const a1InFirstTwo = pBlocks.some((text: string) => text.includes("[a1]"));
-            if (!a1InFirstTwo) {
-              console.warn("[articles-api] ANCHOR PLACEMENT VIOLATION: [A1] should be in paragraph 1 or 2 but was placed later. Anchor:", brief.anchorText?.slice(0, 30));
+            const firstH2Idx = articleStructure.blocks.findIndex((b: any) => b.type === "h2");
+            let a1BlockIdx = -1;
+            for (let i = 0; i < articleStructure.blocks.length; i++) {
+              const b = articleStructure.blocks[i] as any;
+              const text = ((b.text || "") + (b.items ? (b.items.map((it: any) => typeof it === "string" ? it : it?.text || "").join(" ")) : "")).toLowerCase();
+              if (text.includes("[a1]")) {
+                a1BlockIdx = i;
+                break;
+              }
+            }
+            const a1InIntro = a1BlockIdx >= 0 && (firstH2Idx < 0 ? a1BlockIdx < 2 : a1BlockIdx < firstH2Idx);
+            if (a1InIntro) {
+              console.warn("[articles-api] ANCHOR PLACEMENT VIOLATION: [A1] should be in second or third section (h2 #2 or #3), NOT in intro. Found at block", a1BlockIdx, "Anchor:", brief.anchorText?.slice(0, 30));
             }
           }
 
