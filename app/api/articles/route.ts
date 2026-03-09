@@ -1146,28 +1146,17 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
             }
           }
 
-          // Enforce brand presence: if brand was provided but model didn't include it, inject into first body paragraph
-          const brandToEnforce = brandName && brandName.trim() && brandName.trim().toUpperCase() !== "NONE" ? brandName.trim() : null;
-          if (brandToEnforce) {
+          // Brand presence check: if brand was provided but model didn't include it, log warning only.
+          // We do NOT inject canned phrases — that contradicts the Universal Brand Mention principles
+          // (contextual integration, no fixed patterns, editorial tone). User can regenerate or edit manually.
+          const brandToCheck = brandName && brandName.trim() && brandName.trim().toUpperCase() !== "NONE" ? brandName.trim() : null;
+          if (brandToCheck) {
             const allText = articleStructure.blocks
               .map((b: any) => (b.text || "") + (b.items ? (b.items.map((i: any) => typeof i === "string" ? i : i?.text || "").join(" ")) : ""))
               .join(" ");
-            const brandAppears = new RegExp(brandToEnforce.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(allText);
+            const brandAppears = new RegExp(brandToCheck.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(allText);
             if (!brandAppears) {
-              const firstH2Idx = articleStructure.blocks.findIndex((b: any) => b.type === "h2" || b.type === "h3");
-              const pBlocks = articleStructure.blocks
-                .map((b: any, i) => ({ b, i }))
-                .filter(({ b }) => b.type === "p" && (b as any).text?.length > 40);
-              const targetIdx =
-                firstH2Idx >= 0
-                  ? pBlocks.find(({ i }) => i > firstH2Idx)?.i ?? pBlocks[1]?.i ?? pBlocks[0]?.i
-                  : pBlocks[1]?.i ?? pBlocks[0]?.i ?? articleStructure.blocks.findIndex((b: any) => b.type === "p" && (b as any).text?.length > 30);
-              if (targetIdx >= 0) {
-                const target = articleStructure.blocks[targetIdx] as any;
-                const prefix = `Tools like ${brandToEnforce} can help streamline this process. `;
-                target.text = prefix + (target.text || "").trim();
-                console.log("[articles-api] Brand injection: added", brandToEnforce, "to block", targetIdx);
-              }
+              console.warn("[articles-api] Brand missing: model did not include", brandToCheck, "in the article. Per Universal Brand Mention principles, we do not inject canned phrases — consider regenerating or editing manually.");
             }
           }
 

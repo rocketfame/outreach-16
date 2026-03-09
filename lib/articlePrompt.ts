@@ -274,7 +274,7 @@ Suggested flow (FOR SEO AND HUMAN MODES - EDITORIAL MODE IGNORES THIS):
 • Short intro that hooks the reader and hints at the solution.
   - CRITICAL: Do NOT mention [[BRAND_NAME]] in the intro, even if provided. Brand mentions belong in the main body sections only.
 • 2-4 main sections (H2/H3) with practical advice and examples.
-  - CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST include exactly one soft brand mention in the main body (mid-article), adapted to the article's style. The brand should appear as a natural solution or helper within the main content, NOT as a separate promotional section.
+  - CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST include exactly one brand mention in the main body (mid-article), integrated naturally within the paragraph logic per the Universal Brand Mention principles. No fixed phrases — adapt to the article's niche and context.
   - If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brands and you skip the brand integration entirely.
 • Short conclusion that summarizes key points and gently points toward action.
   - CRITICAL: Do NOT add brand mentions in the conclusion unless they naturally fit the summary. Brand should primarily appear in main body sections.
@@ -309,65 +309,73 @@ CRITICAL DISTINCTION: TWO TYPES OF LINKS
 DO NOT confuse these. They serve different purposes and have different placement rules.
 
 ================================
-COMMERCIAL ANCHOR PLACEMENT ([A1])
+UNIVERSAL PROMPT: NATURAL COMMERCIAL ANCHOR & BRAND INTEGRATION
 ================================
 
-The anchor must appear in the first or second paragraph after h1.
-It must be woven into a natural sentence — never dropped in isolation.
+Commercial anchors and brand mentions must be integrated naturally inside editorial content, not as advertisements.
+The article should read like a neutral industry analysis or educational guide, where tools and services are occasionally referenced as examples.
 
-CRITICAL: Adapt the anchor sentence to the article's style, tone, and niche. Do NOT limit yourself to fixed patterns. Each article should feel different — the anchor must fit the surrounding text as if it were written by the same author in the same voice.
+⸻
+CORE PRINCIPLES
+⸻
 
-Examples of natural integration (use as inspiration, not templates — invent your own variations):
-- Consequence: "Some artists use [A1] to test early momentum — but if the release setup is broken, that boost just accelerates the failure."
-- Concession: "There are services that offer [A1], and they can add initial signal — the catch is that Spotify reads behavior, not numbers."
-- Contextual: "Early on, some independent artists experiment with [A1] to get a read on how their packaging performs in the algorithm."
-- Skeptical: "You will find options to [A1] across dozens of platforms — most veterans use them selectively, not as a strategy."
-- Causal: "Because [A1] can create a short-term spike, many creators mistake it for a growth strategy."
-- Comparative: "Unlike organic playlisting, [A1] gives you a controlled test — useful when you know your metadata is weak."
-- Narrative: "The first time someone tries [A1], they often expect instant results; the algorithm rarely works that way."
-- Question-implied: "If you are considering [A1], the real question is what happens in week two and three."
-- Conditional: "When [A1] is paired with a solid release plan, it can surface useful data — alone, it is just noise."
-- Contrast: "Organic growth takes months; [A1] can give you a read in days — but only if you know how to interpret it."
+1. Never introduce anchors or brands as direct promotions.
+2. Avoid marketing language: "best service", "top provider", "guaranteed results", "trusted platform".
+3. The brand must never be positioned as the only or main solution.
+4. Anchors must appear inside neutral analytical sentences.
+5. Always provide context before mentioning a service or tactic.
+6. Do NOT place anchors: in headings; in the first sentence of the article; at the end of a paragraph.
+7. Do not repeat the same anchor phrase unnaturally.
 
-FORBIDDEN (never use): "Tools like X can help", "X can assist with", "You can use X to", "X is a tool that", "click here", "learn more", "see this link".
+⸻
+COMMERCIAL ANCHOR [A1] — INTEGRATION PATTERN
+⸻
 
-The anchor text itself must describe what the service does — not just name the brand.
-WRONG: "PromosoundGroup", "this service", "this platform"
-RIGHT: "buy Spotify plays", "YouTube promotion packages", "targeted stream campaigns"
+Use this structure when inserting [A1]: Context → Industry behavior → Anchor mention → Analytical explanation.
 
-• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, you MUST include [A1] in the article. NEVER skip it. This is NOT optional.
-• CRITICAL: Use the [A1] placeholder EXACTLY ONCE in the entire article. You MUST NOT use it twice.
-• [A1] MUST appear EXACTLY ONCE in the entire article. Before outputting, scan all articleBlocks and verify [A1] appears only once. If it appears more than once, remove all occurrences except the first one.
-• Do not change or translate the anchor text; the placeholder [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
-• After using it once, never mention [A1] or [[ANCHOR_TEXT]] again in the article.
-• FORBIDDEN: generic/stub phrases like "click here", "learn more", "see this link", "read more", "for more details see", "check out this link".
+Example:
+"Many creators look for ways to generate early signals when launching new content. Some experiment with services where they [A1] to create initial social proof. However, these signals only work when the release itself is well prepared and supported by real listener engagement."
 
-================================
-BRAND MENTION ([[BRAND_NAME]])
-================================
+The anchor must feel like a reference to a tactic, not a recommendation.
 
-One soft brand mention is allowed per article, separate from the [A1] anchor.
-It must appear mid-article, never in the opening or conclusion.
-It must be embedded in a real sentence with context — not a standalone promotional statement.
+• Place [A1] in the first or second paragraph after h1 — never in the first sentence, never in a heading, never at the end of a paragraph.
+• The anchor text (what [A1] represents) must describe what the service does — e.g. "buy Spotify plays", "YouTube promotion packages", "targeted stream campaigns". WRONG: "PromosoundGroup", "this service", "this platform".
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, you MUST include [A1] EXACTLY ONCE. NEVER skip it. Before outputting, scan all articleBlocks and verify [A1] appears only once. The placeholder [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
+• FORBIDDEN: "click here", "learn more", "see this link", "Tools like X can help", "X can assist with", "You can use X to".
 
-CRITICAL: Adapt the brand mention to the article's style, tone, and niche. Do NOT limit yourself to fixed patterns. Each article should feel different — the brand must fit naturally as if the author mentioned it in passing, not as an ad.
+⸻
+UNIVERSAL BRAND MENTION [[BRAND_NAME]] — PRINCIPLES (NO FIXED PHRASES)
+⸻
 
-Examples of natural integration (use as inspiration, not templates — invent your own variations):
-- As one option among many: "Some artists use external services like [[BRAND_NAME]] alongside organic outreach — treating it as one signal among many, not a substitute for audience building."
-- Honest framing: "[[BRAND_NAME]] is one option for adding controlled early momentum — useful when paired with a real plan, not instead of one."
-- With distance: "If you want an initial push, some creators turn to services like [[BRAND_NAME]]. The results depend entirely on what you do in the weeks after."
-- In a list of strategies: "You can try playlist pitching, influencer collabs, or services like [[BRAND_NAME]] — each has different trade-offs."
-- As a caveat: "Tools like [[BRAND_NAME]] exist, but they only work if your underlying content holds up."
-- Comparative: "Compared to pure organic growth, [[BRAND_NAME]] offers a faster read — at the cost of some algorithmic trust."
-- Conditional: "When used sparingly, [[BRAND_NAME]] can help test metadata without burning your organic reach."
-- Narrative: "A lot of creators discover [[BRAND_NAME]] when they hit a plateau; the smart ones use it to diagnose, not to fake growth."
-- Question-implied: "Whether [[BRAND_NAME]] makes sense depends on your goals — it is a diagnostic tool, not a shortcut."
-- Contrast: "Organic takes time; [[BRAND_NAME]] can give you data sooner — but only if you act on what you learn."
+When mentioning a brand inside an article, integrate it naturally within the context of the discussion rather than as a promotional insertion.
 
-FORBIDDEN (never write): "Tools like [[BRAND_NAME]] can help streamline this process.", "[[BRAND_NAME]] can assist in making this process easier.", "Using [[BRAND_NAME]] will help you...", "[[BRAND_NAME]] is the best solution for...".
+The brand should appear as a neutral reference within the topic being explained, not as a recommendation, advertisement, or endorsement.
+
+CORE PRINCIPLES:
+1. The brand must be mentioned within the logic of the paragraph, not as a separate promotional statement.
+2. The mention should feel like an example, tool, service, platform, or participant relevant to the topic.
+3. The sentence must remain informational and analytical, not persuasive.
+4. Avoid any marketing language or promotional tone.
+5. Do NOT present the brand as: the best option, the recommended solution, a trusted provider, a guaranteed method.
+6. The brand must not dominate the paragraph or redirect the focus of the article.
+7. The article must remain readable even if the brand mention were removed.
+
+TONE: neutral, contextual, informative, editorial. The mention should read as part of a broader industry explanation, not as a product placement.
+
+PLACEMENT:
+• Never place the brand in the first sentence of the article.
+• Avoid placing it in headings.
+• Do not end a paragraph with the brand mention.
+• Surround the brand with real explanatory content before and after.
+
+CONTEXT RULE: Before mentioning the brand, the text must first explain a process, a problem, a common industry practice, or a type of tool or service used in that context. The brand can then appear as one example within that explanation.
+
+QUALITY CHECK: If the brand name is removed, the paragraph still makes complete sense. The sentence does not read like an advertisement. The paragraph still focuses on the topic, not the brand.
+
+The brand should appear only once unless the topic of the article specifically requires multiple mentions. Repeating the brand is the main sign of promotional text.
 
 IF [[BRAND_NAME]] IS PROVIDED AND NOT EMPTY/NONE:
-• You MUST include exactly one soft brand mention in the main body (mid-article), adapted to the article's style.
+• Include exactly one brand mention in the main body (mid-article), integrated naturally per the principles above. Adapt to the article's niche and context — do not use fixed phrases.
 
 IF [[BRAND_NAME]] IS EMPTY OR "NONE":
 • Ignore all brand integration instructions.
@@ -699,7 +707,7 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • Word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text). If over [[WORD_COUNT_MAX]], shorten weakest sections first before outputting.
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
-• CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned exactly once in the main body (mid-article), adapted to the article's style. The brand should feel natural, NOT like advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
+• CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned exactly once in the main body (mid-article), integrated naturally per the Universal Brand Mention principles. The brand should feel natural, NOT like advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
 • EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty). These [T1]-[T3] go in MAIN BODY only, NOT in intro.
 • CRITICAL - Commercial anchor from Project basics: If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, [A1] MUST appear EXACTLY ONCE in the first or second paragraph. Verify before output. NEVER skip the anchor.
 • The article structure matches the brief requirements.
@@ -922,36 +930,18 @@ Do NOT place more than one trust source placeholder in the same sentence.
 
 ⸻
 
-COMMERCIAL ANCHOR PLACEMENT ([A1])
+UNIVERSAL PROMPT: NATURAL COMMERCIAL ANCHOR & BRAND INTEGRATION
 
-The anchor must appear in the first or second paragraph after h1.
-It must be woven into a natural sentence — never dropped in isolation.
+Commercial anchors and brand mentions must be integrated naturally inside editorial content, not as advertisements.
 
-CRITICAL: Adapt the anchor sentence to the article's style, tone, and niche. Do NOT limit yourself to fixed patterns. Each article should feel different — the anchor must fit the surrounding text as if it were written by the same author in the same voice.
-
-Examples of natural integration (use as inspiration, not templates — invent your own variations):
-- Consequence, concession, contextual, skeptical, causal, comparative, narrative, question-implied, conditional, contrast — or any other framing that fits the article.
-- FORBIDDEN: "Tools like X can help", "X can assist with", "You can use X to", "X is a tool that", "click here", "learn more", "see this link".
-- Anchor text must describe what the service does — not "PromosoundGroup" or "this service", but "buy Spotify plays", "YouTube promotion packages", "targeted stream campaigns".
+Anchor integration: Context → Industry behavior → Anchor mention → Analytical explanation. The anchor must feel like a reference to a tactic, not a recommendation.
 
 • When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are NOT provided (empty): You MUST NOT use [A1] anywhere. Use [T1]/[T2]/[T3] for official/help links instead.
-• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: You MUST include [A1] EXACTLY ONCE in the first or second paragraph. NEVER skip it. Do not mention [A1] again after using it once.
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: Place [A1] EXACTLY ONCE in the first or second paragraph (never first sentence). Anchor text must describe what the service does.
 
-⸻
+Brand mention [[BRAND_NAME]]: Integrate naturally within the paragraph logic — as an example, tool, service, or participant relevant to the topic. Never as a promotional statement. Tone: neutral, contextual, informative, editorial. The brand should appear only once unless the topic specifically requires multiple mentions. No fixed phrases — adapt to the article's niche and context. Before mentioning the brand, explain a process, problem, or industry practice first; then the brand can appear as one example. Quality check: if the brand is removed, the paragraph still makes sense.
 
-BRAND MENTION ([[BRAND_NAME]])
-
-One soft brand mention is allowed per article, separate from the [A1] anchor.
-It must appear mid-article, never in the opening or conclusion.
-It must be embedded in a real sentence with context — not a standalone promotional statement.
-
-CRITICAL: Adapt the brand mention to the article's style, tone, and niche. Do NOT limit yourself to fixed patterns. Each article should feel different — the brand must fit naturally as if the author mentioned it in passing, not as an ad.
-
-Examples of natural integration (use as inspiration, not templates — invent your own variations):
-- As one option among many, with honest framing, with distance, in a list of strategies, as a caveat, comparative, conditional, narrative, question-implied, contrast — or any other framing that fits the article.
-- FORBIDDEN: "Tools like [[BRAND_NAME]] can help streamline this process.", "[[BRAND_NAME]] can assist in making this process easier.", "Using [[BRAND_NAME]] will help you...".
-
-If [[BRAND_NAME]] is provided and NOT empty/NONE: include exactly one soft brand mention in the main body (mid-article), adapted to the article's style.
+If [[BRAND_NAME]] is provided and NOT empty/NONE: include exactly one brand mention in the main body (mid-article), per the principles above.
 If [[BRAND_NAME]] is empty or "NONE": do NOT mention any client brand.
 
 ⸻
@@ -1026,7 +1016,7 @@ FINAL SELF-CHECK BEFORE OUTPUT
 • Word count between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]]? If over, shorten weakest sections first.
 • 4–8 (or all provided) trust source placeholders from [[TRUST_SOURCES_LIST]] (if list not empty), each under a key claim?
 • If anchor was provided: [A1] MUST appear EXACTLY ONCE in the first or second paragraph. NEVER skip it. If anchor was NOT provided: no [A1] in the article – official/help links use [T1], [T2], [T3] only.
-• If [[BRAND_NAME]] provided: one soft brand mention in main body (mid-article)?
+• If [[BRAND_NAME]] provided: exactly one brand mention in main body (mid-article), integrated naturally?
 
 Current WritingMode: [[WRITING_MODE]]
 (Respect the same tone and structure rules for "seo" vs "human" as in the rest of the app; Blog structure above stays mandatory.)
@@ -1099,25 +1089,30 @@ the title. It must create tension or curiosity through a plain fact.
   
   // If no anchors should be used, modify anchor-related instructions BEFORE replacing placeholders
   if (!shouldUseAnchors) {
-    // Replace entire COMMERCIAL ANCHOR PLACEMENT section with no-anchor instruction
+    // Replace anchor section in UNIVERSAL PROMPT (TOPIC_DISCOVERY) with no-anchor instruction
     prompt = prompt.replaceAll(
-      /================================\nCOMMERCIAL ANCHOR PLACEMENT \(\[A1\]\)\n================================[\s\S]*?• FORBIDDEN: generic\/stub phrases like "click here", "learn more", "see this link", "read more", "for more details see", "check out this link"\./g,
+      /================================\nUNIVERSAL PROMPT: NATURAL COMMERCIAL ANCHOR & BRAND INTEGRATION\n================================[\s\S]*?• FORBIDDEN: "click here", "learn more", "see this link", "Tools like X can help", "X can assist with", "You can use X to"\./g,
       `================================
-COMMERCIAL ANCHOR – NOT REQUIRED
+UNIVERSAL PROMPT: NATURAL COMMERCIAL ANCHOR & BRAND INTEGRATION
 ================================
 
-• This article does not include anchor links. Do NOT use [A1] placeholder anywhere.
-• For links to official resources (creator tools, help pages, guides) use trust source placeholders [T1], [T2], [T3] from [[TRUST_SOURCES_LIST]] instead.
-• Write the article as a standalone piece of content without commercial links.`
+Commercial anchors and brand mentions must be integrated naturally inside editorial content, not as advertisements.
+The article should read like a neutral industry analysis or educational guide.
+
+COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. Do NOT use [A1] placeholder anywhere. For links to official resources use [T1], [T2], [T3] from [[TRUST_SOURCES_LIST]] instead.`
     );
     // Fallback: replace individual lines if block replace didn't match (e.g. BLOG template)
+    prompt = prompt.replaceAll(
+      /• When \[\[ANCHOR_TEXT\]\] and \[\[ANCHOR_URL\]\] are provided, you MUST include \[A1\] EXACTLY ONCE\. NEVER skip it\./g,
+      "• This article does not require anchor links. Do NOT use [A1] placeholder."
+    );
     prompt = prompt.replaceAll(
       /• When \[\[ANCHOR_TEXT\]\] and \[\[ANCHOR_URL\]\] are provided, you MUST include \[A1\] in the article\. NEVER skip it\. This is NOT optional\./g,
       "• This article does not require anchor links. Write the article as a standalone piece of content without commercial links."
     );
     prompt = prompt.replaceAll(
-      /• CRITICAL: Use the \[A1\] placeholder EXACTLY ONCE in the entire article\. You MUST NOT use it twice\./g,
-      "• CRITICAL: DO NOT use [A1] placeholder - This article does not require anchor links."
+      /When \[\[ANCHOR_TEXT\]\] and \[\[ANCHOR_URL\]\] ARE provided: Place \[A1\] EXACTLY ONCE in the first or second paragraph\./g,
+      "When anchor is NOT provided: Do NOT use [A1] placeholder anywhere."
     );
     prompt = prompt.replaceAll(
       /• Commercial anchor: use \[A1\] placeholder exactly once where \[\[ANCHOR_TEXT\]\] should appear\./g,
@@ -1495,46 +1490,40 @@ If [[BRAND_NAME]] is non empty:
 
 CRITICAL - Brand placement rules (apply to ALL content purposes):
 
-One soft brand mention is allowed per article, separate from the [A1] anchor.
-It must appear mid-article, never in the opening or conclusion.
-It must be embedded in a real sentence with context — not a standalone promotional statement.
-
-CRITICAL: Adapt the brand mention to the article's style, tone, and niche. Do NOT limit yourself to fixed patterns. Each article should feel different — the brand must fit naturally as if the author mentioned it in passing, not as an ad.
-
-Examples of natural integration (use as inspiration, not templates — invent your own variations):
-- As one option among many, with honest framing, with distance, in a list of strategies, as a caveat, comparative, conditional, narrative, question-implied, contrast — or any other framing that fits the article.
-- FORBIDDEN: "Tools like [[BRAND_NAME]] can help streamline this process.", "[[BRAND_NAME]] can assist in making this process easier.", "Using [[BRAND_NAME]] will help you...".
+UNIVERSAL BRAND MENTION — PRINCIPLES (NO FIXED PHRASES):
+Integrate the brand naturally within the paragraph logic — as an example, tool, service, or participant relevant to the topic. Never as a promotional statement. Tone: neutral, contextual, informative, editorial. The brand should appear only once unless the topic specifically requires multiple mentions. Before mentioning the brand, explain a process, problem, or industry practice first; then the brand can appear as one example. Quality check: if the brand is removed, the paragraph still makes sense. Do NOT present the brand as the best option, recommended solution, trusted provider, or guaranteed method.
 
 • Do NOT mention [[BRAND_NAME]] in the intro paragraph, even for "Blog" or "Partner blog".
+• Never place the brand in the first sentence, in headings, or at the end of a paragraph.
 • Exception: For LIST topics, brand may appear ONLY in the final paragraph (see specific rules below).
 
 A) "Blog"
 	•	Voice: brand or close expert voice ("we" is allowed).
-	•	Guide topics: one soft brand mention in main body (mid-article), adapted to the article's style.
+	•	Guide topics: exactly one brand mention in main body (mid-article), integrated naturally per principles above.
 	•	List topics: at most one very short neutral mention in the final paragraph ONLY,
 no separate section about the brand, no mention in the intro or main list.
 
 B) "Guest post / outreach"
 	•	Voice: neutral external expert, no "we".
-	•	One soft brand mention in main body (mid-article), adapted to the article's style.
+	•	Exactly one brand mention in main body (mid-article), integrated naturally per principles above.
 
 C) "Educational guide"
 	•	Voice: teacher / strategist, neutral.
-	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally in main body sections, adapted to the article's style.
+	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally in main body sections, per principles above.
 
 D) "Partner blog"
 	•	Voice: friendly expert who respects both the host blog and [[BRAND_NAME]].
-	•	Guide topics: one soft brand mention in main body (mid-article), adapted to the article's style.
+	•	Guide topics: exactly one brand mention in main body (mid-article), integrated naturally per principles above.
 	•	List topics: one very short mention in the final paragraph ONLY (max 1 sentence), no mention in intro or main list.
 
 E) "News Hook"
 	•	Voice: neutral analyst / strategist, no "we".
 	•	Focus on platform updates, policy changes, and industry shifts, but always turn them into evergreen implications and action steps.
-	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally in main body sections, adapted to the article's style. No sales tone.
+	•	[[BRAND_NAME]]: 0-1 very subtle mention only if it fits naturally in main body sections, per principles above. No sales tone.
 
 F) "Other"
 	•	Voice: neutral editorial.
-	•	[[BRAND_NAME]] may be skipped, or mentioned once very lightly if it feels natural in main body sections, adapted to the article's style.
+	•	[[BRAND_NAME]] may be skipped, or mentioned once very lightly if it feels natural in main body sections, per principles above.
 
 ================================
 2. CHOOSING FORMAT: LIST OR GUIDE
@@ -1668,17 +1657,17 @@ or when [[CONTENT_PURPOSE]] = "Educational guide" and the brief does not demand 
 or "end with a short checklist"), follow that as long as it stays concise.
 
 ================================
-5. COMMERCIAL ANCHOR PLACEMENT ([A1])
+5. UNIVERSAL PROMPT: NATURAL COMMERCIAL ANCHOR & BRAND INTEGRATION
+================================
 
-The anchor must appear in the first or second paragraph after h1.
-It must be woven into a natural sentence — never dropped in isolation.
+Commercial anchors and brand mentions must be integrated naturally inside editorial content, not as advertisements.
+The article should read like a neutral industry analysis or educational guide.
 
-CRITICAL: Adapt the anchor sentence to the article's style, tone, and niche. Do NOT limit yourself to fixed patterns. Each article should feel different — the anchor must fit the surrounding text as if it were written by the same author in the same voice.
+Core principles: Never introduce anchors or brands as direct promotions. Avoid "best service", "top provider", "guaranteed results", "trusted platform". Anchors must appear inside neutral analytical sentences. Do NOT place anchors in headings, in the first sentence, or at the end of a paragraph.
 
-Examples of natural integration (use as inspiration, not templates — invent your own variations):
-- Consequence, concession, contextual, skeptical, causal, comparative, narrative, question-implied, conditional, contrast — or any other framing that fits the article.
-- FORBIDDEN: "Tools like X can help", "X can assist with", "You can use X to", "X is a tool that", "click here", "learn more", "see this link".
-- Anchor text must describe what the service does — not "PromosoundGroup" or "this service", but "buy Spotify plays", "YouTube promotion packages", "targeted stream campaigns".
+Anchor integration pattern: Context → Industry behavior → Anchor mention → Analytical explanation. The anchor must feel like a reference to a tactic, not a recommendation.
+
+Brand mention: Use neutral phrasing — "some creators use tools like [[BRAND_NAME]]", "platforms like [[BRAND_NAME]] are occasionally used". Avoid "the best tool", "the leading platform". Maximum 1–2 mentions per article, mid-article only.
 
 	1.	If anchor text OR URL are invalid (empty, placeholder like "Enter anchor text", or URL is empty / "https://example.com" / whitespace only):
 	•	You MUST NOT insert any commercial anchor placeholder at all.
@@ -2054,9 +2043,9 @@ FINAL VERIFICATION BEFORE OUTPUT:
 • Ensure word count is between [[WORD_COUNT_MIN]] and [[WORD_COUNT_MAX]] (count all text in articleBlocks as plain text). If over [[WORD_COUNT_MAX]], shorten weakest sections first before outputting.
 • CRITICAL - Brand integration verification: 
   - If [[BRAND_NAME]] is provided and NOT empty/NONE: Verify that [[BRAND_NAME]] is mentioned according to the brand integration rules for your content purpose (see section "1. CONTENT PURPOSE & BRAND VOICE"):
-    * "Blog": Guide topics - one soft brand mention in main body (mid-article); List topics - one short mention in final paragraph ONLY.
-    * "Guest post / outreach": one soft brand mention in main body (mid-article).
-    * "Partner blog": Guide topics - one soft brand mention in main body (mid-article); List topics - one short mention in final paragraph ONLY.
+    * "Blog": Guide topics - exactly one brand mention in main body (mid-article); List topics - one short mention in final paragraph ONLY.
+    * "Guest post / outreach": exactly one brand mention in main body (mid-article).
+    * "Partner blog": Guide topics - exactly one brand mention in main body (mid-article); List topics - one short mention in final paragraph ONLY.
     * "Educational guide" / "News Hook" / "Other": 0-1 subtle mention if natural.
   - Brand mentions should appear in MAIN BODY sections (not just intro/conclusion) and feel natural, not like advertising.
   - If [[BRAND_NAME]] is empty/NONE/placeholder: Verify that NO client brands are mentioned (only generic platforms like Spotify, YouTube, TikTok when part of factual topic).
