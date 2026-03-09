@@ -200,7 +200,8 @@ export function injectAnchorsIntoText(
     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safeUrl = escapeHtmlAttr(a.url);
     const safeText = escapeHtml(a.text);
-    const anchorHtml = `<a href="${safeUrl}">${safeText}</a>`;
+    // STEP 2 FIX: Wrap <a> tag with spaces so it never glues to adjacent words
+    const anchorHtml = ` <a href="${safeUrl}">${safeText}</a> `;
     
     // DEBUG: Check if placeholder exists in text before replacement
     const placeholderExists = result.includes(placeholder);
@@ -286,9 +287,10 @@ export function injectAnchorsIntoText(
     
     const safeText = escapeHtml(anchorText);
     // BUG 2: If no valid URL, use <strong> instead of broken link
+    // STEP 2 FIX: Wrap with spaces so anchor never glues to adjacent words
     const trustHtml = isValidTrustUrl(t.url)
-      ? `<a href="${safeUrl}">${safeText}</a>`
-      : `<strong>${safeText}</strong>`;
+      ? ` <a href="${safeUrl}">${safeText}</a> `
+      : ` <strong>${safeText}</strong> `;
 
     // BUG 1: Normalize spacing RIGHT BEFORE trust source substitution
     result = result.replace(new RegExp(`([^\\s])${escapedPlaceholder}`, 'g'), `$1 ${placeholder}`);
@@ -334,7 +336,7 @@ export function injectAnchorsIntoText(
     }
   });
 
-  // Clean up any double spaces that may result from placeholder replacement
+  // STEP 2: Clean double spaces after all placeholder replacements
   result = result.replace(/\s{2,}/g, ' ').trim();
 
   return result;
