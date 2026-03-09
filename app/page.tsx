@@ -97,9 +97,15 @@ export default function Home() {
   // Key: topicId, Value: Set of box indices already used for this article
   const [articleUsedBoxIndices, setArticleUsedBoxIndices] = useState<Map<string, Set<number>>>(new Map());
   
-  // CRITICAL: Track used box indices GLOBALLY across all articles in the session
-  // This ensures no box repeats across different articles until all boxes are used
-  const [globalUsedBoxIndices, setGlobalUsedBoxIndices] = useState<Set<number>>(new Set());
+  // CRITICAL: Track used box indices GLOBALLY across all articles - PERSISTED in localStorage
+  // Round-robin: no pattern repeats until all used; survives page refresh
+  const globalUsedBoxIndices = new Set(persistedState.globalUsedBoxIndices ?? []);
+  const setGlobalUsedBoxIndices = (updater: (prev: Set<number>) => Set<number>) => {
+    setPersistedState(prev => ({
+      ...prev,
+      globalUsedBoxIndices: Array.from(updater(new Set(prev.globalUsedBoxIndices ?? []))),
+    }));
+  };
 
   // Local UI state (not persisted)
   const [expandedClusterNames, setExpandedClusterNames] = useState<Set<string>>(new Set());

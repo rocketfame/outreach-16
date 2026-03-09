@@ -86,6 +86,7 @@ export type AppPersistedState = {
   humanizeOnWriteEnabled?: boolean; // Enable live humanization during generation
   writingMode?: WritingMode; // Writing mode: "seo" (default) or "human" (feature flag controlled)
   theme: "light" | "dark"; // Theme preference
+  globalUsedBoxIndices?: number[]; // Image box indices already used (round-robin, persists across refresh)
 };
 
 const STORAGE_KEY = "ucca_state_v1";
@@ -120,6 +121,7 @@ const defaultState: AppPersistedState = {
   lightHumanEditEnabled: true, // Default to enabled (recommended)
   writingMode: "seo", // Default to SEO Mode
   theme: "light", // Default to light theme
+  globalUsedBoxIndices: [], // Image box round-robin tracking
 };
 
 export function usePersistentAppState() {
@@ -159,6 +161,7 @@ export function usePersistentAppState() {
             lightHumanEditEnabled: parsed.lightHumanEditEnabled !== undefined ? parsed.lightHumanEditEnabled : true,
             writingMode: (parsed.writingMode === "seo" || parsed.writingMode === "human") ? parsed.writingMode : "seo", // Default to "seo" if invalid
             theme: parsed.theme || "light", // Default to light if not set
+            globalUsedBoxIndices: Array.isArray(parsed.globalUsedBoxIndices) ? parsed.globalUsedBoxIndices : [],
           };
           setState(validatedState);
           

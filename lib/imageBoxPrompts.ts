@@ -1491,18 +1491,27 @@ Ensure the image is relevant to the article topic "${params.articleTitle}" and n
 }
 
 /**
- * Select an Image Box Prompt component using random selection with no repeats
+ * Fisher-Yates shuffle - produces uniformly random permutation
+ */
+function shuffleArray<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
+ * Select an Image Box Prompt using ROUND-ROBIN with SHUFFLED order
  * 
- * - First generation: Completely random box selection (independent of title, niche, platform)
- * - Regeneration: Random selection from unused boxes (no repeats until all boxes are used)
- * - When all boxes are used, cycle resets and starts again
+ * RULES (strict, no exceptions):
+ * 1. A pattern MUST NOT repeat until ALL other patterns have been used (full cycle)
+ * 2. Within each cycle, order is RANDOMLY SHUFFLED - no fixed sequence
+ * 3. No back-to-back repeats, no "one apart", "two apart", or "three apart" - full cycle only
+ * 4. When all boxes used, cycle resets with a NEW random shuffle
  * 
- * This ensures:
- * 1. Completely random selection for first generation
- * 2. No repeats during regeneration cycle (all boxes used before any repeat)
- * 3. Works with any number of boxes (automatically adapts to IMAGE_BOX_PROMPTS.length)
- * 
- * @param usedBoxIndices - Set of box indices already used for this article (empty for first generation)
+ * @param usedBoxIndices - Set of box indices already used (persisted across sessions)
  * @returns The selected ImageBoxPrompt and its index
  */
 export function selectImageBoxPrompt(
@@ -1512,42 +1521,37 @@ export function selectImageBoxPrompt(
     throw new Error("IMAGE_BOX_PROMPTS array is empty. Please add image box prompt components.");
   }
   
-  console.log("[selectImageBoxPrompt] Selection started:", {
-    totalBoxes: IMAGE_BOX_PROMPTS.length,
-    usedBoxIndices: Array.from(usedBoxIndices),
-    usedCount: usedBoxIndices.size,
-  });
+  const totalBoxes = IMAGE_BOX_PROMPTS.length;
   
-  // If all boxes have been used, reset the cycle
-  const availableIndices = usedBoxIndices.size >= IMAGE_BOX_PROMPTS.length
-    ? Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i) // All boxes available - cycle reset
-    : Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i)
+  // If all boxes have been used, reset the cycle - start fresh with full shuffle
+  const availableIndices = usedBoxIndices.size >= totalBoxes
+    ? Array.from({ length: totalBoxes }, (_, i) => i) // Cycle reset - all available
+    : Array.from({ length: totalBoxes }, (_, i) => i)
         .filter(i => !usedBoxIndices.has(i)); // Only unused boxes
   
-  console.log("[selectImageBoxPrompt] Available indices:", availableIndices);
-  
   if (availableIndices.length === 0) {
-    console.warn("[selectImageBoxPrompt] No available boxes! This should not happen. Resetting cycle.");
-    // Fallback: reset cycle if somehow no boxes are available
-    const allIndices = Array.from({ length: IMAGE_BOX_PROMPTS.length }, (_, i) => i);
-    const randomIndex = Math.floor(Math.random() * allIndices.length);
-    const selectedIndex = allIndices[randomIndex];
-    console.log("[selectImageBoxPrompt] Fallback selection:", selectedIndex);
+    console.warn("[selectImageBoxPrompt] No available boxes! Resetting cycle.");
+    const allIndices = Array.from({ length: totalBoxes }, (_, i) => i);
+    const shuffled = shuffleArray(allIndices);
+    const selectedIndex = shuffled[0];
     return {
       box: IMAGE_BOX_PROMPTS[selectedIndex],
       index: selectedIndex,
     };
   }
   
-  // Random selection from available boxes
-  const randomIndex = Math.floor(Math.random() * availableIndices.length);
-  const selectedIndex = availableIndices[randomIndex];
+  // Shuffle available indices - random order within this cycle
+  // Pick the first from shuffled list (ensures no repeat until full cycle)
+  const shuffled = shuffleArray(availableIndices);
+  const selectedIndex = shuffled[0];
   
-  console.log("[selectImageBoxPrompt] Selected box:", {
-    index: selectedIndex,
+  console.log("[selectImageBoxPrompt] Round-robin selection:", {
+    selectedIndex,
     boxId: IMAGE_BOX_PROMPTS[selectedIndex].id,
     boxName: IMAGE_BOX_PROMPTS[selectedIndex].name,
+    usedCount: usedBoxIndices.size,
     availableCount: availableIndices.length,
+    cycleReset: usedBoxIndices.size >= totalBoxes,
   });
   
   return {
