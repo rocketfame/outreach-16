@@ -1052,6 +1052,34 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
               return true;
             });
 
+            // Remove garbled paragraphs that contain broken sentence patterns
+            const isGarbledText = (text: string): boolean => {
+              if (!text) return false;
+              // Detect patterns typical of broken humanizer output:
+              // 1. Sentences with (1), (2), (3) as inline numbering mid-sentence
+              const hasInlineNumbers = /\(\d+\).*\(\d+\)/.test(text);
+              // 2. Sentences with & used as conjunction mid-sentence awkwardly
+              const hasAmpersand = / & /.test(text) && text.length < 200;
+              // 3. Very high ratio of special chars to normal text
+              const specialCharRatio = (text.match(/[();:&]/g) || []).length / text.length;
+              // 4. Multiple semicolons suggesting list-like broken structure
+              const hasManysemicolons = (text.match(/;/g) || []).length >= 3;
+
+              return hasInlineNumbers ||
+                (hasManysemicolons && specialCharRatio > 0.05);
+            };
+
+            articleBlocks = articleBlocks.filter((block: any) => {
+              if (block.type === "p" && block.text) {
+                if (isGarbledText(block.text)) {
+                  console.warn("[cleanup] Removed garbled paragraph:",
+                    block.text.substring(0, 80));
+                  return false;
+                }
+              }
+              return true;
+            });
+
             // Fix missing spaces before common words (e.g. "instead ofconversion")
             for (const block of articleBlocks) {
               if (block.text) {
