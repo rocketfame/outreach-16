@@ -1854,9 +1854,9 @@ export default function Home() {
       fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:470',message:'Starting article generation with dynamic link finding',data:{topicsCount:selectedTopicsData.length,briefFields:Object.keys(brief)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
       // #endregion
 
-      // Step 1: MANDATORY - Find trust sources via Tavily for each topic
-      // We'll collect unique sources from all topics
-      const allTrustSources = new Set<string>();
+      // Step 1: MANDATORY - Find trust sources via Tavily for EACH topic separately
+      // CRITICAL: Each topic gets its OWN sources (not shared pool) so articles don't reuse sources from other topics
+      const trustSourcesPerTopic: Record<string, string[]> = {};
       
       // Find links for each topic (in parallel for better performance)
       const linkPromises = selectedTopicsData.map(async (topic) => {
@@ -1889,11 +1889,9 @@ export default function Home() {
           if (linksResponse.ok) {
             const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
             if (linksData.trustSources && linksData.trustSources.length > 0) {
-              // Convert TrustedSource[] to "Name|URL" format for compatibility with article prompt
-              linksData.trustSources.forEach(source => {
-                const formattedSource = `${source.title}|${source.url}`;
-                allTrustSources.add(formattedSource);
-              });
+              // Store sources PER TOPIC (not shared) so each article gets only its own topic's sources
+              const formatted = linksData.trustSources.map(source => `${source.title}|${source.url}`);
+              trustSourcesPerTopic[topic.title] = formatted;
               
               // #region agent log
               fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:540',message:'[generate] Links found for topic via Tavily',data:{topicTitle:topic.title,linksCount:linksData.trustSources.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
@@ -1922,16 +1920,14 @@ export default function Home() {
       // Wait for all link finding requests to complete
       await Promise.all(linkPromises);
 
-      // Use ONLY Tavily-validated sources
-      const trustSourcesList = Array.from(allTrustSources);
-      
-      // Validate that we have trust sources before proceeding
-      if (trustSourcesList.length === 0) {
+      // Validate that we have at least one topic with trust sources
+      const totalSources = Object.values(trustSourcesPerTopic).reduce((sum, arr) => sum + arr.length, 0);
+      if (totalSources === 0) {
         throw new Error("Cannot generate articles: No trust sources found via browsing. Please ensure Tavily API key is configured or check your search query.");
       }
 
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:560',message:'Calling /api/articles with trust sources',data:{topicsCount:selectedTopicsData.length,trustSourcesCount:trustSourcesList.length,usingDynamic:allTrustSources.size > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:560',message:'Calling /api/articles with per-topic trust sources',data:{topicsCount:selectedTopicsData.length,trustSourcesPerTopic:Object.keys(trustSourcesPerTopic).length,totalSources},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
       // #endregion
 
       // Step 2: Generate articles with found trust sources
@@ -1953,7 +1949,7 @@ export default function Home() {
           brief, // Current Project Basics (always up-to-date, even if changed after topic generation)
           selectedTopics: selectedTopicsData,
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
-          trustSourcesList: trustSourcesList,
+          trustSourcesPerTopic, // Per-topic sources so each article gets only its own topic's sources
           lightHumanEdit: !effectiveHumanizeForRequest, // Automatically enable lightHumanEdit if humanization is disabled
           humanizeOnWrite: effectiveHumanizeForRequest, // Pass effective humanize state (forced ON for Human Mode)
           humanizeSettings: effectiveHumanizeForRequest ? humanizeSettings : undefined, // Pass humanize settings only if enabled

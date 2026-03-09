@@ -370,8 +370,13 @@ Each item has:
 - id: "T1" | "T2" | "T3"
 - url
 - title
-- type: "official_platform" | "stats_or_research" | "independent_media"
+- type: "official_platform" | "stats_or_research" | "independent_media" | "video"
 These sources are ALREADY validated (no promo-service competitors).
+
+SOURCE PRIORITY (when choosing which to cite):
+- Prefer official_platform (native platform docs/help/blogs) and stats_or_research (statistics, reports, data) over video or generic blogs.
+- Use video sources sparingly — at most 1 per article, and only when no better text source exists.
+- Prioritize: platform official sources > statistics/reports > top publications > video.
 
 Your rules:
 
@@ -1685,8 +1690,13 @@ Each item has:
 - id: "T1" | "T2" | "T3"
 - url
 - title
-- type: "official_platform" | "stats_or_research" | "independent_media"
+- type: "official_platform" | "stats_or_research" | "independent_media" | "video"
 These sources are ALREADY validated (no promo-service competitors).
+
+SOURCE PRIORITY (when choosing which to cite):
+- Prefer official_platform (native platform docs/help/blogs) and stats_or_research (statistics, reports, data) over video or generic blogs.
+- Use video sources sparingly — at most 1 per article, and only when no better text source exists.
+- Prioritize: platform official sources > statistics/reports > top publications > video.
 
 Your rules:
 

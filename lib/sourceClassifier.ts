@@ -10,6 +10,7 @@ export type SourceType =
   | "official_platform" 
   | "stats_or_research" 
   | "independent_media" 
+  | "video"
   | "service_or_promo" 
   | "other";
 
@@ -32,7 +33,7 @@ export interface TrustedSource {
   id: "T1" | "T2" | "T3";
   url: string;
   title: string;
-  type: "official_platform" | "stats_or_research" | "independent_media";
+  type: "official_platform" | "stats_or_research" | "independent_media" | "video";
   relevance_score: number;
 }
 
@@ -60,9 +61,10 @@ ${JSON.stringify({
 
 Classify this page and return ONLY a JSON object with:
 - "type": one of:
-  "official_platform" - official docs/blog/help of a large platform (Spotify, YouTube, TikTok, Meta, Apple Music, etc.)
-  "stats_or_research" - statistics, reports, data/insights, research
-  "independent_media" - big neutral media / industry magazine / news / analysis
+  "official_platform" - official docs/blog/help of a large platform (Spotify, YouTube, TikTok, Meta, Apple Music, etc.). Native platform sources. PREFERRED.
+  "stats_or_research" - statistics services, reports, data/insights, research (Statista, industry reports, data providers). PREFERRED.
+  "independent_media" - trusted top publications, industry magazines, news, analysis (not blogs of promo services)
+  "video" - video content (YouTube, Vimeo, etc.). Use SPARINGLY - prefer text sources over videos.
   "service_or_promo" - any site that sells services (promotion, marketing, SMM panels, "buy streams/followers/plays", agencies, promo platforms) or its blog/landing
   "other"
 - "is_competitor": true/false — true if the site sells or promotes services similar to SMM / music promotion / buying plays, streams, followers, playlist placement, etc.
@@ -71,7 +73,9 @@ Classify this page and return ONLY a JSON object with:
 Rules:
 - If the page sells promo packages, pricing, "buy streams/plays/followers", playlist promotion, marketing services, SMM or similar – set "type": "service_or_promo" and "is_competitor": true.
 - Blogs of such services are ALSO "service_or_promo", even if it's an educational article.
-- For music industry, prefer Spotify / YouTube / TikTok / Meta official docs & blogs and neutral research/statistics.
+- PRIORITIZE: official_platform (native platform docs/help/blogs) > stats_or_research (Statista, reports, data) > independent_media (top publications) > video.
+- If URL contains youtube.com/watch, vimeo.com, or similar video hosts – set "type": "video". Videos are low priority; prefer text sources.
+- For music industry, prefer Spotify / YouTube / TikTok / Meta official docs & blogs and neutral research/statistics over video content.
 - Do not be "добрим": if there is even the slightest hint that this is a promo-service – classify as "service_or_promo".
 - Be conservative: if unsure, treat it as "service_or_promo" or "other".
 
@@ -226,17 +230,20 @@ export function filterAndRankTrustedSources(
     return [];
   }
 
-  // Step 2: Rank by type priority and relevance score
+  // Step 2: Rank by type priority (official_platform > stats_or_research > independent_media >> video)
+  // Prefer: native platform sources, statistics services, top publications. Minimize video sources.
   const weight = (type: SourceType): number => {
     switch (type) {
       case "official_platform":
-        return 3;
+        return 4; // Highest: native platform docs/help/blogs
       case "stats_or_research":
-        return 2;
+        return 3; // High: Statista, reports, data providers
       case "independent_media":
-        return 1;
+        return 2; // Medium: top publications, industry magazines
+      case "video":
+        return 0; // Lowest: use sparingly, prefer text sources
       default:
-        return 0;
+        return 1;
     }
   };
 
@@ -246,15 +253,23 @@ export function filterAndRankTrustedSources(
     return b.relevance_score - a.relevance_score;
   });
 
-  // Step 3: Take top 3 and assign IDs
-  const top3 = sorted.slice(0, 3);
+  // Step 3: Take top 3, but limit videos to max 1 (only if no better alternatives)
+  const nonVideo = sorted.filter(s => s.type !== "video");
+  const videos = sorted.filter(s => s.type === "video");
+  // Prefer up to 3 non-video; if we have fewer than 3, add at most 1 video
+  const top3 = [
+    ...nonVideo.slice(0, 3),
+    ...(nonVideo.length < 3 && videos.length > 0 ? videos.slice(0, 1) : []),
+  ].slice(0, 3);
   const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
 
   return top3.map((source, i) => ({
     id: ids[i],
     url: source.url,
     title: source.title,
-    type: source.type as TrustedSource["type"],
+    type: (source.type === "official_platform" || source.type === "stats_or_research" || source.type === "independent_media" || source.type === "video")
+      ? source.type
+      : "independent_media" as TrustedSource["type"],
     relevance_score: source.relevance_score,
   }));
 }
@@ -307,7 +322,7 @@ export async function getTrustedSourcesFromTavily(
         id: ids[i],
         url: source.url,
         title: source.title,
-        type: (source.type === "official_platform" || source.type === "stats_or_research" || source.type === "independent_media")
+        type: (source.type === "official_platform" || source.type === "stats_or_research" || source.type === "independent_media" || source.type === "video")
           ? source.type
           : "independent_media" as const,
         relevance_score: source.relevance_score,

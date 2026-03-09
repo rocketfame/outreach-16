@@ -130,7 +130,9 @@ export interface ArticleRequest {
   keywordList?: string[];
   /** Direct Article only: keywords that must appear in the article with exact match (no variation). */
   exactKeywordList?: string[];
-  trustSourcesList?: string[];
+  trustSourcesList?: string[]; // Legacy: shared pool for all topics (fallback)
+  /** Per-topic trust sources: topic title -> sources. When provided, each article uses only its topic's sources. */
+  trustSourcesPerTopic?: Record<string, string[]>;
   lightHumanEdit?: boolean; // Optional: enable light human edit post-processing
   humanizeOnWrite?: boolean; // NEW: enable live humanization during generation
   humanizeSettings?: { // Optional: humanize settings
@@ -174,7 +176,7 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleRequest = await req.json();
-    const { brief, selectedTopics, keywordList = [], exactKeywordList = [], trustSourcesList = [], writingMode = "seo" } = body;
+    const { brief, selectedTopics, keywordList = [], exactKeywordList = [], trustSourcesList = [], trustSourcesPerTopic, writingMode = "seo" } = body;
     // #region agent log
     writeDebugLine({location:'articles/route.ts:122',message:'wordCount audit request',data:{briefWordCount:brief?.wordCount,typeofWordCount:typeof brief?.wordCount,briefKeys:brief?Object.keys(brief):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H1'});
     console.log("[wordcount-audit] Request brief.wordCount:", brief?.wordCount, "type:", typeof brief?.wordCount);
@@ -217,7 +219,9 @@ export async function POST(req: Request) {
     // #endregion
 
     // Validate that trust sources are provided (mandatory for article generation)
-    if (!trustSourcesList || trustSourcesList.length === 0) {
+    const hasSharedSources = trustSourcesList && trustSourcesList.length > 0;
+    const hasPerTopicSources = trustSourcesPerTopic && Object.values(trustSourcesPerTopic).some(arr => arr?.length > 0);
+    if (!hasSharedSources && !hasPerTopicSources) {
       return new Response(
         JSON.stringify({ error: "Cannot generate articles without trust sources. Trust sources are mandatory (1-3 per article). Please ensure browsing/search is working correctly." }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -256,14 +260,18 @@ export async function POST(req: Request) {
         // ========================================================================
         // CRITICAL: Intelligent LLM-based source classification and filtering
         // ========================================================================
-        // Convert trustSourcesList from "Name|URL" or "Name|URL|Snippet" format to RawSearchResult[]
-        const rawSources: RawSearchResult[] = trustSourcesList.map((source: string | any) => {
+        // Use per-topic sources when available; otherwise fall back to shared trustSourcesList
+        const sourcesForTopic = (trustSourcesPerTopic && trustSourcesPerTopic[topic.title]?.length)
+          ? trustSourcesPerTopic[topic.title]
+          : trustSourcesList;
+        // Convert sources from "Name|URL" or "Name|URL|Snippet" format to RawSearchResult[]
+        const rawSources: RawSearchResult[] = sourcesForTopic.map((source: string | any) => {
           // Support both string format ("Name|URL|Snippet") and object format
           if (typeof source === 'string') {
             const parts = source.split('|');
             return {
               url: parts.length > 1 ? parts[1] : parts[0],
-              title: parts.length > 1 ? parts[0] : `Source ${trustSourcesList.indexOf(source) + 1}`,
+              title: parts.length > 1 ? parts[0] : `Source ${sourcesForTopic.indexOf(source) + 1}`,
               snippet: parts.length > 2 ? parts[2] : "",
             };
           } else {
@@ -411,10 +419,10 @@ export async function POST(req: Request) {
 
         // #region agent log
         const filterLog = {
-          location: 'articles/route.ts:150',
-          message: 'Trust sources classified and filtered',
-          data: {
-            originalCount: trustSourcesList.length,
+            location: 'articles/route.ts:150',
+            message: 'Trust sources classified and filtered',
+            data: {
+              originalCount: sourcesForTopic.length,
             filteredCount: trustedSources.length,
             niche: brief.niche || "",
             topicTitle: topic.title,

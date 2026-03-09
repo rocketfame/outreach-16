@@ -41,7 +41,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       include_answers: false,
       include_images: false,
       include_raw_content: true, // Get full content for better relevance
-      max_results: 5, // Get top 5 most relevant sources
+      max_results: 8, // Get more sources to prioritize text over video (official platforms, stats, top publications)
     };
 
     const response = await fetch("https://api.tavily.com/search", {
@@ -183,6 +183,16 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       return true;
     });
 
+    // Sort: text sources first, video URLs last (prefer official platforms, stats, top publications over video)
+    const isVideoUrl = (s: { url: string }) => /youtube\.com\/watch|youtu\.be\/|vimeo\.com\/|twitch\.tv\/|dailymotion\.com\//i.test(s.url);
+    const sortedByType = [...filteredSources].sort((a, b) => {
+      const aVideo = isVideoUrl(a);
+      const bVideo = isVideoUrl(b);
+      if (aVideo && !bVideo) return 1;  // video goes after text
+      if (!aVideo && bVideo) return -1;
+      return 0;
+    });
+
     // #region agent log
     const finalLog = {
       location: 'tavilyClient.ts:95',
@@ -190,9 +200,9 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       data: {
         query,
         originalCount: allSources.length,
-        filteredCount: filteredSources.length,
-        excludedCount: allSources.length - filteredSources.length,
-        urls: filteredSources.map(s => s.url),
+        filteredCount: sortedByType.length,
+        excludedCount: allSources.length - sortedByType.length,
+        urls: sortedByType.map(s => s.url),
         excludedUrls: allSources.filter(s => !filteredSources.includes(s)).map(s => s.url)
       },
       timestamp: Date.now(),
@@ -203,7 +213,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
     debugLog(finalLog);
     // #endregion
 
-    return filteredSources;
+    return sortedByType;
   } catch (error) {
     const errorMsg = `[tavily-api] error=${error instanceof Error ? error.message : String(error)}`;
     console.error(errorMsg);
