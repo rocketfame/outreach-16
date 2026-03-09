@@ -101,7 +101,11 @@ export function injectAnchorsIntoText(
   trusts: TrustSourceSpec[]
 ): string {
   if (!text) return '';
-  
+
+  // FIX 1: Normalize spacing around placeholders BEFORE any replacement
+  // Ensures exactly one space before and after [A1], [T1]-[T8] to prevent glued words in final HTML
+  text = text.replace(/\s*\[(A1|T[1-8])\]\s*/g, ' [$1] ');
+
   // CRITICAL: First, check if placeholders exist in the original text
   const allPlaceholders: string[] = [];
   anchors.forEach(a => {
@@ -349,6 +353,9 @@ export function injectAnchorsIntoText(
       console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text, skipping replacement`);
     }
   });
+
+  // Clean up any double spaces that may result from placeholder replacement
+  result = result.replace(/\s{2,}/g, ' ').trim();
 
   return result;
 }
