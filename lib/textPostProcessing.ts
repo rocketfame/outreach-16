@@ -305,13 +305,30 @@ export function removeExcessiveBold(text: string): string {
 /**
  * Applies all text cleaning functions
  */
+/**
+ * Fix concatenation errors: "word Through" -> "word. Through"
+ * Common AI error when two sentences are merged without punctuation
+ */
+function fixConcatenation(text: string): string {
+  if (!text || text.length < 10) return text;
+  // Sentence starters that often get concatenated (lowercase letter + space + Capital)
+  const starters = ["Through", "However", "Therefore", "Thus", "Additionally", "Furthermore", "Moreover", "Meanwhile", "Similarly", "Consequently", "Nevertheless", "Instead", "Also", "Then", "Now", "So"];
+  let fixed = text;
+  for (const word of starters) {
+    const re = new RegExp(`([a-z]) (${word})([\\s,])`, "g");
+    fixed = fixed.replace(re, `$1. $2$3`);
+  }
+  return fixed;
+}
+
 export function cleanText(text: string): string {
   if (!text) return text;
-  
+
   let cleaned = text;
   cleaned = cleanInvisibleChars(cleaned);
   cleaned = normalizeQuotesAndDashes(cleaned);
-  
+  cleaned = fixConcatenation(cleaned);
+
   return cleaned;
 }
 

@@ -293,6 +293,14 @@ Repetition:
 • Do not overuse transitions like "In conclusion", "Overall", "At the end of the day".
 • Vary how you introduce tips, examples, and sections.
 
+FORBIDDEN WORDS (avoid corporate/AI tone):
+• Do NOT use: "ultimately", "in conclusion", "at the end of the day", "in today's digital world", "it's no secret that", "leverage" (as verb; use "use" instead), "utilize" (use "use" instead), "in the ever-evolving landscape of".
+
+GRAMMAR - NO CONCATENATION:
+• Do NOT concatenate two sentences without proper punctuation. Each sentence must end with a period, question mark, or exclamation before the next starts.
+• WRONG: "Ways in which creator economies evolved Through using tools" (capital letter mid-sentence = concatenation).
+• CORRECT: "Ways in which creator economies evolved. Through using tools..." or rephrase as one sentence.
+
 ================================
 CRITICAL DISTINCTION: TWO TYPES OF LINKS
 ================================
@@ -310,11 +318,13 @@ COMMERCIAL ANCHOR [A1] – FROM PROJECT BASICS (MANDATORY WHEN PROVIDED)
   • You MUST place the placeholder [A1] in the FIRST or SECOND paragraph of the article. No exceptions.
   • The anchor MUST appear in paragraph 1 (first "p" block) or paragraph 2 (second "p" block) in articleBlocks.
   • Do NOT place it in paragraph 3 or later. Do NOT place it in the main body. It belongs in the intro only.
+  • START writing with [A1] in mind: plan your second paragraph to naturally include it. Example: First p = hook. Second p = "...teams use [A1] to scale..." — [A1] MUST be there.
+  • If you place [A1] in paragraph 3 or later, the article is INVALID for outreach.
 • CRITICAL - Anchor format (MANDATORY):
   • [[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
   • Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
   • FORBIDDEN: using long, technical anchor text that harms readability.
-  • FORBIDDEN: using generic phrases like "click here" or "learn more".
+  • FORBIDDEN: generic/stub phrases like "click here", "learn more", "see this link", "read more", "for more details see", "check out this link". Do NOT write placeholder phrases that imply a link without a real [T1]/[T2]/[T3] or [A1]. If you cannot add a real source, rephrase without the link.
   • REQUIRED: use short, natural anchor text that fits smoothly into the sentence.
   • Anchor text examples: brand names ("RouteNote", "Spotify"), short descriptive phrases ("recent analysis", "this tool").
 • CRITICAL: Use the [A1] placeholder EXACTLY ONCE in the entire article. You MUST NOT use it twice, even if it looks very natural.
@@ -369,6 +379,7 @@ Your rules:
 - You may ONLY reference sources from [[TRUST_SOURCES_LIST]].
 - NEVER invent new brands, URLs, or portals.
 - If [[TRUST_SOURCES_LIST]] is empty, write the article WITHOUT external links.
+- Do NOT invent or fabricate quotes. If you use quotation marks, the quote MUST come from a real source in [[TRUST_SOURCES_LIST]] — cite it with [T1], [T2], or [T3]. Otherwise, write the idea in your own words WITHOUT quotes. Fake quotes in quotation marks are an AI tell and harm outreach credibility.
 
 2. Number of sources
 - Use between 1 and 3 sources in the whole article.
@@ -909,8 +920,8 @@ CRITICAL DISTINCTION: [A1] = commercial link from Project basics (Branded link d
 [A1] is a technical placeholder that gets replaced with the client's real link. It must NEVER appear as a bare stub in the article.
 
 • When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are NOT provided (empty): You MUST NOT use [A1] anywhere. Do NOT write sentences like "see creator tools [A1]" or "for more see [A1]". For links to official resources (creator tools, help pages, guides) use trust source placeholders [T1], [T2], [T3] from [[TRUST_SOURCES_LIST]] instead (e.g. "For more details, see TikTok Creator tools [T1]" or "See the official guide [T2]"). If no suitable trust source exists, omit the sentence or rephrase without a link.
-• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: You MUST include [A1]. NEVER skip it. Place [A1] EXACTLY ONCE in the FIRST or SECOND paragraph. The anchor MUST be in paragraph 1 or 2 (first two "p" blocks). Do NOT place it later. The sentence must clearly refer to the client's link – use the actual anchor text in context (e.g. "Some teams use [A1] to streamline workflow"), not a generic phrase like "see creator tools [A1]" that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
-• Do NOT use "click here", "learn more", or vague "see X [A1]" – either a real trust link [T1]/[T2]/[T3] or a clear client anchor sentence. Do not mention [A1] again after using it once.
+• When [[ANCHOR_TEXT]] and [[ANCHOR_URL]] ARE provided: You MUST include [A1]. NEVER skip it. Place [A1] EXACTLY ONCE in the FIRST or SECOND paragraph. The anchor MUST be in paragraph 1 or 2 (first two "p" blocks). Do NOT place it later. START writing with [A1] in mind: plan your second paragraph to naturally include it. If you place [A1] in paragraph 3 or later, the article is INVALID for outreach. The sentence must clearly refer to the client's link – use the actual anchor text in context (e.g. "Some teams use [A1] to streamline workflow"), not a generic phrase like "see creator tools [A1]" that leaves [A1] looking like a stub. [A1] will be replaced with [[ANCHOR_TEXT]] linking to [[ANCHOR_URL]] during processing.
+• Do NOT use "click here", "learn more", "see this link", "read more", "for more details see", "check out this link" – either a real trust link [T1]/[T2]/[T3] or a clear client anchor sentence. Do not mention [A1] again after using it once.
 
 ⸻
 
@@ -1633,6 +1644,8 @@ or when [[CONTENT_PURPOSE]] = "Educational guide" and the brief does not demand 
 	4.	Conclusion
 	•	Short, concrete recap with 1-3 key takeaways or next steps.
 	•	Avoid clichés like "in conclusion", "in today's digital world", "at the end of the day".
+	•	FORBIDDEN words (avoid corporate/AI tone): "ultimately", "leverage" (use "use"), "utilize" (use "use"), "in the ever-evolving landscape of".
+	•	GRAMMAR: Do NOT concatenate sentences without punctuation. WRONG: "evolved Through using". CORRECT: "evolved. Through using" or rephrase.
 	•	If [[TOPIC_BRIEF]] requests a specific type of closing (for example "give next steps"
 or "end with a short checklist"), follow that as long as it stays concise.
 
@@ -1654,11 +1667,12 @@ treat the article as if no commercial link was requested.
 	  •	You MUST place the placeholder [A1] in the FIRST or SECOND paragraph of the article. No exceptions.
 	  •	The anchor MUST be in paragraph 1 (first "p" block) or paragraph 2 (second "p" block) in articleBlocks.
 	  •	Do NOT place it in paragraph 3 or later. Do NOT place it in the main body. It belongs in the intro only.
+	  •	START writing with [A1] in mind: plan your second paragraph to naturally include it. If you place [A1] in paragraph 3 or later, the article is INVALID for outreach.
 	•	CRITICAL - Anchor format (MANDATORY):
 	  •	[[ANCHOR_TEXT]] must be a SHORT phrase (2-5 words maximum).
 	  •	Use the placeholder [A1] EXACTLY as the anchor text appears (short, natural phrase).
 	  •	FORBIDDEN: using long, technical anchor text that harms readability.
-	  •	FORBIDDEN: using generic phrases like "click here" or "learn more".
+	  •	FORBIDDEN: generic/stub phrases like "click here", "learn more", "see this link", "read more", "for more details see", "check out this link".
 	  •	REQUIRED: use short, natural anchor text that fits smoothly into the sentence.
 	  •	Anchor text examples: brand names ("RouteNote", "Spotify"), short descriptive phrases ("recent analysis", "this tool").
 	•	CRITICAL: Use [A1] placeholder only once in the whole article.
@@ -1689,6 +1703,7 @@ Your rules:
 - You may ONLY reference sources from [[TRUST_SOURCES_LIST]].
 - NEVER invent new brands, URLs, or portals.
 - If [[TRUST_SOURCES_LIST]] is empty, write the article WITHOUT external links.
+- Do NOT invent or fabricate quotes. If you use quotation marks, the quote MUST come from a real source in [[TRUST_SOURCES_LIST]] — cite it with [T1], [T2], or [T3]. Otherwise, write the idea in your own words WITHOUT quotes. Fake quotes in quotation marks are an AI tell and harm outreach credibility.
 
 2. Number of sources
 - Use between 1 and 3 sources in the whole article.

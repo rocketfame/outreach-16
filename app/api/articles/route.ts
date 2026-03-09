@@ -1097,6 +1097,19 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
         }
 
         if (articleStructure) {
+          // VALIDATION: [A1] must be in first or second paragraph when anchor is provided
+          const hasAnchor = !!(brief.anchorText?.trim() && (brief.anchorUrl || brief.clientSite)?.trim());
+          if (hasAnchor) {
+            const pBlocks = articleStructure.blocks
+              .filter((b: any) => b.type === "p")
+              .slice(0, 2)
+              .map((b: any) => (b.text || "").toLowerCase());
+            const a1InFirstTwo = pBlocks.some((text: string) => text.includes("[a1]"));
+            if (!a1InFirstTwo) {
+              console.warn("[articles-api] ANCHOR PLACEMENT VIOLATION: [A1] should be in paragraph 1 or 2 but was placed later. Anchor:", brief.anchorText?.slice(0, 30));
+            }
+          }
+
           // Enforce brand presence: if brand was provided but model didn't include it, inject into first body paragraph
           const brandToEnforce = brandName && brandName.trim() && brandName.trim().toUpperCase() !== "NONE" ? brandName.trim() : null;
           if (brandToEnforce) {
