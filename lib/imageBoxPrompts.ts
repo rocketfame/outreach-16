@@ -1429,6 +1429,73 @@ FORMAT:
   },
 ];
 
+// =============================================================================
+// DYNAMIC PROMPT MODIFIERS – rotating factors for each generation
+// Each generation picks random items from these pools to construct the prompt
+// =============================================================================
+
+/** Quality descriptors – rotate each generation */
+const QUALITY_MODIFIERS = [
+  "Award-winning editorial quality, Red Dot design agency level.",
+  "Premium magazine cover quality, sophisticated and polished.",
+  "High-end digital illustration, professional creative agency standard.",
+  "Contemporary editorial illustration, New Yorker meets modern design.",
+  "Polished concept-art quality, crisp and intentional.",
+  "Sophisticated flat illustration, award-winning graphic design.",
+  "Premium poster quality, bold and impactful.",
+  "Clean vector precision, modern digital art excellence.",
+  "Editorial-grade illustration, conceptual and striking.",
+  "Professional campaign visual quality, premium brand level.",
+];
+
+/** Diversity/character modifiers – rotate to avoid repetitive appearances */
+const DIVERSITY_MODIFIERS = [
+  "CHARACTER DIVERSITY: Portray diverse ethnicities, ages, and genders. Vary appearance – do not default to any single look.",
+  "CHARACTER DIVERSITY: Include people of various ethnic backgrounds. Change gender, age, and skin tone from typical defaults.",
+  "CHARACTER DIVERSITY: Ensure visual variety – diverse ethnicities, body types, ages. Avoid repeating the same appearance.",
+  "CHARACTER DIVERSITY: Vary character appearance: different ethnicities, genders, ages. No single default look.",
+  "CHARACTER DIVERSITY: Diverse representation – various ethnic backgrounds, ages, genders. Each image should feel different.",
+  "CHARACTER DIVERSITY: Rotate character types: vary ethnicity, age, gender. Never default to one appearance.",
+  "CHARACTER DIVERSITY: Include diverse people – different ethnicities, ages, body types. Ensure visual variety.",
+  "CHARACTER DIVERSITY: Portray diverse ethnicities and genders. Avoid stereotypical or default appearances.",
+  "CHARACTER DIVERSITY: Vary skin tones, ages, genders. Diverse representation across images.",
+  "CHARACTER DIVERSITY: Different ethnic backgrounds, ages, genders each time. No repetitive character look.",
+];
+
+/** Mood/energy modifiers – rotate for variety */
+const MOOD_MODIFIERS = [
+  "Mood: confident, aspirational, modern.",
+  "Mood: edgy, rebellious, creator culture energy.",
+  "Mood: calm, sophisticated, editorial.",
+  "Mood: energetic, dynamic, youth culture.",
+  "Mood: mysterious, conceptual, premium.",
+  "Mood: playful but sophisticated, design-driven.",
+  "Mood: bold, confident, contemporary.",
+  "Mood: sleek, futuristic, clean.",
+  "Mood: vibrant, expressive, high-energy.",
+  "Mood: minimal, refined, impactful.",
+];
+
+/** Technical/rendering modifiers – rotate for variety */
+const TECHNICAL_MODIFIERS = [
+  "Rendering: crisp edges, clean shapes, no noise or clutter.",
+  "Rendering: smooth gradients, soft lighting, premium feel.",
+  "Rendering: sharp outlines, flat or minimal shading.",
+  "Rendering: high contrast, bold color blocks.",
+  "Rendering: subtle grain allowed, editorial texture.",
+  "Rendering: clean vector or digital painting, no artifacts.",
+  "Rendering: polished surfaces, intentional lighting.",
+  "Rendering: graphic and readable, no muddy details.",
+  "Rendering: crisp and intentional, professional finish.",
+  "Rendering: clean composition, strong focal point.",
+];
+
+/** Pick N random items from array (no repeats) */
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = shuffleArray([...arr]);
+  return shuffled.slice(0, Math.min(n, arr.length));
+}
+
 /**
  * Replace placeholders in prompt template with actual values
  */
@@ -1468,14 +1535,28 @@ The box prompt below provides the VISUAL STYLE and CREATIVE APPROACH. Apply this
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform);
   prompt = prompt.replaceAll("[[BRAND_NAME]]", params.brandName || "");
   
-  // Add gentle reminder at the end
+  // DYNAMIC MODIFIERS: pick random factors each generation (quality, diversity, mood, technical)
+  // Each generation gets different combinations – prompt is constructed, not fixed
+  const qualityMod = pickRandom(QUALITY_MODIFIERS, 1)[0];
+  const diversityMod = pickRandom(DIVERSITY_MODIFIERS, 1)[0];
+  const moodMod = pickRandom(MOOD_MODIFIERS, 1)[0];
+  const technicalMod = pickRandom(TECHNICAL_MODIFIERS, 1)[0];
+
+  const dynamicModifiersBlock = `
+
+--- DYNAMIC REQUIREMENTS (apply to this image) ---
+QUALITY: ${qualityMod}
+${diversityMod}
+MOOD: ${moodMod}
+${technicalMod}`;
+
   const contextFooter = `
 
 --- FINAL CHECK ---
 Ensure the image is relevant to the article topic "${params.articleTitle}" and niche "${params.niche}", while maintaining the creative visual style from the box prompt above.`;
 
-  // Combine: context header + box prompt + context footer
-  prompt = contextHeader + "\n\n" + prompt + contextFooter;
+  // Combine: context header + box prompt + dynamic modifiers + context footer
+  prompt = contextHeader + "\n\n" + prompt + dynamicModifiersBlock + contextFooter;
   
   // Log the final prompt for debugging (truncated to avoid console spam)
   console.log("[buildImagePromptFromBox] Generated prompt for:", {
@@ -1484,6 +1565,7 @@ Ensure the image is relevant to the article topic "${params.articleTitle}" and n
     boxId: boxPrompt.id,
     boxName: boxPrompt.name,
     promptLength: prompt.length,
+    dynamicModifiers: true,
     promptPreview: prompt.substring(0, 500) + "...",
   });
   

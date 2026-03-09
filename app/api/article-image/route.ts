@@ -195,6 +195,11 @@ STYLE PRESERVATION:
 - DO NOT alter the art technique described in the reference style
 - Match the composition style, background treatment, and visual mood EXACTLY as described
 
+CHARACTER DIVERSITY (CRITICAL - if the image includes people):
+- PRESERVE the art style (colors, technique, composition) from the reference.
+- BUT vary the character: use a DIFFERENT ethnicity, gender, and age than in the reference.
+- Do not copy the same person/appearance - ensure visual variety across images.
+
 Generate an image that looks like it was created by the same artist using the same visual language as the reference style above.`.trim();
   } else {
     // DEFAULT MODE: Use Image Box Prompt component system
