@@ -63,6 +63,18 @@ function createPlaceholderProtection() {
 }
 
 const cleanHumanizedText = (text: string): string => {
+  // Remove spaced-letter artifacts like "I T H O U G H Y O U K N E W"
+  let result = text.replace(/\b([A-Z] ){4,}[A-Z]\b/g, "");
+
+  // Replace forbidden AI-tone words reintroduced by the humanizer
+  result = result
+    .replace(/\bUltimately,?\s*/gi, "")
+    .replace(/\bMoreover,?\s*/gi, "Also, ")
+    .replace(/\bFurthermore,?\s*/gi, "Also, ")
+    .replace(/\bIn conclusion,?\s*/gi, "")
+    .replace(/\bIt'?s worth noting that\s*/gi, "")
+    .replace(/\bNotably,?\s*/gi, "");
+
   const metaPatterns = [
     /please note that this was written by[^.]*\./gi,
     /this (text|content|paragraph|sentence) (has been|was) (rewritten|humanized|paraphrased)[^.]*\./gi,
@@ -88,7 +100,7 @@ const cleanHumanizedText = (text: string): string => {
     /Never include XML tags[^.\n]*/gi,
   ];
 
-  let cleaned = text;
+  let cleaned = result;
   for (const pattern of humanizerInstructionPatterns) {
     cleaned = cleaned.replace(pattern, "");
   }
@@ -186,17 +198,38 @@ export async function humanizeSectionText(
 
   // Context format: NO imperative instructions (Undetectable humanizes everything).
   // Delimiter between context and current block; we extract the part after it.
-  const DELIMS = [" ¶ ", " § ", " ››› ", " ||| "];
+  const DELIM = " ¶ ";
   function buildContentWithContext(blockText: string): string {
     if (!previousBlockText) return blockText;
-    return `${previousBlockText}${DELIMS[0]}${blockText}`;
+    return `${previousBlockText}${DELIM}${blockText}`;
   }
-  function extractRewrittenPart(responseText: string): string {
-    for (const d of DELIMS) {
-      const idx = responseText.indexOf(d);
-      if (idx >= 0) return responseText.slice(idx + d.length).trim();
+  function extractRewrittenPart(responseText: string, originalBlockText: string): string | null {
+    const idx = responseText.indexOf(DELIM);
+    if (idx >= 0) return responseText.slice(idx + DELIM.length).trim();
+
+    // Delimiter was removed by humanizer. Estimate where the current block begins
+    // using length ratio: previousBlock contributed ~ratio of total input.
+    if (previousBlockText) {
+      const totalInputLen = previousBlockText.length + DELIM.length + originalBlockText.length;
+      const ratio = (previousBlockText.length + DELIM.length) / totalInputLen;
+      const estimatedSplit = Math.floor(responseText.length * ratio);
+      // Find nearest sentence boundary (period/newline) near the estimated split
+      const searchWindow = responseText.slice(
+        Math.max(0, estimatedSplit - 80),
+        Math.min(responseText.length, estimatedSplit + 80)
+      );
+      const sentenceEnd = searchWindow.search(/[.!?]\s+[A-Z]/);
+      if (sentenceEnd >= 0) {
+        const actualSplit = Math.max(0, estimatedSplit - 80) + sentenceEnd + 2;
+        const extracted = responseText.slice(actualSplit).trim();
+        if (extracted.length >= originalBlockText.length * 0.5) {
+          return extracted;
+        }
+      }
     }
-    return responseText;
+
+    // Cannot reliably extract — signal failure so caller can re-humanize without context
+    return null;
   }
 
   try {
@@ -209,11 +242,26 @@ export async function humanizeSectionText(
       const humanizedChunks: string[] = [];
 
       for (let i = 0; i < chunks.length; i++) {
-        const withContext = i === 0 && previousBlockText;
+        const withContext = i === 0 && !!previousBlockText;
         const dataToSend = withContext ? buildContentWithContext(chunks[i]) : chunks[i];
         const protectedData = protectPlaceholders(dataToSend);
         const result = await humanizer.humanize(protectedData, { model, style, mode });
-        let rewrittenPart = withContext ? extractRewrittenPart(result.text) : result.text;
+        let rewrittenPart: string;
+        if (withContext) {
+          const extracted = extractRewrittenPart(result.text, chunks[i]);
+          if (extracted !== null) {
+            rewrittenPart = extracted;
+          } else {
+            // Delimiter lost — re-humanize this chunk alone (no context) to avoid duplication
+            console.warn("[humanizer] Delimiter lost in chunked context, re-humanizing without context");
+            const retryData = protectPlaceholders(chunks[i]);
+            const retryResult = await humanizer.humanize(retryData, { model, style, mode });
+            rewrittenPart = retryResult.text;
+            totalWordsUsed += retryResult.wordsUsed;
+          }
+        } else {
+          rewrittenPart = result.text;
+        }
         rewrittenPart = restorePlaceholders(rewrittenPart);
         rewrittenPart = cleanHumanizedText(rewrittenPart);
         humanizedChunks.push(rewrittenPart);
@@ -229,13 +277,42 @@ export async function humanizeSectionText(
     const dataToSend = buildContentWithContext(text);
     const protectedData = protectPlaceholders(dataToSend);
     const result = await humanizer.humanize(protectedData, { model, style, mode });
-    let humanizedText = previousBlockText ? extractRewrittenPart(result.text) : result.text;
+    let humanizedText: string;
+    let wordsUsed = result.wordsUsed;
+
+    if (previousBlockText) {
+      // #region agent log
+      const hasDelim = result.text.includes(DELIM);
+      console.log(`[humanizer-extract] hasContext=true hasDelim=${hasDelim} inputLen=${dataToSend.length} outputLen=${result.text.length} originalBlockLen=${text.length} prevBlockLen=${previousBlockText.length}`);
+      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'sectionHumanize.ts:extract',message:'Context extraction attempt',data:{hasDelim,inputLen:dataToSend.length,outputLen:result.text.length,originalBlockLen:text.length,prevBlockLen:previousBlockText.length},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      const extracted = extractRewrittenPart(result.text, text);
+      if (extracted !== null) {
+        humanizedText = extracted;
+        // #region agent log
+        console.log(`[humanizer-extract] SUCCESS: extracted ${extracted.length} chars (original was ${text.length})`);
+        // #endregion
+      } else {
+        // Delimiter lost — re-humanize without context to avoid duplication
+        console.warn("[humanizer] Delimiter lost, re-humanizing without context");
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'sectionHumanize.ts:retry',message:'Delimiter lost, retrying without context',data:{responsePreview:result.text.substring(0,200)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        const retryData = protectPlaceholders(text);
+        const retryResult = await humanizer.humanize(retryData, { model, style, mode });
+        humanizedText = retryResult.text;
+        wordsUsed = retryResult.wordsUsed;
+      }
+    } else {
+      humanizedText = result.text;
+    }
+
     humanizedText = restorePlaceholders(humanizedText);
     humanizedText = cleanHumanizedText(humanizedText);
 
     return {
       humanizedText,
-      wordsUsed: result.wordsUsed,
+      wordsUsed,
     };
   } catch (error) {
     console.error(

@@ -67,6 +67,11 @@ function hasGluedWords(text: string): boolean {
   );
 }
 
+function hasSpacedLetterArtifact(text: string): boolean {
+  // Detect "I T H O U G H Y O U K N E W" type artifacts (single letters with spaces)
+  return /\b([A-Z] ){4,}[A-Z]\b/.test(text);
+}
+
 function normalizeBrandNames(text: string): string {
   const brandNormalizations: [RegExp, string][] = [
     [/\bTik\s*Tok\b/gi, "TikTok"],
@@ -633,18 +638,22 @@ ${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific 
 Goal: Create a useful, non-pushy article that educates, builds trust and naturally integrates the provided anchor link.
 Language: US English.
 
-STRICT WORD COUNT CONSTRAINT (HIGHEST PRIORITY):
+STRICT WORD COUNT CONSTRAINT (HIGHEST PRIORITY — ENFORCED BEFORE ALL OTHER RULES):
 Target: exactly ${targetWords} words. Hard minimum: ${wordCountMinSys}. Hard maximum: ${wordCountMaxSys}.
-Before outputting your response, COUNT every word in all articleBlocks text fields.
-If the total exceeds ${wordCountMaxSys}, you MUST cut content until it fits. If below ${wordCountMinSys}, expand the core argument sections.
-Violation of this range is a critical failure. This overrides all other length considerations.`;
+This is ${targetWords} words TOTAL across ALL articleBlocks text — not per section.
+A ${targetWords}-word article has roughly ${Math.max(2, Math.round(targetWords / 250))} to ${Math.max(3, Math.round(targetWords / 150))} sections of varying length.
+Before outputting, COUNT every word in every articleBlocks text field. If total exceeds ${wordCountMaxSys}: DELETE entire sections or shorten aggressively until it fits. If below ${wordCountMinSys}: expand core sections.
+Exceeding ${wordCountMaxSys} words is a CRITICAL FAILURE that wastes budget. This constraint overrides section count, coverage depth, and all other length considerations.`;
 
         // API parameters for OpenAI
         // Scale max_completion_tokens to target word count to prevent the model from overshooting.
-        // ~1.5 tokens per word for English text + JSON structure overhead (~800 tokens) + reasoning headroom (8000).
-        // Floor: 10000, ceiling: 18000.
-        const estimatedContentTokens = Math.ceil(targetWords * 1.5) + 800;
-        const dynamicMaxTokens = Math.min(18000, Math.max(10000, estimatedContentTokens + 8000));
+        // Content budget: targetWords * 2 tokens/word (generous for JSON + text).
+        // Reasoning headroom scales with article size: min 3000, max 8000.
+        // Total floor: 5000 (enough for ~400-word articles), ceiling: 16384.
+        const contentBudget = Math.ceil(targetWords * 2) + 600;
+        const reasoningBudget = Math.min(8000, Math.max(3000, targetWords * 3));
+        const dynamicMaxTokens = Math.min(16384, Math.max(5000, contentBudget + reasoningBudget));
+        console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} reasoningBudget=${reasoningBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
         const apiParams = { 
           max_completion_tokens: dynamicMaxTokens
         };
@@ -1412,8 +1421,16 @@ Violation of this range is a critical failure. This overrides all other length c
                       const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
                       if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                       totalHumanizeWordsUsed += result.wordsUsed;
-                      previousBlockText = block.text;
-                      humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
+                      const humanizedText = cleanText(result.humanizedText);
+                      // Reject bad humanizer output: glued words, spaced letters, or too short
+                      if (hasGluedWords(humanizedText) || hasSpacedLetterArtifact(humanizedText) || humanizedText.length < block.text.length * 0.5) {
+                        console.warn("[humanizer] Paragraph rejected, keeping original:", block.text.substring(0, 80));
+                        previousBlockText = block.text;
+                        humanizedBlocks.push(block);
+                      } else {
+                        previousBlockText = block.text;
+                        humanizedBlocks.push({ ...block, text: humanizedText });
+                      }
                     } catch {
                       previousBlockText = block.text;
                       humanizedBlocks.push(block);
