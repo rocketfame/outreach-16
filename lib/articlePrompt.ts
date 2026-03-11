@@ -239,21 +239,19 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
-	1.	WORD COUNT REQUIREMENT:
-Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+	1.	WORD COUNT REQUIREMENT (STRICTLY ENFORCED — HIGHEST PRIORITY):
+Target: [[WORD_COUNT]] words. Hard limits: minimum [[WORD_COUNT_MIN]], maximum [[WORD_COUNT_MAX]].
+BEFORE generating your final JSON, mentally count the total words across all articleBlocks text fields. If the count is outside [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]], revise until it fits. Outputting outside this range is a CRITICAL ERROR.
 
 Do NOT distribute words evenly across sections. Some sections should be
 dense and detailed where the topic demands it. Others should be deliberately
 short — even 2–3 sentences — when the point has been made.
 
-Uneven section density is correct. A 400-word section followed by a
-80-word section is better than two 240-word sections of identical weight.
-
-If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+If your draft exceeds [[WORD_COUNT_MAX]]: CUT the weakest sections first
 (intro fluff, conclusion restatements, redundant examples).
 Do NOT compress sections that carry the core argument.
 
-If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
+If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not filler.
 
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
@@ -986,21 +984,19 @@ SEO & OUTPUT
 
 Language & length:
 • All output must be in [[LANGUAGE]]
-• WORD COUNT REQUIREMENT:
-  Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+• WORD COUNT REQUIREMENT (STRICTLY ENFORCED — HIGHEST PRIORITY):
+  Target: [[WORD_COUNT]] words. Hard limits: minimum [[WORD_COUNT_MIN]], maximum [[WORD_COUNT_MAX]].
+  BEFORE outputting, count every word in all articleBlocks text. If outside [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]], revise until it fits. Outputting outside this range is a CRITICAL ERROR.
 
   Do NOT distribute words evenly across sections. Some sections should be
   dense and detailed where the topic demands it. Others should be deliberately
   short — even 2–3 sentences — when the point has been made.
 
-  Uneven section density is correct. A 400-word section followed by a
-  80-word section is better than two 240-word sections of identical weight.
-
-  If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+  If your draft exceeds [[WORD_COUNT_MAX]]: CUT the weakest sections first
   (intro fluff, conclusion restatements, redundant examples).
   Do NOT compress sections that carry the core argument.
 
-  If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
+  If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not filler.
 
 [[EXACT_KEYWORDS_SECTION]]
 
@@ -1203,7 +1199,7 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
   prompt = prompt.replaceAll("[[TARGET_AUDIENCE]]", params.targetAudience || "B2C - beginner and mid-level users");
   prompt = prompt.replaceAll("[[KEYWORD_LIST]]", params.keywordList.join(", "));
   
-  // Parse wordCount: single number or range. Allowed output range = 80%-120% of target (max 20% error).
+  // Parse wordCount: single number or range. Allowed output range = 88%-112% of target (max ~12% error).
   const wordCountStr = params.wordCount || "1500";
   const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);
   let targetWords = 1500;
@@ -1212,8 +1208,8 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
     const high = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : low;
     targetWords = Math.round((low + high) / 2);
   }
-  const wordCountMinAllowed = Math.floor(targetWords * 0.8);
-  const wordCountMaxAllowed = Math.ceil(targetWords * 1.2);
+  const wordCountMinAllowed = Math.floor(targetWords * 0.88);
+  const wordCountMaxAllowed = Math.ceil(targetWords * 1.12);
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   prompt = prompt.replaceAll("[[WORD_COUNT_MIN]]", String(wordCountMinAllowed));
   prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowed));
@@ -1374,21 +1370,19 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
-	1.	WORD COUNT REQUIREMENT:
-Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+	1.	WORD COUNT REQUIREMENT (STRICTLY ENFORCED — HIGHEST PRIORITY):
+Target: [[WORD_COUNT]] words. Hard limits: minimum [[WORD_COUNT_MIN]], maximum [[WORD_COUNT_MAX]].
+BEFORE generating your final JSON, mentally count the total words across all articleBlocks text fields. If the count is outside [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]], revise until it fits. Outputting outside this range is a CRITICAL ERROR.
 
 Do NOT distribute words evenly across sections. Some sections should be
 dense and detailed where the topic demands it. Others should be deliberately
 short — even 2–3 sentences — when the point has been made.
 
-Uneven section density is correct. A 400-word section followed by a
-80-word section is better than two 240-word sections of identical weight.
-
-If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+If your draft exceeds [[WORD_COUNT_MAX]]: CUT the weakest sections first
 (intro fluff, conclusion restatements, redundant examples).
 Do NOT compress sections that carry the core argument.
 
-If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
+If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not filler.
 
 	2.	TOPIC BRIEF REQUIREMENT (MANDATORY):
 • You MUST follow the article brief ([[TOPIC_BRIEF]]) EXACTLY as provided.
@@ -1447,21 +1441,19 @@ Article brief:
 
 Language & length:
 • Language: [[LANGUAGE]]
-• WORD COUNT REQUIREMENT:
-  Target length: [[WORD_COUNT]] words. Acceptable range: [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]] words.
+• WORD COUNT REQUIREMENT (STRICTLY ENFORCED — HIGHEST PRIORITY):
+  Target: [[WORD_COUNT]] words. Hard limits: minimum [[WORD_COUNT_MIN]], maximum [[WORD_COUNT_MAX]].
+  BEFORE outputting, count every word in all articleBlocks text. If outside [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]], revise until it fits. Outputting outside this range is a CRITICAL ERROR.
 
   Do NOT distribute words evenly across sections. Some sections should be
   dense and detailed where the topic demands it. Others should be deliberately
   short — even 2–3 sentences — when the point has been made.
 
-  Uneven section density is correct. A 400-word section followed by a
-  80-word section is better than two 240-word sections of identical weight.
-
-  If your draft exceeds [[WORD_COUNT_MAX]]: shorten the weakest sections first
+  If your draft exceeds [[WORD_COUNT_MAX]]: CUT the weakest sections first
   (intro fluff, conclusion restatements, redundant examples).
   Do NOT compress sections that carry the core argument.
 
-  If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not by adding filler.
+  If your draft is under [[WORD_COUNT_MIN]]: expand sections that carry the core argument, not filler.
 
 Commercial branded link (may be empty):
 • Anchor text: [[ANCHOR_TEXT]]
@@ -2225,7 +2217,7 @@ Before outputting, verify that every phrase above appears in your article text w
   }
   prompt = prompt.replaceAll("[[EXACT_KEYWORDS_SECTION]]", exactKeywordsSection);
 
-  // Parse wordCount: 80%-120% of target (max 20% error)
+  // Parse wordCount: 88%-112% of target (max ~12% error)
   const wordCountStr = params.wordCount || "1500";
   const wordCountMatch = wordCountStr.match(/^(\d+)(?:-(\d+))?$/);
   let targetWordsDirect = 1500;
@@ -2234,8 +2226,8 @@ Before outputting, verify that every phrase above appears in your article text w
     const high = wordCountMatch[2] ? parseInt(wordCountMatch[2]) : low;
     targetWordsDirect = Math.round((low + high) / 2);
   }
-  const wordCountMinAllowedDirect = Math.floor(targetWordsDirect * 0.8);
-  const wordCountMaxAllowedDirect = Math.ceil(targetWordsDirect * 1.2);
+  const wordCountMinAllowedDirect = Math.floor(targetWordsDirect * 0.88);
+  const wordCountMaxAllowedDirect = Math.ceil(targetWordsDirect * 1.12);
   prompt = prompt.replaceAll("[[WORD_COUNT]]", wordCountStr);
   prompt = prompt.replaceAll("[[WORD_COUNT_MIN]]", String(wordCountMinAllowedDirect));
   prompt = prompt.replaceAll("[[WORD_COUNT_MAX]]", String(wordCountMaxAllowedDirect));

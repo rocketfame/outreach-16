@@ -625,18 +625,28 @@ export async function POST(req: Request) {
 
         // Build system message (include strict word count so model sees it upfront)
         const targetWords = Number(brief.wordCount) || 1500;
-        const wordCountMinSys = Math.floor(targetWords * 0.8);
-        const wordCountMaxSys = Math.ceil(targetWords * 1.2);
+        const wordCountMinSys = Math.floor(targetWords * 0.88);
+        const wordCountMaxSys = Math.ceil(targetWords * 1.12);
         const systemMessage = `You are an expert content strategist and editorial writer with deep experience in ${brief.niche || "general topics"}.
 You write articles that feel like an experienced practitioner wrote them — not AI.
 ${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific brand to feature."}
 Goal: Create a useful, non-pushy article that educates, builds trust and naturally integrates the provided anchor link.
 Language: US English.
-CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${wordCountMaxSys} words. Do NOT exceed ${wordCountMaxSys} words. If your draft is longer, shorten it before outputting. This is mandatory.`;
+
+STRICT WORD COUNT CONSTRAINT (HIGHEST PRIORITY):
+Target: exactly ${targetWords} words. Hard minimum: ${wordCountMinSys}. Hard maximum: ${wordCountMaxSys}.
+Before outputting your response, COUNT every word in all articleBlocks text fields.
+If the total exceeds ${wordCountMaxSys}, you MUST cut content until it fits. If below ${wordCountMinSys}, expand the core argument sections.
+Violation of this range is a critical failure. This overrides all other length considerations.`;
 
         // API parameters for OpenAI
+        // Scale max_completion_tokens to target word count to prevent the model from overshooting.
+        // ~1.5 tokens per word for English text + JSON structure overhead (~800 tokens) + reasoning headroom (8000).
+        // Floor: 10000, ceiling: 18000.
+        const estimatedContentTokens = Math.ceil(targetWords * 1.5) + 800;
+        const dynamicMaxTokens = Math.min(18000, Math.max(10000, estimatedContentTokens + 8000));
         const apiParams = { 
-          max_completion_tokens: 18000
+          max_completion_tokens: dynamicMaxTokens
         };
 
         // Call OpenAI API with system + user messages
@@ -1876,6 +1886,25 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
         } else if (enableLightHumanEdit && hasNewFormat) {
           console.log('[articles-api] Light human edit skipped for new format (using humanizeOnWrite instead)');
         }
+
+        // Post-generation word count validation
+        const plainTextForCount = cleanedArticleBodyHtml
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&[a-z]+;/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const actualWordCount = plainTextForCount.split(/\s+/).filter(Boolean).length;
+        const wordCountDeviation = targetWords > 0 ? ((actualWordCount - targetWords) / targetWords * 100).toFixed(1) : "N/A";
+        console.log(`[wordcount-check] Topic: "${topic.title}" | Target: ${targetWords} | Actual: ${actualWordCount} | Deviation: ${wordCountDeviation}% | Range: ${wordCountMinSys}-${wordCountMaxSys}`);
+        if (actualWordCount > wordCountMaxSys) {
+          console.warn(`[wordcount-check] OVER LIMIT by ${actualWordCount - wordCountMaxSys} words (${wordCountDeviation}% deviation)`);
+        } else if (actualWordCount < wordCountMinSys) {
+          console.warn(`[wordcount-check] UNDER LIMIT by ${wordCountMinSys - actualWordCount} words (${wordCountDeviation}% deviation)`);
+        }
+        // #region agent log
+        writeDebugLine({location:'articles/route.ts:wordcount-post',message:'wordCount post-generation check',data:{topicTitle:topic.title,targetWords,actualWordCount,deviation:wordCountDeviation,min:wordCountMinSys,max:wordCountMaxSys,dynamicMaxTokens,isWithinRange:actualWordCount>=wordCountMinSys&&actualWordCount<=wordCountMaxSys},timestamp:Date.now(),sessionId:'7bb5e0',runId:'wordcount-audit',hypothesisId:'H-postgen'});
+        // #endregion
 
         const articleResponse = {
           topicTitle: topic.title,

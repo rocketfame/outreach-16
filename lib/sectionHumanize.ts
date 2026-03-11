@@ -72,7 +72,38 @@ const cleanHumanizedText = (text: string): string => {
     /\[note:[^\]]*\]/gi,
   ];
 
+  // CRITICAL: Strip humanizer instructions that leaked from our XML prompt
+  // Undetectable sometimes echoes the full prompt back; remove all instruction text
+  const humanizerInstructionPatterns = [
+    /<task>[\s\S]*?<\/task>/gi,
+    /<context>[\s\S]*?<\/context>/gi,
+    /Rewrite the text inside\s*(<rewrite>)?\s*tags\.?\s*Use\s*(<context>)?\s*only as stylistic reference[^.\n]*/gi,
+    /do not rewrite it,?\s*do not include it in your response\.?/gi,
+    /Respond with only the rewritten text\.?\s*No explanations\.?\s*No tags\.?\s*No preamble\.?/gi,
+    /Never include XML tags,?\s*instructions,?\s*or meta-commentary in your response\.?/gi,
+    /Output only the rewritten paragraph text\.?/gi,
+    /Use\s+<context>\s+only as stylistic reference[^.\n]*/gi,
+    /Respond with only the rewritten text[^.\n]*/gi,
+    /No explanations\.?\s*No tags\.?\s*No preamble\.?/gi,
+    /Never include XML tags[^.\n]*/gi,
+  ];
+
   let cleaned = text;
+  for (const pattern of humanizerInstructionPatterns) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+
+  // Remove lines that are purely instruction-like (catch variations)
+  cleaned = cleaned
+    .split("\n")
+    .filter(
+      (line) =>
+        !/^\s*(Rewrite the text|Use\s+<context>|do not rewrite|do not include|Respond with only|No explanations|No tags|No preamble|Never include XML|Output only the rewritten)\s/i.test(
+          line.trim()
+        )
+    )
+    .join("\n");
+
   for (const pattern of metaPatterns) {
     cleaned = cleaned.replace(pattern, "");
   }
@@ -153,31 +184,19 @@ export async function humanizeSectionText(
     return { humanizedText: text, wordsUsed: 0 };
   }
 
-  const OUTPUT_INSTRUCTION =
-    "Never include XML tags, instructions, or meta-commentary in your response. Output only the rewritten paragraph text.";
-
+  // Context format: NO imperative instructions (Undetectable humanizes everything).
+  // Delimiter between context and current block; we extract the part after it.
+  const DELIMS = [" ¶ ", " § ", " ››› ", " ||| "];
   function buildContentWithContext(blockText: string): string {
     if (!previousBlockText) return blockText;
-    return `<task>Rewrite the text inside <rewrite> tags. Use <context> only as stylistic reference — do not rewrite it, do not include it in your response.</task>
-
-<context>${previousBlockText}</context>
-
-<rewrite>${blockText}</rewrite>
-
-Respond with only the rewritten text. No explanations. No tags. No preamble.
-
-${OUTPUT_INSTRUCTION}`;
+    return `${previousBlockText}${DELIMS[0]}${blockText}`;
   }
-
   function extractRewrittenPart(responseText: string): string {
-    // If model returned content inside <rewrite> tags, extract it
-    const rewriteMatch = responseText.match(/<rewrite>([\s\S]*?)<\/rewrite>/i);
-    if (rewriteMatch) {
-      return rewriteMatch[1].trim();
+    for (const d of DELIMS) {
+      const idx = responseText.indexOf(d);
+      if (idx >= 0) return responseText.slice(idx + d.length).trim();
     }
-    // Strip any XML tags that might have leaked into output
-    let cleaned = responseText.replace(/<\/?[a-z][^>]*>/gi, "").trim();
-    return cleaned || responseText;
+    return responseText;
   }
 
   try {
@@ -191,12 +210,8 @@ ${OUTPUT_INSTRUCTION}`;
 
       for (let i = 0; i < chunks.length; i++) {
         const withContext = i === 0 && previousBlockText;
-        const dataToSend =
-          withContext && buildContentWithContext(chunks[i]).length <= 10000
-            ? buildContentWithContext(chunks[i])
-            : chunks[i];
+        const dataToSend = withContext ? buildContentWithContext(chunks[i]) : chunks[i];
         const protectedData = protectPlaceholders(dataToSend);
-
         const result = await humanizer.humanize(protectedData, { model, style, mode });
         let rewrittenPart = withContext ? extractRewrittenPart(result.text) : result.text;
         rewrittenPart = restorePlaceholders(rewrittenPart);
@@ -214,7 +229,6 @@ ${OUTPUT_INSTRUCTION}`;
     const dataToSend = buildContentWithContext(text);
     const protectedData = protectPlaceholders(dataToSend);
     const result = await humanizer.humanize(protectedData, { model, style, mode });
-
     let humanizedText = previousBlockText ? extractRewrittenPart(result.text) : result.text;
     humanizedText = restorePlaceholders(humanizedText);
     humanizedText = cleanHumanizedText(humanizedText);
