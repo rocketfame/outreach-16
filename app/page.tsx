@@ -1381,6 +1381,8 @@ export default function Home() {
           metaDescription: string;
           fullArticleText: string;
           articleBodyHtml?: string;
+          humanizedOnWrite?: boolean;
+          humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
         }> };
 
         if (data.articles.length > 0) {
@@ -1638,6 +1640,8 @@ export default function Home() {
         fullArticleText: string;
         articleBodyHtml?: string;
         topicDisplayTitle?: string;
+        humanizedOnWrite?: boolean;
+        humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
       }> };
 
       if (data.articles.length > 0) {
@@ -2072,6 +2076,8 @@ export default function Home() {
         fullArticleText: string;
         articleBodyHtml?: string;
         topicDisplayTitle?: string;
+        humanizedOnWrite?: boolean;
+        humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
       }> };
 
       // #region agent log
@@ -2506,6 +2512,8 @@ export default function Home() {
         metaDescription: string;
         fullArticleText: string;
         articleBodyHtml?: string;
+        humanizedOnWrite?: boolean;
+        humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
       }> };
       try {
         data = responseText ? (JSON.parse(responseText) as typeof data) : {};
