@@ -2443,6 +2443,47 @@ body {
   font-weight: 500;
 }
 
+.article-humanized-toggle {
+  border: none;
+  background: inherit;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.2rem 0.6rem;
+}
+
+.article-report-toggle-icon {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.humanization-report-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.humanization-report-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.2rem 0;
+}
+
+.humanization-report-row span:first-child {
+  color: var(--text-muted);
+}
+
+.humanization-report-ratio {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+}
+
 .article-status {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;

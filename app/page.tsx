@@ -137,6 +137,8 @@ export default function Home() {
   
   // Track expanded humanize settings for each topic
   const [expandedHumanizeTopicId, setExpandedHumanizeTopicId] = useState<string | null>(null);
+  // Track expanded humanization report (internal control)
+  const [expandedHumanizationReportId, setExpandedHumanizationReportId] = useState<string | null>(null);
   
   // Track humanization costs (words used for humanization)
   // AIHumanize pricing: 50,000 words = $25, so $0.0005 per word
@@ -6286,8 +6288,10 @@ export default function Home() {
                                       <>
                                         <div className="article-metric-divider"></div>
                                         <div className="article-metric-item">
-                                          <span
-                                            className="article-humanized-badge-small"
+                                          <button
+                                            type="button"
+                                            className="article-humanized-badge-small article-humanized-toggle"
+                                            onClick={() => setExpandedHumanizationReportId(expandedHumanizationReportId === topicId ? null : topicId)}
                                             title={article.humanizationReport
                                               ? `Humanized ${Math.round((article.humanizationReport.humanizationRatio || 0) * 100)}% of article (${article.humanizationReport.blocksActuallyHumanized}/${article.humanizationReport.blocksProcessed} blocks, ${article.humanizationReport.totalWordsUsed} words)`
                                               : "This article was humanized during generation"}
@@ -6296,10 +6300,46 @@ export default function Home() {
                                             {article.humanizationReport?.humanizationRatio != null && (
                                               <span className="article-humanized-ratio"> {Math.round(article.humanizationReport.humanizationRatio * 100)}%</span>
                                             )}
-                                          </span>
+                                            {article.humanizationReport && (
+                                              <span className="article-report-toggle-icon"> {expandedHumanizationReportId === topicId ? "▲" : "▼"}</span>
+                                            )}
+                                          </button>
                                         </div>
                                       </>
                                     )}
+                                  </div>
+                                )}
+                                {/* Humanization report (internal control) */}
+                                {article.humanizedOnWrite && article.humanizationReport && expandedHumanizationReportId === topicId && (
+                                  <div className="humanization-report-panel">
+                                    <div className="humanization-report-row">
+                                      <span>Blocks total:</span>
+                                      <span>{article.humanizationReport.blocksTotal}</span>
+                                    </div>
+                                    <div className="humanization-report-row">
+                                      <span>Blocks processed:</span>
+                                      <span>{article.humanizationReport.blocksProcessed}</span>
+                                    </div>
+                                    <div className="humanization-report-row">
+                                      <span>Blocks actually humanized:</span>
+                                      <span>{article.humanizationReport.blocksActuallyHumanized}</span>
+                                    </div>
+                                    <div className="humanization-report-row">
+                                      <span>Blocks skipped:</span>
+                                      <span>{article.humanizationReport.blocksSkipped}</span>
+                                    </div>
+                                    <div className="humanization-report-row">
+                                      <span>Words humanized:</span>
+                                      <span>{article.humanizationReport.totalWordsUsed}</span>
+                                    </div>
+                                    <div className="humanization-report-row">
+                                      <span>Total words in article:</span>
+                                      <span>{article.humanizationReport.totalWordsInArticle}</span>
+                                    </div>
+                                    <div className="humanization-report-row humanization-report-ratio">
+                                      <span>Humanization ratio:</span>
+                                      <span>{Math.round((article.humanizationReport.humanizationRatio || 0) * 100)}%</span>
+                                    </div>
                                   </div>
                                 )}
                                 
