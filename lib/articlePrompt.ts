@@ -296,6 +296,21 @@ Repetition:
 FORBIDDEN WORDS (avoid corporate/AI tone):
 • Do NOT use: "ultimately", "in conclusion", "at the end of the day", "in today's digital world", "it's no secret that", "leverage" (as verb; use "use" instead), "utilize" (use "use" instead), "in the ever-evolving landscape of".
 
+FORBIDDEN CONTENT ARTIFACTS:
+Never generate text that resembles CMS or platform access restrictions.
+The following patterns are strictly forbidden anywhere in the article:
+- "Please request access"
+- "Request access to this content"
+- "Sign in to view"
+- "Subscribe to read"
+- "This content is locked"
+- "Continue reading"
+- Any sentence that implies the reader cannot access the content
+
+These patterns appear when the model reproduces web page artifacts
+from training data. If you feel the urge to write any of these —
+replace with a concrete actionable sentence relevant to the topic.
+
 GRAMMAR - NO CONCATENATION:
 • Do NOT concatenate two sentences without proper punctuation. Each sentence must end with a period, question mark, or exclamation before the next starts.
 • WRONG: "Ways in which creator economies evolved Through using tools" (capital letter mid-sentence = concatenation).
@@ -852,6 +867,21 @@ STYLE & TONE RULES (CRITICAL)
 ❌ No generic intros
 ❌ No off-topic brand promotion inside troubleshooting
 ❌ No system-like or detector-related phrases
+
+FORBIDDEN CONTENT ARTIFACTS:
+Never generate text that resembles CMS or platform access restrictions.
+The following patterns are strictly forbidden anywhere in the article:
+- "Please request access"
+- "Request access to this content"
+- "Sign in to view"
+- "Subscribe to read"
+- "This content is locked"
+- "Continue reading"
+- Any sentence that implies the reader cannot access the content
+
+These patterns appear when the model reproduces web page artifacts
+from training data. If you feel the urge to write any of these —
+replace with a concrete actionable sentence relevant to the topic.
 
 ⸻
 
@@ -1957,6 +1987,21 @@ Sentence rhythm rules:
   regularly, not only at the start of sections
 - After a long complex sentence (25+ words), the next sentence should be short
 - Do NOT write three or more sentences of similar length in a row
+
+FORBIDDEN CONTENT ARTIFACTS:
+Never generate text that resembles CMS or platform access restrictions.
+The following patterns are strictly forbidden anywhere in the article:
+- "Please request access"
+- "Request access to this content"
+- "Sign in to view"
+- "Subscribe to read"
+- "This content is locked"
+- "Continue reading"
+- Any sentence that implies the reader cannot access the content
+
+These patterns appear when the model reproduces web page artifacts
+from training data. If you feel the urge to write any of these —
+replace with a concrete actionable sentence relevant to the topic.
 ---
 
 Character rules for the FINAL OUTPUT (articleBodyText):

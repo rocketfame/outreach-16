@@ -153,25 +153,31 @@ export async function humanizeSectionText(
     return { humanizedText: text, wordsUsed: 0 };
   }
 
-  const contextPrefix = previousBlockText
-    ? `Previous paragraph for context: ${previousBlockText}\n\nRewrite only the following:\n`
-    : "";
+  const OUTPUT_INSTRUCTION =
+    "Never include XML tags, instructions, or meta-commentary in your response. Output only the rewritten paragraph text.";
+
+  function buildContentWithContext(blockText: string): string {
+    if (!previousBlockText) return blockText;
+    return `<task>Rewrite the text inside <rewrite> tags. Use <context> only as stylistic reference — do not rewrite it, do not include it in your response.</task>
+
+<context>${previousBlockText}</context>
+
+<rewrite>${blockText}</rewrite>
+
+Respond with only the rewritten text. No explanations. No tags. No preamble.
+
+${OUTPUT_INSTRUCTION}`;
+  }
 
   function extractRewrittenPart(responseText: string): string {
-    const ctxMarker = "[CONTEXT ONLY - DO NOT REWRITE]:";
-    const rewriteMarker = "[REWRITE THIS PART]:";
-
-    if (responseText.includes(ctxMarker)) {
-      const rewritePos = responseText.indexOf(rewriteMarker);
-      if (rewritePos >= 0) {
-        return responseText.slice(rewritePos + rewriteMarker.length).trim();
-      }
-      const lastCtxPos = responseText.lastIndexOf(ctxMarker);
-      const afterCtx = responseText.slice(lastCtxPos + ctxMarker.length);
-      const newlinePos = afterCtx.indexOf("\n");
-      return (newlinePos >= 0 ? afterCtx.slice(newlinePos + 1) : afterCtx).trim();
+    // If model returned content inside <rewrite> tags, extract it
+    const rewriteMatch = responseText.match(/<rewrite>([\s\S]*?)<\/rewrite>/i);
+    if (rewriteMatch) {
+      return rewriteMatch[1].trim();
     }
-    return responseText;
+    // Strip any XML tags that might have leaked into output
+    let cleaned = responseText.replace(/<\/?[a-z][^>]*>/gi, "").trim();
+    return cleaned || responseText;
   }
 
   try {
@@ -184,13 +190,15 @@ export async function humanizeSectionText(
       const humanizedChunks: string[] = [];
 
       for (let i = 0; i < chunks.length; i++) {
-        const chunkFitsWithContext = contextPrefix && contextPrefix.length + chunks[i].length <= 10000;
-        const dataToSend = i === 0 && chunkFitsWithContext ? contextPrefix + chunks[i] : chunks[i];
+        const withContext = i === 0 && previousBlockText;
+        const dataToSend =
+          withContext && buildContentWithContext(chunks[i]).length <= 10000
+            ? buildContentWithContext(chunks[i])
+            : chunks[i];
         const protectedData = protectPlaceholders(dataToSend);
 
         const result = await humanizer.humanize(protectedData, { model, style, mode });
-        let rewrittenPart =
-          i === 0 && chunkFitsWithContext ? extractRewrittenPart(result.text) : result.text;
+        let rewrittenPart = withContext ? extractRewrittenPart(result.text) : result.text;
         rewrittenPart = restorePlaceholders(rewrittenPart);
         rewrittenPart = cleanHumanizedText(rewrittenPart);
         humanizedChunks.push(rewrittenPart);
@@ -203,11 +211,11 @@ export async function humanizeSectionText(
       };
     }
 
-    const dataToSend = contextPrefix + text;
+    const dataToSend = buildContentWithContext(text);
     const protectedData = protectPlaceholders(dataToSend);
     const result = await humanizer.humanize(protectedData, { model, style, mode });
 
-    let humanizedText = extractRewrittenPart(result.text);
+    let humanizedText = previousBlockText ? extractRewrittenPart(result.text) : result.text;
     humanizedText = restorePlaceholders(humanizedText);
     humanizedText = cleanHumanizedText(humanizedText);
 

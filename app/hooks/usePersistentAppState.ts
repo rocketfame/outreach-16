@@ -53,6 +53,16 @@ export type GeneratedArticle = {
   editHistory?: EditHistoryEntry[]; // History of edits made to this article
   status: "ready" | "generating" | "error";
   humanizedOnWrite?: boolean; // Flag indicating if article was humanized during generation
+  humanizationReport?: {
+    enabled: boolean;
+    blocksTotal: number;
+    blocksProcessed: number;
+    blocksActuallyHumanized: number;
+    blocksSkipped: number;
+    totalWordsUsed: number;
+    totalWordsInArticle: number;
+    humanizationRatio: number;
+  };
   humanizeSettingsUsed?: { // Settings used when generating this article (for regeneration)
     humanizeOnWrite: boolean;
     model: number; // 0: Quality, 1: Balance, 2: Enhanced

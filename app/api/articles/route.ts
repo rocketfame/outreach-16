@@ -143,6 +143,19 @@ export interface ArticleRequest {
   writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
 }
 
+/** Internal control: humanization verification report */
+export interface HumanizationReport {
+  enabled: boolean;
+  blocksTotal: number;
+  blocksProcessed: number; // Blocks sent to humanizer
+  blocksActuallyHumanized: number; // Blocks where wordsUsed > 0
+  blocksSkipped: number;
+  totalWordsUsed: number;
+  totalWordsInArticle: number;
+  humanizationRatio: number; // 0-1, share of article that was humanized
+  skippedReasons?: { shortParagraphs: number; shortListItems: number; shortTableCells: number };
+}
+
 export interface ArticleResponse {
   topicTitle: string;
   titleTag: string;
@@ -150,6 +163,7 @@ export interface ArticleResponse {
   fullArticleText: string;
   articleBodyHtml?: string; // New field for HTML-formatted body
   humanizedOnWrite?: boolean; // Flag indicating if article was humanized during generation
+  humanizationReport?: HumanizationReport; // Internal control: verify humanizer ran
 }
 
 export async function POST(req: Request) {
@@ -939,6 +953,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
         
         let articleStructure: ArticleStructure | null = null;
         let cleanedArticleBodyHtml = "";
+        let humanizationReportForResponse: HumanizationReport | undefined;
         
         // Convert trustedSources to TrustSourceSpec format for article structure
         // CRITICAL: Trim anchor text to 1-3 words (as per prompt rules)
@@ -1222,6 +1237,19 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
             const humanizeStyle = body.humanizeSettings?.style; // Optional: Writing style
             const humanizeMode = body.humanizeSettings?.mode; // Optional: Basic or Autopilot
 
+            // Internal control: humanization verification
+            const humanizationReport: HumanizationReport = {
+              enabled: true,
+              blocksTotal: articleStructure.blocks.length,
+              blocksProcessed: 0,
+              blocksActuallyHumanized: 0,
+              blocksSkipped: 0,
+              totalWordsUsed: 0,
+              totalWordsInArticle: 0,
+              humanizationRatio: 0,
+              skippedReasons: { shortParagraphs: 0, shortListItems: 0, shortTableCells: 0 },
+            };
+
             // #region agent log
             const humanizeConfigLog = {
               location: 'articles/route.ts:660',
@@ -1260,11 +1288,16 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       let listWordsUsed = 0;
                       const humanizedItems = await Promise.all(
                         (listBlock.items || []).map(async (item: any) => {
-                          if (!item?.text || item.text.length < 100) return item;
+                          if (!item?.text || item.text.length < 100) {
+                            if (item?.text?.length) humanizationReport.skippedReasons!.shortListItems++;
+                            return item;
+                          }
+                          humanizationReport.blocksProcessed++;
                           try {
                             const originalItem = item.text;
                             const cleanedText = cleanText(item.text);
                             const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                            if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                             listWordsUsed += result.wordsUsed;
                             const humanizedText = cleanText(result.humanizedText);
                             if (hasGluedWords(humanizedText) || humanizedText.length < originalItem.length * 0.6) {
@@ -1289,9 +1322,11 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
 
                       let caption = t.caption;
                       if (caption && caption.length >= 100) {
+                        humanizationReport.blocksProcessed++;
                         try {
                           const cleanedCaption = cleanText(caption);
                           const result = await humanizeSectionText(cleanedCaption, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                          if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                           caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
                         } catch {
@@ -1305,10 +1340,15 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                           const cells = Array.isArray(row) ? row : [];
                           const humanizedCells = await Promise.all(
                             cells.map(async (cell) => {
-                              if (!cell || cell.length < 100) return cell;
+                              if (!cell || cell.length < 100) {
+                                if (cell?.length) humanizationReport.skippedReasons!.shortTableCells++;
+                                return cell;
+                              }
+                              humanizationReport.blocksProcessed++;
                               try {
                                 const cleanedCell = cleanText(cell);
                                 const result = await humanizeSectionText(cleanedCell, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                                if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                                 tableWordsUsed += result.wordsUsed;
                                 return cleanText(result.humanizedText);
                               } catch {
@@ -1335,9 +1375,11 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                         humanizedBlocks.push(block);
                         continue;
                       }
+                      humanizationReport.blocksProcessed++;
                       try {
                         const cleanedText = cleanText(block.text);
                         const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                        if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                         totalHumanizeWordsUsed += result.wordsUsed;
                         previousBlockText = block.text;
                         humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
@@ -1348,14 +1390,17 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       continue;
                     }
 
-                    // Paragraphs: humanize if long enough (pass previousBlockText for context)
-                    if (!block.text || block.text.length < 60) {
+                    // Paragraphs: humanize if long enough (>=100 chars to match sectionHumanize; pass previousBlockText for context)
+                    if (!block.text || block.text.length < 100) {
+                      if (block.text && block.text.length >= 60) humanizationReport.skippedReasons!.shortParagraphs++;
                       humanizedBlocks.push(block);
                       continue;
                     }
+                    humanizationReport.blocksProcessed++;
                     try {
                       const cleanedText = cleanText(block.text);
                       const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                      if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                       totalHumanizeWordsUsed += result.wordsUsed;
                       previousBlockText = block.text;
                       humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
@@ -1388,6 +1433,25 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
 
                 articleStructure.blocks = humanizedBlocks;
                 articleStructure.humanizedOnWrite = anyHumanized; // Only mark as humanized if at least one block was changed
+
+                // Finalize humanization report (internal control)
+                humanizationReport.totalWordsUsed = totalHumanizeWordsUsed;
+                humanizationReport.blocksSkipped =
+                  humanizationReport.skippedReasons!.shortParagraphs +
+                  humanizationReport.skippedReasons!.shortListItems +
+                  humanizationReport.skippedReasons!.shortTableCells;
+                const totalWordsInArticle = humanizedBlocks
+                  .flatMap((b) => {
+                    if (b.text) return b.text.split(/\s+/).filter(Boolean);
+                    if ((b as any).items) return (b as any).items.flatMap((i: any) => (i?.text || i || "").split(/\s+/).filter(Boolean));
+                    if ((b as any).rows) return (b as any).rows.flat().flatMap((c: string) => (c || "").split(/\s+/).filter(Boolean));
+                    return [];
+                  })
+                  .length;
+                humanizationReport.totalWordsInArticle = totalWordsInArticle;
+                humanizationReport.humanizationRatio =
+                  totalWordsInArticle > 0 ? totalHumanizeWordsUsed / totalWordsInArticle : 0;
+                humanizationReportForResponse = humanizationReport;
 
                 // #region agent log
                 const humanizeResultLog = {
@@ -1462,6 +1526,17 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                 console.error('[articles-api] Humanization on write failed:', humanizeError);
               }
             } else {
+              humanizationReportForResponse = {
+                enabled: true,
+                blocksTotal: articleStructure.blocks.length,
+                blocksProcessed: 0,
+                blocksActuallyHumanized: 0,
+                blocksSkipped: 0,
+                totalWordsUsed: 0,
+                totalWordsInArticle: 0,
+                humanizationRatio: 0,
+                skippedReasons: { shortParagraphs: 0, shortListItems: 0, shortTableCells: 0 },
+              };
               // #region agent log
               const humanizeConfigErrorLog = {
                 location: 'articles/route.ts:805',
@@ -1480,6 +1555,16 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
               console.warn('[articles-api] Humanization on write requested but UNDETECTABLE_HUMANIZER_API_KEY not configured');
             }
           } else {
+            humanizationReportForResponse = {
+              enabled: false,
+              blocksTotal: articleStructure?.blocks?.length ?? 0,
+              blocksProcessed: 0,
+              blocksActuallyHumanized: 0,
+              blocksSkipped: 0,
+              totalWordsUsed: 0,
+              totalWordsInArticle: 0,
+              humanizationRatio: 0,
+            };
             // #region agent log
             const humanizeDisabledLog = {
               location: 'articles/route.ts:650',
@@ -1798,6 +1883,8 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
           metaDescription: cleanedMetaDescription,
           fullArticleText: cleanedArticleBodyHtml, // Keep for backward compatibility
           articleBodyHtml: cleanedArticleBodyHtml,
+          humanizedOnWrite: articleStructure?.humanizedOnWrite,
+          humanizationReport: humanizationReportForResponse,
         };
         
         // #region agent log

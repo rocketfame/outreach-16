@@ -1393,6 +1393,8 @@ export default function Home() {
             metaDescription: cleanText(newArticle.metaDescription || ''),
             fullArticleText: cleanText(newArticle.fullArticleText || ''),
             articleBodyHtml: cleanText(newArticle.articleBodyHtml || newArticle.fullArticleText || ''),
+            humanizedOnWrite: newArticle.humanizedOnWrite,
+            humanizationReport: newArticle.humanizationReport,
             humanizeSettingsUsed: savedHumanizeSettings ?? {
               humanizeOnWrite: regenerateHumanizeOnWrite,
               model: regenerateHumanizeSettings.model,
@@ -1650,6 +1652,8 @@ export default function Home() {
           metaDescription: cleanText(newArticle.metaDescription || ''),
           fullArticleText: cleanText(newArticle.fullArticleText || ''),
           articleBodyHtml: cleanText(newArticle.articleBodyHtml || newArticle.fullArticleText || ''),
+          humanizedOnWrite: newArticle.humanizedOnWrite,
+          humanizationReport: newArticle.humanizationReport,
           // CRITICAL: Preserve humanization settings used for regeneration
           // This allows future regenerations to use the same settings
           humanizeSettingsUsed: savedHumanizeSettings ?? {
@@ -2087,6 +2091,8 @@ export default function Home() {
           metaDescription: cleanText(article.metaDescription || ''),
           fullArticleText: cleanText(article.fullArticleText || ''),
           articleBodyHtml: cleanText(article.articleBodyHtml || article.fullArticleText || ''),
+          humanizedOnWrite: article.humanizedOnWrite,
+          humanizationReport: article.humanizationReport,
           topicTitle: topics[index]?.id || article.topicTitle,
           topicDisplayTitle: topics[index]?.workingTitle || article.topicDisplayTitle,
           status: "ready" as const,
@@ -2556,6 +2562,8 @@ export default function Home() {
           metaDescription: cleanText(firstArticle?.metaDescription || ''),
           fullArticleText: cleanText(firstArticle?.fullArticleText || ''),
           articleBodyHtml: cleanText(firstArticle?.articleBodyHtml || firstArticle?.fullArticleText || ''),
+          humanizedOnWrite: firstArticle?.humanizedOnWrite,
+          humanizationReport: firstArticle?.humanizationReport,
           // CRITICAL: Save humanization settings used for this article (Direct Article: only Human Mode)
           humanizeSettingsUsed: {
             humanizeOnWrite: effectiveHumanizeForRequest,
@@ -6270,7 +6278,17 @@ export default function Home() {
                                       <>
                                         <div className="article-metric-divider"></div>
                                         <div className="article-metric-item">
-                                          <span className="article-humanized-badge-small">Humanized</span>
+                                          <span
+                                            className="article-humanized-badge-small"
+                                            title={article.humanizationReport
+                                              ? `Humanized ${Math.round((article.humanizationReport.humanizationRatio || 0) * 100)}% of article (${article.humanizationReport.blocksActuallyHumanized}/${article.humanizationReport.blocksProcessed} blocks, ${article.humanizationReport.totalWordsUsed} words)`
+                                              : "This article was humanized during generation"}
+                                          >
+                                            Humanized
+                                            {article.humanizationReport?.humanizationRatio != null && (
+                                              <span className="article-humanized-ratio"> {Math.round(article.humanizationReport.humanizationRatio * 100)}%</span>
+                                            )}
+                                          </span>
                                         </div>
                                       </>
                                     )}
@@ -6609,7 +6627,12 @@ export default function Home() {
                                 </button>
                                 {/* Show badge if article was humanized on write */}
                                 {article.humanizedOnWrite && (
-                                  <span className="humanized-badge" title="This article was humanized during generation">
+                                  <span
+                                    className="humanized-badge"
+                                    title={article.humanizationReport
+                                      ? `Humanized ${Math.round((article.humanizationReport.humanizationRatio || 0) * 100)}% (${article.humanizationReport.blocksActuallyHumanized} blocks, ${article.humanizationReport.totalWordsUsed} words)`
+                                      : "This article was humanized during generation"}
+                                  >
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                       <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                       <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -6914,7 +6937,12 @@ export default function Home() {
                                         </button>
                                         {/* Show badge if article was humanized on write */}
                                         {article.humanizedOnWrite && (
-                                          <span className="humanized-badge" title="This article was humanized during generation">
+                                          <span
+                                            className="humanized-badge"
+                                            title={article.humanizationReport
+                                              ? `Humanized ${Math.round((article.humanizationReport.humanizationRatio || 0) * 100)}% (${article.humanizationReport.blocksActuallyHumanized} blocks, ${article.humanizationReport.totalWordsUsed} words)`
+                                              : "This article was humanized during generation"}
+                                          >
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                               <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                               <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

@@ -2438,6 +2438,11 @@ body {
   white-space: nowrap;
 }
 
+.article-humanized-ratio {
+  opacity: 0.9;
+  font-weight: 500;
+}
+
 .article-status {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
