@@ -1,172 +1,7 @@
 // lib/sectionHumanize.ts
-// Section-level humanization using AIHumanize.io API
+// Section-level humanization using Undetectable.AI Humanization API v2
 
-export interface HumanizeTextRequest {
-  text: string;
-  model?: number; // 0: quality, 1: balance (default), 2: enhanced
-  style?: string; // General, Blog, Formal, Informal, Academic, Expand, Simplify
-  mode?: "Basic" | "Autopilot"; // Basic or Autopilot
-  registeredEmail: string;
-}
-
-export interface HumanizeTextResponse {
-  text: string;
-  wordsUsed: number;
-  remainingWords: number;
-}
-
-/**
- * Humanizes plain text using AIHumanize.io API
- * Text must be between 100 and 10000 characters
- */
-export async function humanizeText(request: HumanizeTextRequest): Promise<HumanizeTextResponse> {
-  const { text, model = 1, style, mode, registeredEmail } = request;
-
-  if (text.length < 100 || text.length > 10000) {
-    throw new Error("Text must be between 100 and 10000 characters for humanization.");
-  }
-
-  const apiKey = process.env.AIHUMANIZE_API_KEY;
-  if (!apiKey) {
-    throw new Error("AIHumanize API key is not configured");
-  }
-
-  // Validate that email is not empty
-  if (!registeredEmail || registeredEmail.trim().length === 0) {
-    throw new Error("Registered email is required for humanization");
-  }
-
-  // Build request body with optional style and mode parameters
-  // CRITICAL: According to AIHumanize API documentation, model must be a STRING ("0", "1", or "2"), not a number!
-  // API expects: { model: "0" | "1" | "2", mail: string, data: string }
-  // This was working this morning before our updates - the issue is that we changed model to number instead of string!
-  
-  // Validate and convert model to string
-  const modelNum = Number(model);
-  let modelString: string;
-  if (isNaN(modelNum) || modelNum < 0 || modelNum > 2) {
-    console.warn(`[humanizeText] Invalid model value: ${model}, defaulting to "1" (Balance)`);
-    modelString = "1"; // Default to Balance model as string
-  } else {
-    modelString = String(modelNum); // Convert to string: "0", "1", or "2"
-  }
-  
-  // Build request body according to AIHumanize API documentation
-  // API only supports: model (string), mail (string), data (string)
-  // NOTE: style and mode parameters are NOT supported by the API according to official documentation
-  // These were added in our updates but are not part of the official API spec
-  const requestBody: any = {
-    model: modelString, // CRITICAL: Must be string "0", "1", or "2", not number!
-    mail: String(registeredEmail).trim(),
-    data: String(text)
-  };
-
-  // NOTE: According to official AIHumanize API documentation, only model, mail, and data are supported
-  // style and mode parameters are NOT part of the official API and may cause "Missing required parameters" errors
-  // Removed style and mode to match the working version from this morning
-
-  // Log request details for debugging (without sensitive data)
-  console.log("[humanizeText] Calling AIHumanize API", {
-    hasEmail: !!registeredEmail,
-    emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
-    emailLength: registeredEmail?.length || 0,
-    hasApiKey: !!apiKey,
-    apiKeyLength: apiKey?.length || 0,
-    textLength: text.length,
-    model,
-    style,
-    mode,
-    requestBodyKeys: Object.keys(requestBody),
-    hasModel: 'model' in requestBody,
-    hasMail: 'mail' in requestBody,
-    hasData: 'data' in requestBody,
-  });
-
-  // Log the actual request body structure (without sensitive data)
-  const logRequestBody = {
-    hasModel: 'model' in requestBody,
-    modelValue: requestBody.model,
-    hasMail: 'mail' in requestBody,
-    mailValue: requestBody.mail ? (requestBody.mail.substring(0, 3) + "***") : null,
-    mailLength: requestBody.mail?.length || 0,
-    hasData: 'data' in requestBody,
-    dataLength: requestBody.data?.length || 0,
-    hasStyle: 'style' in requestBody,
-    styleValue: requestBody.style,
-    hasMode: 'mode' in requestBody,
-    modeValue: requestBody.mode,
-    allKeys: Object.keys(requestBody),
-  };
-  console.log("[humanizeText] Request body structure:", logRequestBody);
-
-  const response = await fetch("https://aihumanize.io/api/v1/rewrite", {
-    method: "POST",
-    headers: {
-      "Authorization": apiKey,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(requestBody)
-  });
-
-  const json = await response.json();
-
-  // Log response for debugging
-  console.log("[humanizeText] AIHumanize API response", {
-    code: json.code,
-    msg: json.msg,
-    hasData: !!json.data,
-    wordsUsed: json.words_used,
-    remainingWords: json.remaining_words,
-  });
-
-  if (json.code !== 200) {
-    // Map error codes to user-friendly messages
-    // NOTE: Code 1004 can mean different things - check the actual message
-    let errorMessage: string;
-    
-    // Map error codes according to AIHumanize API documentation
-    const errorMessages: Record<number, string> = {
-      1001: "Missing API key - please check AIHUMANIZE_API_KEY in .env.local",
-      1002: "Rate limit exceeded - try again in a few minutes",
-      1003: "Invalid API Key - please check AIHUMANIZE_API_KEY in .env.local",
-      1004: "Request parameter error - please check that model, mail, and data are correctly formatted",
-      1005: "Text language not supported - humanization works only for English text",
-      1006: "You don't have enough words - please check your AIHumanize account balance",
-      1007: "Server Error - AIHumanize service is temporarily unavailable, try again later",
-      1008: "Wrong email address - please check NEXT_PUBLIC_AIHUMANIZE_EMAIL in .env.local",
-    };
-    
-    errorMessage = errorMessages[json.code] || json.msg || "Humanization failed";
-    
-    // Add more context for parameter errors
-    if (json.code === 1004) {
-      errorMessage += `. Check that model is a string ("0", "1", or "2"), mail is a valid email, and data is between 100-10000 characters.`;
-    }
-    
-    // Log detailed error for debugging
-    console.error("[humanizeText] AIHumanize API error", {
-      code: json.code,
-      message: errorMessage,
-      apiMsg: json.msg,
-      emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
-      emailLength: registeredEmail?.length || 0,
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey?.length || 0,
-      requestBodyKeys: Object.keys(requestBody),
-      requestBodyHasModel: 'model' in requestBody,
-      requestBodyHasMail: 'mail' in requestBody,
-      requestBodyHasData: 'data' in requestBody,
-    });
-    
-    throw new Error(errorMessage);
-  }
-
-  return {
-    text: json.data as string,
-    wordsUsed: json.words_used || 0,
-    remainingWords: json.remaining_words || 0
-  };
-}
+import { getHumanizerService } from "@/lib/humanizerClient";
 
 /**
  * Chunks text for humanization if it exceeds 10000 characters
@@ -185,7 +20,6 @@ export function chunkTextForHumanization(text: string): string[] {
     const trimmed = paragraph.trim();
     if (!trimmed) continue;
 
-    // If adding this paragraph would exceed limit, save current chunk and start new one
     if (currentChunk && (currentChunk.length + trimmed.length + 2) > 10000) {
       chunks.push(currentChunk.trim());
       currentChunk = trimmed;
@@ -203,7 +37,7 @@ export function chunkTextForHumanization(text: string): string[] {
 
 /**
  * Protect [A1], [T1]-[T8] placeholders before humanization.
- * AIHumanize may modify or destroy these; we replace with stable tokens and restore after.
+ * Humanizer may modify these; we replace with stable tokens and restore after.
  */
 function createPlaceholderProtection() {
   const placeholderMap: Record<string, string> = {};
@@ -219,7 +53,8 @@ function createPlaceholderProtection() {
 
   const restorePlaceholders = (text: string): string => {
     return Object.entries(placeholderMap).reduce(
-      (t, [token, original]) => t.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), original),
+      (t, [token, original]) =>
+        t.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), original),
       text
     );
   };
@@ -228,7 +63,6 @@ function createPlaceholderProtection() {
 }
 
 const cleanHumanizedText = (text: string): string => {
-  // Remove humanizer meta-commentary patterns
   const metaPatterns = [
     /please note that this was written by[^.]*\./gi,
     /this (text|content|paragraph|sentence) (has been|was) (rewritten|humanized|paraphrased)[^.]*\./gi,
@@ -243,7 +77,6 @@ const cleanHumanizedText = (text: string): string => {
     cleaned = cleaned.replace(pattern, "");
   }
 
-  // Normalize social media and tech brand names
   const brandNormalizations: [RegExp, string][] = [
     [/\bTik\s*Tok\b/gi, "TikTok"],
     [/\bInsta\s*gram\b/gi, "Instagram"],
@@ -280,30 +113,27 @@ const cleanHumanizedText = (text: string): string => {
     cleaned = cleaned.replace(pattern, replacement);
   }
 
-  // Clean up double spaces left after removal
   cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
-
   return cleaned;
 };
 
 /**
- * Humanizes a single section of plain text using AIHumanize.io.
- * Includes fallback to original text if humanization fails.
+ * Humanizes a single section of plain text using Undetectable.AI Humanization API v2.
+ * On failure: returns original text and logs error (no flow crash).
  * Placeholders [A1], [T1]-[T8] are protected before sending and restored after.
- * @param text The plain text section to humanize.
- * @param model The AIHumanize model to use (0: quality, 1: balance, 2: enhanced).
- * @param registeredEmail The registered email for AIHumanize API.
- * @param frozenPhrases Phrases to protect from alteration (e.g., brand names, anchor text).
- *   Note: Currently not used as AIHumanize API doesn't support frozen phrases directly.
- * @param style Optional writing style (General, Blog, Formal, Informal, Academic, Expand, Simplify).
- * @param mode Optional mode (Basic or Autopilot).
- * @param previousBlockText Optional text of the previous block for context (only the second part is rewritten).
- * @returns The humanized text, or the original text on error.
+ *
+ * @param text Plain text section to humanize
+ * @param model Legacy model: 0=Quality, 1=Balanced, 2=More Human
+ * @param _registeredEmail Deprecated (Undetectable does not use email); kept for API compatibility
+ * @param frozenPhrases Not used by Undetectable; kept for API compatibility
+ * @param style Optional style hint (for logging)
+ * @param mode Optional mode (for logging)
+ * @param previousBlockText Optional previous block for context
  */
 export async function humanizeSectionText(
   text: string,
   model: number,
-  registeredEmail: string,
+  _registeredEmail: string,
   frozenPhrases: string[] = [],
   style?: string,
   mode?: "Basic" | "Autopilot",
@@ -313,14 +143,13 @@ export async function humanizeSectionText(
     return { humanizedText: text, wordsUsed: 0 };
   }
 
-  // If text is too short, skip humanization (API requires 100+ chars)
   if (text.length < 100) {
     return { humanizedText: text, wordsUsed: 0 };
   }
 
-  const apiKey = process.env.AIHUMANIZE_API_KEY;
+  const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY;
   if (!apiKey) {
-    console.error("[humanizeSectionText] AIHumanize API key not configured");
+    console.error("[humanizeSectionText] UNDETECTABLE_HUMANIZER_API_KEY not configured");
     return { humanizedText: text, wordsUsed: 0 };
   }
 
@@ -346,28 +175,22 @@ export async function humanizeSectionText(
   }
 
   try {
-    // Protect [A1], [T1]-[T8] before humanization (reset per block)
     const { protectPlaceholders, restorePlaceholders } = createPlaceholderProtection();
+    const humanizer = getHumanizerService();
 
-    // Use the local humanizeText function (which calls AIHumanize API)
     if (text.length > 10000) {
-      // Chunk the text
       const chunks = chunkTextForHumanization(text);
       let totalWordsUsed = 0;
       const humanizedChunks: string[] = [];
 
       for (let i = 0; i < chunks.length; i++) {
-        const chunkFitsWithContext = contextPrefix && (contextPrefix.length + chunks[i].length) <= 10000;
+        const chunkFitsWithContext = contextPrefix && contextPrefix.length + chunks[i].length <= 10000;
         const dataToSend = i === 0 && chunkFitsWithContext ? contextPrefix + chunks[i] : chunks[i];
         const protectedData = protectPlaceholders(dataToSend);
-        const result = await humanizeText({
-          text: protectedData,
-          model,
-          style,
-          mode,
-          registeredEmail
-        });
-        let rewrittenPart = i === 0 && chunkFitsWithContext ? extractRewrittenPart(result.text) : result.text;
+
+        const result = await humanizer.humanize(protectedData, { model, style, mode });
+        let rewrittenPart =
+          i === 0 && chunkFitsWithContext ? extractRewrittenPart(result.text) : result.text;
         rewrittenPart = restorePlaceholders(rewrittenPart);
         rewrittenPart = cleanHumanizedText(rewrittenPart);
         humanizedChunks.push(rewrittenPart);
@@ -375,32 +198,28 @@ export async function humanizeSectionText(
       }
 
       return {
-        humanizedText: humanizedChunks.join('\n\n'),
-        wordsUsed: totalWordsUsed
-      };
-    } else {
-      const dataToSend = contextPrefix + text;
-      const protectedData = protectPlaceholders(dataToSend);
-      const result = await humanizeText({
-        text: protectedData,
-        model,
-        style,
-        mode,
-        registeredEmail
-      });
-
-      let humanizedText = extractRewrittenPart(result.text);
-      humanizedText = restorePlaceholders(humanizedText);
-      humanizedText = cleanHumanizedText(humanizedText);
-
-      return {
-        humanizedText,
-        wordsUsed: result.wordsUsed
+        humanizedText: humanizedChunks.join("\n\n"),
+        wordsUsed: totalWordsUsed,
       };
     }
+
+    const dataToSend = contextPrefix + text;
+    const protectedData = protectPlaceholders(dataToSend);
+    const result = await humanizer.humanize(protectedData, { model, style, mode });
+
+    let humanizedText = extractRewrittenPart(result.text);
+    humanizedText = restorePlaceholders(humanizedText);
+    humanizedText = cleanHumanizedText(humanizedText);
+
+    return {
+      humanizedText,
+      wordsUsed: result.wordsUsed,
+    };
   } catch (error) {
-    console.error("[humanizeSectionText] Humanization failed for section, falling back to original text:", error);
-    return { humanizedText: text, wordsUsed: 0 }; // Fallback to original text
+    console.error(
+      "[humanizeSectionText] Humanization failed, falling back to original text:",
+      error
+    );
+    return { humanizedText: text, wordsUsed: 0 };
   }
 }
-

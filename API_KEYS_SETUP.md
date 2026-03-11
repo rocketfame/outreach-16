@@ -25,6 +25,10 @@ OPENAI_API_KEY=YOUR_OPENAI_API_KEY_HERE
 # Отримайте ключ на https://tavily.com/
 # Або використайте безкоштовний dev ключ: tvly-dev-...
 TAVILY_API_KEY=YOUR_TAVILY_API_KEY_HERE
+
+# Undetectable.AI Humanizer (опційно, для Human Mode)
+# Отримайте ключ на https://undetectable.ai/ — Humanization API v2
+# UNDETECTABLE_HUMANIZER_API_KEY=your-key-here
 ```
 
 ### 2. Де отримати API ключі?
@@ -45,6 +49,12 @@ TAVILY_API_KEY=YOUR_TAVILY_API_KEY_HERE
 6. Вставте в `.env.local` замість `tvly-ваш-ключ-тут`
 
 **Альтернатива:** Можна використати безкоштовний dev ключ від Tavily (починається з `tvly-dev-`), але він має обмеження.
+
+#### Undetectable.AI Humanizer (опційно):
+Потрібен тільки для Human Mode (humanizeOnWrite). Без нього Human Mode буде недоступний.
+1. Перейдіть на https://undetectable.ai/
+2. Зареєструйтеся та отримайте API ключ (Humanization API v2)
+3. Додайте в `.env.local`: `UNDETECTABLE_HUMANIZER_API_KEY=ваш-ключ`
 
 ### 3. Перезапустіть сервер розробки
 
@@ -72,6 +82,7 @@ TAVILY_API_KEY=YOUR_TAVILY_API_KEY_HERE
 ```bash
 OPENAI_API_KEY=sk-proj-abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
 TAVILY_API_KEY=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
+# UNDETECTABLE_HUMANIZER_API_KEY=...  # опційно для Human Mode
 ```
 
 **НЕ використовуйте ці приклади ключів - вони не працюють!** Вставте свої реальні ключі.

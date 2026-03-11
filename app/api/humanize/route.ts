@@ -1,8 +1,7 @@
 // app/api/humanize/route.ts
 // DEPRECATED: This endpoint is no longer used.
 // Humanization now happens during generation via humanizeOnWrite toggle.
-// This file is kept for backward compatibility but should not be called.
-// Humanize TXT endpoint: Uses AIHumanize.io API to humanize article text while preserving anchors
+// This file is kept for backward compatibility. Uses Undetectable.AI Humanization API v2.
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -11,20 +10,17 @@ import {
   restoreFromHumanization,
   type ProtectedChunk
 } from "@/lib/humanizeProtection";
-import {
-  humanizeText,
-  getHumanizeBalance,
-  chunkTextForHumanization,
-  type HumanizeRequest
-} from "@/lib/aiHumanizeClient";
+import { getHumanizerService } from "@/lib/humanizerClient";
+import { chunkTextForHumanization } from "@/lib/sectionHumanize";
 import { formatHumanizedHtml } from "@/lib/humanizeFormatter";
 
 export interface HumanizeArticleRequest {
   html: string;
   model: number; // 0: quality, 1: balance, 2: enhanced
-  registeredEmail: string;
+  /** @deprecated Undetectable.AI does not use email; kept for API compatibility */
+  registeredEmail?: string;
   frozenPhrases?: string[]; // Optional: brand names, exact anchor texts to preserve
-  style?: string; // Optional: style hint (General, Blog, Formal, Informal, Academic, Expand, Simplify) - for analytics/logging
+  style?: string; // Optional: style hint - for analytics/logging
 }
 
 export interface HumanizeArticleResponse {
@@ -41,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body: HumanizeArticleRequest = await req.json();
-    const { html, model, registeredEmail, frozenPhrases = [] } = body;
+    const { html, model, frozenPhrases = [] } = body;
 
     // Validate inputs
     if (!html || typeof html !== "string" || html.trim().length === 0) {
@@ -66,21 +62,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!registeredEmail || typeof registeredEmail !== "string") {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Registered email is required",
-          userMessage: "Humanize service email is not configured."
-        } as HumanizeArticleResponse,
-        { status: 400 }
-      );
-    }
-
-    // Get API key from environment
-    const apiKey = process.env.AIHUMANIZE_API_KEY;
+    // Undetectable.AI uses API key only (no email)
+    const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY;
     if (!apiKey) {
-      console.error("[humanize-api] AIHumanize API key not configured");
+      console.error("[humanize-api] UNDETECTABLE_HUMANIZER_API_KEY not configured");
       return NextResponse.json(
         {
           ok: false,
@@ -101,7 +86,6 @@ export async function POST(req: NextRequest) {
     // Step 2: Check if chunking is needed
     let humanizedText: string;
     let totalWordsUsed = 0;
-    let remainingWords = 0;
 
     if (textForHumanize.length > 10000) {
       // Need to chunk
@@ -116,15 +100,16 @@ export async function POST(req: NextRequest) {
         console.log(`[humanize-api] Humanizing chunk ${i + 1}/${textChunks.length} (${chunk.length} chars)...`);
 
         try {
-          const result = await humanizeText(apiKey, {
-            text: chunk,
-            model,
-            registeredEmail
-          });
+          // Undetectable requires min 50 chars
+          if (chunk.trim().length < 50) {
+            humanizedChunks.push(chunk);
+            continue;
+          }
+          const humanizer = getHumanizerService();
+          const result = await humanizer.humanize(chunk, { model });
 
           humanizedChunks.push(result.text);
           totalWordsUsed += result.wordsUsed;
-          remainingWords = result.remainingWords; // Last chunk's remaining words
 
           // Small delay between chunks to avoid rate limiting
           if (i < textChunks.length - 1) {
@@ -140,18 +125,14 @@ export async function POST(req: NextRequest) {
     } else {
       // Single request
       console.log("[humanize-api] Humanizing text in single request...");
-      const result = await humanizeText(apiKey, {
-        text: textForHumanize,
-        model,
-        registeredEmail
-      });
+      const humanizer = getHumanizerService();
+      const result = await humanizer.humanize(textForHumanize, { model });
 
       humanizedText = result.text;
       totalWordsUsed = result.wordsUsed;
-      remainingWords = result.remainingWords;
     }
 
-    console.log(`[humanize-api] Humanization complete. Words used: ${totalWordsUsed}, Remaining: ${remainingWords}`);
+    console.log(`[humanize-api] Humanization complete. Words used: ${totalWordsUsed}`);
 
     // Step 3: Restore protected chunks (anchors and phrases) first
     console.log("[humanize-api] Restoring protected chunks (anchors and phrases)...");
@@ -179,7 +160,6 @@ export async function POST(req: NextRequest) {
       ok: true,
       html: formattedHtml,
       wordsUsed: totalWordsUsed,
-      remainingWords
     } as HumanizeArticleResponse);
 
   } catch (error: any) {
@@ -210,39 +190,18 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET endpoint to check balance
+ * GET endpoint - Undetectable.AI does not expose balance API.
+ * Returns configured status for backward compatibility.
  */
-export async function GET(req: NextRequest) {
-  console.log("[humanize-api] GET /api/humanize (balance check)");
+export async function GET() {
+  console.log("[humanize-api] GET /api/humanize (config check)");
 
-  try {
-    const searchParams = req.nextUrl.searchParams;
-    const registeredEmail = searchParams.get("email");
-
-    if (!registeredEmail) {
-      return NextResponse.json(
-        { error: "Email parameter is required" },
-        { status: 400 }
-      );
-    }
-
-    const apiKey = process.env.AIHUMANIZE_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "API key not configured" },
-        { status: 500 }
-      );
-    }
-
-    const balance = await getHumanizeBalance(apiKey, registeredEmail);
-
-    return NextResponse.json({ balance });
-  } catch (error: any) {
-    console.error("[humanize-api] Balance check failed:", error);
-    return NextResponse.json(
-      { error: error.userMessage || error.message || "Failed to check balance" },
-      { status: 500 }
-    );
-  }
+  const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY;
+  return NextResponse.json({
+    configured: !!apiKey,
+    message: apiKey
+      ? "Undetectable.AI humanizer is configured. Balance check is not available."
+      : "UNDETECTABLE_HUMANIZER_API_KEY not configured.",
+  });
 }
 

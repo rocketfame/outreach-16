@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Quick check: Tavily + AIHumanize config and connectivity
+ * Quick check: Tavily + Undetectable.AI Humanizer config and connectivity
  * Run: node scripts/check-apis.mjs
- * Requires: .env.local with TAVILY_API_KEY, AIHUMANIZE_API_KEY, NEXT_PUBLIC_AIHUMANIZE_EMAIL
+ * Requires: .env.local with TAVILY_API_KEY, UNDETECTABLE_HUMANIZER_API_KEY
  */
 
 import { readFileSync } from "fs";
@@ -19,18 +19,16 @@ try {
 } catch (_) {}
 
 const tavilyKey = process.env.TAVILY_API_KEY;
-const humanizeKey = process.env.AIHUMANIZE_API_KEY;
-const humanizeEmail = process.env.NEXT_PUBLIC_AIHUMANIZE_EMAIL;
+const humanizeKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY;
 
 console.log("\n=== API Configuration Check ===\n");
 
 // 1. Env vars
 console.log("1. Environment variables:");
 console.log("   TAVILY_API_KEY:", tavilyKey ? `${tavilyKey.slice(0, 8)}...` : "MISSING");
-console.log("   AIHUMANIZE_API_KEY:", humanizeKey ? `${humanizeKey.slice(0, 8)}...` : "MISSING");
-console.log("   NEXT_PUBLIC_AIHUMANIZE_EMAIL:", humanizeEmail ? `${humanizeEmail.slice(0, 5)}...` : "MISSING");
+console.log("   UNDETECTABLE_HUMANIZER_API_KEY:", humanizeKey ? `${humanizeKey.slice(0, 8)}...` : "MISSING");
 
-if (!tavilyKey || !humanizeKey || !humanizeEmail) {
+if (!tavilyKey || !humanizeKey) {
   console.log("\n❌ Missing required env vars. Add them to .env.local");
   process.exit(1);
 }
@@ -58,27 +56,44 @@ try {
   console.log("   ❌", e.message);
 }
 
-// 3. AIHumanize - rewrite (needs 100+ chars)
-console.log("\n3. AIHumanize API (rewrite):");
-const sampleText = "This is a sample paragraph that needs to be at least one hundred characters long so that the AIHumanize API will accept it for rewriting. We are testing the connection.";
+// 3. Undetectable.AI Humanizer - submit + poll (needs 50+ chars)
+console.log("\n3. Undetectable.AI Humanizer API:");
+const baseUrl = process.env.UNDETECTABLE_HUMANIZER_BASE_URL || "https://humanize.undetectable.ai";
+const sampleText = "This is a sample paragraph that needs to be at least fifty characters long for the Undetectable API to accept it for humanization.";
 try {
-  const humanizeRes = await fetch("https://aihumanize.io/api/v1/rewrite", {
+  const submitRes = await fetch(`${baseUrl}/submit`, {
     method: "POST",
     headers: {
-      "Authorization": humanizeKey,
+      apikey: humanizeKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "1",
-      mail: humanizeEmail,
-      data: sampleText,
+      content: sampleText,
+      readability: "University",
+      purpose: "Article",
+      strength: "Balanced",
+      model: "v11",
     }),
   });
-  const humanizeData = await humanizeRes.json();
-  if (humanizeData.code === 200 && humanizeData.data) {
-    console.log("   ✅ OK — words used:", humanizeData.words_used || 0);
+  const submitJson = await submitRes.json();
+  if (!submitRes.ok || !submitJson?.id) {
+    console.log("   ❌ Submit failed:", submitJson?.error || submitJson?.message || submitRes.statusText);
   } else {
-    console.log("   ❌ Code:", humanizeData.code, "—", humanizeData.msg || humanizeData.message || "Unknown error");
+    const docId = submitJson.id;
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const docRes = await fetch(`${baseUrl}/document`, {
+        method: "POST",
+        headers: { apikey: humanizeKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: docId }),
+      });
+      const docJson = await docRes.json();
+      if (docJson?.output) {
+        console.log("   ✅ OK — humanization complete");
+        break;
+      }
+      if (i === 9) console.log("   ⚠️ Timeout waiting for output (API may still be working)");
+    }
   }
 } catch (e) {
   console.log("   ❌", e.message);

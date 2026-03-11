@@ -97,10 +97,59 @@ export function validateApiKeys(): boolean {
 }
 
 /**
+ * Get Undetectable.AI Humanizer API key
+ * @returns API key for Humanization API v2
+ * @throws Error if key is missing
+ */
+export function getHumanizerApiKey(): string {
+  const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY;
+
+  if (!apiKey) {
+    const error =
+      "Missing UNDETECTABLE_HUMANIZER_API_KEY. Add it to .env.local (see https://help.undetectable.ai/en/article/humanization-api-v2-p28b2n/)";
+    console.error(error);
+    throw new Error(error);
+  }
+
+  return apiKey;
+}
+
+/**
+ * Undetectable.AI Humanizer config (optional overrides via env)
+ */
+export function getHumanizerConfig(): {
+  baseUrl: string;
+  apiKey: string;
+  model: "v2" | "v11" | "v11sr";
+  readability: "High School" | "University" | "Doctorate" | "Journalist" | "Marketing";
+  purpose: "General Writing" | "Essay" | "Article" | "Marketing Material" | "Story" | "Cover Letter" | "Report" | "Business Material" | "Legal Material";
+  strength: "Quality" | "Balanced" | "More Human";
+} {
+  const baseUrl =
+    process.env.UNDETECTABLE_HUMANIZER_BASE_URL || "https://humanize.undetectable.ai";
+  const model = (process.env.UNDETECTABLE_HUMANIZER_MODEL || "v11") as "v2" | "v11" | "v11sr";
+  const readability = (process.env.UNDETECTABLE_HUMANIZER_READABILITY ||
+    "University") as "High School" | "University" | "Doctorate" | "Journalist" | "Marketing";
+  const purpose = (process.env.UNDETECTABLE_HUMANIZER_PURPOSE ||
+    "Article") as "General Writing" | "Essay" | "Article" | "Marketing Material" | "Story" | "Cover Letter" | "Report" | "Business Material" | "Legal Material";
+  const strength = (process.env.UNDETECTABLE_HUMANIZER_STRENGTH ||
+    "Balanced") as "Quality" | "Balanced" | "More Human";
+
+  return {
+    baseUrl,
+    apiKey: getHumanizerApiKey(),
+    model,
+    readability,
+    purpose,
+    strength,
+  };
+}
+
+/**
  * Feature flag for Writing Mode (SEO Mode + Human Mode)
  * When false: Only SEO Mode is available, system behaves exactly as current production
  * When true: UI shows SEO/Human toggle and backend supports Human Mode
- * 
+ *
  * Now enabled by default - Human Mode is always available
  */
 export const HUMAN_MODE_EXPERIMENT = true;

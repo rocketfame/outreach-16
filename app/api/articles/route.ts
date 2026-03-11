@@ -1214,10 +1214,9 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
           // #endregion
 
           if (enableHumanizeOnWrite) {
-            const registeredEmail = process.env.NEXT_PUBLIC_AIHUMANIZE_EMAIL || "";
-            const apiKey = process.env.AIHUMANIZE_API_KEY || "";
+            const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY || "";
             const frozenPlaceholders = ["[A1]", "[T1]", "[T2]", "[T3]"];
-            
+
             // Get humanize settings from request (default: Balance model)
             const humanizeModel = body.humanizeSettings?.model ?? 1; // Default: Balance (1)
             const humanizeStyle = body.humanizeSettings?.style; // Optional: Writing style
@@ -1228,8 +1227,6 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
               location: 'articles/route.ts:660',
               message: 'Humanization configuration',
               data: {
-                hasEmail: !!registeredEmail,
-                emailPrefix: registeredEmail ? registeredEmail.substring(0, 3) + "***" : "none",
                 hasApiKey: !!apiKey,
                 apiKeyPrefix: apiKey ? apiKey.substring(0, 5) + "***" : "none",
                 humanizeModel,
@@ -1244,19 +1241,14 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
             };
             debugLog(humanizeConfigLog);
             // #endregion
-            
-            // Validate email and API key before proceeding
-            if (!registeredEmail) {
-              console.error("[articles-api] NEXT_PUBLIC_AIHUMANIZE_EMAIL is not set in environment variables");
-              throw new Error("AIHumanize email is not configured. Please set NEXT_PUBLIC_AIHUMANIZE_EMAIL in .env.local");
-            }
-            
+
+            // Validate API key before proceeding (Undetectable.AI does not require email)
             if (!apiKey) {
-              console.error("[articles-api] AIHUMANIZE_API_KEY is not set in environment variables");
-              throw new Error("AIHumanize API key is not configured. Please set AIHUMANIZE_API_KEY in .env.local");
+              console.error("[articles-api] UNDETECTABLE_HUMANIZER_API_KEY is not set in environment variables");
+              throw new Error("Humanizer API key is not configured. Please set UNDETECTABLE_HUMANIZER_API_KEY in .env.local");
             }
 
-            if (registeredEmail && apiKey) {
+            if (apiKey) {
               try {
                 const humanizedBlocks: typeof articleStructure.blocks = [];
                 let previousBlockText: string | undefined = undefined;
@@ -1272,7 +1264,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                           try {
                             const originalItem = item.text;
                             const cleanedText = cleanText(item.text);
-                            const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                            const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                             listWordsUsed += result.wordsUsed;
                             const humanizedText = cleanText(result.humanizedText);
                             if (hasGluedWords(humanizedText) || humanizedText.length < originalItem.length * 0.6) {
@@ -1299,7 +1291,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       if (caption && caption.length >= 100) {
                         try {
                           const cleanedCaption = cleanText(caption);
-                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                           caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
                         } catch {
@@ -1316,7 +1308,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                               if (!cell || cell.length < 100) return cell;
                               try {
                                 const cleanedCell = cleanText(cell);
-                                const result = await humanizeSectionText(cleanedCell, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode);
+                                const result = await humanizeSectionText(cleanedCell, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                                 tableWordsUsed += result.wordsUsed;
                                 return cleanText(result.humanizedText);
                               } catch {
@@ -1345,7 +1337,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                       }
                       try {
                         const cleanedText = cleanText(block.text);
-                        const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                        const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
                         totalHumanizeWordsUsed += result.wordsUsed;
                         previousBlockText = block.text;
                         humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
@@ -1363,7 +1355,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                     }
                     try {
                       const cleanedText = cleanText(block.text);
-                      const result = await humanizeSectionText(cleanedText, humanizeModel, registeredEmail, frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                      const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
                       totalHumanizeWordsUsed += result.wordsUsed;
                       previousBlockText = block.text;
                       humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
@@ -1475,7 +1467,6 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
                 location: 'articles/route.ts:805',
                 message: 'Humanization requested but not configured',
                 data: {
-                  hasEmail: !!registeredEmail,
                   hasApiKey: !!apiKey,
                   enableHumanizeOnWrite,
                 },
@@ -1486,7 +1477,7 @@ CRITICAL — Word count: Your article MUST be between ${wordCountMinSys} and ${w
               };
               debugLog(humanizeConfigErrorLog);
               // #endregion
-              console.warn('[articles-api] Humanization on write requested but API key or email not configured');
+              console.warn('[articles-api] Humanization on write requested but UNDETECTABLE_HUMANIZER_API_KEY not configured');
             }
           } else {
             // #region agent log
