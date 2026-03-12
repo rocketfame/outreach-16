@@ -25,6 +25,9 @@
  * ============================================================================
  */
 
+// Vercel serverless function config: allow up to 300s for large articles + humanization
+export const maxDuration = 300;
+
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
 import { cleanText, lightHumanEdit, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
@@ -632,6 +635,13 @@ export async function POST(req: Request) {
         const targetWords = Number(brief.wordCount) || 1500;
         const wordCountMinSys = Math.floor(targetWords * 0.88);
         const wordCountMaxSys = Math.ceil(targetWords * 1.12);
+
+        // Adaptive guidance: small vs large articles
+        const isLargeArticleSys = targetWords > 1200;
+        const sectionGuidance = isLargeArticleSys
+          ? `This is a LONG article (${targetWords} words). Plan ${Math.round(targetWords / 200)}-${Math.round(targetWords / 150)} sections. Each section should be substantive (150-400 words). Use the full word budget — do NOT under-write.`
+          : `This is a SHORT article (${targetWords} words). Plan ${Math.max(2, Math.round(targetWords / 250))}-${Math.max(3, Math.round(targetWords / 150))} compact sections. Be concise — every sentence must earn its place.`;
+
         const systemMessage = `You are an expert content strategist and editorial writer with deep experience in ${brief.niche || "general topics"}.
 You write articles that feel like an experienced practitioner wrote them — not AI.
 ${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific brand to feature."}
@@ -640,20 +650,23 @@ Language: US English.
 
 STRICT WORD COUNT CONSTRAINT (HIGHEST PRIORITY — ENFORCED BEFORE ALL OTHER RULES):
 Target: exactly ${targetWords} words. Hard minimum: ${wordCountMinSys}. Hard maximum: ${wordCountMaxSys}.
-This is ${targetWords} words TOTAL across ALL articleBlocks text — not per section.
-A ${targetWords}-word article has roughly ${Math.max(2, Math.round(targetWords / 250))} to ${Math.max(3, Math.round(targetWords / 150))} sections of varying length.
-Before outputting, COUNT every word in every articleBlocks text field. If total exceeds ${wordCountMaxSys}: DELETE entire sections or shorten aggressively until it fits. If below ${wordCountMinSys}: expand core sections.
-Exceeding ${wordCountMaxSys} words is a CRITICAL FAILURE that wastes budget. This constraint overrides section count, coverage depth, and all other length considerations.`;
+${sectionGuidance}
+Before outputting, COUNT every word in every articleBlocks text field. If total exceeds ${wordCountMaxSys}: DELETE entire sections or shorten aggressively. If below ${wordCountMinSys}: expand core argument sections (not filler).
+Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`;
 
-        // API parameters for OpenAI
-        // Scale max_completion_tokens to target word count to prevent the model from overshooting.
-        // Content budget: targetWords * 2 tokens/word (generous for JSON + text).
-        // Reasoning headroom scales with article size: min 3000, max 8000.
-        // Total floor: 5000 (enough for ~400-word articles), ceiling: 16384.
+        // API parameters for OpenAI — two regimes based on article size.
+        // GPT-5.2 uses reasoning tokens (included in max_completion_tokens).
+        //
+        // Small articles (≤1200 words): tighter token budget to prevent overshooting word count.
+        //   Content: words * 2 + JSON overhead. Reasoning: 8000. Floor: 10000.
+        // Large articles (>1200 words): generous budget to avoid truncation.
+        //   Content: words * 2 + JSON overhead. Reasoning: 10000. No practical ceiling.
+        const isLargeArticle = targetWords > 1200;
         const contentBudget = Math.ceil(targetWords * 2) + 600;
-        const reasoningBudget = Math.min(8000, Math.max(3000, targetWords * 3));
-        const dynamicMaxTokens = Math.min(16384, Math.max(5000, contentBudget + reasoningBudget));
-        console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} reasoningBudget=${reasoningBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
+        const reasoningBudget = isLargeArticle ? 10000 : 8000;
+        const tokenFloor = isLargeArticle ? 16000 : 10000;
+        const dynamicMaxTokens = Math.min(30000, Math.max(tokenFloor, contentBudget + reasoningBudget));
+        console.log(`[wordcount-tokens] target=${targetWords} large=${isLargeArticle} contentBudget=${contentBudget} reasoningBudget=${reasoningBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
         const apiParams = { 
           max_completion_tokens: dynamicMaxTokens
         };
