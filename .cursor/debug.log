@@ -36,3 +36,5 @@
 {"location":"page.tsx:150","message":"No trial token, allowing generation","data":{"action":"article"},"timestamp":1773309448801,"sessionId":"debug-session","runId":"trial-limits","hypothesisId":"limit-check"}
 {"location":"page.tsx:147","message":"checkTrialLimitsBeforeGeneration called","data":{"action":"article","articlesToGenerate":1},"timestamp":1773315194096,"sessionId":"debug-session","runId":"trial-limits","hypothesisId":"limit-check"}
 {"location":"page.tsx:150","message":"No trial token, allowing generation","data":{"action":"article"},"timestamp":1773315194096,"sessionId":"debug-session","runId":"trial-limits","hypothesisId":"limit-check"}
+{"location":"page.tsx:147","message":"checkTrialLimitsBeforeGeneration called","data":{"action":"article","articlesToGenerate":1},"timestamp":1773316437891,"sessionId":"debug-session","runId":"trial-limits","hypothesisId":"limit-check"}
+{"location":"page.tsx:150","message":"No trial token, allowing generation","data":{"action":"article"},"timestamp":1773316437891,"sessionId":"debug-session","runId":"trial-limits","hypothesisId":"limit-check"}

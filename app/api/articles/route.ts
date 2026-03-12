@@ -654,19 +654,14 @@ ${sectionGuidance}
 Before outputting, COUNT every word in every articleBlocks text field. If total exceeds ${wordCountMaxSys}: DELETE entire sections or shorten aggressively. If below ${wordCountMinSys}: expand core argument sections (not filler).
 Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`;
 
-        // API parameters for OpenAI — two regimes based on article size.
-        // GPT-5.2 uses reasoning tokens (included in max_completion_tokens).
-        //
-        // Small articles (≤1200 words): tighter token budget to prevent overshooting word count.
-        //   Content: words * 2 + JSON overhead. Reasoning: 8000. Floor: 10000.
-        // Large articles (>1200 words): generous budget to avoid truncation.
-        //   Content: words * 2 + JSON overhead. Reasoning: 10000. No practical ceiling.
-        const isLargeArticle = targetWords > 1200;
-        const contentBudget = Math.ceil(targetWords * 2) + 600;
-        const reasoningBudget = isLargeArticle ? 10000 : 8000;
-        const tokenFloor = isLargeArticle ? 16000 : 10000;
-        const dynamicMaxTokens = Math.min(30000, Math.max(tokenFloor, contentBudget + reasoningBudget));
-        console.log(`[wordcount-tokens] target=${targetWords} large=${isLargeArticle} contentBudget=${contentBudget} reasoningBudget=${reasoningBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
+        // API parameters for OpenAI
+        // Word count enforcement comes from the PROMPT, not token limits.
+        // Token budget must be generous enough to never truncate the response.
+        // Floor: 18000 (proven safe for articles up to ~2000 words).
+        // Scale up for larger articles.
+        const contentBudget = Math.ceil(targetWords * 2) + 800;
+        const dynamicMaxTokens = Math.max(18000, contentBudget + 10000);
+        console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
         const apiParams = { 
           max_completion_tokens: dynamicMaxTokens
         };
@@ -1310,138 +1305,134 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
 
             if (apiKey) {
               try {
-                const humanizedBlocks: typeof articleStructure.blocks = [];
+                // PARALLEL BATCH HUMANIZATION — process blocks concurrently to avoid Vercel timeout.
+                // Sequential processing of 20+ blocks at 10-15s each = 200-300s (exceeds Vercel limits).
+                // Parallel batches of 5: 4 batches * 15s = 60s total — safe for all Vercel plans.
+                const BATCH_SIZE = 5;
+                const startHumanize = Date.now();
 
-                for (const block of articleStructure.blocks) {
-                  // Lists: humanize each item independently
-                    if (block.type === 'ul' || block.type === 'ol') {
-                      const listBlock = block as any;
+                // Step 1: Build task list — each task knows its original index and how to humanize
+                type BlockType = ArticleStructure['blocks'][0];
+                type HumanizeTask = {
+                  idx: number;
+                  process: () => Promise<{ block: BlockType; wordsUsed: number; processed: boolean; humanized: boolean; skippedShortP?: boolean; skippedShortLi?: boolean; skippedShortTc?: boolean }>;
+                };
+                const tasks: HumanizeTask[] = [];
+
+                for (let i = 0; i < articleStructure.blocks.length; i++) {
+                  const block = articleStructure.blocks[i];
+
+                  if (block.type === 'h1') {
+                    tasks.push({ idx: i, process: async () => ({ block, wordsUsed: 0, processed: false, humanized: false }) });
+                    continue;
+                  }
+
+                  if (block.type === 'ul' || block.type === 'ol') {
+                    const listBlock = block as any;
+                    tasks.push({ idx: i, process: async () => {
                       let listWordsUsed = 0;
                       const humanizedItems = await Promise.all(
                         (listBlock.items || []).map(async (item: any) => {
-                          if (!item?.text || item.text.length < 100) {
-                            if (item?.text?.length) humanizationReport.skippedReasons!.shortListItems++;
-                            return item;
-                          }
-                          humanizationReport.blocksProcessed++;
+                          if (!item?.text || item.text.length < 100) return item;
                           try {
                             const originalItem = item.text;
-                            const cleanedText = cleanText(item.text);
-                            const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
-                            if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
+                            const result = await humanizeSectionText(cleanText(item.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                             listWordsUsed += result.wordsUsed;
                             const humanizedText = cleanText(result.humanizedText);
-                            if (hasGluedWords(humanizedText) || humanizedText.length < originalItem.length * 0.6) {
-                              console.warn("[humanizer] List item rejected, keeping original:", originalItem.substring(0, 80));
-                              return item;
-                            }
+                            if (hasGluedWords(humanizedText) || humanizedText.length < originalItem.length * 0.6) return item;
                             return { ...item, text: humanizedText };
-                          } catch {
-                            return item;
-                          }
+                          } catch { return item; }
                         })
                       );
-                      totalHumanizeWordsUsed += listWordsUsed;
-                      humanizedBlocks.push({ ...listBlock, items: humanizedItems });
-                      continue;
-                    }
+                      return { block: { ...listBlock, items: humanizedItems }, wordsUsed: listWordsUsed, processed: true, humanized: listWordsUsed > 0 };
+                    }});
+                    continue;
+                  }
 
-                    // Tables: humanize long cell text (and caption if long)
-                    if (block.type === 'table') {
-                      const t = block as TableBlock;
+                  if (block.type === 'table') {
+                    const t = block as TableBlock;
+                    tasks.push({ idx: i, process: async () => {
                       let tableWordsUsed = 0;
-
                       let caption = t.caption;
                       if (caption && caption.length >= 100) {
-                        humanizationReport.blocksProcessed++;
                         try {
-                          const cleanedCaption = cleanText(caption);
-                          const result = await humanizeSectionText(cleanedCaption, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
-                          if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
+                          const result = await humanizeSectionText(cleanText(caption), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                           caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
-                        } catch {
-                          // keep original
-                        }
+                        } catch { /* keep original */ }
                       }
-
-                      const rows = t.rows || [];
                       const humanizedRows = await Promise.all(
-                        rows.map(async (row) => {
-                          const cells = Array.isArray(row) ? row : [];
-                          const humanizedCells = await Promise.all(
-                            cells.map(async (cell) => {
-                              if (!cell || cell.length < 100) {
-                                if (cell?.length) humanizationReport.skippedReasons!.shortTableCells++;
-                                return cell;
-                              }
-                              humanizationReport.blocksProcessed++;
-                              try {
-                                const cleanedCell = cleanText(cell);
-                                const result = await humanizeSectionText(cleanedCell, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
-                                if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
-                                tableWordsUsed += result.wordsUsed;
-                                return cleanText(result.humanizedText);
-                              } catch {
-                                return cell;
-                              }
-                            })
-                          );
-                          return humanizedCells;
-                        })
+                        (t.rows || []).map(async (row) =>
+                          Promise.all((Array.isArray(row) ? row : []).map(async (cell) => {
+                            if (!cell || cell.length < 100) return cell;
+                            try {
+                              const result = await humanizeSectionText(cleanText(cell), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                              tableWordsUsed += result.wordsUsed;
+                              return cleanText(result.humanizedText);
+                            } catch { return cell; }
+                          }))
+                        )
                       );
+                      return { block: { ...t, caption, rows: humanizedRows } as any, wordsUsed: tableWordsUsed, processed: true, humanized: tableWordsUsed > 0 };
+                    }});
+                    continue;
+                  }
 
-                      totalHumanizeWordsUsed += tableWordsUsed;
-                      humanizedBlocks.push({ ...t, caption, rows: humanizedRows });
+                  if (block.type === 'h2' || block.type === 'h3' || block.type === 'h4') {
+                    if (!block.text || block.text.length === 0) {
+                      tasks.push({ idx: i, process: async () => ({ block, wordsUsed: 0, processed: false, humanized: false }) });
                       continue;
                     }
-
-                    // Headings: h1 not humanized; h2/h3/h4 humanized with no length threshold (only skip if empty)
-                    if (block.type === 'h1') {
-                      humanizedBlocks.push(block);
-                      continue;
-                    }
-                    if (block.type === 'h2' || block.type === 'h3' || block.type === 'h4') {
-                      if (!block.text || block.text.length === 0) {
-                        humanizedBlocks.push(block);
-                        continue;
-                      }
-                      humanizationReport.blocksProcessed++;
+                    tasks.push({ idx: i, process: async () => {
                       try {
-                        const cleanedText = cleanText(block.text);
-                        const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
-                        if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
-                        totalHumanizeWordsUsed += result.wordsUsed;
-                        humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
-                      } catch {
-                        humanizedBlocks.push(block);
-                      }
-                      continue;
-                    }
+                        const result = await humanizeSectionText(cleanText(block.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                        return { block: { ...block, text: cleanText(result.humanizedText) }, wordsUsed: result.wordsUsed, processed: true, humanized: result.wordsUsed > 0 };
+                      } catch { return { block, wordsUsed: 0, processed: true, humanized: false }; }
+                    }});
+                    continue;
+                  }
 
-                    // Paragraphs: humanize if long enough (>=100 chars)
-                    if (!block.text || block.text.length < 100) {
-                      if (block.text && block.text.length >= 60) humanizationReport.skippedReasons!.shortParagraphs++;
-                      humanizedBlocks.push(block);
-                      continue;
-                    }
-                    humanizationReport.blocksProcessed++;
+                  // Paragraphs
+                  if (!block.text || block.text.length < 100) {
+                    const isShort = !!(block.text && block.text.length >= 60);
+                    tasks.push({ idx: i, process: async () => ({ block, wordsUsed: 0, processed: false, humanized: false, skippedShortP: isShort }) });
+                    continue;
+                  }
+                  tasks.push({ idx: i, process: async () => {
                     try {
-                      const cleanedText = cleanText(block.text);
-                      const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
-                      if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
-                      totalHumanizeWordsUsed += result.wordsUsed;
+                      const result = await humanizeSectionText(cleanText(block.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                       const humanizedText = cleanText(result.humanizedText);
                       if (hasGluedWords(humanizedText) || hasSpacedLetterArtifact(humanizedText) || humanizedText.length < block.text.length * 0.5) {
-                        console.warn("[humanizer] Paragraph rejected, keeping original:", block.text.substring(0, 80));
-                        humanizedBlocks.push(block);
-                      } else {
-                        humanizedBlocks.push({ ...block, text: humanizedText });
+                        console.warn("[humanizer] Paragraph rejected:", block.text.substring(0, 60));
+                        return { block, wordsUsed: result.wordsUsed, processed: true, humanized: false };
                       }
-                    } catch {
-                      humanizedBlocks.push(block);
-                    }
+                      return { block: { ...block, text: humanizedText }, wordsUsed: result.wordsUsed, processed: true, humanized: result.wordsUsed > 0 };
+                    } catch { return { block, wordsUsed: 0, processed: true, humanized: false }; }
+                  }});
                 }
+
+                // Step 2: Execute tasks in parallel batches
+                const results: Awaited<ReturnType<HumanizeTask['process']>>[] = new Array(tasks.length);
+                for (let batchStart = 0; batchStart < tasks.length; batchStart += BATCH_SIZE) {
+                  const batch = tasks.slice(batchStart, batchStart + BATCH_SIZE);
+                  const batchResults = await Promise.all(batch.map(t => t.process()));
+                  for (let j = 0; j < batch.length; j++) {
+                    results[batch[j].idx] = batchResults[j];
+                  }
+                  console.log(`[humanizer-batch] Batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(tasks.length / BATCH_SIZE)} done (${Date.now() - startHumanize}ms elapsed)`);
+                }
+
+                // Step 3: Collect results in original order
+                const humanizedBlocks: typeof articleStructure.blocks = [];
+                for (let i = 0; i < results.length; i++) {
+                  const r = results[i];
+                  humanizedBlocks.push(r.block);
+                  totalHumanizeWordsUsed += r.wordsUsed;
+                  if (r.processed) humanizationReport.blocksProcessed++;
+                  if (r.humanized) humanizationReport.blocksActuallyHumanized++;
+                  if (r.skippedShortP) humanizationReport.skippedReasons!.shortParagraphs++;
+                }
+                console.log(`[humanizer-done] All ${tasks.length} blocks done in ${Date.now() - startHumanize}ms, wordsUsed=${totalHumanizeWordsUsed}`);
 
                 // Check if any blocks were actually humanized (not all failed)
                 const anyHumanized = totalHumanizeWordsUsed > 0 || humanizedBlocks.some((block, i) => {
