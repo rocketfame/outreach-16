@@ -1298,10 +1298,9 @@ Exceeding ${wordCountMaxSys} words is a CRITICAL FAILURE that wastes budget. Thi
             if (apiKey) {
               try {
                 const humanizedBlocks: typeof articleStructure.blocks = [];
-                let previousBlockText: string | undefined = undefined;
 
                 for (const block of articleStructure.blocks) {
-                  // Lists: humanize each item (do NOT pass previousBlockText)
+                  // Lists: humanize each item independently
                     if (block.type === 'ul' || block.type === 'ol') {
                       const listBlock = block as any;
                       let listWordsUsed = 0;
@@ -1397,19 +1396,17 @@ Exceeding ${wordCountMaxSys} words is a CRITICAL FAILURE that wastes budget. Thi
                       humanizationReport.blocksProcessed++;
                       try {
                         const cleanedText = cleanText(block.text);
-                        const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                        const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                         if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                         totalHumanizeWordsUsed += result.wordsUsed;
-                        previousBlockText = block.text;
                         humanizedBlocks.push({ ...block, text: cleanText(result.humanizedText) });
                       } catch {
-                        previousBlockText = block.text;
                         humanizedBlocks.push(block);
                       }
                       continue;
                     }
 
-                    // Paragraphs: humanize if long enough (>=100 chars to match sectionHumanize; pass previousBlockText for context)
+                    // Paragraphs: humanize if long enough (>=100 chars)
                     if (!block.text || block.text.length < 100) {
                       if (block.text && block.text.length >= 60) humanizationReport.skippedReasons!.shortParagraphs++;
                       humanizedBlocks.push(block);
@@ -1418,21 +1415,17 @@ Exceeding ${wordCountMaxSys} words is a CRITICAL FAILURE that wastes budget. Thi
                     humanizationReport.blocksProcessed++;
                     try {
                       const cleanedText = cleanText(block.text);
-                      const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, previousBlockText);
+                      const result = await humanizeSectionText(cleanedText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                       if (result.wordsUsed > 0) humanizationReport.blocksActuallyHumanized++;
                       totalHumanizeWordsUsed += result.wordsUsed;
                       const humanizedText = cleanText(result.humanizedText);
-                      // Reject bad humanizer output: glued words, spaced letters, or too short
                       if (hasGluedWords(humanizedText) || hasSpacedLetterArtifact(humanizedText) || humanizedText.length < block.text.length * 0.5) {
                         console.warn("[humanizer] Paragraph rejected, keeping original:", block.text.substring(0, 80));
-                        previousBlockText = block.text;
                         humanizedBlocks.push(block);
                       } else {
-                        previousBlockText = block.text;
                         humanizedBlocks.push({ ...block, text: humanizedText });
                       }
                     } catch {
-                      previousBlockText = block.text;
                       humanizedBlocks.push(block);
                     }
                 }
