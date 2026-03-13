@@ -102,6 +102,17 @@ export function injectAnchorsIntoText(
 ): string {
   if (!text) return '';
 
+  // #region agent log
+  const hasA1InText = text.includes('[A1]');
+  const hasA1InAnchors = anchors.some(a => a.id === 'A1');
+  if (hasA1InText && !hasA1InAnchors) {
+    console.log('[debug-7bb5e0] CRITICAL: [A1] found in text but NO A1 in anchors array!', JSON.stringify({textPreview:text.substring(0,150),anchorsCount:anchors.length,anchors:anchors.map(a=>({id:a.id,text:a.text})),trustsCount:trusts.length}));
+  }
+  if (hasA1InText || hasA1InAnchors) {
+    console.log('[debug-7bb5e0] injectAnchorsIntoText A1 status:', JSON.stringify({hasA1InText,hasA1InAnchors,anchorsIds:anchors.map(a=>a.id),textA1Context:hasA1InText?text.substring(Math.max(0,text.indexOf('[A1]')-30),text.indexOf('[A1]')+35):'N/A'}));
+  }
+  // #endregion
+
   // BUG 1 FIX: Normalize spacing around placeholders BEFORE any replacement
   // Ensures exactly one space before and after [A1], [T1]-[T8] to prevent glued words in final HTML
   // Use two-pass: (1) add space before if non-space char before placeholder (2) add space after if non-space char after
@@ -381,6 +392,11 @@ export function blocksToHtml(
     }
   });
   
+  // #region agent log
+  const a1InBlocks = allPlaceholders.includes('[A1]');
+  const a1InAnchors = anchors.some(a => a.id === 'A1');
+  console.log('[debug-7bb5e0] blocksToHtml summary:', JSON.stringify({placeholders:[...new Set(allPlaceholders)],a1InBlocks,a1InAnchors,anchorsProvided:anchors.map(a=>({id:a.id,text:a.text?.substring(0,30),url:a.url?.substring(0,50)})),trustsProvided:trusts.map(t=>({id:t.id,text:t.text?.substring(0,30)})),mismatch:a1InBlocks&&!a1InAnchors?'A1_IN_TEXT_BUT_NOT_IN_ANCHORS':'OK'}));
+  // #endregion
   if (allPlaceholders.length > 0) {
     console.log(`[blocksToHtml] Found ${allPlaceholders.length} placeholders in blocks:`, {
       placeholders: [...new Set(allPlaceholders)],
@@ -500,6 +516,9 @@ export function modelBlocksToArticleStructure(
     blocks.unshift({ id: crypto.randomUUID(), type: 'h1', text: h1Text || 'Article' });
   }
 
+  // #region agent log
+  console.log('[debug-7bb5e0] modelBlocksToArticleStructure anchor check:', JSON.stringify({anchorText,anchorUrl,anchorTextTruthy:!!anchorText,anchorUrlTruthy:!!anchorUrl,willAddA1:!!(anchorText&&anchorUrl),anchorTextCharCodes:anchorText?[...anchorText].slice(0,5).map(c=>c.charCodeAt(0)):[],anchorUrlCharCodes:anchorUrl?[...anchorUrl].slice(0,10).map(c=>c.charCodeAt(0)):[]}));
+  // #endregion
   if (anchorText && anchorUrl) {
     anchors.push({ id: 'A1', text: anchorText, url: anchorUrl });
   }
