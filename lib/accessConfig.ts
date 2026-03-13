@@ -23,6 +23,7 @@ export const MASTER_IPS = [
   "2001:4860:7:1525::f7", // IPv6 (Lisbon / Google)
   "87.196.74.249", // IPv4
   "87.196.72.145", // IPv4
+  "87.196.72.65", // IPv4 (hardcoded)
 ] as const;
 
 /**

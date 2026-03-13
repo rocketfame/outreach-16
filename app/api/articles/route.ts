@@ -981,6 +981,9 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
         let articleStructure: ArticleStructure | null = null;
         let cleanedArticleBodyHtml = "";
         let humanizationReportForResponse: HumanizationReport | undefined;
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:982',message:'Format detection and anchor state',data:{hasBlocksFormat,hasNewFormat,hasOldFormat,anchorText:brief.anchorText,anchorUrl:brief.anchorUrl,clientSite:brief.clientSite,anchorTextEmpty:!brief.anchorText||!brief.anchorText.trim(),anchorUrlEmpty:!brief.anchorUrl||!brief.anchorUrl.trim(),topicTitle:topic.title},timestamp:Date.now(),hypothesisId:'A-B-E'})}).catch(()=>{});
+        // #endregion
         
         // Convert trustedSources to TrustSourceSpec format for article structure
         // CRITICAL: Trim anchor text to 1-3 words (as per prompt rules)
@@ -1147,6 +1150,9 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           }
           // Use trusted sources (convert to "Name|URL" format for backward compatibility)
           const trustSourcesListForStructure = trustedSources.map(ts => `${ts.title}|${ts.url}`);
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:1150',message:'BEFORE modelBlocksToArticleStructure - anchor params',data:{anchorText:brief.anchorText,anchorUrl:brief.anchorUrl,clientSite:brief.clientSite,resolvedAnchorUrl:brief.anchorUrl||brief.clientSite||'',anchorTextTruthy:!!brief.anchorText,anchorUrlTruthy:!!(brief.anchorUrl||brief.clientSite),anchorTextType:typeof brief.anchorText,anchorUrlType:typeof brief.anchorUrl,anchorTextLength:brief.anchorText?.length,anchorUrlLength:brief.anchorUrl?.length},timestamp:Date.now(),hypothesisId:'A-B'})}).catch(()=>{});
+          // #endregion
           articleStructure = modelBlocksToArticleStructure(
             parsedResponse.articleBlocks,
             cleanedTitleTag,
@@ -1157,6 +1163,9 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           );
           // Override trustSources with trusted ones (to ensure correct anchor text)
           articleStructure.trustSources = trustSourcesForStructure;
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:1158',message:'AFTER modelBlocksToArticleStructure - anchors array',data:{anchorsCount:articleStructure.anchors.length,anchors:articleStructure.anchors.map(a=>({id:a.id,text:a.text,url:a.url})),trustSourcesCount:articleStructure.trustSources.length,blocksWithA1:articleStructure.blocks.filter(b=>b.text?.includes('[A1]')).map(b=>({type:b.type,textPreview:b.text?.substring(0,100)}))},timestamp:Date.now(),hypothesisId:'A-B'})}).catch(()=>{});
+          // #endregion
         } else if (hasNewFormat) {
           // PLAIN TEXT FORMAT (fallback): heuristic parsing -> blocks -> HTML
           const articleBodyText = cleanText(parsedResponse.articleBodyText || "");
@@ -1457,6 +1466,11 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
 
                 articleStructure.blocks = humanizedBlocks;
                 articleStructure.humanizedOnWrite = anyHumanized; // Only mark as humanized if at least one block was changed
+                // #region agent log
+                const a1BlocksAfterHumanize = humanizedBlocks.filter(b => b.text?.includes('[A1]')).map(b => ({type:b.type,textPreview:b.text?.substring(0,100)}));
+                const a1LikeAfterHumanize = humanizedBlocks.filter(b => b.text && /\[A\s*1\]|\[a1\]|［A1］/.test(b.text)).map(b => ({type:b.type,textPreview:b.text?.substring(0,100)}));
+                fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:1467',message:'After humanization - A1 check',data:{a1BlocksExact:a1BlocksAfterHumanize,a1BlocksFuzzy:a1LikeAfterHumanize,anchorsStillPresent:articleStructure.anchors.length,anchorsIds:articleStructure.anchors.map(a=>a.id)},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
 
                 // Finalize humanization report (internal control)
                 humanizationReport.totalWordsUsed = totalHumanizeWordsUsed;

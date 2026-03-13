@@ -1109,6 +1109,9 @@ the title. It must create tension or curiosity through a plain fact.
   // Topic's howAnchorFits may contain "N/A" from topic generation (when anchors weren't provided yet) - that must NOT override user's explicit input.
   const hasAnchors = !!(params.anchorText && params.anchorText.trim() && params.anchorUrl && params.anchorUrl.trim());
   const shouldUseAnchors = hasAnchors;
+  // #region agent log
+  console.log('[debug-7bb5e0] buildArticlePrompt anchor state:', JSON.stringify({anchorText:params.anchorText,anchorUrl:params.anchorUrl,hasAnchors,anchorTextTrimmed:params.anchorText?.trim(),anchorUrlTrimmed:params.anchorUrl?.trim()}));
+  // #endregion
   if (hasAnchors) {
     console.log("[buildArticlePrompt] Anchors from Project basics WILL be used:", { anchorText: params.anchorText?.slice(0, 50), anchorUrl: params.anchorUrl?.slice(0, 50) });
   }
@@ -2141,6 +2144,10 @@ the title. It must create tension or curiosity through a plain fact.
 `;
 
   // Replace placeholders
+  // #region agent log
+  const hasAnchorsD = !!(params.anchorText && params.anchorText.trim() && params.anchorUrl && params.anchorUrl.trim());
+  console.log('[debug-7bb5e0] buildDirectArticlePrompt anchor state:', JSON.stringify({anchorText:params.anchorText,anchorUrl:params.anchorUrl,hasAnchors:hasAnchorsD,anchorTextEmpty:!params.anchorText||!params.anchorText.trim(),anchorUrlEmpty:!params.anchorUrl||!params.anchorUrl.trim()}));
+  // #endregion
   prompt = prompt.replaceAll("[[TOPIC_TITLE]]", params.topicTitle);
   prompt = prompt.replaceAll("[[TOPIC_BRIEF]]", params.topicBrief);
   prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
