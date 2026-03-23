@@ -15,6 +15,21 @@ import { cleanText } from "@/lib/textPostProcessing";
 
 type LoadingStep = "topics" | "outline" | "draft" | null;
 
+/** Sanitize API error messages before showing to user — strip internal/prompt artifacts */
+function sanitizeErrorMessage(raw: string, fallback = "An error occurred. Please try again."): string {
+  if (!raw || typeof raw !== "string") return fallback;
+  // Strip anything that looks like internal prompt instructions
+  const stripped = raw
+    .replace(/\[\[.*?\]\]/g, "")           // [[PLACEHOLDER]] tokens
+    .replace(/\{[^}]{50,}\}/g, "")         // large JSON blobs
+    .replace(/__[A-Z_]+__/g, "")           // __INTERNAL_TOKEN__
+    .replace(/CRITICAL.*?DECISION[^.]*/gi, "") // prompt leak fragments
+    .trim();
+  if (!stripped || stripped.length < 5) return fallback;
+  // Cap length to prevent huge error dumps
+  return stripped.length > 200 ? stripped.slice(0, 200) + "..." : stripped;
+}
+
 export default function Home() {
   const [persistedState, setPersistedState, resetPersistedState, isHydrated] = usePersistentAppState();
   
@@ -211,15 +226,9 @@ export default function Home() {
   };
 
   const checkTrialLimitsBeforeGeneration = async (action: 'topicDiscovery' | 'article' | 'image', articlesToGenerate: number = 1): Promise<{ allowed: boolean; allCreditsExhausted: boolean }> => {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:147',message:'checkTrialLimitsBeforeGeneration called',data:{action,articlesToGenerate},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-    // #endregion
     
     const trialToken = getTrialTokenFromURL();
     if (!trialToken) {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:150',message:'No trial token, allowing generation',data:{action},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-      // #endregion
       return { allowed: true, allCreditsExhausted: false }; // No trial token = master access
     }
 
@@ -324,22 +333,13 @@ export default function Home() {
     try {
       const apiUrl = `/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`;
       
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:154',message:'Fetching trial usage',data:{apiUrl,trialToken,hasToken:!!trialToken},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'api-call'})}).catch(()=>{});
-      // #endregion
       
       const usageResponse = await fetch(apiUrl);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:160',message:'Trial usage response received',data:{status:usageResponse.status,statusText:usageResponse.statusText,ok:usageResponse.ok,url:usageResponse.url},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'api-call'})}).catch(()=>{});
-      // #endregion
       
       if (usageResponse.ok) {
         const usageData = await usageResponse.json();
         
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:156',message:'Trial usage data received',data:{action,isTrial:usageData.isTrial,topicDiscoveryRunsRemaining:usageData.topicDiscoveryRunsRemaining,articlesRemaining:usageData.articlesRemaining,imagesRemaining:usageData.imagesRemaining},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-        // #endregion
         
         if (usageData.isTrial) {
           // CRITICAL: Update trialUsage state for future instant checks (so next click shows widget from cache)
@@ -358,9 +358,6 @@ export default function Home() {
               usageData.imagesRemaining === 0;
           
           if (allCreditsExhausted) {
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:180',message:'All credits exhausted, showing widget',data:{action,stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-            // #endregion
             
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
@@ -373,9 +370,6 @@ export default function Home() {
 
           // Check specific limit for the action - always show CreditsExhausted for any limit exhaustion
           if (action === 'topicDiscovery' && usageData.topicDiscoveryRunsRemaining === 0) {
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:193',message:'Topic discovery limit reached, showing widget',data:{stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-            // #endregion
             
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
@@ -391,9 +385,6 @@ export default function Home() {
             const articlesLimitReached = usageData.articlesRemaining === 0 || usageData.articlesRemaining < articlesToGenerate;
             
             if (articlesLimitReached) {
-              // #region agent log
-              fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:216',message:'Article limit reached, showing widget',data:{articlesRemaining:usageData.articlesRemaining,articlesToGenerate,stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-              // #endregion
               
               setTrialStats({
                 topicSearches: usageData.topicDiscoveryRuns || 0,
@@ -406,9 +397,6 @@ export default function Home() {
           }
 
           if (action === 'image' && usageData.imagesRemaining === 0) {
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:229',message:'Image limit reached, showing widget',data:{stats:{topicSearches:usageData.topicDiscoveryRuns||0,articles:usageData.articlesGenerated||0,images:usageData.imagesGenerated||0}},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-            // #endregion
             
             setTrialStats({
               topicSearches: usageData.topicDiscoveryRuns || 0,
@@ -420,9 +408,6 @@ export default function Home() {
           }
         }
       } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:243',message:'Failed to fetch trial usage',data:{status:usageResponse.status,statusText:usageResponse.statusText,url:apiUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-        // #endregion
         
         // If API returns 404, assume trial limits are exhausted to be safe
         // This prevents generation when we can't verify limits
@@ -436,9 +421,6 @@ export default function Home() {
         return { allowed: false, allCreditsExhausted: true };
       }
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:252',message:'Error checking trial limits',data:{error:error instanceof Error?error.message:String(error),stack:error instanceof Error?error.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-      // #endregion
       
       // If API fails, assume trial limits are exhausted to be safe
       console.error("[checkTrialLimitsBeforeGeneration] Error:", error, "- blocking generation for safety");
@@ -451,9 +433,6 @@ export default function Home() {
       return { allowed: false, allCreditsExhausted: true };
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:250',message:'Generation allowed to proceed',data:{action},timestamp:Date.now(),sessionId:'debug-session',runId:'trial-limits',hypothesisId:'limit-check'})}).catch(()=>{});
-    // #endregion
     
     return { allowed: true, allCreditsExhausted: false };
   };
@@ -900,9 +879,6 @@ export default function Home() {
   };
 
   const generateTopics = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:266',message:'generateTopics called',data:{briefNiche:brief.niche,briefLanguage:brief.language,briefPlatform:brief.platform,briefAnchorText:brief.anchorText,briefAnchorUrl:brief.anchorUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
-    // #endregion
     
     // CRITICAL: Check trial limits BEFORE starting generation
     const limitCheck = await checkTrialLimitsBeforeGeneration('topicDiscovery');
@@ -938,9 +914,6 @@ export default function Home() {
     setTopicLoaderElapsed(0);
     setTopicLoaderMessageIndex(0);
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:277',message:'About to call /api/generate-topics',data:{endpoint:'/api/generate-topics',briefFields:Object.keys(brief)},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
-      // #endregion
       const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/generate-topics", {
         method: "POST",
@@ -951,9 +924,6 @@ export default function Home() {
         body: JSON.stringify({ brief }),
       });
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:284',message:'Response received from /api/generate-topics',data:{status:response.status,statusText:response.statusText,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
-      // #endregion
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -963,7 +933,7 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 if (usageData.isTrial) {
@@ -1011,7 +981,7 @@ export default function Home() {
           const fallbackTrialToken = getTrialTokenFromURL();
           if (fallbackTrialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}&_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 if (usageData.isTrial) {
@@ -1048,9 +1018,6 @@ export default function Home() {
 
       const data = (await response.json()) as { overview: string; topics: Topic[] };
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:293',message:'generateTopics success',data:{overviewLength:data.overview?.length || 0,topicsCount:data.topics?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
-      // #endregion
       
       // Store the structured response
       updateTopicsData(data);
@@ -1095,9 +1062,6 @@ export default function Home() {
         window.dispatchEvent(new CustomEvent('trialUsageUpdated'));
       }
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:303',message:'generateTopics error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'api-calls'})}).catch(()=>{});
-      // #endregion
       console.error(error);
       const errorMessage = (error as Error).message || "Failed to generate topics. Please try again.";
       setNotification({
@@ -1332,7 +1296,7 @@ export default function Home() {
             const fallbackTrialToken = getTrialTokenFromURL();
             if (fallbackTrialToken) {
               try {
-                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}&_t=${Date.now()}`);
                 if (usageResponse.ok) {
                   const usageData = await usageResponse.json();
                   if (usageData.isTrial) {
@@ -1448,7 +1412,7 @@ export default function Home() {
       } catch (error) {
         console.error("[regenerateArticleForTopic] Error:", error);
         setNotification({
-          message: error instanceof Error ? error.message : "Error regenerating article",
+          message: sanitizeErrorMessage(error instanceof Error ? error.message : "", "Error regenerating article"),
           time: new Date().toLocaleTimeString(),
           visible: true,
         });
@@ -1505,9 +1469,6 @@ export default function Home() {
         competitionNote: topic.competitionNote || "",
       }];
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:300',message:'[regenerate] Starting Tavily search for trust sources',data:{topicTitle:topic.workingTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
-      // #endregion
 
       // MANDATORY: Find trust sources via Tavily before generating article
       const allTrustSources = new Set<string>();
@@ -1524,9 +1485,6 @@ export default function Home() {
         ].filter(Boolean);
         const searchQuery = queryParts.join(" ");
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:320',message:'[regenerate] Calling /api/find-links',data:{topicTitle:topic.workingTitle,query:searchQuery},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
-        // #endregion
 
         const linksResponse = await fetch("/api/find-links", {
           method: "POST",
@@ -1534,9 +1492,6 @@ export default function Home() {
           body: JSON.stringify({ query: searchQuery }),
         });
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:330',message:'[regenerate] find-links response received',data:{topicTitle:topic.workingTitle,ok:linksResponse.ok,status:linksResponse.status},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
-        // #endregion
 
         if (linksResponse.ok) {
           const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
@@ -1547,25 +1502,13 @@ export default function Home() {
               allTrustSources.add(formattedSource);
             });
             
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:340',message:'[regenerate] Links found via Tavily',data:{topicTitle:topic.workingTitle,linksCount:linksData.trustSources.length},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
-            // #endregion
           } else {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:345',message:'[regenerate] Tavily returned empty results',data:{topicTitle:topic.workingTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
-            // #endregion
           }
         } else {
           const errorData = await linksResponse.json().catch(() => ({}));
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:350',message:'[regenerate] Tavily search failed',data:{topicTitle:topic.workingTitle,error:errorData.error || linksResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
-          // #endregion
           throw new Error(`Tavily search failed: ${errorData.error || linksResponse.statusText}`);
         }
       } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:355',message:'[regenerate] Tavily search error, cannot proceed',data:{topicTitle:topic.workingTitle,error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'tavily-search'})}).catch(()=>{});
-        // #endregion
         throw new Error(`Cannot regenerate article: Tavily search failed. ${(error as Error).message}`);
       }
 
@@ -1607,9 +1550,6 @@ export default function Home() {
         });
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:365',message:'[regenerate] Calling /api/articles with Tavily sources',data:{topicTitle:topic.workingTitle,trustSourcesCount:trustSourcesList.length,humanizeOnWrite:regenerateHumanizeOnWrite,usingSavedSettings:!!savedHumanizeSettings,briefChanged},timestamp:Date.now(),sessionId:'debug-session',runId:'regenerate-article',hypothesisId:'articles-flow'})}).catch(()=>{});
-      // #endregion
 
       const trialToken = getTrialTokenFromURL();
       const response = await fetch("/api/articles", {
@@ -1860,9 +1800,6 @@ export default function Home() {
         competitionNote: topic.competitionNote || "",
       }));
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:470',message:'Starting article generation with dynamic link finding',data:{topicsCount:selectedTopicsData.length,briefFields:Object.keys(brief)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
-      // #endregion
 
       // Step 1: MANDATORY - Find trust sources via Tavily for EACH topic separately
       // CRITICAL: Each topic gets its OWN sources (not shared pool) so articles don't reuse sources from other topics
@@ -1871,9 +1808,6 @@ export default function Home() {
       // Find links for each topic (in parallel for better performance)
       const linkPromises = selectedTopicsData.map(async (topic) => {
         try {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:520',message:'[generate] Calling /api/find-links for topic',data:{topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
-          // #endregion
 
           // Build comprehensive search query from topic and brief for better Tavily results
           // Include year for recent data (2024-2025)
@@ -1892,9 +1826,6 @@ export default function Home() {
             body: JSON.stringify({ query: searchQuery }),
           });
 
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:535',message:'[generate] find-links response received',data:{topicTitle:topic.title,query:searchQuery,ok:linksResponse.ok,status:linksResponse.status,statusText:linksResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-response'})}).catch(()=>{});
-          // #endregion
 
           if (linksResponse.ok) {
             const linksData = await linksResponse.json() as { trustSources: Array<{ title: string; url: string; snippet: string; source: string }> };
@@ -1903,26 +1834,14 @@ export default function Home() {
               const formatted = linksData.trustSources.map(source => `${source.title}|${source.url}`);
               trustSourcesPerTopic[topic.title] = formatted;
               
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:540',message:'[generate] Links found for topic via Tavily',data:{topicTitle:topic.title,linksCount:linksData.trustSources.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
-              // #endregion
             } else {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:545',message:'[generate] Tavily returned empty results for topic',data:{topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
-              // #endregion
             }
           } else {
             // Handle error response - Tavily search failed
             const errorData = await linksResponse.json().catch(() => ({}));
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:550',message:'[generate] Tavily search failed for topic',data:{topicTitle:topic.title,error:errorData.error || linksResponse.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
-            // #endregion
             throw new Error(`Tavily search failed for topic "${topic.title}": ${errorData.error || linksResponse.statusText}`);
           }
         } catch (error) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:555',message:'[generate] Tavily search error for topic',data:{topicTitle:topic.title,error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'find-links-integration'})}).catch(()=>{});
-          // #endregion
           throw error; // Re-throw to stop generation if Tavily fails
         }
       });
@@ -1936,9 +1855,6 @@ export default function Home() {
         throw new Error("Cannot generate articles: No trust sources found via browsing. Please ensure Tavily API key is configured or check your search query.");
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:560',message:'Calling /api/articles with per-topic trust sources',data:{topicsCount:selectedTopicsData.length,trustSourcesPerTopic:Object.keys(trustSourcesPerTopic).length,totalSources},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
-      // #endregion
 
       // Step 2: Generate articles with found trust sources
       // CRITICAL: Use current brief from Project Basics (may have been updated after topics were generated)
@@ -1975,7 +1891,7 @@ export default function Home() {
             const trialToken = getTrialTokenFromURL();
             if (trialToken) {
               try {
-                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`);
                 if (usageResponse.ok) {
                   const usageData = await usageResponse.json();
                   if (usageData.isTrial) {
@@ -2022,7 +1938,7 @@ export default function Home() {
             const fallbackTrialToken = getTrialTokenFromURL();
             if (fallbackTrialToken) {
               try {
-                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+                const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}&_t=${Date.now()}`);
                 if (usageResponse.ok) {
                   const usageData = await usageResponse.json();
                   if (usageData.isTrial) {
@@ -2082,9 +1998,6 @@ export default function Home() {
         humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
       }> };
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:495',message:'Articles received',data:{articlesCount:data.articles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-generation',hypothesisId:'articles-flow'})}).catch(()=>{});
-      // #endregion
 
       // Update generated articles with results
       // CRITICAL: Clean invisible Unicode characters before saving
@@ -2417,7 +2330,7 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 if (usageData.isTrial) {
@@ -2462,7 +2375,7 @@ export default function Home() {
           const fallbackTrialToken = getTrialTokenFromURL();
           if (fallbackTrialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}&_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 if (usageData.isTrial) {
@@ -3768,7 +3681,7 @@ export default function Home() {
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
+          errorMessage = sanitizeErrorMessage(errorData.error || errorData.message || "", errorMessage);
         } catch {
           // If response is not JSON, use status text
           const text = await response.text().catch(() => "");
@@ -3980,7 +3893,7 @@ export default function Home() {
       console.error("[editArticleWithAI] Error:", error);
       setEditingArticleStatus(null);
       setNotification({
-          message: error instanceof Error ? error.message : "Error editing article",
+          message: sanitizeErrorMessage(error instanceof Error ? error.message : "", "Error editing article"),
         time: new Date().toLocaleTimeString(),
         visible: true,
       });
@@ -4370,7 +4283,7 @@ export default function Home() {
           const trialToken = getTrialTokenFromURL();
           if (trialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 console.log("[generateArticleImage] Trial usage data:", usageData);
@@ -4452,7 +4365,7 @@ export default function Home() {
           const fallbackTrialToken = getTrialTokenFromURL();
           if (fallbackTrialToken) {
             try {
-              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}?_t=${Date.now()}`);
+              const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(fallbackTrialToken)}&_t=${Date.now()}`);
               if (usageResponse.ok) {
                 const usageData = await usageResponse.json();
                 if (usageData.isTrial) {
@@ -4561,7 +4474,7 @@ export default function Home() {
         const trialToken = getTrialTokenFromURL();
         if (trialToken) {
           try {
-            const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}?_t=${Date.now()}`);
+            const usageResponse = await fetch(`/api/trial-usage?trial=${encodeURIComponent(trialToken)}&_t=${Date.now()}`);
             if (usageResponse.ok) {
               const usageData = await usageResponse.json();
               if (usageData.isTrial) {
@@ -4627,9 +4540,6 @@ export default function Home() {
   };
 
   const copyDraft = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:124',message:'copyDraft called',data:{hasDraft:!!draft,draftLength:draft.length},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
-    // #endregion
     if (!draft) {
       return;
     }
@@ -4638,13 +4548,7 @@ export default function Home() {
       await navigator.clipboard.writeText(draft);
       setCopyStatus("copied");
       setTimeout(() => setCopyStatus("idle"), 2000);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:131',message:'copyDraft success',data:{status:'copied'},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
-      // #endregion
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:134',message:'copyDraft error',data:{error:(error as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
-      // #endregion
       console.error(error);
       alert("Copy failed. Please copy the draft manually.");
     }
@@ -4918,11 +4822,6 @@ export default function Home() {
     }
   }, [viewingArticle]);
 
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/39eeacee-77bc-4c9e-b958-915876491934',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:145',message:'Component mounted - state verification',data:{briefFields:Object.keys(brief),topicsCount:topicsData?.topics.length || 0,selectedTopicsCount:selectedTopicIds.length,mode},timestamp:Date.now(),sessionId:'debug-session',runId:'redesign-verify',hypothesisId:'state-preserved'})}).catch(()=>{});
-  }, [brief, topicsData, selectedTopicIds, mode]);
-  // #endregion
 
   // Fetch cost data periodically
   useEffect(() => {

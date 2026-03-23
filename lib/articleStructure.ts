@@ -199,7 +199,7 @@ export function injectAnchorsIntoText(
   });
   
   if (placeholderMap.size > 0) {
-    const finalPlaceholders = (result.match(/\[([AT][1-3])\]/g) || []).length;
+    const finalPlaceholders = (result.match(/\[([AT][1-8])\]/g) || []).length;
     console.log(`[injectAnchorsIntoText] After restoration: ${restoredCount}/${placeholderMap.size} placeholders restored, ${finalPlaceholders} total placeholders found in result`);
   }
 
@@ -367,27 +367,27 @@ export function blocksToHtml(
     if (block.type === 'ul' || block.type === 'ol') {
       const listBlock = block as ListBlock;
       listBlock.items.forEach(item => {
-        const matches = item.text.match(/\[([AT][1-3])\]/g);
+        const matches = item.text.match(/\[([AT][1-8])\]/g);
         if (matches) allPlaceholders.push(...matches);
       });
     } else if (block.type === 'table') {
       const tableBlock = block as TableBlock;
       if (tableBlock.caption) {
-        const matches = tableBlock.caption.match(/\[([AT][1-3])\]/g);
+        const matches = tableBlock.caption.match(/\[([AT][1-8])\]/g);
         if (matches) allPlaceholders.push(...matches);
       }
       tableBlock.headers.forEach(h => {
-        const matches = h.match(/\[([AT][1-3])\]/g);
+        const matches = h.match(/\[([AT][1-8])\]/g);
         if (matches) allPlaceholders.push(...matches);
       });
       tableBlock.rows.forEach(row => {
         row.forEach(cell => {
-          const matches = cell.match(/\[([AT][1-3])\]/g);
+          const matches = cell.match(/\[([AT][1-8])\]/g);
           if (matches) allPlaceholders.push(...matches);
         });
       });
     } else {
-      const matches = block.text.match(/\[([AT][1-3])\]/g);
+      const matches = block.text.match(/\[([AT][1-8])\]/g);
       if (matches) allPlaceholders.push(...matches);
     }
   });
