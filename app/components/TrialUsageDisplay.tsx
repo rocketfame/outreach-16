@@ -249,29 +249,29 @@ export default function TrialUsageDisplay() {
           }}>
             <DetailCard
               icon={<CompassIcon />}
-              title="Пошук тем"
-              desc="Запусків Topic Discovery"
+              title="Topic Search"
+              desc="Topic Discovery runs"
               used={discRuns} max={maxRuns}
               color="#8b5cf6" bgAlpha="rgba(139,92,246,0.04)"
             />
             <DetailCard
               icon={<FileTextIcon />}
-              title="Discovery статті"
-              desc="Статей із знайдених тем"
+              title="Discovery Articles"
+              desc="Articles from discovered topics"
               used={discoveryArt} max={maxDisc}
               color="#6366f1" bgAlpha="rgba(99,102,241,0.04)"
             />
             <DetailCard
               icon={<PenToolIcon />}
-              title="Direct статті"
-              desc="Статей у Direct Creation"
+              title="Direct Articles"
+              desc="Articles via Direct Creation"
               used={directArt} max={maxDir}
               color="#3b82f6" bgAlpha="rgba(59,130,246,0.04)"
             />
             <DetailCard
               icon={<ImageIcon />}
-              title="Зображення"
-              desc="AI-генерацій зображень"
+              title="Images"
+              desc="AI image generations"
               used={imgs} max={maxImgs}
               color="#f59e0b" bgAlpha="rgba(245,158,11,0.04)"
             />
