@@ -5,17 +5,23 @@ import { shouldUseBrowsing, browseForTopics } from "@/lib/topicBrowsing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount, isMasterToken } from "@/lib/trialLimits";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
-// Simple debug logger that works in both local and production (Vercel)
+// Simple debug logger
 const debugLog = (...args: any[]) => {
-  console.log("[debug]", ...args);
+  console.log("[generate-topics]", ...args);
 };
 
 export async function POST(req: Request) {
-  // #region agent log
-  const logEntry = {location:'generate-topics/route.ts:12',message:'POST /api/generate-topics called',data:{routeExists:true},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
-  debugLog(logEntry);
-  // #endregion
+  // Rate limit: 30 req/min per IP
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, "search");
+  if (rl.limited) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded. Please wait." }),
+      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
+    );
+  }
 
   // Validate all API keys using centralized configuration
   try {

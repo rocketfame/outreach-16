@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       metadata: {
         planId,
         credits: credits.toString(),
-        trialToken: trialToken || '',
+        // Note: trialToken intentionally excluded from Stripe metadata for security
       },
       // Allow promotion codes
       allow_promotion_codes: true,

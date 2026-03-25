@@ -50,6 +50,7 @@ import {
 } from "@/lib/sourceClassifier";
 import path from "path";
 import fs from "fs";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: any[]) => {
@@ -175,10 +176,16 @@ export interface ArticleResponse {
 }
 
 export async function POST(req: Request) {
-  // #region agent log
-  const logEntry = {location:'articles/route.ts:35',message:'POST /api/articles called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-  debugLog(logEntry);
-  // #endregion
+
+  // Rate limit: 10 req/hour per IP (expensive OpenAI calls)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, "generate");
+  if (rl.limited) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded. Please wait before generating more articles." }),
+      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
+    );
+  }
 
   // Validate all API keys using centralized configuration
   try {
@@ -199,10 +206,6 @@ export async function POST(req: Request) {
   try {
     const body: ArticleRequest = await req.json();
     const { brief, selectedTopics, keywordList = [], exactKeywordList = [], trustSourcesList = [], trustSourcesPerTopic, writingMode = "seo" } = body;
-    // #region agent log
-    writeDebugLine({location:'articles/route.ts:122',message:'wordCount audit request',data:{briefWordCount:brief?.wordCount,typeofWordCount:typeof brief?.wordCount,briefKeys:brief?Object.keys(brief):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H1'});
-    console.log("[wordcount-audit] Request brief.wordCount:", brief?.wordCount, "type:", typeof brief?.wordCount);
-    // #endregion
 
     // Check trial limits AFTER parsing body to know how many articles will be generated
     const trialToken = extractTrialToken(req);
@@ -218,27 +221,6 @@ export async function POST(req: Request) {
     // CRITICAL: For Human Mode, force humanization ON
     // In Human Mode, humanization is always enabled (integrated into the mode)
     const effectiveHumanizeOnWrite = writingMode === "human" ? true : (body.humanizeOnWrite || false);
-    
-    // #region agent log
-    const requestLog = {
-      location: 'articles/route.ts:117',
-      message: 'Article request received',
-      data: {
-        topicsCount: selectedTopics?.length || 0,
-        trustSourcesCount: trustSourcesList?.length || 0,
-        writingMode: writingMode,
-        humanizeOnWrite: body.humanizeOnWrite,
-        effectiveHumanizeOnWrite: effectiveHumanizeOnWrite, // May be forced to true for Human Mode
-        humanizeSettings: body.humanizeSettings,
-        lightHumanEdit: body.lightHumanEdit,
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'articles-api',
-      hypothesisId: 'request-received'
-    };
-    debugLog(requestLog);
-    // #endregion
 
     // Validate that trust sources are provided (mandatory for article generation)
     const hasSharedSources = trustSourcesList && trustSourcesList.length > 0;
@@ -249,11 +231,6 @@ export async function POST(req: Request) {
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
-
-    // #region agent log
-    const bodyLog = {location:'articles/route.ts:48',message:'Request body parsed',data:{topicsCount:selectedTopics.length,hasBrief:!!brief,hasKeywords:keywordList.length>0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-    debugLog(bodyLog);
-    // #endregion
 
     if (!selectedTopics || selectedTopics.length === 0) {
       return new Response(
@@ -385,21 +362,6 @@ export async function POST(req: Request) {
         // This ensures we always have at least some sources to work with
         if (trustedSources.length === 0 && rawSources.length > 0) {
           console.warn("[articles/route] All filtering failed, using raw sources as final fallback");
-          // #region agent log
-          const fallbackLog = {
-            location: 'articles/route.ts:270',
-            message: 'Using raw sources fallback',
-            data: {
-              rawSourcesCount: rawSources.length,
-              rawSources: rawSources.slice(0, 3).map(s => ({ title: s.title, url: s.url })),
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'raw-sources-fallback'
-          };
-          debugLog(fallbackLog);
-          // #endregion
           const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
           trustedSources = rawSources.slice(0, 3).map((source, i) => ({
             id: ids[i],
@@ -409,23 +371,6 @@ export async function POST(req: Request) {
             relevance_score: 5, // Default score
           }));
         }
-        
-        // #region agent log
-        const finalSourcesLog = {
-          location: 'articles/route.ts:290',
-          message: 'Final trusted sources after all filtering',
-          data: {
-            finalCount: trustedSources.length,
-            sources: trustedSources.map(ts => ({ id: ts.id, title: ts.title, url: ts.url, type: ts.type })),
-            rawSourcesCount: rawSources.length,
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'articles-api',
-          hypothesisId: 'final-trusted-sources'
-        };
-        debugLog(finalSourcesLog);
-        // #endregion
 
         // Convert to format expected by prompt builders
         // Format: JSON array with id, url, title, type for the prompt
@@ -438,25 +383,6 @@ export async function POST(req: Request) {
 
         // Also keep old format for backward compatibility with prompt builders
         const filteredTrustSourcesList = trustedSources.map(ts => `${ts.title}|${ts.url}`);
-
-        // #region agent log
-        const filterLog = {
-            location: 'articles/route.ts:150',
-            message: 'Trust sources classified and filtered',
-            data: {
-              originalCount: sourcesForTopic.length,
-            filteredCount: trustedSources.length,
-            niche: brief.niche || "",
-            topicTitle: topic.title,
-            trustedSources: trustedSources.map(ts => ({ id: ts.id, title: ts.title, url: ts.url, type: ts.type }))
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'articles-api',
-          hypothesisId: 'trust-source-classification'
-        };
-        debugLog(filterLog);
-        // #endregion
 
         // Extract brand name from clientSite before building prompt (used in both modes)
         // If clientSite is a URL, extract domain; if it's plain text, use it as-is
@@ -474,41 +400,6 @@ export async function POST(req: Request) {
           // ========================================================================
           // DO NOT use buildArticlePrompt here! This mode has its own separate prompt.
           // ========================================================================
-        // #region agent log
-        const promptBuildLog = {location:'articles/route.ts:94',message:'Building DIRECT article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform,mode:'direct'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
-          debugLog(promptBuildLog);
-          // #endregion
-
-          // #region agent log - Brand extraction for Direct Mode
-          // Note: brandName is already extracted before this block
-          const brandExtractionLog = {
-            location: 'articles/route.ts:360',
-            message: '[direct-mode] Brand name extraction',
-            data: {
-              clientSite: brief.clientSite,
-              clientSiteType: brief.clientSite 
-                ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
-                  ? 'URL'
-                  : 'text'
-                : 'empty',
-              brandName: brandName,
-              brandNameLength: brandName?.length || 0,
-              isBrandNameEmpty: !brandName || brandName.trim().length === 0,
-              willBeReplacedWith: brandName && brandName.trim() ? brandName.trim() : "NONE",
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'brand-extraction'
-          };
-          console.log("[articles/route] Direct mode - Brand name extraction:", {
-            clientSite: brief.clientSite,
-            brandName: brandName,
-            isEmpty: !brandName || brandName.trim().length === 0,
-            willBeUsedAs: brandName && brandName.trim() ? brandName.trim() : "NONE",
-          });
-          debugLog(brandExtractionLog);
-          // #endregion
 
           prompt = buildDirectArticlePrompt({
             topicTitle: topic.title,
@@ -549,42 +440,6 @@ export async function POST(req: Request) {
           ? topicBriefParts.join("\n\n")
           : topic.title;
 
-        // #region agent log
-          const promptBuildLog = {location:'articles/route.ts:94',message:'Building TOPIC DISCOVERY article prompt',data:{topicTitle:topic.title,trustSourcesCount:trustSourcesList.length,trustSourcesPreview:trustSourcesList.slice(0,3),platform:brief.platform,mode:'topic-discovery'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'article-prompt'};
-        debugLog(promptBuildLog);
-        // #endregion
-
-          // #region agent log - Brand extraction for Topic Discovery Mode
-          // Note: brandName is already extracted before this block
-          const brandExtractionLog = {
-            location: 'articles/route.ts:410',
-            message: '[topic-discovery-mode] Brand name extraction',
-            data: {
-              clientSite: brief.clientSite,
-              clientSiteType: brief.clientSite 
-                ? (brief.clientSite.includes("://") || (brief.clientSite.includes(".") && brief.clientSite.includes("/")))
-                  ? 'URL'
-                  : 'text'
-                : 'empty',
-              brandName: brandName,
-              brandNameLength: brandName?.length || 0,
-              isBrandNameEmpty: !brandName || brandName.trim().length === 0,
-              willBeReplacedWith: brandName && brandName.trim() ? brandName.trim() : "NONE",
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'brand-extraction'
-          };
-          console.log("[articles/route] Topic Discovery mode - Brand name extraction:", {
-            clientSite: brief.clientSite,
-            brandName: brandName,
-            isEmpty: !brandName || brandName.trim().length === 0,
-            willBeUsedAs: brandName && brandName.trim() ? brandName.trim() : "NONE",
-          });
-          debugLog(brandExtractionLog);
-          // #endregion
-
           prompt = buildArticlePrompt({
           topicTitle: topic.title,
           topicBrief: topicBrief,
@@ -604,23 +459,7 @@ export async function POST(req: Request) {
           writingMode: writingMode, // Pass writing mode from request
         });
         }
-        
-        // #region agent log
-        const trustSourcesLog = {location:'articles/route.ts:88',message:'Trust sources in prompt',data:{filteredCount:trustedSources.length,filteredSources:trustedSources.map(ts => ({ id: ts.id, title: ts.title, type: ts.type })),hasTrustSources:trustedSources.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'trust-sources'};
-        debugLog(trustSourcesLog);
-        // #endregion
 
-        // #region agent log
-        const promptLog = {location:'articles/route.ts:75',message:'Article prompt built',data:{promptLength:prompt.length,topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-        debugLog(promptLog);
-        // #endregion
-        // #region agent log
-        const expectedMax = Math.ceil((Number(brief.wordCount) || 1500) * 1.2);
-        const idx = prompt.indexOf('WORD_COUNT');
-        const snippet = idx >= 0 ? prompt.slice(idx, idx + 350) : 'no WORD_COUNT';
-        writeDebugLine({location:'articles/route.ts:528',message:'wordCount audit prompt',data:{briefWordCount:brief?.wordCount,expectedMax,promptHasUnreplacedMax:prompt.includes('[[WORD_COUNT_MAX]]'),promptHasMaxNum:prompt.includes(String(expectedMax)),snippet},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H3-H4'});
-        console.log("[wordcount-audit] Prompt check: brief.wordCount=", brief?.wordCount, "expectedMax=", expectedMax, "unreplacedMax=", prompt.includes("[[WORD_COUNT_MAX]]"), "hasMaxNum=", prompt.includes(String(expectedMax)));
-        // #endregion
 
         // Extract brand name for system message
         // Extract brand name from clientSite if available, otherwise use empty string
@@ -667,65 +506,7 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
         };
 
         // Call OpenAI API with system + user messages
-        // #region agent log - Brand verification before API call
-        // Check if brand is present in prompt before sending to OpenAI
-        // brandNameValue will be set after prompt is built, so we calculate it here
-        const brandNameValueForLog = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
-        const brandPlaceholderInPrompt = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
-        const brandValueInPrompt = brandNameValueForLog !== "NONE" ? (prompt.match(new RegExp(brandNameValueForLog.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length : 0;
         
-        const brandVerificationLog = {
-          location: 'articles/route.ts:535',
-          message: '[brand-verification] Brand verification before API call',
-          data: {
-            brandName: brandName,
-            brandNameValue: brandNameValueForLog,
-            brandPlaceholderInPrompt: brandPlaceholderInPrompt,
-            brandValueInPrompt: brandValueInPrompt,
-            hasBrandPlaceholder: brandPlaceholderInPrompt > 0,
-            hasBrandValue: brandValueInPrompt > 0,
-            brandShouldBeUsed: brandNameValueForLog !== "NONE",
-            promptContainsBrandInstructions: /Brand.*?integration/i.test(prompt) || /Client.*?brand/i.test(prompt),
-            promptBrandSample: prompt.match(/Brand[\s\S]{0,300}/gi)?.[0]?.substring(0, 300) || "Not found",
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'articles-api',
-          hypothesisId: 'brand-verification'
-        };
-        console.log("[articles-api] Brand verification before API call:", {
-          brandName: brandName,
-          brandNameValue: brandNameValueForLog,
-          placeholderCount: brandPlaceholderInPrompt,
-          valueAppears: brandValueInPrompt,
-          shouldBeUsed: brandNameValueForLog !== "NONE",
-          hasInstructions: /Brand.*?integration/i.test(prompt) || /Client.*?brand/i.test(prompt),
-        });
-        debugLog(brandVerificationLog);
-        // #endregion
-        
-        // #region agent log
-        const beforeApiLog = {
-          location: 'articles/route.ts:103',
-          message: 'About to call OpenAI API',
-          data: {
-            model: 'gpt-5.2',
-            mode: isDirectMode ? 'direct' : 'topic-discovery',
-            hasSystemMessage: !!systemMessage,
-            hasUserPrompt: !!prompt,
-            promptLength: prompt.length,
-            maxTokens: 8000,
-            apiParams,
-            brandName: brandName, // Include brand in log
-            brandNameValue: brandNameValueForLog, // Include processed brand value
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'articles-api',
-          hypothesisId: 'articles-endpoint'
-        };
-        debugLog(beforeApiLog);
-        // #endregion
 
         let completion;
         try {
@@ -748,10 +529,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
             });
           } catch (formatError: any) {
             // If response_format is not supported, try without it
-            // #region agent log
-            const formatErrorLog = {location:'articles/route.ts:125',message:'response_format not supported, trying without it',data:{error:(formatError as Error).message,errorCode:formatError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-            debugLog(formatErrorLog);
-            // #endregion
               completion = await openai.chat.completions.create({
               model: "gpt-5.2",
                 messages: [
@@ -768,34 +545,10 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               });
           }
         } catch (apiError: any) {
-          // #region agent log
-          const apiErrorLog = {location:'articles/route.ts:150',message:'OpenAI API call failed',data:{error:(apiError as Error).message,errorName:(apiError as Error).name,errorStatus:apiError?.status,errorCode:apiError?.code,errorType:apiError?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-          debugLog(apiErrorLog);
-          // #endregion
           throw apiError;
         }
 
         const content = completion.choices[0]?.message?.content ?? "";
-        
-        // #region agent log - Brand check in raw content
-        // Check if brand placeholder or value appears in raw content (before parsing)
-        const brandNameValueForRawCheck = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
-        if (brandNameValueForRawCheck !== "NONE") {
-          const brandInRawContent = {
-            brandValue: brandNameValueForRawCheck,
-            appearsInRawContent: content.includes(brandNameValueForRawCheck),
-            occurrencesInRawContent: (content.match(new RegExp(brandNameValueForRawCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
-            placeholderStillPresent: (content.match(/\[\[BRAND_NAME\]\]/g) || []).length,
-          };
-          console.log("[articles-api] Brand check in raw OpenAI response:", brandInRawContent);
-        } else {
-          // If brand should be NONE, check if placeholder wasn't replaced
-          const placeholderStillPresent = (content.match(/\[\[BRAND_NAME\]\]/g) || []).length;
-          if (placeholderStillPresent > 0) {
-            console.warn("[articles-api] WARNING: Brand placeholder [[BRAND_NAME]] still present in response even though brand should be NONE!");
-          }
-        }
-        // #endregion
 
         // Track cost
         const costTracker = getCostTracker();
@@ -829,11 +582,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           });
           throw new Error("Received empty content from OpenAI API. The model returned no content, only reasoning tokens.");
         }
-
-        // #region agent log
-        const apiLog = {location:'articles/route.ts:135',message:'OpenAI API success',data:{contentLength:content.length,topicTitle:topic.title,hasContent:!!content,contentPreview:content.substring(0,100),usage:{inputTokens,outputTokens,reasoningTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-        debugLog(apiLog);
-        // #endregion
         
         // Parse JSON response
         let parsedResponse: {
@@ -898,10 +646,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
             );
           }
         } catch (parseError) {
-          // #region agent log
-          const parseErrorLog = {location:'articles/route.ts:150',message:'JSON parse error',data:{error:(parseError as Error).message,errorName:(parseError as Error).name,contentLength:content.length,contentPreview:content.substring(0,500),jsonContentPreview:jsonContent ? jsonContent.substring(0,500) : 'N/A'},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-          debugLog(parseErrorLog);
-          // #endregion
           console.error("[articles-api] JSON parse/validation error:", parseError);
           console.error("[articles-api] Raw OpenAI response content (first 800 chars):", content.substring(0, 800));
           // Do NOT use raw content as articleBodyText when it looks like JSON - that would display raw JSON in article body
@@ -917,57 +661,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
             articleBodyText: content,
           };
         }
-        
-        // #region agent log - Brand presence check in parsed JSON response
-        // Check if brand appears in the parsed JSON response (after parsing, before HTML conversion)
-        const brandNameValueForCheck = (brandName && brandName.trim()) ? brandName.trim() : "NONE";
-        if (brandNameValueForCheck !== "NONE") {
-          // Check in all possible fields
-          const articleBodyTextForCheck = parsedResponse.articleBodyText || "";
-          const articleBodyHtmlForCheck = parsedResponse.articleBodyHtml || "";
-          const articleBlocksForCheck = parsedResponse.articleBlocks ? JSON.stringify(parsedResponse.articleBlocks) : "";
-          const allContent = articleBodyTextForCheck + articleBodyHtmlForCheck + articleBlocksForCheck;
-          
-          const brandInParsedResponse = {
-            brandValue: brandNameValueForCheck,
-            appearsInArticleBodyText: articleBodyTextForCheck.includes(brandNameValueForCheck),
-            appearsInArticleBodyHtml: articleBodyHtmlForCheck.includes(brandNameValueForCheck),
-            appearsInArticleBlocks: articleBlocksForCheck.includes(brandNameValueForCheck),
-            appearsInAnyField: allContent.includes(brandNameValueForCheck),
-            occurrencesInArticleBodyText: (articleBodyTextForCheck.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
-            occurrencesInArticleBodyHtml: (articleBodyHtmlForCheck.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
-            occurrencesInArticleBlocks: (articleBlocksForCheck.match(new RegExp(brandNameValueForCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')) || []).length,
-            placeholderStillPresent: allContent.includes("[[BRAND_NAME]]"),
-          };
-          
-          console.log("[articles-api] Brand presence check in parsed JSON response:", brandInParsedResponse);
-          
-          if (!brandInParsedResponse.appearsInAnyField) {
-            console.warn("[articles-api] WARNING: Brand was expected but NOT FOUND in parsed JSON response!", {
-              brandExpected: brandNameValueForCheck,
-              articleBodyTextPreview: articleBodyTextForCheck.substring(0, 500),
-              articleBodyHtmlPreview: articleBodyHtmlForCheck.substring(0, 500),
-              articleBlocksPreview: articleBlocksForCheck.substring(0, 500),
-            });
-          }
-          
-          // #region agent log
-          const brandInParsedResponseLog = {
-            location: 'articles/route.ts:740',
-            message: '[brand-verification] Brand presence check in parsed JSON response',
-            data: {
-              brandExpected: brandNameValueForCheck,
-              ...brandInParsedResponse,
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'brand-verification-parsed'
-          };
-          debugLog(brandInParsedResponseLog);
-          // #endregion
-        }
-        // #endregion
 
         // Post-process the article text: clean invisible chars and normalize
         let cleanedTitleTag = cleanText(parsedResponse.titleTag || topic.title);
@@ -981,9 +674,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
         let articleStructure: ArticleStructure | null = null;
         let cleanedArticleBodyHtml = "";
         let humanizationReportForResponse: HumanizationReport | undefined;
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:982',message:'Format detection and anchor state',data:{hasBlocksFormat,hasNewFormat,hasOldFormat,anchorText:brief.anchorText,anchorUrl:brief.anchorUrl,clientSite:brief.clientSite,anchorTextEmpty:!brief.anchorText||!brief.anchorText.trim(),anchorUrlEmpty:!brief.anchorUrl||!brief.anchorUrl.trim(),topicTitle:topic.title},timestamp:Date.now(),hypothesisId:'A-B-E'})}).catch(()=>{});
-        // #endregion
         
         // Convert trustedSources to TrustSourceSpec format for article structure
         // CRITICAL: Trim anchor text to 1-3 words (as per prompt rules)
@@ -1150,9 +840,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           }
           // Use trusted sources (convert to "Name|URL" format for backward compatibility)
           const trustSourcesListForStructure = trustedSources.map(ts => `${ts.title}|${ts.url}`);
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:1150',message:'BEFORE modelBlocksToArticleStructure - anchor params',data:{anchorText:brief.anchorText,anchorUrl:brief.anchorUrl,clientSite:brief.clientSite,resolvedAnchorUrl:brief.anchorUrl||brief.clientSite||'',anchorTextTruthy:!!brief.anchorText,anchorUrlTruthy:!!(brief.anchorUrl||brief.clientSite),anchorTextType:typeof brief.anchorText,anchorUrlType:typeof brief.anchorUrl,anchorTextLength:brief.anchorText?.length,anchorUrlLength:brief.anchorUrl?.length},timestamp:Date.now(),hypothesisId:'A-B'})}).catch(()=>{});
-          // #endregion
           articleStructure = modelBlocksToArticleStructure(
             parsedResponse.articleBlocks,
             cleanedTitleTag,
@@ -1163,9 +850,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           );
           // Override trustSources with trusted ones (to ensure correct anchor text)
           articleStructure.trustSources = trustSourcesForStructure;
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:1158',message:'AFTER modelBlocksToArticleStructure - anchors array',data:{anchorsCount:articleStructure.anchors.length,anchors:articleStructure.anchors.map(a=>({id:a.id,text:a.text,url:a.url})),trustSourcesCount:articleStructure.trustSources.length,blocksWithA1:articleStructure.blocks.filter(b=>b.text?.includes('[A1]')).map(b=>({type:b.type,textPreview:b.text?.substring(0,100)}))},timestamp:Date.now(),hypothesisId:'A-B'})}).catch(()=>{});
-          // #endregion
         } else if (hasNewFormat) {
           // PLAIN TEXT FORMAT (fallback): heuristic parsing -> blocks -> HTML
           const articleBodyText = cleanText(parsedResponse.articleBodyText || "");
@@ -1245,25 +929,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           const enableHumanizeOnWrite = effectiveHumanizeOnWrite;
           let totalHumanizeWordsUsed = 0;
 
-          // #region agent log
-          const humanizeCheckLog = {
-            location: 'articles/route.ts:647',
-            message: 'Humanization check',
-            data: {
-              enableHumanizeOnWrite,
-              bodyHumanizeOnWrite: body.humanizeOnWrite,
-              hasArticleStructure: !!articleStructure,
-              blocksCount: articleStructure?.blocks?.length || 0,
-              humanizeSettings: body.humanizeSettings,
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'humanization-check'
-          };
-          debugLog(humanizeCheckLog);
-          // #endregion
-
           if (enableHumanizeOnWrite) {
             const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY || "";
             const frozenPlaceholders = ["[A1]", "[T1]", "[T2]", "[T3]", "[T4]", "[T5]", "[T6]", "[T7]", "[T8]"];
@@ -1285,26 +950,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               humanizationRatio: 0,
               skippedReasons: { shortParagraphs: 0, shortListItems: 0, shortTableCells: 0 },
             };
-
-            // #region agent log
-            const humanizeConfigLog = {
-              location: 'articles/route.ts:660',
-              message: 'Humanization configuration',
-              data: {
-                hasApiKey: !!apiKey,
-                apiKeyPrefix: apiKey ? apiKey.substring(0, 5) + "***" : "none",
-                humanizeModel,
-                humanizeStyle,
-                humanizeMode,
-                blocksToHumanize: articleStructure?.blocks?.length || 0,
-              },
-              timestamp: Date.now(),
-              sessionId: 'debug-session',
-              runId: 'articles-api',
-              hypothesisId: 'humanization-config'
-            };
-            debugLog(humanizeConfigLog);
-            // #endregion
 
             // Validate API key before proceeding (Undetectable.AI does not require email)
             if (!apiKey) {
@@ -1491,24 +1136,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                   totalWordsInArticle > 0 ? totalHumanizeWordsUsed / totalWordsInArticle : 0;
                 humanizationReportForResponse = humanizationReport;
 
-                // #region agent log
-                const humanizeResultLog = {
-                  location: 'articles/route.ts:845',
-                  message: 'Humanization result',
-                  data: {
-                    totalWordsUsed: totalHumanizeWordsUsed,
-                    blocksHumanized: humanizedBlocks.length,
-                    anyHumanized,
-                    originalBlocksCount: articleStructure.blocks.length,
-                  },
-                  timestamp: Date.now(),
-                  sessionId: 'debug-session',
-                  runId: 'articles-api',
-                  hypothesisId: 'humanization-result'
-                };
-                debugLog(humanizeResultLog);
-                // #endregion
-
                 // Track humanization costs (FIXED: removed duplicate tracking)
                 if (totalHumanizeWordsUsed > 0) {
                   const costTracker = getCostTracker();
@@ -1528,39 +1155,7 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                   // Log warning if humanization was enabled but no words were used
                   console.warn('[articles-api] Humanization was enabled but no words were processed. This may indicate API errors (e.g., insufficient balance) or all blocks were too short.');
                 }
-                // #region agent log
-                const humanizeSuccessLog = {
-                  location: 'articles/route.ts:794',
-                  message: 'Humanization completed successfully',
-                  data: {
-                    totalWordsUsed: totalHumanizeWordsUsed,
-                    blocksHumanized: humanizedBlocks.length,
-                    originalBlocksCount: articleStructure.blocks.length,
-                  },
-                  timestamp: Date.now(),
-                  sessionId: 'debug-session',
-                  runId: 'articles-api',
-                  hypothesisId: 'humanization-success'
-                };
-                debugLog(humanizeSuccessLog);
-                // #endregion
               } catch (humanizeError) {
-                // #region agent log
-                const humanizeErrorLog = {
-                  location: 'articles/route.ts:802',
-                  message: 'Humanization on write failed',
-                  data: {
-                    error: (humanizeError as Error).message,
-                    errorName: (humanizeError as Error).name,
-                    stack: (humanizeError as Error).stack?.substring(0, 500),
-                  },
-                  timestamp: Date.now(),
-                  sessionId: 'debug-session',
-                  runId: 'articles-api',
-                  hypothesisId: 'humanization-error'
-                };
-                debugLog(humanizeErrorLog);
-                // #endregion
                 console.error('[articles-api] Humanization on write failed:', humanizeError);
               }
             } else {
@@ -1575,21 +1170,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 humanizationRatio: 0,
                 skippedReasons: { shortParagraphs: 0, shortListItems: 0, shortTableCells: 0 },
               };
-              // #region agent log
-              const humanizeConfigErrorLog = {
-                location: 'articles/route.ts:805',
-                message: 'Humanization requested but not configured',
-                data: {
-                  hasApiKey: !!apiKey,
-                  enableHumanizeOnWrite,
-                },
-                timestamp: Date.now(),
-                sessionId: 'debug-session',
-                runId: 'articles-api',
-                hypothesisId: 'humanization-config-error'
-              };
-              debugLog(humanizeConfigErrorLog);
-              // #endregion
               console.warn('[articles-api] Humanization on write requested but UNDETECTABLE_HUMANIZER_API_KEY not configured');
             }
           } else {
@@ -1603,22 +1183,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               totalWordsInArticle: 0,
               humanizationRatio: 0,
             };
-            // #region agent log
-            const humanizeDisabledLog = {
-              location: 'articles/route.ts:650',
-              message: 'Humanization disabled',
-              data: {
-                enableHumanizeOnWrite,
-                bodyHumanizeOnWrite: body.humanizeOnWrite,
-                hasArticleStructure: !!articleStructure,
-              },
-              timestamp: Date.now(),
-              sessionId: 'debug-session',
-              runId: 'articles-api',
-              hypothesisId: 'humanization-disabled'
-            };
-            debugLog(humanizeDisabledLog);
-            // #endregion
           }
 
           // ========================================================================
@@ -1663,26 +1227,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               console.warn(`[articles-api] Invalid placeholders found: ${invalidPlaceholders.join(', ')}. These will be removed or left as plain text.`);
               // Remove invalid placeholders from text (optional: can be done in post-processing)
             }
-            
-            // #region agent log
-            const validationLog = {
-              location: 'articles/route.ts:670',
-              message: 'Trust source placeholder validation',
-              data: {
-                trustSourcesCount: articleStructure.trustSources.length,
-                placeholderCount,
-                uniquePlaceholders: Array.from(uniquePlaceholders),
-                usedPlaceholderIds,
-                validPlaceholderIds,
-                invalidPlaceholders
-              },
-              timestamp: Date.now(),
-              sessionId: 'debug-session',
-              runId: 'articles-api',
-              hypothesisId: 'trust-source-validation'
-            };
-            debugLog(validationLog);
-            // #endregion
           }
 
           // CRITICAL: Check for placeholders in blocks BEFORE converting to HTML
@@ -1713,29 +1257,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               if (matches) allPlaceholdersInBlocks.push(...matches);
             }
           });
-          
-          // #region agent log
-          const blocksToHtmlLog = {
-            location: 'articles/route.ts:1502',
-            message: 'Converting blocks to HTML',
-            data: {
-              topicTitle: topic.title,
-              anchorsCount: articleStructure.anchors.length,
-              anchors: articleStructure.anchors.map(a => ({ id: a.id, text: a.text, url: a.url })),
-              trustSourcesCount: articleStructure.trustSources.length,
-              trustSources: articleStructure.trustSources.map(t => ({ id: t.id, text: t.text, url: t.url })),
-              blocksCount: articleStructure.blocks.length,
-              placeholdersFound: [...new Set(allPlaceholdersInBlocks)],
-              placeholderCount: allPlaceholdersInBlocks.length,
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'blocks-to-html'
-          };
-          debugLog(blocksToHtmlLog);
-          console.log(`[articles-api] Converting blocks to HTML for topic: ${topic.title}`, blocksToHtmlLog.data);
-          // #endregion
 
           // Convert blocks to HTML, fix spacing around tags, remove excessive bold, then clean invisible characters
           const htmlBeforeClean = blocksToHtml(
@@ -1747,27 +1268,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           // CRITICAL: Check if placeholders were replaced in HTML
           const placeholdersInHtml = (htmlBeforeClean.match(/\[([AT][1-3])\]/g) || []).length;
           const linksInHtml = (htmlBeforeClean.match(/<a\s+[^>]*href/g) || []).length;
-          
-          // #region agent log
-          const htmlAfterBlocksLog = {
-            location: 'articles/route.ts:1520',
-            message: 'HTML after blocksToHtml (before post-processing)',
-            data: {
-              topicTitle: topic.title,
-              htmlLength: htmlBeforeClean.length,
-              placeholdersRemaining: placeholdersInHtml,
-              linksFound: linksInHtml,
-              expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
-              htmlPreview: htmlBeforeClean.substring(0, 500),
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'html-after-blocks'
-          };
-          debugLog(htmlAfterBlocksLog);
-          console.log(`[articles-api] HTML after blocksToHtml (before post-processing) for topic: ${topic.title}`, htmlAfterBlocksLog.data);
-          // #endregion
           
           if (placeholdersInHtml > 0) {
             console.error(`[articles-api] ERROR: ${placeholdersInHtml} placeholders still present after blocksToHtml!`, {
@@ -1791,30 +1291,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           for (const match of linkMatches) {
             actualLinks.push({ url: match[1], text: match[2] });
           }
-          
-          // #region agent log
-          const finalHtmlLog = {
-            location: 'articles/route.ts:1535',
-            message: 'Final HTML generated',
-            data: {
-              topicTitle: topic.title,
-              htmlLength: cleanedArticleBodyHtml.length,
-              linkCount,
-              placeholdersRemaining: placeholdersAfterClean,
-              expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
-              hasLinks: linkCount > 0,
-              hasPlaceholders: placeholdersAfterClean > 0,
-              actualLinks: actualLinks,
-              htmlPreview: cleanedArticleBodyHtml.substring(0, 1000),
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'articles-api',
-            hypothesisId: 'final-html'
-          };
-          debugLog(finalHtmlLog);
-          console.log(`[articles-api] Final HTML generated for topic: ${topic.title}`, finalHtmlLog.data);
-          // #endregion
           
           if (placeholdersAfterClean > 0) {
             const errorLog = {
@@ -1872,20 +1348,11 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           );
         }
 
-        // #region agent log
-        const cleaningLog = {location:'articles/route.ts:250',message:'Text cleaning applied',data:{titleTagLength:cleanedTitleTag.length,metaDescriptionLength:cleanedMetaDescription.length,articleBodyHtmlLength:cleanedArticleBodyHtml.length,originalLength:(parsedResponse.articleBodyHtml || content).length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'text-cleaning'};
-        debugLog(cleaningLog);
-        // #endregion
-
         // Optional: Light human edit for natural variation
         // NOTE: Only apply to old format (HTML). New format uses humanizeOnWrite instead.
         const enableLightHumanEdit = body.lightHumanEdit || false;
         if (enableLightHumanEdit && !hasNewFormat) {
           try {
-            // #region agent log
-            const editStartLog = {location:'articles/route.ts:255',message:'Starting light human edit',data:{topicTitle:topic.title},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
-            debugLog(editStartLog);
-            // #endregion
 
             cleanedArticleBodyHtml = await lightHumanEdit(cleanedArticleBodyHtml, openai, { preserveHtml: true });
 
@@ -1898,16 +1365,7 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 fixHtmlTagSpacing(cleanedArticleBodyHtml)
               )
             );
-
-            // #region agent log
-            const editCompleteLog = {location:'articles/route.ts:260',message:'Light human edit completed and re-cleaned',data:{topicTitle:topic.title,newLength:cleanedArticleBodyHtml.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
-            debugLog(editCompleteLog);
-            // #endregion
           } catch (editError) {
-            // #region agent log
-            const editErrorLog = {location:'articles/route.ts:265',message:'Light human edit failed, using cleaned text',data:{error:(editError as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'light-human-edit'};
-            debugLog(editErrorLog);
-            // #endregion
             console.error('[articles-api] Light human edit failed:', editError);
             // Continue with cleaned text if edit fails
           }
@@ -1930,9 +1388,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
         } else if (actualWordCount < wordCountMinSys) {
           console.warn(`[wordcount-check] UNDER LIMIT by ${wordCountMinSys - actualWordCount} words (${wordCountDeviation}% deviation)`);
         }
-        // #region agent log
-        writeDebugLine({location:'articles/route.ts:wordcount-post',message:'wordCount post-generation check',data:{topicTitle:topic.title,targetWords,actualWordCount,deviation:wordCountDeviation,min:wordCountMinSys,max:wordCountMaxSys,dynamicMaxTokens,isWithinRange:actualWordCount>=wordCountMinSys&&actualWordCount<=wordCountMaxSys},timestamp:Date.now(),sessionId:'7bb5e0',runId:'wordcount-audit',hypothesisId:'H-postgen'});
-        // #endregion
 
         const articleResponse = {
           topicTitle: topic.title,
@@ -1947,14 +1402,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
             : undefined,
         };
         
-        // #region agent log
-        const articleHtml = articleResponse.articleBodyHtml || '';
-        const hasTrustSourceLinks = /<a\s+href=["'][^"']+["']>[^<]*(Social Blade|Tubular Labs|Think Media|VidIQ|YouTube|Hootsuite|Sprout Social)[^<]*<\/a>/gi.test(articleHtml);
-        const trustSourceLinkCount = (articleHtml.match(/<a\s+href=["'][^"']+["']>/gi) || []).length;
-        const responseLog = {location:'articles/route.ts:280',message:'Article response prepared',data:{topicTitle:topic.title,hasTitleTag:!!parsedResponse.titleTag,hasMetaDescription:!!parsedResponse.metaDescription,articleBodyHtmlLength:articleHtml.length,hasH1Prefix:/H1:\s*/gi.test(articleHtml),hasH2Prefix:/H2:\s*/gi.test(articleHtml),hasH3Prefix:/H3:\s*/gi.test(articleHtml),hasTrustSourceLinks,trustSourceLinkCount,totalLinksCount:trustSourceLinkCount,lightHumanEditEnabled:enableLightHumanEdit,preview:articleHtml.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'html-format'};
-        debugLog(responseLog);
-        // #endregion
-        
         generatedArticles.push(articleResponse);
 
         // Small delay between requests to avoid rate limiting
@@ -1962,19 +1409,10 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       } catch (error) {
-        // #region agent log
-        const topicErrorLog = {location:'articles/route.ts:175',message:'Error generating article for topic',data:{topicTitle:topic.title,error:(error as Error).message,errorName:(error as Error).name,errorStack:(error as Error).stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-        debugLog(topicErrorLog);
-        // #endregion
         console.error(`Error generating article for topic ${topic.title}:`, error);
         // Continue with other topics even if one fails
       }
     }
-
-    // #region agent log
-    const successLog = {location:'articles/route.ts:140',message:'Articles generation completed',data:{articlesCount:generatedArticles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-    debugLog(successLog);
-    // #endregion
 
     // Increment trial article count if trial token is present (not for main link/master)
     // Increment by the number of articles actually generated
@@ -2003,10 +1441,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    // #region agent log
-    const errorLog = {location:'articles/route.ts:147',message:'Articles generation error',data:{error:(err as Error).message},timestamp:Date.now(),sessionId:'debug-session',runId:'articles-api',hypothesisId:'articles-endpoint'};
-    debugLog(errorLog);
-    // #endregion
     console.error("Article generation error", err);
     return new Response(
       JSON.stringify({ error: "Failed to generate articles" }),

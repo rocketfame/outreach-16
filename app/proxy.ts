@@ -6,6 +6,15 @@ import { isMasterIP } from "@/lib/accessConfig";
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "";
 const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS || "";
 
+/** Secure cookie defaults */
+const COOKIE_OPTIONS = {
+  path: "/",
+  sameSite: "strict" as const,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  maxAge: 60 * 60 * 24 * 30, // 30 days
+};
+
 // Check if maintenance gate is enabled (can be disabled via env)
 const isMaintenanceEnabled = () => {
   return process.env.MAINTENANCE_ENABLED !== "false";
@@ -135,9 +144,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       // Mark as bypassing maintenance (both trial and master tokens bypass)
       // Set cookie with proper attributes for cross-domain support
       response.cookies.set("bypass_maintenance", "true", {
-        path: "/",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        ...COOKIE_OPTIONS,
       });
       // CRITICAL: Allow access to all routes including API
       return response;
@@ -171,14 +178,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       const response = NextResponse.next();
       // Set cookies with proper attributes for cross-domain support
       response.cookies.set("is_master_ip", "true", {
-        path: "/",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        ...COOKIE_OPTIONS,
       });
       response.cookies.set("bypass_maintenance", "true", {
-        path: "/",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        ...COOKIE_OPTIONS,
       });
       // Also set header for client-side check
       response.headers.set("x-master-ip", "true");
@@ -228,14 +231,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       const response = NextResponse.next();
       // Set cookies with proper attributes for cross-domain support
       response.cookies.set("is_master_ip", "true", {
-        path: "/",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        ...COOKIE_OPTIONS,
       });
       response.cookies.set("bypass_maintenance", "true", {
-        path: "/",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        ...COOKIE_OPTIONS,
       });
       response.headers.set("x-master-ip", "true");
       return response;
@@ -267,14 +266,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       const response = NextResponse.next();
       // Set cookies with proper attributes for cross-domain support
       response.cookies.set("is_master_ip", "true", {
-        path: "/",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        ...COOKIE_OPTIONS,
       });
       response.cookies.set("bypass_maintenance", "true", {
-        path: "/",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
+        ...COOKIE_OPTIONS,
       });
       response.headers.set("x-master-ip", "true");
       return response;

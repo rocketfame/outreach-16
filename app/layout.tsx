@@ -19,6 +19,17 @@ export const metadata: Metadata = {
   title: "Outreach Articles App",
   description:
     "Plan briefs, topics, outlines, and drafts for outreach content in one place.",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({

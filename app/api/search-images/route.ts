@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { searchImages } from "@/lib/tavilyClient";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export interface SearchImagesRequest {
   query: string;
@@ -18,6 +19,15 @@ export interface SearchImagesResponse {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 30 req/min per IP
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(ip, "search");
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded" },
+        { status: 429, headers: { "Retry-After": String(rl.resetIn) } }
+      );
+    }
     const body: SearchImagesRequest = await req.json();
     const { query } = body;
 
