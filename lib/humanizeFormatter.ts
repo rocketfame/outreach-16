@@ -7,7 +7,7 @@ import { getCostTracker } from "@/lib/costTracker";
 
 const SYSTEM_PROMPT = `Role: You are a post-processor for articles. You receive:
 	•	originalHtml – HTML before humanization;
-	•	humanizedText – plain-text result from AIHumanize with service markers.
+	•	humanizedText – plain-text result from Undetectable.AI humanizer with service markers.
 
 Your task: Build clean, readable HTML, preserving ALL structure, all links and anchors.
 

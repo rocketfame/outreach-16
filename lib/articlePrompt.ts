@@ -280,6 +280,7 @@ Suggested flow (FOR SEO AND HUMAN MODES - EDITORIAL MODE IGNORES THIS):
 
 Structure variation and pattern rules (IMPORTANT):
 • Do not turn every article into a numbered "Step 1 / Step 2 / Step 3" guide.
+• NEVER prefix H2 headings with numbers like "1)", "2)", "3)", "Step 1:", "Part 1:" etc. Headings must read as natural editorial titles, not template items. For example write "Clear Meaning: What Promoting a Book Means Here" instead of "1) Clear Meaning (No Fluff): What Promoting a Book Means Here".
 • Use explicit step by step lists only when [[TOPIC_BRIEF]] clearly asks for a step by step format. In other cases, prefer natural narrative sections.
 • Avoid repeating the same structural pattern across different articles (for example: intro + 3 numbered steps + summary). Change how you break down the topic: sometimes short sections with only paragraphs, sometimes one small list inside a larger narrative block, sometimes a brief Q&A style subsection.
 • Lists (<ul>/<ol>) are optional tools, not a default template. Use them only when they genuinely make the content clearer. Never build the whole article as one long sequence of bullets.
@@ -304,6 +305,8 @@ The following patterns are strictly forbidden anywhere in the article:
 - "This content is locked"
 - "Continue reading"
 - Any sentence that implies the reader cannot access the content
+- Arrow notation "->" or "=>" in prose text. Use a dash, colon, or rephrase instead. WRONG: "If you get views but no follows -> your profile is broken." CORRECT: "If you get views but no follows, your profile is broken."
+- Single-word anchor text for trust sources like "Youtube", "Article", "Source", "Link". Trust source anchors [T1]-[T8] must use 3-6 word descriptive phrases from the source title, e.g. "this TikTok sales walkthrough" instead of bare "Youtube".
 
 These patterns appear when the model reproduces web page artifacts
 from training data. If you feel the urge to write any of these —
@@ -876,6 +879,8 @@ The following patterns are strictly forbidden anywhere in the article:
 - "This content is locked"
 - "Continue reading"
 - Any sentence that implies the reader cannot access the content
+- Arrow notation "->" or "=>" in prose text. Use a dash, colon, or rephrase instead. WRONG: "If you get views but no follows -> your profile is broken." CORRECT: "If you get views but no follows, your profile is broken."
+- Single-word anchor text for trust sources like "Youtube", "Article", "Source", "Link". Trust source anchors [T1]-[T8] must use 3-6 word descriptive phrases from the source title, e.g. "this TikTok sales walkthrough" instead of bare "Youtube".
 
 These patterns appear when the model reproduces web page artifacts
 from training data. If you feel the urge to write any of these —
@@ -1993,6 +1998,8 @@ The following patterns are strictly forbidden anywhere in the article:
 - "This content is locked"
 - "Continue reading"
 - Any sentence that implies the reader cannot access the content
+- Arrow notation "->" or "=>" in prose text. Use a dash, colon, or rephrase instead. WRONG: "If you get views but no follows -> your profile is broken." CORRECT: "If you get views but no follows, your profile is broken."
+- Single-word anchor text for trust sources like "Youtube", "Article", "Source", "Link". Trust source anchors [T1]-[T8] must use 3-6 word descriptive phrases from the source title, e.g. "this TikTok sales walkthrough" instead of bare "Youtube".
 
 These patterns appear when the model reproduces web page artifacts
 from training data. If you feel the urge to write any of these —

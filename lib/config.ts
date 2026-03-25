@@ -133,7 +133,7 @@ export function getHumanizerConfig(): {
   const purpose = (process.env.UNDETECTABLE_HUMANIZER_PURPOSE ||
     "Article") as "General Writing" | "Essay" | "Article" | "Marketing Material" | "Story" | "Cover Letter" | "Report" | "Business Material" | "Legal Material";
   const strength = (process.env.UNDETECTABLE_HUMANIZER_STRENGTH ||
-    "Balanced") as "Quality" | "Balanced" | "More Human";
+    "More Human") as "Quality" | "Balanced" | "More Human";
 
   return {
     baseUrl,

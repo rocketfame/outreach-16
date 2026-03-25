@@ -145,7 +145,7 @@ export default function Home() {
   
   // Humanize settings (stored in persisted state)
   const [humanizeSettings, setHumanizeSettings] = useState({
-    model: 1, // 0: Quality, 1: Balance (default), 2: Enhanced
+    model: 2, // 0: Quality, 1: Balance, 2: More Human (default — best AI detection bypass)
     style: "General", // General, Blog, Formal, Informal, Academic, Expand, Simplify
     mode: "Basic" as "Basic" | "Autopilot", // Basic or Autopilot
   });

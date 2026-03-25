@@ -26,7 +26,7 @@ export interface HumanizerService {
 const MIN_TEXT_LENGTH = 50;
 const MAX_TEXT_LENGTH = 10000;
 const POLL_INTERVAL_MS = 6000;
-const MAX_POLL_ATTEMPTS = 60; // ~6 min max wait
+const MAX_POLL_ATTEMPTS = 40; // ~4 min max wait (must stay under Vercel 300s maxDuration)
 
 function modelToStrength(model?: number): "Quality" | "Balanced" | "More Human" {
   if (model === 0) return "Quality";

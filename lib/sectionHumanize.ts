@@ -168,7 +168,7 @@ const cleanHumanizedText = (text: string): string => {
  * @param text Plain text section to humanize
  * @param model Legacy model: 0=Quality, 1=Balanced, 2=More Human
  * @param _registeredEmail Deprecated (Undetectable does not use email); kept for API compatibility
- * @param frozenPhrases Not used by Undetectable; kept for API compatibility
+ * @param _frozenPhrases Deprecated — placeholders are protected internally via createPlaceholderProtection() regex
  * @param style Optional style hint (for logging)
  * @param mode Optional mode (for logging)
  * @param _previousBlockText Deprecated — context sending removed (doubled credit cost with Undetectable)
@@ -177,7 +177,7 @@ export async function humanizeSectionText(
   text: string,
   model: number,
   _registeredEmail: string,
-  frozenPhrases: string[] = [],
+  _frozenPhrases: string[] = [],
   style?: string,
   mode?: "Basic" | "Autopilot",
   _previousBlockText?: string
@@ -190,11 +190,8 @@ export async function humanizeSectionText(
     return { humanizedText: text, wordsUsed: 0 };
   }
 
-  const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY;
-  if (!apiKey) {
-    console.error("[humanizeSectionText] UNDETECTABLE_HUMANIZER_API_KEY not configured");
-    return { humanizedText: text, wordsUsed: 0 };
-  }
+  // API key is validated by getHumanizerConfig() inside the client.
+  // If missing, the client throws — caught by try/catch below which returns original text.
 
   // Undetectable is a text rewriter, NOT a contextual AI.
   // Sending previousBlockText as context doubles credit usage (every block is paid for twice)

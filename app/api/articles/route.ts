@@ -1266,10 +1266,10 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
 
           if (enableHumanizeOnWrite) {
             const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY || "";
-            const frozenPlaceholders = ["[A1]", "[T1]", "[T2]", "[T3]"];
+            const frozenPlaceholders = ["[A1]", "[T1]", "[T2]", "[T3]", "[T4]", "[T5]", "[T6]", "[T7]", "[T8]"];
 
-            // Get humanize settings from request (default: Balance model)
-            const humanizeModel = body.humanizeSettings?.model ?? 1; // Default: Balance (1)
+            // Get humanize settings from request (default: More Human for best AI detection bypass)
+            const humanizeModel = body.humanizeSettings?.model ?? 2; // Default: More Human (2)
             const humanizeStyle = body.humanizeSettings?.style; // Optional: Writing style
             const humanizeMode = body.humanizeSettings?.mode; // Optional: Basic or Autopilot
 
@@ -1466,11 +1466,11 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
 
                 articleStructure.blocks = humanizedBlocks;
                 articleStructure.humanizedOnWrite = anyHumanized; // Only mark as humanized if at least one block was changed
-                // #region agent log
-                const a1BlocksAfterHumanize = humanizedBlocks.filter(b => b.text?.includes('[A1]')).map(b => ({type:b.type,textPreview:b.text?.substring(0,100)}));
-                const a1LikeAfterHumanize = humanizedBlocks.filter(b => b.text && /\[A\s*1\]|\[a1\]|［A1］/.test(b.text)).map(b => ({type:b.type,textPreview:b.text?.substring(0,100)}));
-                fetch('http://127.0.0.1:7244/ingest/4ecc831d-c253-436f-8b37-add194787558',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7bb5e0'},body:JSON.stringify({sessionId:'7bb5e0',location:'route.ts:1467',message:'After humanization - A1 check',data:{a1BlocksExact:a1BlocksAfterHumanize,a1BlocksFuzzy:a1LikeAfterHumanize,anchorsStillPresent:articleStructure.anchors.length,anchorsIds:articleStructure.anchors.map(a=>a.id)},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
+
+                // Warn if humanization was enabled but completely failed
+                if (!anyHumanized && humanizationReport.blocksProcessed > 0) {
+                  console.warn(`[humanizer] WARNING: Humanization enabled but 0/${humanizationReport.blocksProcessed} blocks were actually humanized. Check API key/credits.`);
+                }
 
                 // Finalize humanization report (internal control)
                 humanizationReport.totalWordsUsed = totalHumanizeWordsUsed;
@@ -1942,6 +1942,9 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           articleBodyHtml: cleanedArticleBodyHtml,
           humanizedOnWrite: articleStructure?.humanizedOnWrite,
           humanizationReport: humanizationReportForResponse,
+          humanizationWarning: (humanizationReportForResponse?.enabled && humanizationReportForResponse?.blocksActuallyHumanized === 0 && humanizationReportForResponse?.blocksProcessed > 0)
+            ? "Humanization was enabled but no blocks were successfully humanized. Check API key and credit balance."
+            : undefined,
         };
         
         // #region agent log

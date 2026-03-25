@@ -321,6 +321,31 @@ function fixConcatenation(text: string): string {
   return fixed;
 }
 
+/**
+ * Remove numbered prefixes from H2/H3 headings: "1) Title" -> "Title", "Step 2: Title" -> "Title"
+ */
+function stripNumberedHeadings(html: string): string {
+  if (!html) return html;
+  // Match <h2> or <h3> tags with numbered prefixes like "1)", "2.", "Step 1:", "Part 2 -"
+  return html.replace(
+    /(<h[23][^>]*>)\s*(?:\d+[\).\-:]\s*|(?:Step|Part)\s+\d+[:\-.\s]+)/gi,
+    '$1'
+  );
+}
+
+/**
+ * Replace arrow notation "->" / "=>" with proper punctuation in prose text
+ * Preserves arrows inside <code>, <pre>, and HTML attributes
+ */
+function cleanArrowNotation(html: string): string {
+  if (!html) return html;
+  // Only replace arrows in text nodes (not inside tags or code blocks)
+  return html.replace(
+    /(?<=>)([^<]*?)(?:\s*->\s*|\s*=>\s*)([^<]*?)(?=<)/g,
+    (match, before, after) => `${before} - ${after}`
+  );
+}
+
 export function cleanText(text: string): string {
   if (!text) return text;
 
@@ -328,6 +353,8 @@ export function cleanText(text: string): string {
   cleaned = cleanInvisibleChars(cleaned);
   cleaned = normalizeQuotesAndDashes(cleaned);
   cleaned = fixConcatenation(cleaned);
+  cleaned = stripNumberedHeadings(cleaned);
+  cleaned = cleanArrowNotation(cleaned);
 
   return cleaned;
 }
