@@ -14,10 +14,11 @@ export interface TrialUsage {
 const trialUsageStore = new Map<string, TrialUsage>();
 
 // Maximum limits for trial users
+// Articles limit is shared across both modes (Topic Discovery + Direct Creation)
 export const TRIAL_LIMITS = {
-  MAX_ARTICLES: 2,
-  MAX_TOPIC_DISCOVERY_RUNS: 2,
-  MAX_IMAGES: 1,
+  MAX_ARTICLES: 16,             // 8 via Topic Discovery + 8 via Direct Creation
+  MAX_TOPIC_DISCOVERY_RUNS: 4,  // 4 activations of Topic Discovery mode
+  MAX_IMAGES: 10,               // 10 image generations
 } as const;
 
 /**
@@ -48,7 +49,7 @@ export async function getTrialUsage(token: string): Promise<TrialUsage> {
       const key = getStorageKey(token);
       const usage = await kv.get<TrialUsage>(key);
       if (usage) {
-        console.log("[trialLimits] Using KV storage for token:", token.substring(0, 10) + "...");
+        // KV hit
         return usage;
       }
       // Initialize if not found
@@ -58,7 +59,7 @@ export async function getTrialUsage(token: string): Promise<TrialUsage> {
         imagesGenerated: 0,
       };
       await kv.set(key, defaultUsage);
-      console.log("[trialLimits] Initialized KV storage for token:", token.substring(0, 10) + "...");
+      // KV initialized
       return defaultUsage;
     } catch (error) {
       console.error("[trialLimits] KV error, falling back to in-memory:", error);
@@ -88,7 +89,7 @@ async function saveTrialUsage(token: string, usage: TrialUsage): Promise<void> {
     try {
       const key = getStorageKey(token);
       await kv.set(key, usage);
-      console.log("[trialLimits] Saved to KV storage for token:", token.substring(0, 10) + "...", usage);
+      // KV saved
       return;
     } catch (error) {
       console.error("[trialLimits] KV error saving, falling back to in-memory:", error);
@@ -98,7 +99,7 @@ async function saveTrialUsage(token: string, usage: TrialUsage): Promise<void> {
 
   // Fallback to in-memory storage
   trialUsageStore.set(token, usage);
-  console.log("[trialLimits] Saved to in-memory storage for token:", token.substring(0, 10) + "...", usage);
+  // in-memory saved
 }
 
 /**
@@ -268,22 +269,12 @@ export function extractTrialToken(request: Request | { url: string; headers: Hea
   // Try to get from query parameter (for URL-based access)
   const url = new URL(request.url);
   const tokenFromQuery = url.searchParams.get("trial");
-  console.log("[extractTrialToken] Token from query:", tokenFromQuery);
-  
-  if (tokenFromQuery) {
-    console.log("[extractTrialToken] Returning token from query:", tokenFromQuery);
-    return tokenFromQuery;
-  }
+  if (tokenFromQuery) return tokenFromQuery;
 
   // Try to get from header
   const tokenFromHeader = request.headers.get("x-trial-token");
-  console.log("[extractTrialToken] Token from header:", tokenFromHeader);
-  if (tokenFromHeader) {
-    console.log("[extractTrialToken] Returning token from header:", tokenFromHeader);
-    return tokenFromHeader;
-  }
+  if (tokenFromHeader) return tokenFromHeader;
 
-  console.log("[extractTrialToken] No token found");
   return null;
 }
 
