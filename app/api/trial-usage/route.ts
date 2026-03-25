@@ -74,34 +74,34 @@ export async function GET(req: NextRequest) {
     const usage = await getTrialUsage(trialToken);
     console.log('[trial-usage API] Usage from KV:', usage);
 
-    const articlesRemaining = Math.max(0, TRIAL_LIMITS.MAX_ARTICLES - usage.articlesGenerated);
+    const discoveryArticles = usage.discoveryArticlesGenerated || 0;
+    const directArticles = usage.directArticlesGenerated || 0;
+    const discoveryArticlesRemaining = Math.max(0, TRIAL_LIMITS.MAX_DISCOVERY_ARTICLES - discoveryArticles);
+    const directArticlesRemaining = Math.max(0, TRIAL_LIMITS.MAX_DIRECT_ARTICLES - directArticles);
     const topicDiscoveryRunsRemaining = Math.max(0, TRIAL_LIMITS.MAX_TOPIC_DISCOVERY_RUNS - usage.topicDiscoveryRuns);
     const imagesRemaining = Math.max(0, TRIAL_LIMITS.MAX_IMAGES - usage.imagesGenerated);
-
-    console.log('[trial-usage API] Calculated remaining:', {
-      articlesRemaining,
-      topicDiscoveryRunsRemaining,
-      imagesRemaining,
-      articlesGenerated: usage.articlesGenerated,
-      topicDiscoveryRuns: usage.topicDiscoveryRuns,
-      imagesGenerated: usage.imagesGenerated,
-    });
 
     const response = {
       isMaster: false,
       isTrial: true,
+      // Per-mode article counts
+      discoveryArticlesGenerated: discoveryArticles,
+      directArticlesGenerated: directArticles,
+      maxDiscoveryArticles: TRIAL_LIMITS.MAX_DISCOVERY_ARTICLES,
+      maxDirectArticles: TRIAL_LIMITS.MAX_DIRECT_ARTICLES,
+      discoveryArticlesRemaining,
+      directArticlesRemaining,
+      // Legacy total (backward compat)
       articlesGenerated: usage.articlesGenerated,
+      maxArticles: TRIAL_LIMITS.MAX_ARTICLES,
+      // Other limits
       topicDiscoveryRuns: usage.topicDiscoveryRuns,
       imagesGenerated: usage.imagesGenerated,
-      maxArticles: TRIAL_LIMITS.MAX_ARTICLES,
       maxTopicDiscoveryRuns: TRIAL_LIMITS.MAX_TOPIC_DISCOVERY_RUNS,
       maxImages: TRIAL_LIMITS.MAX_IMAGES,
-      articlesRemaining,
       topicDiscoveryRunsRemaining,
       imagesRemaining,
     };
-
-    console.log('[trial-usage API] Response:', response);
 
     return NextResponse.json(response);
   } catch (error) {

@@ -210,7 +210,10 @@ export async function POST(req: Request) {
     // Check trial limits AFTER parsing body to know how many articles will be generated
     const trialToken = extractTrialToken(req);
     const articlesToGenerate = selectedTopics?.length || 1;
-    const articleLimitCheck = await canGenerateArticle(trialToken, articlesToGenerate);
+    // Determine mode from first topic: Direct Mode has no shortAngle/whyNonGeneric fields
+    const firstTopic = selectedTopics?.[0];
+    const articleMode: "discovery" | "direct" = (firstTopic && !firstTopic.shortAngle && !firstTopic.whyNonGeneric) ? "direct" : "discovery";
+    const articleLimitCheck = await canGenerateArticle(trialToken, articlesToGenerate, articleMode);
     if (!articleLimitCheck.allowed) {
       return new Response(
         JSON.stringify({ error: articleLimitCheck.reason || "Trial limit reached" }),
@@ -1390,11 +1393,11 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
     }
 
     // Increment trial article count if trial token is present (not for main link/master)
-    // Increment by the number of articles actually generated
+    // Increment by the number of articles actually generated, tracking per-mode
     if (trialToken && !isMasterToken(trialToken)) {
       const articlesGenerated = generatedArticles.length;
       for (let i = 0; i < articlesGenerated; i++) {
-        await incrementArticleCount(trialToken);
+        await incrementArticleCount(trialToken, articleMode);
       }
     }
 

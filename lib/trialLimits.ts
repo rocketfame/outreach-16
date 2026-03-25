@@ -4,7 +4,9 @@
 import { kv } from "@vercel/kv";
 
 export interface TrialUsage {
-  articlesGenerated: number;
+  articlesGenerated: number; // legacy total — kept for backward compat
+  discoveryArticlesGenerated: number; // articles from Topic Discovery mode
+  directArticlesGenerated: number; // articles from Direct Creation mode
   topicDiscoveryRuns: number;
   imagesGenerated: number;
   lastReset?: number; // timestamp for potential reset logic
@@ -16,9 +18,11 @@ const trialUsageStore = new Map<string, TrialUsage>();
 // Maximum limits for trial users
 // Articles limit is shared across both modes (Topic Discovery + Direct Creation)
 export const TRIAL_LIMITS = {
-  MAX_ARTICLES: 16,             // 8 via Topic Discovery + 8 via Direct Creation
-  MAX_TOPIC_DISCOVERY_RUNS: 4,  // 4 activations of Topic Discovery mode
-  MAX_IMAGES: 10,               // 10 image generations
+  MAX_ARTICLES: 12,                    // total cap: 4 discovery + 8 direct
+  MAX_DISCOVERY_ARTICLES: 4,           // max articles from Topic Discovery mode
+  MAX_DIRECT_ARTICLES: 8,              // max articles from Direct Creation mode
+  MAX_TOPIC_DISCOVERY_RUNS: 4,         // 4 activations of Topic Discovery mode
+  MAX_IMAGES: 10,                      // 10 image generations
 } as const;
 
 /**
@@ -49,12 +53,16 @@ export async function getTrialUsage(token: string): Promise<TrialUsage> {
       const key = getStorageKey(token);
       const usage = await kv.get<TrialUsage>(key);
       if (usage) {
-        // KV hit
+        // KV hit — backward compat: add new fields if missing
+        if (usage.discoveryArticlesGenerated === undefined) usage.discoveryArticlesGenerated = 0;
+        if (usage.directArticlesGenerated === undefined) usage.directArticlesGenerated = 0;
         return usage;
       }
       // Initialize if not found
       const defaultUsage: TrialUsage = {
         articlesGenerated: 0,
+        discoveryArticlesGenerated: 0,
+        directArticlesGenerated: 0,
         topicDiscoveryRuns: 0,
         imagesGenerated: 0,
       };
@@ -73,6 +81,8 @@ export async function getTrialUsage(token: string): Promise<TrialUsage> {
   if (!trialUsageStore.has(token)) {
     trialUsageStore.set(token, {
       articlesGenerated: 0,
+      discoveryArticlesGenerated: 0,
+      directArticlesGenerated: 0,
       topicDiscoveryRuns: 0,
       imagesGenerated: 0,
     });
@@ -148,10 +158,16 @@ export function isTrialToken(token: string | null): boolean {
 
 /**
  * Increment article count for trial token
+ * @param mode - "discovery" or "direct" to track per-mode limits
  */
-export async function incrementArticleCount(token: string): Promise<void> {
+export async function incrementArticleCount(token: string, mode: "discovery" | "direct" = "direct"): Promise<void> {
   const usage = await getTrialUsage(token);
   usage.articlesGenerated += 1;
+  if (mode === "discovery") {
+    usage.discoveryArticlesGenerated = (usage.discoveryArticlesGenerated || 0) + 1;
+  } else {
+    usage.directArticlesGenerated = (usage.directArticlesGenerated || 0) + 1;
+  }
   await saveTrialUsage(token, usage);
 }
 
@@ -205,8 +221,9 @@ export async function canGenerateImage(token: string | null): Promise<{ allowed:
  * Check if trial user can generate more articles
  * @param token - Trial token (or null for main link)
  * @param articlesToGenerate - Number of articles that will be generated in this request (default: 1)
+ * @param mode - "discovery" or "direct" to check per-mode limit
  */
-export async function canGenerateArticle(token: string | null, articlesToGenerate: number = 1): Promise<{ allowed: boolean; reason?: string }> {
+export async function canGenerateArticle(token: string | null, articlesToGenerate: number = 1, mode: "discovery" | "direct" = "direct"): Promise<{ allowed: boolean; reason?: string }> {
   // If no token provided, allow access (main link works as master)
   if (!token) {
     return { allowed: true }; // Main link without trial token = master access
@@ -221,12 +238,32 @@ export async function canGenerateArticle(token: string | null, articlesToGenerat
   }
 
   const usage = await getTrialUsage(token);
+
+  // Check per-mode limit
+  if (mode === "discovery") {
+    const modeCount = usage.discoveryArticlesGenerated || 0;
+    if (modeCount + articlesToGenerate > TRIAL_LIMITS.MAX_DISCOVERY_ARTICLES) {
+      return {
+        allowed: false,
+        reason: `Trial limit reached: you have generated ${modeCount} article(s) in Topic Discovery mode. Maximum ${TRIAL_LIMITS.MAX_DISCOVERY_ARTICLES} allowed.`,
+      };
+    }
+  } else {
+    const modeCount = usage.directArticlesGenerated || 0;
+    if (modeCount + articlesToGenerate > TRIAL_LIMITS.MAX_DIRECT_ARTICLES) {
+      return {
+        allowed: false,
+        reason: `Trial limit reached: you have generated ${modeCount} article(s) in Direct Creation mode. Maximum ${TRIAL_LIMITS.MAX_DIRECT_ARTICLES} allowed.`,
+      };
+    }
+  }
+
+  // Also check total cap
   const totalAfterGeneration = usage.articlesGenerated + articlesToGenerate;
-  
   if (totalAfterGeneration > TRIAL_LIMITS.MAX_ARTICLES) {
     return {
       allowed: false,
-      reason: `Trial limit reached: you have generated ${usage.articlesGenerated} article(s), and trying to generate ${articlesToGenerate} more. Maximum ${TRIAL_LIMITS.MAX_ARTICLES} articles allowed.`,
+      reason: `Trial limit reached: you have generated ${usage.articlesGenerated} article(s) total. Maximum ${TRIAL_LIMITS.MAX_ARTICLES} allowed.`,
     };
   }
 
