@@ -61,7 +61,7 @@ export default function Home() {
   const mode = persistedState.mode;
   const topicsData = persistedState.topicClusters;
   const selectedTopicIds = persistedState.selectedTopicIds;
-  const lightHumanEditEnabled = persistedState.lightHumanEditEnabled;
+  // lightHumanEdit removed — humanization handles this
   const directArticleTopic = persistedState.directArticleTopic || "";
   const directArticleBrief = persistedState.directArticleBrief || "";
   const directArticleKeywords = persistedState.directArticleKeywords || "";
@@ -1239,7 +1239,6 @@ export default function Home() {
             }],
             keywordList: [articleTopic],
             trustSourcesList: trustSourcesList,
-            lightHumanEdit: !regenerateHumanizeOnWrite, // Automatically enable lightHumanEdit if humanization is disabled
             humanizeOnWrite: regenerateHumanizeOnWrite,
             humanizeSettings: regenerateHumanizeOnWrite ? regenerateHumanizeSettings : undefined,
             writingMode: writingMode, // Pass writing mode from UI
@@ -1563,7 +1562,6 @@ export default function Home() {
           selectedTopics: selectedTopicsData,
           keywordList: topic.primaryKeyword ? [topic.primaryKeyword] : [],
           trustSourcesList: trustSourcesList, // Only Tavily-validated sources
-          lightHumanEdit: !regenerateHumanizeOnWrite, // Automatically enable lightHumanEdit if humanization is disabled
           humanizeOnWrite: regenerateHumanizeOnWrite,
           humanizeSettings: regenerateHumanizeOnWrite ? regenerateHumanizeSettings : undefined,
           writingMode: writingMode, // Pass writing mode from UI
@@ -1876,7 +1874,6 @@ export default function Home() {
           selectedTopics: selectedTopicsData,
           keywordList: selectedTopicsData.map(t => t.primaryKeyword).filter(Boolean),
           trustSourcesPerTopic, // Per-topic sources so each article gets only its own topic's sources
-          lightHumanEdit: !effectiveHumanizeForRequest, // Automatically enable lightHumanEdit if humanization is disabled
           humanizeOnWrite: effectiveHumanizeForRequest, // Pass effective humanize state (forced ON for Human Mode)
           humanizeSettings: effectiveHumanizeForRequest ? humanizeSettings : undefined, // Pass humanize settings only if enabled
           writingMode: writingMode, // Pass writing mode from UI
@@ -2315,7 +2312,6 @@ export default function Home() {
           keywordList: exactKeywordList.length > 0 ? exactKeywordList : [directArticleTopic],
           exactKeywordList: exactKeywordList.length > 0 ? exactKeywordList : undefined, // Optional: writer must include these with exact match
           trustSourcesList: trustSourcesList,
-          lightHumanEdit: !effectiveHumanizeForRequest, // Automatically enable lightHumanEdit if humanization is disabled
           humanizeOnWrite: effectiveHumanizeForRequest, // Pass effective humanize state (forced ON for Human Mode)
           humanizeSettings: effectiveHumanizeForRequest ? humanizeSettings : undefined, // Pass humanize settings only if enabled
           writingMode: writingMode, // Pass writing mode from UI

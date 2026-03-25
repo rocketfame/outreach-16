@@ -29,7 +29,7 @@
 export const maxDuration = 300;
 
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
-import { cleanText, lightHumanEdit, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
+import { cleanText, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
@@ -142,7 +142,7 @@ export interface ArticleRequest {
   trustSourcesList?: string[]; // Legacy: shared pool for all topics (fallback)
   /** Per-topic trust sources: topic title -> sources. When provided, each article uses only its topic's sources. */
   trustSourcesPerTopic?: Record<string, string[]>;
-  lightHumanEdit?: boolean; // Optional: enable light human edit post-processing
+  // lightHumanEdit removed — humanization handles this
   humanizeOnWrite?: boolean; // NEW: enable live humanization during generation
   humanizeSettings?: { // Optional: humanize settings
     model: number; // 0: Quality, 1: Balance (default), 2: Enhanced
@@ -1346,31 +1346,6 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               fixHtmlTagSpacing(content)
             )
           );
-        }
-
-        // Optional: Light human edit for natural variation
-        // NOTE: Only apply to old format (HTML). New format uses humanizeOnWrite instead.
-        const enableLightHumanEdit = body.lightHumanEdit || false;
-        if (enableLightHumanEdit && !hasNewFormat) {
-          try {
-
-            cleanedArticleBodyHtml = await lightHumanEdit(cleanedArticleBodyHtml, openai, { preserveHtml: true });
-
-            // CRITICAL: Clean text again after Light Human Edit
-            // GPT-5.2 can re-introduce em-dashes, smart quotes, and other AI indicators during rewrite
-            // Also fix spacing around HTML tags that might have been lost during processing
-            // Remove excessive bold formatting that might have been introduced
-            cleanedArticleBodyHtml = cleanText(
-              removeExcessiveBold(
-                fixHtmlTagSpacing(cleanedArticleBodyHtml)
-              )
-            );
-          } catch (editError) {
-            console.error('[articles-api] Light human edit failed:', editError);
-            // Continue with cleaned text if edit fails
-          }
-        } else if (enableLightHumanEdit && hasNewFormat) {
-          console.log('[articles-api] Light human edit skipped for new format (using humanizeOnWrite instead)');
         }
 
         // Post-generation word count validation

@@ -92,7 +92,6 @@ export type AppPersistedState = {
   // Images are stored in component state only and can be regenerated if needed
   referenceImageBase64?: string; // Reference image for style personalization (base64, stored only if small)
   mode: "discovery" | "direct";
-  lightHumanEditEnabled: boolean;
   humanizeOnWriteEnabled?: boolean; // Enable live humanization during generation
   writingMode?: WritingMode; // Writing mode: "seo" (default) or "human" (feature flag controlled)
   theme: "light" | "dark"; // Theme preference
@@ -128,7 +127,6 @@ const defaultState: AppPersistedState = {
   directArticleKeywords: "", // Optional: exact keywords list for direct article
   referenceImageBase64: undefined, // Reference image for style personalization
   mode: "discovery",
-  lightHumanEditEnabled: true, // Default to enabled (recommended)
   writingMode: "seo", // Default to SEO Mode
   theme: "light", // Default to light theme
   globalUsedBoxIndices: [], // Image box round-robin tracking
@@ -157,7 +155,6 @@ export function usePersistentAppState() {
           Array.isArray(parsed.articles) &&
           parsed.projectBasics
         ) {
-          // Ensure lightHumanEditEnabled exists, default to true if missing
           // Remove articleImages from old persisted state if present (to free up space)
           const { articleImages, ...stateWithoutImages } = parsed as any;
           
@@ -168,7 +165,6 @@ export function usePersistentAppState() {
             projectBasics: legacyProjectBasics, // Keep for backward compatibility
             discoveryProjectBasics: parsed.discoveryProjectBasics || legacyProjectBasics,
             directProjectBasics: parsed.directProjectBasics || defaultBrief,
-            lightHumanEditEnabled: parsed.lightHumanEditEnabled !== undefined ? parsed.lightHumanEditEnabled : true,
             writingMode: (parsed.writingMode === "seo" || parsed.writingMode === "human") ? parsed.writingMode : "seo", // Default to "seo" if invalid
             theme: parsed.theme || "light", // Default to light if not set
             globalUsedBoxIndices: Array.isArray(parsed.globalUsedBoxIndices) ? parsed.globalUsedBoxIndices : [],
