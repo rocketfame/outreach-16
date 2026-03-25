@@ -251,7 +251,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-          }}>
+          }} role="status" aria-label="Support contact information">
             <p style={{
               fontSize: "0.875rem",
               color: "var(--text-muted)",
@@ -266,6 +266,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             </p>
             <a
               href="mailto:fotosyntezaou@gmail.com"
+              className="maintenance-gate-email-link"
               style={{
                 fontSize: "1.25rem",
                 color: "var(--primary)",
@@ -275,8 +276,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
                 transition: "opacity 0.2s",
                 textAlign: "center",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+              aria-label="Send email to support at fotosyntezaou@gmail.com"
             >
               fotosyntezaou@gmail.com
             </a>

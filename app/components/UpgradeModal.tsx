@@ -126,6 +126,9 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="upgrade-modal-title"
       style={{
         position: "fixed",
         top: 0,
@@ -174,35 +177,26 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={rgbToHex(1, 0.412, 0)} strokeWidth="1.67">
                 <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
               </svg>
-              <h2 style={{
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: "24px",
-                fontWeight: 600,
-                lineHeight: "32px",
-                color: textSecondary,
-                margin: 0,
-              }}>
+              <h2
+                id="upgrade-modal-title"
+                style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: "24px",
+                  fontWeight: 600,
+                  lineHeight: "32px",
+                  color: textSecondary,
+                  margin: 0,
+                }}
+              >
                 Buy Additional Credits
               </h2>
             </div>
             <button
               onClick={onClose}
+              aria-label="Close"
+              className="upgrade-modal-close-btn"
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "4px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
                 color: textPrimary,
-                transition: "opacity 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.7";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -278,26 +272,12 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
             {CREDIT_PLANS.map((plan) => (
               <div
                 key={plan.id}
+                className="upgrade-modal-plan-card"
                 style={{
                   border: `1px solid ${plan === selectedPlan ? rgbToHex(0.961, 0.288, 0) : borderColor}`,
-                  borderRadius: "12px",
-                  padding: "16px",
-                  position: "relative",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
                   backgroundColor: plan === selectedPlan ? rgbToHex(0.969, 0.973, 0.980) : "transparent",
                 }}
                 onClick={() => setSelectedPlan(plan)}
-                onMouseEnter={(e) => {
-                  if (plan !== selectedPlan) {
-                    e.currentTarget.style.backgroundColor = rgbToHex(0.969, 0.973, 0.980);
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (plan !== selectedPlan) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }
-                }}
               >
                 {plan.popular && (
                   <div style={{
@@ -403,30 +383,12 @@ export default function UpgradeModal({ isOpen, onClose, currentBalance, trialTok
           <button
             onClick={() => selectedPlan && handlePurchase(selectedPlan)}
             disabled={!selectedPlan || isProcessing}
+            className="upgrade-modal-purchase-btn"
             style={{
-              width: "100%",
-              padding: "12px 24px",
               background: selectedPlan && !isProcessing ? gradientButton : borderColor,
               color: selectedPlan && !isProcessing ? "#ffffff" : textPrimary,
-              border: "none",
-              borderRadius: "8px",
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "14px",
-              fontWeight: 500,
-              lineHeight: "20px",
               cursor: selectedPlan && !isProcessing ? "pointer" : "not-allowed",
-              transition: "opacity 0.2s",
               opacity: selectedPlan && !isProcessing ? 1 : 0.6,
-            }}
-            onMouseEnter={(e) => {
-              if (selectedPlan && !isProcessing) {
-                e.currentTarget.style.opacity = "0.9";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (selectedPlan && !isProcessing) {
-                e.currentTarget.style.opacity = "1";
-              }
             }}
           >
             {isProcessing ? "Processing..." : selectedPlan ? `Purchase ${selectedPlan.credits} Credits - $${selectedPlan.totalPrice.toFixed(2)}` : "Select a plan to continue"}

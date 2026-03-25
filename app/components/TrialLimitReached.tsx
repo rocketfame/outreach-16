@@ -1,28 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 interface TrialLimitReachedProps {
   message?: string;
   onClose?: () => void;
 }
 
-export default function TrialLimitReached({ 
-  message = "Trial limit reached", 
-  onClose 
+export default function TrialLimitReached({
+  message = "Trial limit reached",
+  onClose
 }: TrialLimitReachedProps) {
-  const [isVisible, setIsVisible] = useState(true);
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && onClose) {
+        onClose();
+      }
+    };
 
-  const handleClose = () => {
-    setIsVisible(false);
-    if (onClose) {
-      onClose();
-    }
-  };
-
-  if (!isVisible) {
-    return null;
-  }
+    window.addEventListener("keydown", handleEscapeKey);
+    return () => window.removeEventListener("keydown", handleEscapeKey);
+  }, [onClose]);
 
   return (
     <div style={{
@@ -39,25 +37,29 @@ export default function TrialLimitReached({
       zIndex: 10000,
       padding: "2rem",
     }}>
-      <div style={{
-        background: "var(--card)",
-        borderRadius: "24px",
-        padding: "3rem",
-        maxWidth: "600px",
-        width: "100%",
-        boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-        textAlign: "center",
-        border: "1px solid var(--border)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        margin: "0 auto",
-        position: "relative",
-      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          background: "var(--card)",
+          borderRadius: "24px",
+          padding: "3rem",
+          maxWidth: "600px",
+          width: "100%",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+          textAlign: "center",
+          border: "1px solid var(--border)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto",
+          position: "relative",
+        }}>
         {/* Close button */}
         <button
-          onClick={handleClose}
+          onClick={onClose}
+          className="trial-close-button"
           style={{
             position: "absolute",
             top: "1rem",
@@ -75,14 +77,6 @@ export default function TrialLimitReached({
             alignItems: "center",
             justifyContent: "center",
             transition: "background 0.2s, color 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--secondary)";
-            e.currentTarget.style.color = "var(--foreground)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "var(--text-muted)";
           }}
           aria-label="Close"
         >
@@ -155,6 +149,7 @@ export default function TrialLimitReached({
           </p>
           <a
             href="mailto:fotosyntezaou@gmail.com"
+            className="trial-email-link"
             style={{
               fontSize: "1.25rem",
               color: "var(--primary)",
@@ -164,8 +159,6 @@ export default function TrialLimitReached({
               transition: "opacity 0.2s",
               textAlign: "center",
             }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
           >
             fotosyntezaou@gmail.com
           </a>

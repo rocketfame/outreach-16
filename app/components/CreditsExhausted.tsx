@@ -88,6 +88,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
           type="button"
           aria-label="Close"
           onClick={onClose}
+          className="credits-exhausted-close-btn"
           style={{
             position: "absolute",
             top: 12,
@@ -104,14 +105,6 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             justifyContent: "center",
             zIndex: 1,
             transition: "background 0.2s, color 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = TOKENS.border;
-            e.currentTarget.style.color = TOKENS.textSecondary;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = TOKENS.cardBg;
-            e.currentTarget.style.color = TOKENS.textPrimary;
           }}
         >
           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -324,6 +317,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             <button
               type="button"
               onClick={onUpgrade}
+              className="credits-exhausted-gradient-btn"
               style={{
                 padding: "10px 22px",
                 background: TOKENS.gradient,
@@ -337,12 +331,6 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                 cursor: "pointer",
                 transition: "opacity 0.2s, transform 0.05s",
                 boxShadow: "0 2px 6px rgba(255, 105, 0, 0.22)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.92";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
               }}
             >
               Starting at $19/month
@@ -362,6 +350,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             <button
               type="button"
               onClick={onUpgrade}
+              className="credits-exhausted-upgrade-btn"
               style={{
                 flex: 1,
                 padding: "10px 16px",
@@ -381,14 +370,6 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                 transition: "opacity 0.2s, transform 0.05s",
                 boxShadow: "0 2px 6px rgba(255, 105, 0, 0.22)",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.92";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
             >
               {/* Lightning — TrialExpiredDialog (white) */}
               <svg width={TOKENS.buttonIconSize} height={TOKENS.buttonIconSize} viewBox="0 0 104 106" fill="none">
@@ -400,6 +381,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
             <button
               type="button"
               onClick={onClose}
+              className="credits-exhausted-maybe-later-btn"
               style={{
                 flex: 1,
                 padding: "10px 16px",
@@ -413,12 +395,6 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                 lineHeight: 1.3,
                 cursor: "pointer",
                 transition: "background 0.2s, color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = TOKENS.cardBg;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#fff";
               }}
             >
               Maybe Later
