@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outreach-16 — Design Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+:root {
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+  /* Spacing (8pt grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* ============================================
+   DARK THEME (default)
+   ============================================ */
+[data-theme="dark"] {
+  --bg-base: #09090b;
+  --bg-elevated: #111113;
+  --bg-surface: #18181b;
+  --bg-surface-hover: #1f1f23;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
+  --text-inverse: #09090b;
+
+  --accent: #f97316;
+  --accent-hover: #fb923c;
+  --accent-muted: rgba(249, 115, 22, 0.15);
+  --accent-text: #fdba74;
+
+  --success: #22c55e;
+  --success-muted: rgba(34, 197, 94, 0.15);
+  --warning: #eab308;
+  --warning-muted: rgba(234, 179, 8, 0.15);
+  --error: #ef4444;
+  --error-muted: rgba(239, 68, 68, 0.15);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 40px rgba(249, 115, 22, 0.08);
+}
+
+/* ============================================
+   LIGHT THEME
+   ============================================ */
+[data-theme="light"] {
+  --bg-base: #fafaf9;
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f5f5f4;
+  --bg-overlay: rgba(0, 0, 0, 0.3);
+
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-muted: #a8a29e;
+  --text-inverse: #fafaf9;
+
+  --accent: #ea580c;
+  --accent-hover: #f97316;
+  --accent-muted: rgba(234, 88, 12, 0.08);
+  --accent-text: #c2410c;
+
+  --success: #16a34a;
+  --success-muted: rgba(22, 163, 74, 0.08);
+  --warning: #ca8a04;
+  --warning-muted: rgba(202, 138, 4, 0.08);
+  --error: #dc2626;
+  --error-muted: rgba(220, 38, 38, 0.08);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 40px rgba(234, 88, 12, 0.06);
+}
+
+/* ============================================
+   RESET & BASE
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  transition: background var(--duration-normal) var(--ease-out),
+              color var(--duration-normal) var(--ease-out);
+}
+
+/* Grain texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ============================================
+   TOP NAV
+   ============================================ */
+.topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: color-mix(in srgb, var(--bg-base) 80%, transparent);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent), #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 0.75rem;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.credits-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent-muted);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--accent-text);
+}
+
+.credits-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* Theme toggle */
+.theme-toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+[data-theme="light"] .theme-toggle::after {
+  transform: translateX(20px);
+  background: var(--accent);
+}
+
+/* ============================================
+   PAGE HEADER
+   ============================================ */
+.page-header {
+  text-align: center;
+  padding: var(--space-7) var(--space-6) var(--space-6);
+}
+
+.page-header .eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: var(--space-3);
+}
+
+.page-header h1 {
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: var(--space-3);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-header .subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ============================================
+   MODE TABS
+   ============================================ */
+.mode-tabs {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-6) var(--space-6);
+}
+
+.mode-tabs-inner {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.mode-tab {
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.mode-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+.mode-tab.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+/* ============================================
+   MAIN LAYOUT
+   ============================================ */
+.main-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--space-8);
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  transition: border-color var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.card:hover {
+  border-color: var(--border-default);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.card-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+.form-group {
+  margin-bottom: var(--space-5);
+}
+
+.form-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+  letter-spacing: 0.01em;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.form-textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a1a1aa' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 6l3.5 3.5L11.5 6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+/* ============================================
+   TAG PILLS (Niche presets)
+   ============================================ */
+.tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag-pill {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.tag-pill:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--accent-muted);
+}
+
+.tag-pill.selected {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.25);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--duration-fast) var(--ease-out);
+  height: 40px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.btn-full { width: 100%; }
+
+.btn-lg {
+  height: 48px;
+  padding: var(--space-4) var(--space-6);
+  font-size: 0.9375rem;
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================
+   STEPS / PROGRESS
+   ============================================ */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.step {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--duration-normal) var(--ease-out);
+  cursor: pointer;
+}
+
+.step:hover {
+  border-color: var(--border-default);
+  background: var(--bg-surface-hover);
+}
+
+.step.active {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  box-shadow: var(--shadow-glow);
+}
+
+.step.completed {
+  border-color: rgba(34, 197, 94, 0.2);
+  background: var(--success-muted);
+}
+
+.step-number {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+}
+
+.step.active .step-number {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.step.completed .step-number {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.step-content { flex: 1; }
+
+.step-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.step-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ============================================
+   TOPIC CARDS
+   ============================================ */
+.topic-card {
+  padding: var(--space-5);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-normal) var(--ease-out);
+  cursor: pointer;
+}
+
+.topic-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+.topic-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+
+.topic-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.topic-tag {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+/* ============================================
+   WRITING MODE TOGGLE
+   ============================================ */
+.writing-mode {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
+}
+
+.writing-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.writing-mode-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+.writing-mode-btn.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.writing-mode-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.6;
+}
+
+.writing-mode-btn.active .writing-mode-icon {
+  opacity: 1;
+}
+
+/* ============================================
+   COST DISPLAY
+   ============================================ */
+.cost-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-3);
+  margin: 0 var(--space-6) var(--space-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.cost-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cost-value {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ============================================
+   INFO BLOCK
+   ============================================ */
+.info-block {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--accent-muted);
+  border: 1px solid rgba(249, 115, 22, 0.12);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.info-block svg {
+  min-width: 16px;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+/* ============================================
+   LOADING ANIMATION
+   ============================================ */
+.loading-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 20px;
+}
+
+.loading-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: bar-bounce 1.2s ease-in-out infinite;
+}
+
+.loading-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+.loading-bar:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+.loading-bar:nth-child(3) { height: 20px; animation-delay: 0.2s; }
+.loading-bar:nth-child(4) { height: 14px; animation-delay: 0.3s; }
+.loading-bar:nth-child(5) { height: 8px; animation-delay: 0.4s; }
+
+@keyframes bar-bounce {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* ============================================
+   NOTIFICATION TOAST
+   ============================================ */
+.toast {
+  position: fixed;
+  top: var(--space-5);
+  right: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  animation: slide-in 0.4s var(--ease-out);
+  z-index: 200;
+}
+
+.toast-success { border-left: 3px solid var(--success); }
+.toast-error { border-left: 3px solid var(--error); }
+.toast-warning { border-left: 3px solid var(--warning); }
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ============================================
+   STAGGER ANIMATION
+   ============================================ */
+.stagger > * {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fade-up 0.5s var(--ease-out) forwards;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger > *:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes fade-up {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   MOBILE
+   ============================================ */
+@media (max-width: 768px) {
+  .topnav { padding: var(--space-3) var(--space-4); }
+  .page-header { padding: var(--space-6) var(--space-4) var(--space-5); }
+  .main-container { padding: 0 var(--space-4) var(--space-7); }
+  .card { padding: var(--space-5); }
+  .cost-bar { margin: 0 var(--space-4) var(--space-4); flex-wrap: wrap; }
+  .page-header h1 { font-size: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="logo">
+    <div class="logo-icon">O</div>
+    <span>Outreach</span>
+  </div>
+  <div class="nav-right">
+    <div class="credits-badge">
+      <span class="credits-dot"></span>
+      <span>2,450 credits</span>
+    </div>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></div>
+  </div>
+</nav>
+
+<!-- COST BAR -->
+<div class="cost-bar">
+  <div class="cost-item">
+    <span>GPT</span>
+    <span class="cost-value">$0.00</span>
+  </div>
+  <div class="cost-item">
+    <span>Tavily</span>
+    <span class="cost-value">$0.00</span>
+  </div>
+  <div class="cost-item">
+    <span>Humanize</span>
+    <span class="cost-value">$0.00</span>
+  </div>
+  <div class="cost-item">
+    <span>Total</span>
+    <span class="cost-value" style="color: var(--accent);">$0.00</span>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="page-header">
+  <div class="eyebrow">AI-Powered Content</div>
+  <h1>Generate Outreach Articles</h1>
+  <p class="subtitle">Create SEO-optimized articles with trust sources, humanization, and commercial anchors — ready for outreach.</p>
+</header>
+
+<!-- MODE TABS -->
+<div class="mode-tabs">
+  <div class="mode-tabs-inner">
+    <button class="mode-tab" onclick="setMode(this)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      Topic Discovery
+    </button>
+    <button class="mode-tab active" onclick="setMode(this)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      Direct Article
+    </button>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<main class="main-container">
+  <div class="two-col">
+
+    <!-- LEFT: FORM -->
+    <div class="card stagger">
+      <div class="card-header">
+        <span class="card-title">Article Settings</span>
+        <span class="card-badge">Direct Mode</span>
+      </div>
+
+      <!-- Writing Mode -->
+      <div class="writing-mode">
+        <button class="writing-mode-btn active">
+          <svg class="writing-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 12.1L18 21"/><path d="M6.8 21 3 12.7l7.2-2"/></svg>
+          SEO Mode
+        </button>
+        <button class="writing-mode-btn">
+          <svg class="writing-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          Human Mode
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Target URL</label>
+        <input type="url" class="form-input" placeholder="https://example.com/page-to-link">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Commercial Anchor Text</label>
+        <input type="text" class="form-input" placeholder="best project management tool">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Article Topic</label>
+        <textarea class="form-textarea" placeholder="Describe the topic or let AI suggest one based on your niche..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Language</label>
+        <select class="form-select">
+          <option>English</option>
+          <option>Ukrainian</option>
+          <option>Spanish</option>
+          <option>German</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Niche Presets</label>
+        <div class="tag-grid">
+          <span class="tag-pill selected">SaaS</span>
+          <span class="tag-pill">E-commerce</span>
+          <span class="tag-pill">Finance</span>
+          <span class="tag-pill">Health</span>
+          <span class="tag-pill">Education</span>
+          <span class="tag-pill">Travel</span>
+          <span class="tag-pill">Tech</span>
+          <span class="tag-pill">Marketing</span>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <span>Article will include 1 commercial anchor and up to 8 trust source links from authoritative domains.</span>
+      </div>
+
+      <div style="margin-top: var(--space-5);">
+        <button class="btn btn-primary btn-full btn-lg">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+          Generate Article
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT: STEPS + TOPICS -->
+    <div class="stagger">
+      <div class="card" style="margin-bottom: var(--space-5);">
+        <div class="card-header">
+          <span class="card-title">Generation Progress</span>
+          <div class="loading-bars">
+            <div class="loading-bar"></div>
+            <div class="loading-bar"></div>
+            <div class="loading-bar"></div>
+            <div class="loading-bar"></div>
+            <div class="loading-bar"></div>
+          </div>
+        </div>
+
+        <div class="steps">
+          <div class="step completed">
+            <div class="step-number">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="step-content">
+              <div class="step-title">Trust Sources Found</div>
+              <div class="step-desc">8 authoritative sources discovered via Tavily</div>
+            </div>
+          </div>
+
+          <div class="step active">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <div class="step-title">Generating Article</div>
+              <div class="step-desc">Writing SEO-optimized content with GPT-5.2...</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <div class="step-title">Humanization</div>
+              <div class="step-desc">AI detection bypass via Undetectable.AI</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <div class="step-title">Final Assembly</div>
+              <div class="step-desc">Anchor placement, formatting, meta tags</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Example Generated Topics -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Generated Topics</span>
+          <span class="card-badge">3 Ready</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <div class="topic-card">
+            <div class="topic-title">Why Remote Teams Need Better Async Communication Tools in 2025</div>
+            <div class="topic-meta">
+              <span class="topic-tag">SaaS</span>
+              <span>~1,800 words</span>
+              <span>8 trust sources</span>
+            </div>
+          </div>
+
+          <div class="topic-card">
+            <div class="topic-title">The Hidden Cost of Context Switching for Engineering Managers</div>
+            <div class="topic-meta">
+              <span class="topic-tag">Tech</span>
+              <span>~2,100 words</span>
+              <span>6 trust sources</span>
+            </div>
+          </div>
+
+          <div class="topic-card">
+            <div class="topic-title">How Top Startups Structure Their Product Roadmap Process</div>
+            <div class="topic-meta">
+              <span class="topic-tag">SaaS</span>
+              <span>~1,500 words</span>
+              <span>7 trust sources</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- TOAST NOTIFICATION DEMO -->
+<div class="toast toast-success">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  Trust sources discovered successfully
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+}
+
+function setMode(el) {
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// Tag pills
+document.querySelectorAll('.tag-pill').forEach(pill => {
+  pill.addEventListener('click', () => pill.classList.toggle('selected'));
+});
+
+// Writing mode
+document.querySelectorAll('.writing-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.writing-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Auto-dismiss toast
+setTimeout(() => {
+  const toast = document.querySelector('.toast');
+  if (toast) toast.style.opacity = '0';
+  setTimeout(() => toast?.remove(), 300);
+}, 4000);
+</script>
+
+</body>
+</html>

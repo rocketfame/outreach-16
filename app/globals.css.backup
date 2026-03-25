@@ -1,167 +1,55 @@
-/* ═══════════════════════════════════════════════════════════
-   TABLE OF CONTENTS
-   ═══════════════════════════════════════════════════════════
-
-   1. DESIGN TOKENS
-   2. RESET & BASE
-   3. PAGE LAYOUT
-   4. PAGE HEADER
-   5. HEADER CONTROLS & COST DISPLAY
-   6. THEME TOGGLE
-   7. MODE SWITCH
-   8. MAIN CARD & LAYOUT
-   9. FORM ELEMENTS
-  10. NICHE PRESETS & TAGS
-  11. INFO BLOCKS
-  12. RIGHT COLUMN & CONTENT PANELS
-  13. LIGHT HUMAN EDIT
-  14. BUTTONS
-  15. TOPICS GRID
-  16. TOPICS RESULTS & CARDS
-  17. TOPIC PREVIEW CARDS
-  18. HUMANIZE SETTINGS
-  19. TOPIC CLUSTERS
-  20. CHECKBOXES
-  21. ARTICLE RESULT CARDS
-  22. ARTICLE IMAGE SECTION
-  23. LOADING ANIMATIONS
-  24. IMAGE PREVIEW MODAL
-  25. DOWNLOAD DROPDOWN
-  26. ARTICLE VIEW MODAL
-  27. ARTICLE STATES
-  28. ARTICLE EDIT
-  29. GENERATED ARTICLES SECTION
-  30. RESPONSIVE / MOBILE
-  31. NOTIFICATIONS
-  32. LOADING OVERLAY
-
-   ═══════════════════════════════════════════════════════════ */
-
-/* ===========================================================
-   DESIGN TOKENS
-   =========================================================== */
-
 :root {
   --background: #FFF7F3;
   --foreground: #1a1a1a;
   --card: #ffffff;
-  --card-elevated: #ffffff;
   --border: #e8e8e8;
-  --border-subtle: #f0f0f0;
   --primary-gradient: linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%);
   --primary: #FF6B9D;
-  --primary-hover: #ff5a90;
   --primary-text: #ffffff;
   --secondary: #f5f5f5;
-  --secondary-hover: #ebebeb;
   --secondary-text: #1a1a1a;
   --text-muted: #666666;
   --text-light: #999999;
-  --focus-ring: rgba(255, 107, 157, 0.35);
-  /* Semantic Colors */
-  --success: #16a34a;
-  --success-muted: rgba(22, 163, 74, 0.08);
-  --warning: #ca8a04;
-  --warning-muted: rgba(202, 138, 4, 0.08);
-  --error: #dc2626;
-  --error-muted: rgba(220, 38, 38, 0.08);
-  --accent-muted: rgba(255, 107, 157, 0.1);
-  /* Radius Scale */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-full: 999px;
-  /* Shadow Scale */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-  /* Spacing (8pt grid) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  /* Transition */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="dark"] {
-  --background: #0B0B0F;
-  --foreground: #f0f0f0;
-  --card: #141418;
-  --card-elevated: #1c1c22;
-  --border: #2a2a30;
-  --border-subtle: #1e1e24;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --border: #333333;
   --primary-gradient: linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%);
   --primary: #FF6B9D;
-  --primary-hover: #ff82ae;
   --primary-text: #ffffff;
-  --secondary: #1e1e24;
-  --secondary-hover: #28282f;
-  --secondary-text: #f0f0f0;
-  --text-muted: #9a9aaa;
-  --text-light: #5a5a6a;
-  --focus-ring: rgba(255, 107, 157, 0.4);
-  /* Semantic Colors */
-  --success: #22c55e;
-  --success-muted: rgba(34, 197, 94, 0.15);
-  --warning: #eab308;
-  --warning-muted: rgba(234, 179, 8, 0.15);
-  --error: #ef4444;
-  --error-muted: rgba(239, 68, 68, 0.15);
-  --accent-muted: rgba(255, 107, 157, 0.15);
-  /* Shadow Scale (darker for dark mode) */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --secondary: #2a2a2a;
+  --secondary-text: #ffffff;
+  --text-muted: #999999;
+  --text-light: #666666;
 }
 
 /* Global dark mode styles for select dropdown options (native dropdown) */
 [data-theme="dark"] select option {
-  background-color: var(--card);
-  color: var(--foreground);
+  background-color: #2a2a2a;
+  color: #ffffff;
 }
 
 [data-theme="dark"] select optgroup {
-  background-color: var(--card);
-  color: var(--foreground);
+  background-color: #2a2a2a;
+  color: #ffffff;
 }
 
-
-/* ===========================================================
-   RESET & BASE
-   =========================================================== */
 * {
   box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
 }
 
 html,
 body {
   padding: 0;
   margin: 0;
-  font-family: var(--font-sans), "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--background);
   color: var(--foreground);
   min-height: 100%;
   transition: background-color 0.3s ease, color 0.3s ease;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-::selection {
-  background: rgba(255, 107, 157, 0.2);
-  color: var(--foreground);
 }
 
 [data-theme="light"] html,
@@ -171,30 +59,9 @@ body {
 
 [data-theme="dark"] html,
 [data-theme="dark"] body {
-  background: var(--background);
+  background: #000000;
 }
 
-/* Subtle grain texture overlay */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.025;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
-}
-
-[data-theme="dark"] body::before {
-  opacity: 0.04;
-}
-
-
-/* ===========================================================
-   PAGE LAYOUT
-   =========================================================== */
 .page {
   min-height: 100vh;
   padding: 2rem 1.5rem 4rem;
@@ -214,10 +81,6 @@ body::before {
   opacity: 0.6;
 }
 
-
-/* ===========================================================
-   PAGE HEADER
-   =========================================================== */
 .page-header {
   text-align: center;
   margin-bottom: 3rem;
@@ -273,10 +136,6 @@ body::before {
 }
 
 /* Header Controls - Cost Display + Theme Toggle */
-
-/* ===========================================================
-   HEADER CONTROLS & COST DISPLAY
-   =========================================================== */
 .header-controls {
   display: flex;
   align-items: center;
@@ -295,7 +154,7 @@ body::before {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 0.875rem;
-  font-family: var(--font-mono), 'JetBrains Mono', 'SF Mono', 'Monaco', monospace;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
 }
@@ -336,11 +195,6 @@ body::before {
 [data-theme="dark"] .cost-value.cost-total {
   color: #60a5fa;
 }
-
-
-/* ===========================================================
-   THEME TOGGLE
-   =========================================================== */
 
 /* Theme Switch - Creative Toggle */
 .theme-switch-container {
@@ -496,11 +350,6 @@ body::before {
   opacity: 0;
 }
 
-
-/* ===========================================================
-   MODE SWITCH
-   =========================================================== */
-
 /* Mode Switch */
 .mode-switch {
   display: flex;
@@ -524,7 +373,7 @@ body::before {
   color: #6A7280;
   font-size: 14px;
   font-weight: 500;
-  font-family: var(--font-sans), "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: -0.15px;
   line-height: 20px;
   cursor: pointer;
@@ -600,18 +449,12 @@ body::before {
   color: #6A7280;
 }
 
-
-/* ===========================================================
-   MAIN CARD & LAYOUT
-   =========================================================== */
-
 /* Main Card */
 .main-card {
   background: var(--card);
-  border-radius: var(--radius-xl);
+  border-radius: 20px;
   padding: 2.5rem;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-subtle);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .two-column-layout {
@@ -619,11 +462,6 @@ body::before {
   grid-template-columns: 1fr 1.2fr;
   gap: 3rem;
 }
-
-
-/* ===========================================================
-   FORM ELEMENTS
-   =========================================================== */
 
 /* Left Column */
 .left-column {
@@ -661,19 +499,19 @@ body::before {
 .form-fields textarea,
 .form-fields select {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   padding: 0.875rem 1rem;
   font-size: 0.95rem;
   font-family: inherit;
   background-color: var(--card);
   color: var(--foreground);
-  transition: all var(--transition-base);
+  transition: all 0.2s ease;
 }
 
 [data-theme="dark"] .form-fields input,
 [data-theme="dark"] .form-fields textarea,
 [data-theme="dark"] .form-fields select {
-  background-color: #1e1e24;
+  background-color: #2a2a2a;
   border-color: #404040;
 }
 
@@ -683,15 +521,15 @@ body::before {
   outline: none;
   border-color: var(--primary);
   background-color: var(--card);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
 }
 
 [data-theme="dark"] .form-fields input:focus,
 [data-theme="dark"] .form-fields textarea:focus,
 [data-theme="dark"] .form-fields select:focus {
-  background-color: var(--card-elevated);
+  background-color: #333333;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.2);
 }
 
 .form-fields select {
@@ -711,18 +549,18 @@ body::before {
   background-repeat: no-repeat !important;
   background-position: right 1rem center !important;
   background-size: 12px 12px !important;
-  background-color: #1e1e24 !important;
+  background-color: #2a2a2a !important;
   color: #ffffff !important;
   border-color: #404040 !important;
 }
 
 [data-theme="dark"] .form-fields select:hover {
-  background-color: #2a2a30 !important;
+  background-color: #333333 !important;
   border-color: #505050 !important;
 }
 
 [data-theme="dark"] .form-fields select option {
-  background-color: #1e1e24 !important;
+  background-color: #2a2a2a !important;
   color: #ffffff !important;
   padding: 0.5rem;
 }
@@ -730,12 +568,12 @@ body::before {
 [data-theme="dark"] .form-fields select option:hover,
 [data-theme="dark"] .form-fields select option:focus,
 [data-theme="dark"] .form-fields select option:checked {
-  background-color: #2a2a30 !important;
+  background-color: #333333 !important;
   color: #ffffff !important;
 }
 
 [data-theme="dark"] .form-fields select optgroup {
-  background-color: #1e1e24;
+  background-color: #2a2a2a;
   color: #ffffff;
 }
 
@@ -784,10 +622,6 @@ body::before {
   margin-top: -0.25rem;
 }
 
-
-/* ===========================================================
-   NICHE PRESETS & TAGS
-   =========================================================== */
 .niche-presets {
   display: flex;
   flex-wrap: wrap;
@@ -834,11 +668,7 @@ body::before {
   box-shadow: 0 4px 12px rgba(255, 107, 157, 0.25);
 }
 
-
-
-/* ===========================================================
-   INFO BLOCKS
-   =========================================================== */
+/* .niche-preset-chip styles removed - now using NicheTag component */
 
 /* Info Blocks */
 .info-block {
@@ -890,7 +720,7 @@ body::before {
 }
 
 [data-theme="dark"] .info-block input {
-  background: #1e1e24;
+  background: #2a2a2a;
   border-color: #404040;
 }
 
@@ -902,7 +732,7 @@ body::before {
 }
 
 [data-theme="dark"] .info-block input:focus {
-  background: #2a2a30;
+  background: #333333;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.2);
 }
@@ -939,11 +769,7 @@ body::before {
   gap: 0.5rem;
 }
 
-
-
-/* ===========================================================
-   RIGHT COLUMN & CONTENT PANELS
-   =========================================================== */
+/* .niche-tag styles removed - now using NicheTag component with Tailwind classes */
 
 /* Right Column */
 .right-column {
@@ -1018,11 +844,6 @@ body::before {
   flex-direction: column;
   gap: 1rem;
 }
-
-
-/* ===========================================================
-   LIGHT HUMAN EDIT
-   =========================================================== */
 
 /* Light Human Edit Toggle */
 .light-human-edit-toggle {
@@ -1138,22 +959,17 @@ body::before {
   box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
 }
 
-
-/* ===========================================================
-   BUTTONS
-   =========================================================== */
-
 /* Buttons */
 .btn-primary {
   background: var(--primary-gradient);
   color: var(--primary-text);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   padding: 0.875rem 1.75rem;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: all 0.2s ease;
   box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
   width: 100%;
 }
@@ -1161,11 +977,6 @@ body::before {
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(255, 107, 157, 0.4);
-}
-
-.btn-primary:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
 }
 
 .btn-primary:disabled {
@@ -1178,22 +989,13 @@ body::before {
   background: var(--secondary);
   color: var(--secondary-text);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   padding: 0.875rem 1.75rem;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: all 0.2s ease;
   width: 100%;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--secondary-hover);
-}
-
-.btn-secondary:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -1268,11 +1070,6 @@ body::before {
   flex-shrink: 0;
 }
 
-
-/* ===========================================================
-   TOPICS GRID
-   =========================================================== */
-
 /* Topics Grid */
 .topics-grid {
   display: grid;
@@ -1337,11 +1134,6 @@ body::before {
   margin: 0;
 }
 
-
-
-/* ===========================================================
-   TOPICS RESULTS & CARDS
-   =========================================================== */
 
 /* Topics Results */
 .topics-results {
@@ -1647,11 +1439,6 @@ body::before {
   opacity: 1;
 }
 
-
-/* ===========================================================
-   TOPIC PREVIEW CARDS
-   =========================================================== */
-
 /* Topic Preview Card (Expanded) */
 .topic-preview-card {
   background: var(--card);
@@ -1825,11 +1612,6 @@ body::before {
   }
 }
 
-
-/* ===========================================================
-   HUMANIZE SETTINGS
-   =========================================================== */
-
 /* Humanize settings panel */
 .humanize-controls {
   position: relative;
@@ -1951,12 +1733,12 @@ body::before {
 }
 
 [data-theme="dark"] .humanize-settings-panel {
-  background: #1e1e24;
+  background: #2a2a2a;
   border-color: #404040;
 }
 
 [data-theme="dark"] .humanize-option-btn {
-  background: #1e1e24;
+  background: #2a2a2a;
   border-color: #404040;
   color: #e0e0e0;
 }
@@ -1967,7 +1749,7 @@ body::before {
 }
 
 [data-theme="dark"] .humanize-style-select {
-  background: #1e1e24;
+  background: #2a2a2a;
   border-color: #404040;
   color: #e0e0e0;
 }
@@ -2129,11 +1911,6 @@ body::before {
   line-height: 1.5;
 }
 
-
-/* ===========================================================
-   TOPIC CLUSTERS
-   =========================================================== */
-
 /* Topic Cluster Blocks */
 .topic-cluster-block {
   margin-bottom: 2rem;
@@ -2166,20 +1943,15 @@ body::before {
 /* Topic Compact Cards */
 .topic-card-compact {
   background: var(--card);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   padding: 1.5rem;
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-base);
-}
-
-.topic-card-compact:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: background-color 0.3s ease;
 }
 
 [data-theme="dark"] .topic-card-compact {
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .topic-card-header {
@@ -2237,11 +2009,6 @@ body::before {
   font-size: 0.9rem;
   color: var(--text-muted);
 }
-
-
-/* ===========================================================
-   CHECKBOXES
-   =========================================================== */
 
 /* Custom checkbox styling - unified style for all checkboxes */
 .topic-checkbox-label input[type="checkbox"] {
@@ -2485,30 +2252,20 @@ body::before {
   font-size: 0.95rem;
 }
 
-
-/* ===========================================================
-   ARTICLE RESULT CARDS
-   =========================================================== */
-
 /* Article Result Cards */
 .article-result-card {
   background: var(--card);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   padding: 1.25rem;
   border: 1px solid var(--border);
   margin-bottom: 1.25rem;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-base);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: background-color 0.3s ease;
   position: relative;
 }
 
-.article-result-card:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--primary);
-}
-
 [data-theme="dark"] .article-result-card {
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .article-result-header {
@@ -2863,11 +2620,6 @@ body::before {
   margin: 0.75rem 0 0 0;
 }
 
-
-/* ===========================================================
-   ARTICLE IMAGE SECTION
-   =========================================================== */
-
 /* Article Hero Image Section */
 /* Image Style Personalization Block */
 .image-style-personalization {
@@ -2880,7 +2632,7 @@ body::before {
 }
 
 [data-theme="dark"] .image-style-personalization {
-  background-color: #1e1e24;
+  background-color: #2a2a2a;
   border-color: #404040;
 }
 
@@ -2906,7 +2658,7 @@ body::before {
 }
 
 [data-theme="dark"] .image-style-upload-label {
-  background-color: #1e1e24;
+  background-color: #2a2a2a;
   border-color: #404040;
   color: var(--foreground);
 }
@@ -2917,7 +2669,7 @@ body::before {
 }
 
 [data-theme="dark"] .image-style-upload-label:hover:not(:disabled) {
-  background-color: #2a2a30;
+  background-color: #333333;
   border-color: var(--primary);
 }
 
@@ -2943,7 +2695,7 @@ body::before {
 }
 
 [data-theme="dark"] .image-style-textarea {
-  background-color: #1e1e24;
+  background-color: #2a2a2a;
   border-color: #404040;
   color: var(--foreground);
 }
@@ -2955,7 +2707,7 @@ body::before {
 }
 
 [data-theme="dark"] .image-style-textarea:focus {
-  background-color: #2a2a30;
+  background-color: #333333;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(255, 107, 157, 0.2);
 }
@@ -3012,11 +2764,6 @@ body::before {
   justify-content: center;
 }
 
-
-/* ===========================================================
-   LOADING ANIMATIONS
-   =========================================================== */
-
 /* Local Article Generation Loader */
 .article-generating-local {
   margin-top: 1rem;
@@ -3029,7 +2776,7 @@ body::before {
 }
 
 [data-theme="dark"] .article-generating-local {
-  background: linear-gradient(135deg, #141418 0%, #1e1e24 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -3326,7 +3073,7 @@ body::before {
 }
 
 [data-theme="dark"] .image-generating-local {
-  background: linear-gradient(135deg, #141418 0%, #1e1e24 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -3455,6 +3202,7 @@ body::before {
   }
 }
 
+/* Remove duplicate article-generating-local styles - already defined above */
 
 /* Responsive adjustments for local image loader */
 @media (max-width: 768px) {
@@ -3779,11 +3527,6 @@ body::before {
   justify-content: center;
 }
 
-
-/* ===========================================================
-   IMAGE PREVIEW MODAL
-   =========================================================== */
-
 /* Image Preview Modal */
 .image-preview-modal {
   position: fixed;
@@ -3914,11 +3657,6 @@ body::before {
   }
 }
 
-
-/* ===========================================================
-   DOWNLOAD DROPDOWN
-   =========================================================== */
-
 /* Download Dropdown */
 .download-dropdown-wrapper {
   position: relative;
@@ -3940,7 +3678,7 @@ body::before {
 }
 
 [data-theme="dark"] .download-dropdown {
-  background: #1e1e24;
+  background: #2a2a2a;
   border-color: #404040;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
@@ -3971,7 +3709,7 @@ body::before {
 }
 
 [data-theme="dark"] .download-dropdown button:hover {
-  background: #2a2a30;
+  background: #333333;
 }
 
 .download-dropdown button:first-child {
@@ -3981,11 +3719,6 @@ body::before {
 .download-dropdown button:last-child {
   border-radius: 0 0 8px 8px;
 }
-
-
-/* ===========================================================
-   ARTICLE VIEW MODAL
-   =========================================================== */
 
 /* Article View Modal */
 .article-view-modal {
@@ -4207,7 +3940,7 @@ body::before {
 }
 
 [data-theme="dark"] .article-view-text th {
-  background: #1e1e24;
+  background: #2a2a2a;
 }
 
 .article-view-text li {
@@ -4278,11 +4011,6 @@ body::before {
   margin-top: 1rem;
 }
 
-
-/* ===========================================================
-   ARTICLE STATES
-   =========================================================== */
-
 /* Article Generating/Error States */
 .article-generating,
 .article-error {
@@ -4348,11 +4076,6 @@ body::before {
 .article-edit-actions .btn-outline {
   flex-shrink: 0;
 }
-
-
-/* ===========================================================
-   ARTICLE EDIT
-   =========================================================== */
 
 /* Article Edit Status Indicator */
 .article-edit-status {
@@ -4509,11 +4232,6 @@ body::before {
   box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
 }
 
-
-/* ===========================================================
-   GENERATED ARTICLES SECTION
-   =========================================================== */
-
 /* Generated Articles Section */
 .generated-articles-section {
   margin-top: 2rem;
@@ -4545,11 +4263,6 @@ body::before {
     padding: 2rem;
   }
 }
-
-
-/* ===========================================================
-   RESPONSIVE / MOBILE
-   =========================================================== */
 
 /* Mobile Optimizations - Modern SaaS UI/UX */
 @media (max-width: 768px) {
@@ -5144,11 +4857,6 @@ body::before {
   }
 }
 
-
-/* ===========================================================
-   NOTIFICATIONS
-   =========================================================== */
-
 /* Notification Styles */
 .notification {
   position: fixed;
@@ -5250,11 +4958,6 @@ body::before {
   color: var(--primary);
   opacity: 0.8;
 }
-
-
-/* ===========================================================
-   LOADING OVERLAY
-   =========================================================== */
 
 /* Loading Overlay Styles */
 .loading-overlay {
