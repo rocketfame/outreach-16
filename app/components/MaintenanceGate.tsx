@@ -16,27 +16,11 @@ const isMaintenanceEnabled = () => {
 };
 
 // Check if user has valid trial token in URL
-const hasValidTrialToken = () => {
+// Validates via server-side API (no hardcoded tokens)
+const hasTrialTokenInURL = () => {
   if (typeof window === "undefined") return false;
   const urlParams = new URLSearchParams(window.location.search);
-  const trialToken = urlParams.get("trial");
-  if (!trialToken) return false;
-  
-  // List of valid trial tokens (should match .env.local)
-  const validTrialTokens = [
-    "trial-09w33n-3143-bpckc2",
-    "trial-hu3cv3-5439-4v0sfz",
-    "trial-fm7rd0-7987-vsr9bu",
-    "trial-ktait2-4362-ntwket",
-    "trial-iky4vf-201-8tab5i",
-    "trial-vc6wae-2018-ovsvpb",
-    "trial-4w2si4-9986-rjinw8",
-    "trial-ud7v67-85-d7affp",
-    "trial-fzjpbv-5895-xcojzt",
-    "trial-euwtpk-1377-65j1kx",
-  ];
-  
-  return validTrialTokens.includes(trialToken);
+  return !!urlParams.get("trial");
 };
 
 // Check if user is master (from cookie set by proxy)
@@ -71,34 +55,44 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
         return;
       }
 
-      // CRITICAL: Check if user has valid trial token in URL FIRST
-      // This bypasses maintenance gate for trial users
-      if (hasValidTrialToken()) {
-        setShowGate(false);
-        setIsLoading(false);
-        return;
-      }
-
       // Check if user is master (from cookie) - quick check first
       if (isMasterUser()) {
-        console.log("[MaintenanceGate] Master user detected via cookie, bypassing gate");
         setShowGate(false);
         setIsLoading(false);
         return;
       }
 
-      // CRITICAL: Also check via API to verify IP on server side
-      // This ensures we catch master IP even if cookies aren't set yet
+      // If trial token exists in URL, validate via server API
+      // This avoids hardcoding tokens on the client
+      if (hasTrialTokenInURL()) {
+        try {
+          const token = new URLSearchParams(window.location.search).get("trial");
+          const res = await fetch(`/api/trial-usage?trial=${encodeURIComponent(token!)}&_t=${Date.now()}`, {
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const d = await res.json();
+            if (d.isTrial) {
+              // Valid trial token — bypass gate
+              setShowGate(false);
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("[MaintenanceGate] Trial check error:", e);
+        }
+      }
+
+      // Check via API to verify IP on server side
       try {
-        const response = await fetch('/api/check-access', { 
+        const response = await fetch('/api/check-access', {
           cache: 'no-store',
           credentials: 'include'
         });
         if (response.ok) {
           const data = await response.json();
-          console.log("[MaintenanceGate] API check result:", data);
           if (data.hasAccess || data.isMaster) {
-            console.log("[MaintenanceGate] Master IP detected via API, bypassing gate");
             setShowGate(false);
             setIsLoading(false);
             return;
