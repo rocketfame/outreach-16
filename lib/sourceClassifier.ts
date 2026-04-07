@@ -106,7 +106,7 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
     }
 
     // Parse JSON response
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(responseText);
     } catch (e) {
@@ -122,17 +122,19 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
     }
 
     // Validate and return classified source
+    const p = parsed as { type?: unknown; is_competitor?: unknown; relevance_score?: unknown } | null;
     if (
-      typeof parsed.type === "string" &&
-      typeof parsed.is_competitor === "boolean" &&
-      typeof parsed.relevance_score === "number"
+      p &&
+      typeof p.type === "string" &&
+      typeof p.is_competitor === "boolean" &&
+      typeof p.relevance_score === "number"
     ) {
       return {
         url: result.url,
         title: result.title,
-        type: parsed.type as SourceType,
-        is_competitor: parsed.is_competitor,
-        relevance_score: Math.max(0, Math.min(10, Math.round(parsed.relevance_score))), // Clamp to 0-10
+        type: p.type as SourceType,
+        is_competitor: p.is_competitor,
+        relevance_score: Math.max(0, Math.min(10, Math.round(p.relevance_score))), // Clamp to 0-10
       };
     } else {
       console.error("[sourceClassifier] Invalid classification result:", parsed);

@@ -2,6 +2,7 @@
 // Analyze reference image style using GPT-4 Vision API
 
 import { getOpenAIClient, validateApiKeys } from "@/lib/config";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export interface AnalyzeImageStyleRequest {
   imageBase64: string; // base64 encoded image (with or without data URL prefix)
@@ -25,6 +26,16 @@ function extractBase64(imageData: string): string {
 }
 
 export async function POST(req: Request) {
+  // Rate limit: GPT-4 Vision is expensive — treat as generation (10/h per IP).
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, "generate");
+  if (rl.limited) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait before analyzing more images." }),
+      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
+    );
+  }
+
   // Validate API keys
   try {
     validateApiKeys();
@@ -166,7 +177,7 @@ Your description must be detailed enough that an AI image generator can replicat
       JSON.stringify({ success: true, styleDescription }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Image style analysis error:", error);
     
     const errorMessage = error instanceof Error 

@@ -1300,8 +1300,8 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   if (params.trustSourcesJSON) {
     // Parse JSON to show structured sources
     try {
-      const sources = JSON.parse(params.trustSourcesJSON);
-      sourcesVerificationBlock = `\n\nVERIFICATION LIST - Use ONLY these pre-filtered sources (already validated, no competitors):\n${sources.map((s: any, i: number) => `${i + 1}. [${s.id}] ${s.title} (${s.type}) - ${s.url}`).join('\n')}\n\nCRITICAL: These sources are already pre-filtered and validated. You may ONLY use sources from this list. If no sources are relevant to your topic, write the article WITHOUT external links.\n`;
+      const sources = JSON.parse(params.trustSourcesJSON) as Array<{ id: string; title: string; type: string; url: string }>;
+      sourcesVerificationBlock = `\n\nVERIFICATION LIST - Use ONLY these pre-filtered sources (already validated, no competitors):\n${sources.map((s, i: number) => `${i + 1}. [${s.id}] ${s.title} (${s.type}) - ${s.url}`).join('\n')}\n\nCRITICAL: These sources are already pre-filtered and validated. You may ONLY use sources from this list. If no sources are relevant to your topic, write the article WITHOUT external links.\n`;
     } catch (e) {
       // Fallback if JSON parsing fails
       sourcesVerificationBlock = params.trustSourcesList.length > 0
@@ -2350,8 +2350,8 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   if (params.trustSourcesJSON) {
     // Parse JSON to show structured sources
     try {
-      const sources = JSON.parse(params.trustSourcesJSON);
-      sourcesVerificationBlock = `\n\nVERIFICATION LIST - Use ONLY these pre-filtered sources (already validated, no competitors):\n${sources.map((s: any, i: number) => `${i + 1}. [${s.id}] ${s.title} (${s.type}) - ${s.url}`).join('\n')}\n\nCRITICAL: These sources are already pre-filtered and validated. You may ONLY use sources from this list. If no sources are relevant to your topic, write the article WITHOUT external links.\n`;
+      const sources = JSON.parse(params.trustSourcesJSON) as Array<{ id: string; title: string; type: string; url: string }>;
+      sourcesVerificationBlock = `\n\nVERIFICATION LIST - Use ONLY these pre-filtered sources (already validated, no competitors):\n${sources.map((s, i: number) => `${i + 1}. [${s.id}] ${s.title} (${s.type}) - ${s.url}`).join('\n')}\n\nCRITICAL: These sources are already pre-filtered and validated. You may ONLY use sources from this list. If no sources are relevant to your topic, write the article WITHOUT external links.\n`;
     } catch (e) {
       // Fallback if JSON parsing fails
       sourcesVerificationBlock = params.trustSourcesList.length > 0

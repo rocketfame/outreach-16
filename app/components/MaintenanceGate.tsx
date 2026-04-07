@@ -284,7 +284,7 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
             width: "100%",
             maxWidth: "100%",
           }}>
-            We'll review your request and provide access credentials as soon as possible.
+            We&apos;ll review your request and provide access credentials as soon as possible.
           </p>
         </div>
       </div>

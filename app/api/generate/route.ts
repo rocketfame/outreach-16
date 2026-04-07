@@ -2,7 +2,7 @@ import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config"
 import { getCostTracker } from "@/lib/costTracker";
 
 // Simple debug logger that works in both local and production (Vercel)
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
   console.log("[generate-api-debug]", ...args);
 };
 

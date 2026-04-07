@@ -26,11 +26,24 @@ export default function Notification({ message, time, isVisible, onClose }: Noti
     }, 200); // Wait for slide-out animation
   }, [onClose]);
 
-  useEffect(() => {
+  // Derive visibility-related state during render when `isVisible` changes
+  // (React-recommended pattern — avoids cascading renders from setState-in-effect).
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [prevIsVisible, setPrevIsVisible] = useState(isVisible);
+  if (prevIsVisible !== isVisible) {
+    setPrevIsVisible(isVisible);
     if (isVisible) {
       setShouldRender(true);
       setIsClosing(false);
-      // Auto-close after 2 seconds with slide-out animation
+    } else {
+      setIsClosing(true);
+    }
+  }
+
+  // Side effects only (no synchronous setState): auto-close timer on open,
+  // delayed unmount on close.
+  useEffect(() => {
+    if (isVisible) {
       timerRef.current = setTimeout(() => {
         handleClose();
       }, 2000);
@@ -40,12 +53,11 @@ export default function Notification({ message, time, isVisible, onClose }: Noti
           timerRef.current = null;
         }
       };
-    } else {
-      setIsClosing(true);
-      setTimeout(() => {
-        setShouldRender(false);
-      }, 200);
     }
+    const unmountTimer = setTimeout(() => {
+      setShouldRender(false);
+    }, 200);
+    return () => clearTimeout(unmountTimer);
   }, [isVisible, handleClose]);
 
   if (!shouldRender) return null;

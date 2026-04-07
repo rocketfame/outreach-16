@@ -3,6 +3,7 @@
 
 import { NextResponse } from "next/server";
 import { searchReliableSources } from "@/lib/tavilyClient";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export interface FindLinksRequest {
   query: string;
@@ -19,6 +20,16 @@ export interface FindLinksResponse {
 
 export async function POST(req: Request) {
   console.log("[find-links-api] POST /api/find-links called");
+
+  // Rate limit: Tavily search endpoint — search category (30/min per IP).
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, "search");
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Please wait before searching again." },
+      { status: 429, headers: { "Retry-After": String(rl.resetIn) } }
+    );
+  }
 
   try {
     const body: FindLinksRequest = await req.json();

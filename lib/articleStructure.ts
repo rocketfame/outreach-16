@@ -473,44 +473,46 @@ export function modelBlocksToArticleStructure(
   const anchors: AnchorSpec[] = [];
   const trustSources: TrustSourceSpec[] = [];
 
-  const inputBlocks = Array.isArray(modelBlocks) ? (modelBlocks as ModelArticleBlock[]) : [];
+  const inputBlocks: unknown[] = Array.isArray(modelBlocks) ? modelBlocks : [];
 
-  for (const b of inputBlocks) {
-    if (!b || typeof (b as any).type !== 'string') continue;
-    const type = (b as any).type as BlockType;
+  for (const raw of inputBlocks) {
+    if (!raw || typeof raw !== 'object') continue;
+    const b = raw as Record<string, unknown>;
+    if (typeof b.type !== 'string') continue;
+    const type = b.type as BlockType;
 
     if (type === 'ul' || type === 'ol') {
-      const items = Array.isArray((b as any).items) ? (b as any).items : [];
+      const items = Array.isArray(b.items) ? (b.items as unknown[]) : [];
       blocks.push({
         id: crypto.randomUUID(),
         type,
         text: '',
         items: items
-          .filter((x: any) => typeof x === 'string' && x.trim().length > 0)
-          .map((x: string) => ({ id: crypto.randomUUID(), type: 'li', text: x.trim() })),
+          .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+          .map((x) => ({ id: crypto.randomUUID(), type: 'li' as const, text: x.trim() })),
       } as ListBlock);
       continue;
     }
 
     if (type === 'table') {
-      const headers = Array.isArray((b as any).headers) ? (b as any).headers : [];
-      const rows = Array.isArray((b as any).rows) ? (b as any).rows : [];
-      const caption = typeof (b as any).caption === 'string' ? (b as any).caption : undefined;
+      const headers = Array.isArray(b.headers) ? (b.headers as unknown[]) : [];
+      const rows = Array.isArray(b.rows) ? (b.rows as unknown[]) : [];
+      const caption = typeof b.caption === 'string' ? b.caption : undefined;
       blocks.push({
         id: crypto.randomUUID(),
         type: 'table',
         text: '',
         caption: caption?.trim() || undefined,
-        headers: headers.filter((x: any) => typeof x === 'string').map((x: string) => x.trim()).filter(Boolean),
+        headers: headers.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean),
         rows: rows
-          .filter((r: any) => Array.isArray(r))
-          .map((r: any[]) => r.filter((c) => typeof c === 'string').map((c) => (c as string).trim())),
+          .filter((r): r is unknown[] => Array.isArray(r))
+          .map((r) => r.filter((c): c is string => typeof c === 'string').map((c) => c.trim())),
       } as TableBlock);
       continue;
     }
 
     // Regular text blocks
-    const text = typeof (b as any).text === 'string' ? (b as any).text.trim() : '';
+    const text = typeof b.text === 'string' ? b.text.trim() : '';
     if (!text) continue;
     if (type === 'h1' || type === 'h2' || type === 'h3' || type === 'h4' || type === 'p') {
       blocks.push({ id: crypto.randomUUID(), type, text });

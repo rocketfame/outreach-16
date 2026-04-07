@@ -13,6 +13,7 @@ import {
 import { getHumanizerService } from "@/lib/humanizerClient";
 import { chunkTextForHumanization } from "@/lib/sectionHumanize";
 import { formatHumanizedHtml } from "@/lib/humanizeFormatter";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export interface HumanizeArticleRequest {
   html: string;
@@ -34,6 +35,16 @@ export interface HumanizeArticleResponse {
 
 export async function POST(req: NextRequest) {
   console.log("[humanize-api] POST /api/humanize called");
+
+  // Rate limit: Undetectable.AI calls are paid per request — treat as generation.
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, "generate");
+  if (rl.limited) {
+    return NextResponse.json(
+      { ok: false, error: "Rate limit exceeded. Please wait before humanizing more text." },
+      { status: 429, headers: { "Retry-After": String(rl.resetIn) } }
+    );
+  }
 
   try {
     const body: HumanizeArticleRequest = await req.json();
@@ -136,7 +147,7 @@ export async function POST(req: NextRequest) {
 
     // Step 3: Restore protected chunks (anchors and phrases) first
     console.log("[humanize-api] Restoring protected chunks (anchors and phrases)...");
-    let restoredText = restoreProtectedChunks(humanizedText, protectedChunks);
+    const restoredText = restoreProtectedChunks(humanizedText, protectedChunks);
     
     // Step 4: Format humanized text back to HTML using OpenAI formatter
     let formattedHtml: string;
@@ -162,18 +173,19 @@ export async function POST(req: NextRequest) {
       wordsUsed: totalWordsUsed,
     } as HumanizeArticleResponse);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("[humanize-api] Humanization failed:", error);
 
+    const err = error as { userMessage?: string; message?: string; code?: number };
     // Check if it's a HumanizeError with user-friendly message
-    if (error.userMessage) {
+    if (err.userMessage) {
       return NextResponse.json(
         {
           ok: false,
-          error: error.message,
-          userMessage: error.userMessage
+          error: err.message,
+          userMessage: err.userMessage
         } as HumanizeArticleResponse,
-        { status: error.code === 1006 ? 402 : 500 } // 402 for payment required
+        { status: err.code === 1006 ? 402 : 500 } // 402 for payment required
       );
     }
 
@@ -181,7 +193,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: error.message || "Unknown error",
+        error: err.message || "Unknown error",
         userMessage: "An error occurred while humanizing text. Please try again."
       } as HumanizeArticleResponse,
       { status: 500 }

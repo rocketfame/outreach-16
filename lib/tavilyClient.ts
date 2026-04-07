@@ -5,9 +5,20 @@ import { getTavilyApiKey } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 
 // Simple debug logger that works in both local and production (Vercel)
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
   console.log("[tavily-debug]", ...args);
 };
+
+// Raw shape from Tavily API — permissive since we narrow at each access site.
+type TavilyRawResult = {
+  url?: string;
+  title?: string;
+  content?: string;
+  score?: number;
+  images?: Array<string | { url?: string; title?: string; source_url?: string }>;
+  [key: string]: unknown;
+};
+type TavilyRawImage = string | { url?: string; title?: string; source_url?: string };
 
 export interface TrustedSource {
   title: string;
@@ -77,7 +88,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
     // #endregion
 
     // Map Tavily response to TrustedSource format
-    const allSources: TrustedSource[] = (data.results || []).map((result: any) => {
+    const allSources: TrustedSource[] = (data.results || []).map((result: TavilyRawResult) => {
       // Clean URL - remove tracking parameters
       let cleanUrl = result.url || "";
       try {
@@ -291,8 +302,8 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
     // Tavily returns images in the response - check top-level images array
     if (data.images && Array.isArray(data.images)) {
       console.log(`[tavily-images] Processing ${data.images.length} images from data.images`);
-      data.images.forEach((img: any, index: number) => {
-        const imgUrl = typeof img === 'string' ? img : (img.url || img);
+      data.images.forEach((img: TavilyRawImage, index: number) => {
+        const imgUrl = typeof img === 'string' ? img : (img.url || '');
         if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
           images.push({
             url: imgUrl,
@@ -306,11 +317,11 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
     // Also check results for images
     if (data.results && Array.isArray(data.results)) {
       console.log(`[tavily-images] Processing ${data.results.length} results`);
-      data.results.forEach((result: any, resultIndex: number) => {
+      data.results.forEach((result: TavilyRawResult, resultIndex: number) => {
         if (result.images && Array.isArray(result.images)) {
           console.log(`[tavily-images] Result ${resultIndex} has ${result.images.length} images`);
-          result.images.forEach((imgUrl: string | any) => {
-            const url = typeof imgUrl === 'string' ? imgUrl : (imgUrl.url || imgUrl);
+          result.images.forEach((imgUrl: TavilyRawImage) => {
+            const url = typeof imgUrl === 'string' ? imgUrl : (imgUrl.url || '');
             if (url && typeof url === 'string' && url.startsWith('http') && !images.some(i => i.url === url)) {
               images.push({
                 url: url,

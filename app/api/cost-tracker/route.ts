@@ -3,8 +3,18 @@
 
 import { NextResponse } from "next/server";
 import { getCostTracker, formatCost, formatTokens } from "@/lib/costTracker";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Rate limit: cheap read endpoint (60/min per IP).
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, "read");
+  if (rl.limited) {
+    return NextResponse.json(
+      { success: false, error: "Rate limit exceeded." },
+      { status: 429, headers: { "Retry-After": String(rl.resetIn) } }
+    );
+  }
   try {
     const costTracker = getCostTracker();
     const totals = costTracker.getTotalCosts();

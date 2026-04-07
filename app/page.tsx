@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useState, useEffect, useRef, useMemo } from "react";
+import { ChangeEvent, useState, useEffect, useRef, useMemo, useCallback } from "react";
 import LoadingOverlay from "./components/LoadingOverlay";
 import Notification from "./components/Notification";
 import TrialUsageDisplay from "./components/TrialUsageDisplay";
@@ -41,7 +41,7 @@ export default function Home() {
   };
   
   // Helper function to add trial token to fetch options
-  const getFetchOptions = (body?: any): RequestInit => {
+  const getFetchOptions = (body?: unknown): RequestInit => {
     const trialToken = getTrialTokenFromURL();
     const headers: HeadersInit = { "Content-Type": "application/json" };
     
@@ -171,6 +171,27 @@ export default function Home() {
     time: string;
     visible: boolean;
   } | null>(null);
+  // Per-article warnings surfaced from API (anchorWarning / humanizationWarning).
+  // Shown as a dismissible banner so the user knows when the model dropped the anchor
+  // or humanization silently failed.
+  const [articleWarnings, setArticleWarnings] = useState<Array<{ topicTitle: string; message: string; kind: "anchor" | "humanization" }>>([]);
+  const collectArticleWarnings = useCallback(
+    (articles: Array<{ topicTitle: string; anchorWarning?: string; humanizationWarning?: string }>) => {
+      const next: Array<{ topicTitle: string; message: string; kind: "anchor" | "humanization" }> = [];
+      for (const a of articles) {
+        if (a.anchorWarning) {
+          next.push({ topicTitle: a.topicTitle, message: a.anchorWarning, kind: "anchor" });
+        }
+        if (a.humanizationWarning) {
+          next.push({ topicTitle: a.topicTitle, message: a.humanizationWarning, kind: "humanization" });
+        }
+      }
+      if (next.length > 0) {
+        setArticleWarnings((prev) => [...prev, ...next]);
+      }
+    },
+    []
+  );
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [currentBalance, setCurrentBalance] = useState(0);
   const [isCreditsExhaustedOpen, setIsCreditsExhaustedOpen] = useState(false);
@@ -1348,11 +1369,14 @@ export default function Home() {
           articleBodyHtml?: string;
           humanizedOnWrite?: boolean;
           humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
+          anchorWarning?: string;
+          humanizationWarning?: string;
         }> };
 
         if (data.articles.length > 0) {
           const newArticle = data.articles[0];
-          
+          collectArticleWarnings([newArticle]);
+
           // CRITICAL: Clean invisible Unicode characters before saving
           const cleanedArticle = {
             ...newArticle,
@@ -1362,6 +1386,8 @@ export default function Home() {
             articleBodyHtml: cleanText(newArticle.articleBodyHtml || newArticle.fullArticleText || ''),
             humanizedOnWrite: newArticle.humanizedOnWrite,
             humanizationReport: newArticle.humanizationReport,
+            anchorWarning: newArticle.anchorWarning,
+            humanizationWarning: newArticle.humanizationWarning,
             humanizeSettingsUsed: savedHumanizeSettings ?? {
               humanizeOnWrite: regenerateHumanizeOnWrite,
               model: regenerateHumanizeSettings.model,
@@ -1582,11 +1608,14 @@ export default function Home() {
         topicDisplayTitle?: string;
         humanizedOnWrite?: boolean;
         humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
+        anchorWarning?: string;
+        humanizationWarning?: string;
       }> };
 
       if (data.articles.length > 0) {
         const newArticle = data.articles[0];
-        
+        collectArticleWarnings([newArticle]);
+
         // CRITICAL: Clean invisible Unicode characters before saving
         // This ensures all hidden characters are removed even if they come from API
         const cleanedArticle = {
@@ -1598,6 +1627,8 @@ export default function Home() {
           articleBodyHtml: cleanText(newArticle.articleBodyHtml || newArticle.fullArticleText || ''),
           humanizedOnWrite: newArticle.humanizedOnWrite,
           humanizationReport: newArticle.humanizationReport,
+          anchorWarning: newArticle.anchorWarning,
+          humanizationWarning: newArticle.humanizationWarning,
           // CRITICAL: Preserve humanization settings used for regeneration
           // This allows future regenerations to use the same settings
           humanizeSettingsUsed: savedHumanizeSettings ?? {
@@ -1993,8 +2024,11 @@ export default function Home() {
         topicDisplayTitle?: string;
         humanizedOnWrite?: boolean;
         humanizationReport?: { enabled: boolean; blocksTotal: number; blocksProcessed: number; blocksActuallyHumanized: number; blocksSkipped: number; totalWordsUsed: number; totalWordsInArticle: number; humanizationRatio: number };
+        anchorWarning?: string;
+        humanizationWarning?: string;
       }> };
 
+      collectArticleWarnings(data.articles);
 
       // Update generated articles with results
       // CRITICAL: Clean invisible Unicode characters before saving
@@ -2011,6 +2045,8 @@ export default function Home() {
           articleBodyHtml: cleanText(article.articleBodyHtml || article.fullArticleText || ''),
           humanizedOnWrite: article.humanizedOnWrite,
           humanizationReport: article.humanizationReport,
+          anchorWarning: article.anchorWarning,
+          humanizationWarning: article.humanizationWarning,
           topicTitle: topics[index]?.id || article.topicTitle,
           topicDisplayTitle: topics[index]?.workingTitle || article.topicDisplayTitle,
           status: "ready" as const,
@@ -4022,7 +4058,7 @@ export default function Home() {
   const playSuccessSound = () => {
     try {
       // Create a pleasant, soft success sound using Web Audio API
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       
       // Use lower octave for softer sound (C4, E4, G4 instead of C5, E5, G5)
       const frequencies = [261.63, 329.63, 392.00]; // C4, E4, G4 - more mellow
@@ -6051,6 +6087,59 @@ export default function Home() {
           onClose={() => setNotification(null)}
         />
       )}
+
+      {/* Persistent warnings banner — not auto-dismissed, user must close it.
+          Covers anchorWarning (commercial [A1] dropped/injected) and humanizationWarning. */}
+      {articleWarnings.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            maxWidth: 420,
+            background: "#2a1e0e",
+            color: "#ffe8b4",
+            border: "1px solid #8a6422",
+            borderRadius: 10,
+            padding: "14px 16px",
+            boxShadow: "0 10px 32px rgba(0,0,0,0.45)",
+            fontSize: 13,
+            lineHeight: 1.45,
+            zIndex: 9999,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <strong style={{ color: "#ffd27a" }}>
+              {articleWarnings.length === 1 ? "Article warning" : `Article warnings (${articleWarnings.length})`}
+            </strong>
+            <button
+              onClick={() => setArticleWarnings([])}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#ffd27a",
+                cursor: "pointer",
+                fontSize: 18,
+                lineHeight: 1,
+                padding: "0 4px",
+              }}
+              aria-label="Dismiss warnings"
+            >
+              ×
+            </button>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {articleWarnings.map((w, i) => (
+              <li key={`${w.topicTitle}-${w.kind}-${i}`} style={{ marginBottom: 6 }}>
+                <span style={{ opacity: 0.85 }}>
+                  {w.kind === "anchor" ? "[Anchor] " : "[Humanization] "}
+                </span>
+                {w.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 })()}
@@ -6344,10 +6433,10 @@ export default function Home() {
                                     fullHtml += html;
 
                                     try {
-                                      if (navigator.clipboard && (window as any).ClipboardItem) {
+                                      if (navigator.clipboard && window.ClipboardItem) {
                                         const blobHtml = new Blob([fullHtml], { type: 'text/html' });
                                         const blobText = new Blob([plain], { type: 'text/plain' });
-                                        const item = new (window as any).ClipboardItem({
+                                        const item = new window.ClipboardItem({
                                           'text/html': blobHtml,
                                           'text/plain': blobText,
                                         });
@@ -6749,10 +6838,10 @@ export default function Home() {
                                             fullHtml += html;
 
                                             try {
-                                              if (navigator.clipboard && (window as any).ClipboardItem) {
+                                              if (navigator.clipboard && window.ClipboardItem) {
                                                 const blobHtml = new Blob([fullHtml], { type: 'text/html' });
                                                 const blobText = new Blob([plain], { type: 'text/plain' });
-                                                const item = new (window as any).ClipboardItem({
+                                                const item = new window.ClipboardItem({
                                                   'text/html': blobHtml,
                                                   'text/plain': blobText,
                                                 });

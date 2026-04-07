@@ -8,7 +8,7 @@ import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 // Simple debug logger
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
   console.log("[article-image-debug]", ...args);
 };
 
@@ -439,9 +439,10 @@ export async function POST(req: Request) {
       JSON.stringify({ success: true, imageBase64, selectedBoxIndex }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch (error) {
     // #region agent log
-    const errorLog = {location:'article-image/route.ts:POST',message:'Image generation error',data:{error:(error as Error).message,errorName:(error as Error).name,errorCode:error?.code,errorStack:(error as Error).stack},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const errCode = (error as { code?: unknown })?.code;
+    const errorLog = {location:'article-image/route.ts:POST',message:'Image generation error',data:{error:(error as Error).message,errorName:(error as Error).name,errorCode:errCode,errorStack:(error as Error).stack},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(errorLog);
     // #endregion
     console.error("article-image error", error);
@@ -454,9 +455,10 @@ export async function POST(req: Request) {
         : "Internal server error";
     
     // Check for specific OpenAI API errors
-    const isOpenAIError = error?.status || error?.response || error?.code;
-    const detailedError = isOpenAIError 
-      ? `OpenAI API error: ${errorMessage}${error?.code ? ` (code: ${error.code})` : ''}`
+    const errObj = error as { status?: unknown; response?: unknown; code?: unknown } | null;
+    const isOpenAIError = !!(errObj && (errObj.status || errObj.response || errObj.code));
+    const detailedError = isOpenAIError
+      ? `OpenAI API error: ${errorMessage}${errObj?.code ? ` (code: ${String(errObj.code)})` : ''}`
       : errorMessage;
     
     return new Response(

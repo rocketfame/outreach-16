@@ -33,14 +33,32 @@ import { cleanText, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPos
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
-import { 
-  parsePlainTextToStructure, 
-  blocksToHtml, 
+import {
+  parsePlainTextToStructure,
+  blocksToHtml,
   modelBlocksToArticleStructure,
   ArticleStructure,
+  type ArticleBlock,
+  type ArticleBlockBase,
+  type ListBlock,
   type TableBlock,
   type TrustSourceSpec
 } from "@/lib/articleStructure";
+
+// Loose shape for raw model output blocks (before normalization).
+// The model returns blocks roughly matching ModelArticleBlock but with mutable
+// fields and items that may be strings OR { text: string } objects, so we
+// describe a permissive structural type here.
+type RawModelListItem = string | { text?: string; [key: string]: unknown };
+interface RawModelBlock {
+  type?: string;
+  text?: string;
+  items?: RawModelListItem[];
+  caption?: string;
+  headers?: string[];
+  rows?: string[][];
+  [key: string]: unknown;
+}
 import { filterAndSelectTrustSources, TrustSourceInput } from "@/lib/trustSourceFilter";
 import { humanizeSectionText } from "@/lib/sectionHumanize";
 import { 
@@ -53,7 +71,7 @@ import fs from "fs";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 // Simple debug logger that works in both local and production (Vercel)
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
   console.log("[articles-api-debug]", ...args);
 };
 
@@ -271,7 +289,7 @@ export async function POST(req: Request) {
           ? trustSourcesPerTopic[topic.title]
           : trustSourcesList;
         // Convert sources from "Name|URL" or "Name|URL|Snippet" format to RawSearchResult[]
-        const rawSources: RawSearchResult[] = sourcesForTopic.map((source: string | any) => {
+        const rawSources: RawSearchResult[] = sourcesForTopic.map((source: string | Record<string, unknown>) => {
           // Support both string format ("Name|URL|Snippet") and object format
           if (typeof source === 'string') {
             const parts = source.split('|');
@@ -282,11 +300,12 @@ export async function POST(req: Request) {
             };
           } else {
             // Object format (for future use)
+            const srcObj = source as { url?: string; title?: string; snippet?: string; content_preview?: string };
             return {
-              url: source.url || "",
-              title: source.title || "",
-              snippet: source.snippet || "",
-              content_preview: source.content_preview || source.snippet || "",
+              url: srcObj.url || "",
+              title: srcObj.title || "",
+              snippet: srcObj.snippet || "",
+              content_preview: srcObj.content_preview || srcObj.snippet || "",
             };
           }
         });
@@ -534,7 +553,8 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               ...apiParams,
               response_format: { type: "json_object" },
             });
-          } catch (formatError: any) {
+          } catch (formatError) {
+            void formatError;
             // If response_format is not supported, try without it
               completion = await openai.chat.completions.create({
               model: "gpt-5.2",
@@ -551,7 +571,7 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 ...apiParams,
               });
           }
-        } catch (apiError: any) {
+        } catch (apiError) {
           throw apiError;
         }
 
@@ -670,8 +690,8 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
         }
 
         // Post-process the article text: clean invisible chars and normalize
-        let cleanedTitleTag = cleanText(parsedResponse.titleTag || topic.title);
-        let cleanedMetaDescription = cleanText(parsedResponse.metaDescription || "");
+        const cleanedTitleTag = cleanText(parsedResponse.titleTag || topic.title);
+        const cleanedMetaDescription = cleanText(parsedResponse.metaDescription || "");
         
         // Check formats: blocks (preferred), plain text, or old HTML
         const hasBlocksFormat = !!parsedResponse.articleBlocks;
@@ -775,8 +795,8 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           }
           // Clean up truncated/incomplete blocks
           if (parsedResponse.articleBlocks && Array.isArray(parsedResponse.articleBlocks)) {
-            let articleBlocks = parsedResponse.articleBlocks as any[];
-            articleBlocks = articleBlocks.filter((block: any) => {
+            let articleBlocks = parsedResponse.articleBlocks as RawModelBlock[];
+            articleBlocks = articleBlocks.filter((block: RawModelBlock) => {
               if (block.type === "p" && block.text) {
                 const text = block.text.trim();
                 // Remove blocks that are clearly incomplete sentences
@@ -811,7 +831,7 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 (hasManysemicolons && specialCharRatio > 0.05);
             };
 
-            articleBlocks = articleBlocks.filter((block: any) => {
+            articleBlocks = articleBlocks.filter((block: RawModelBlock) => {
               if (block.type === "p" && block.text) {
                 if (isGarbledText(block.text)) {
                   console.warn("[cleanup] Removed garbled paragraph:",
@@ -830,7 +850,7 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 block.text = normalizeBrandNames(block.text);
               }
               if (block.items && Array.isArray(block.items)) {
-                block.items = block.items.map((item: any) => {
+                block.items = block.items.map((item: RawModelListItem) => {
                   if (typeof item === "string") {
                     const cleaned = item.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\s{2,}/g, " ");
                     return normalizeBrandNames(cleaned);
@@ -925,9 +945,9 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           const hasAnchor = !!(brief.anchorText?.trim() && (brief.anchorUrl || brief.clientSite)?.trim());
           if (hasAnchor) {
             const pBlocks = articleStructure.blocks
-              .filter((b: any) => b.type === "p")
+              .filter((b: ArticleBlock) => b.type === "p")
               .slice(0, 2)
-              .map((b: any) => (b.text || "").toLowerCase());
+              .map((b: ArticleBlock) => (b.text || "").toLowerCase());
             const a1InFirstTwo = pBlocks.some((text: string) => text.includes("[a1]"));
             if (!a1InFirstTwo) {
               console.warn("[articles-api] ANCHOR PLACEMENT VIOLATION: [A1] should be in paragraph 1 or 2 but was placed later. Anchor:", brief.anchorText?.slice(0, 30));
@@ -940,7 +960,14 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           const brandToCheck = brandName && brandName.trim() && brandName.trim().toUpperCase() !== "NONE" ? brandName.trim() : null;
           if (brandToCheck) {
             const allText = articleStructure.blocks
-              .map((b: any) => (b.text || "") + (b.items ? (b.items.map((i: any) => typeof i === "string" ? i : i?.text || "").join(" ")) : ""))
+              .map((b: ArticleBlock) => {
+                const baseText = b.text || "";
+                const listItems = (b as ListBlock).items;
+                const itemsText = Array.isArray(listItems)
+                  ? listItems.map((i: ArticleBlockBase | string) => typeof i === "string" ? i : (i?.text || "")).join(" ")
+                  : "";
+                return baseText + itemsText;
+              })
               .join(" ");
             const brandAppears = new RegExp(brandToCheck.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(allText);
             if (!brandAppears) {
@@ -952,10 +979,10 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           // This removes AI-generated hidden Unicode characters from GPT output
           articleStructure.blocks = articleStructure.blocks.map(block => {
             if (block.type === 'ul' || block.type === 'ol') {
-              const listBlock = block as any;
+              const listBlock = block as ListBlock;
               return {
                 ...listBlock,
-                items: (listBlock.items || []).map((item: any) => ({
+                items: (listBlock.items || []).map((item: ArticleBlockBase) => ({
                   ...item,
                   text: cleanText(item.text || '')
                 }))
@@ -1035,11 +1062,11 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                   }
 
                   if (block.type === 'ul' || block.type === 'ol') {
-                    const listBlock = block as any;
+                    const listBlock = block as ListBlock;
                     tasks.push({ idx: i, process: async () => {
                       let listWordsUsed = 0;
                       const humanizedItems = await Promise.all(
-                        (listBlock.items || []).map(async (item: any) => {
+                        (listBlock.items || []).map(async (item: ArticleBlockBase) => {
                           if (!item?.text || item.text.length < 100) return item;
                           try {
                             const originalItem = item.text;
@@ -1080,7 +1107,7 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                           }))
                         )
                       );
-                      return { block: { ...t, caption, rows: humanizedRows } as any, wordsUsed: tableWordsUsed, processed: true, humanized: tableWordsUsed > 0 };
+                      return { block: { ...t, caption, rows: humanizedRows } as TableBlock, wordsUsed: tableWordsUsed, processed: true, humanized: tableWordsUsed > 0 };
                     }});
                     continue;
                   }
@@ -1149,14 +1176,14 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                   if (block.text !== original.text) return true;
                   // Compare items for lists
                   if ((block.type === 'ul' || block.type === 'ol') && (original.type === 'ul' || original.type === 'ol')) {
-                    const blockItems = (block as any).items || [];
-                    const originalItems = (original as any).items || [];
+                    const blockItems = (block as ListBlock).items || [];
+                    const originalItems = (original as ListBlock).items || [];
                     return JSON.stringify(blockItems) !== JSON.stringify(originalItems);
                   }
                   // Compare rows for tables
                   if (block.type === 'table' && original.type === 'table') {
-                    const blockRows = (block as any).rows || [];
-                    const originalRows = (original as any).rows || [];
+                    const blockRows = (block as TableBlock).rows || [];
+                    const originalRows = (original as TableBlock).rows || [];
                     return JSON.stringify(blockRows) !== JSON.stringify(originalRows);
                   }
                   return false;
@@ -1179,8 +1206,10 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 const totalWordsInArticle = humanizedBlocks
                   .flatMap((b) => {
                     if (b.text) return b.text.split(/\s+/).filter(Boolean);
-                    if ((b as any).items) return (b as any).items.flatMap((i: any) => (i?.text || i || "").split(/\s+/).filter(Boolean));
-                    if ((b as any).rows) return (b as any).rows.flat().flatMap((c: string) => (c || "").split(/\s+/).filter(Boolean));
+                    const listItems = (b as ListBlock).items;
+                    if (listItems) return listItems.flatMap((i: ArticleBlockBase | string) => ((typeof i === "string" ? i : i?.text) || "").split(/\s+/).filter(Boolean));
+                    const tableRows = (b as TableBlock).rows;
+                    if (tableRows) return tableRows.flat().flatMap((c: string) => (c || "").split(/\s+/).filter(Boolean));
                     return [];
                   })
                   .length;
@@ -1246,10 +1275,10 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
             const allText = articleStructure.blocks
               .map(block => {
                 if (block.type === 'ul' || block.type === 'ol') {
-                  return (block as any).items?.map((item: any) => item.text || '').join(' ') || '';
+                  return (block as ListBlock).items?.map((item: ArticleBlockBase) => item.text || '').join(' ') || '';
                 }
                 if (block.type === 'table') {
-                  const t = block as any;
+                  const t = block as TableBlock;
                   return [
                     t.caption || '',
                     ...(t.headers || []),
@@ -1286,19 +1315,19 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           const allPlaceholdersInBlocks: string[] = [];
           articleStructure.blocks.forEach(block => {
             if (block.type === 'ul' || block.type === 'ol') {
-              const listBlock = block as any;
-              (listBlock.items || []).forEach((item: any) => {
+              const listBlock = block as ListBlock;
+              (listBlock.items || []).forEach((item: ArticleBlockBase) => {
                 const matches = item?.text?.match(/\[([AT][1-3])\]/g);
                 if (matches) allPlaceholdersInBlocks.push(...matches);
               });
             } else if (block.type === 'table') {
-              const tableBlock = block as any;
+              const tableBlock = block as TableBlock;
               if (tableBlock.caption) {
                 const matches = tableBlock.caption.match(/\[([AT][1-3])\]/g);
                 if (matches) allPlaceholdersInBlocks.push(...matches);
               }
-              (tableBlock.rows || []).forEach((row: any) => {
-                (row || []).forEach((cell: any) => {
+              (tableBlock.rows || []).forEach((row: string[]) => {
+                (row || []).forEach((cell: string) => {
                   if (typeof cell === 'string') {
                     const matches = cell.match(/\[([AT][1-3])\]/g);
                     if (matches) allPlaceholdersInBlocks.push(...matches);

@@ -72,11 +72,18 @@ export default function LoadingOverlay({ isOpen, mode }: LoadingOverlayProps) {
     return () => clearInterval(messageInterval);
   }, [isOpen, messages.length]);
 
-  // Timer (updates every second). Resets at the start of each open cycle,
-  // so no setState needed on close — prevents an extra render on unmount.
+  // Reset elapsed counter when the overlay transitions open using the React-recommended
+  // "derive state during render" pattern — avoids setState-in-effect cascading renders.
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) setElapsedSeconds(0);
+  }
+
+  // Timer (updates every second) — effect only manages the interval lifecycle.
   useEffect(() => {
     if (!isOpen) return;
-    setElapsedSeconds(0);
     const timerInterval = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);

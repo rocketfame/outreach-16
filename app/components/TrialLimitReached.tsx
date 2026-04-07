@@ -172,7 +172,7 @@ export default function TrialLimitReached({
           width: "100%",
           maxWidth: "100%",
         }}>
-          We'll review your request and provide access credentials as soon as possible.
+          We&apos;ll review your request and provide access credentials as soon as possible.
         </p>
       </div>
     </div>

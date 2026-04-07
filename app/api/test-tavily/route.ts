@@ -25,8 +25,9 @@ export async function GET() {
           source: r.source,
         })),
       });
-    } catch (error: any) {
-      if (error.message && error.message.includes("TAVILY_API_KEY")) {
+    } catch (error) {
+      const errMsg = (error as { message?: string })?.message;
+      if (errMsg && errMsg.includes("TAVILY_API_KEY")) {
         return NextResponse.json(
           {
             success: false,
@@ -38,11 +39,11 @@ export async function GET() {
       }
       throw error;
     }
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Unknown error",
+        error: (error as { message?: string })?.message || "Unknown error",
         details: error instanceof Error ? error.stack : String(error),
       },
       { status: 500 }

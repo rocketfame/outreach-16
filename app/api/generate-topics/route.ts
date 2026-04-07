@@ -8,7 +8,7 @@ import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount, 
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 // Simple debug logger
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
   console.log("[generate-topics]", ...args);
 };
 
@@ -147,10 +147,11 @@ export async function POST(req: Request) {
         ...apiParams,
         response_format: { type: "json_object" },
       });
-    } catch (formatError: any) {
+    } catch (formatError) {
       // If response_format is not supported, try without it
       // #region agent log
-      const formatErrorLog = {location:'generate-topics/route.ts:55',message:'response_format not supported, trying without it',data:{error:(formatError as Error).message,errorCode:formatError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'format-fallback'};
+      const formatErrCode = (formatError as { code?: unknown })?.code;
+      const formatErrorLog = {location:'generate-topics/route.ts:55',message:'response_format not supported, trying without it',data:{error:(formatError as Error).message,errorCode:formatErrCode},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'format-fallback'};
       debugLog(formatErrorLog);
       // #endregion
       completion = await openai.chat.completions.create({
@@ -215,7 +216,7 @@ export async function POST(req: Request) {
       }
 
       // Add unique IDs to each topic
-      parsedData.topics = parsedData.topics.map((topic: any, index: number) => ({
+      parsedData.topics = parsedData.topics.map((topic: Record<string, unknown>, index: number) => ({
         ...topic,
         id: `topic-${Date.now()}-${index}`,
       }));

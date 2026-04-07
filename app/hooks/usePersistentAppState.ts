@@ -71,6 +71,12 @@ export type GeneratedArticle = {
   };
   briefUsed?: Brief; // Project Basics settings used when creating this article (for regeneration with updated settings)
   createdAt?: string; // ISO timestamp when article was created
+  // Set by /api/articles when the model omitted the commercial [A1] anchor and we had to
+  // inject it programmatically (or when injection failed). UI should surface this to the user
+  // so they can review/edit the article before publishing.
+  anchorWarning?: string;
+  // Set when humanization was enabled but nothing was actually humanized (e.g. API key/credit issue).
+  humanizationWarning?: string;
 };
 
 export type WritingMode = "seo" | "human";
@@ -155,8 +161,10 @@ export function usePersistentAppState() {
           Array.isArray(parsed.articles) &&
           parsed.projectBasics
         ) {
-          // Remove articleImages from old persisted state if present (to free up space)
-          const { articleImages, ...stateWithoutImages } = parsed as any;
+          // Remove articleImages from old persisted state if present (to free up space).
+          // articleImages is a legacy field from an older schema — cast to a loose shape
+          // so we can destructure it without dropping the typed AppPersistedState shape.
+          const { articleImages, ...stateWithoutImages } = parsed as AppPersistedState & { articleImages?: unknown };
           
           // Migrate old projectBasics to discoveryProjectBasics and directProjectBasics
           const legacyProjectBasics = parsed.projectBasics || defaultBrief;

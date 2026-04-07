@@ -5,7 +5,7 @@
 import { searchReliableSources } from "@/lib/tavilyClient";
 
 // Simple debug logger that works in both local and production (Vercel)
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
   console.log("[topic-browsing-debug]", ...args);
 };
 
