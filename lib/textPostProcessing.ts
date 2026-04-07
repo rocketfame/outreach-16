@@ -216,9 +216,14 @@ export function fixHtmlTagSpacing(text: string): string {
   // Pattern: </a>word → </a> word
   // This handles: </a>once → </a> once
   fixed = fixed.replace(/(<\/a>)([A-Za-z0-9])/g, '$1 $2');
-  
-  // Pattern: word</a> → word </a> (if closing tag is preceded by letter/number)
-  fixed = fixed.replace(/([A-Za-z0-9])(<\/a>)/g, '$1 $2');
+
+  // REMOVED (anchor underline bug):
+  //   /([A-Za-z0-9])(<\/a>)/ → '$1 $2'
+  // This pattern was supposed to fix "word</a>" but it inserted a space BETWEEN the
+  // last letter and the closing tag — meaning the space ended up INSIDE the <a>
+  // element. That made the trailing space underlined and clickable as part of the
+  // link. The legitimate "</a>nextword" case (anchor merged with following word)
+  // is already handled by the regex above, which puts the space AFTER </a>.
   
   // CRITICAL: Add space after closing tags (</strong>, </b>, </a>, </span>, etc.) if followed by letter/number
   // Pattern: </tag>letter → </tag> letter
