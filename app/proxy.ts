@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { extractTrialToken, isMasterToken, isTrialToken } from "@/lib/trialLimits";
+import { isMasterToken, isTrialToken } from "@/lib/trialLimits";
 import { isMasterIP } from "@/lib/accessConfig";
 
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "";
@@ -22,43 +22,28 @@ const isMaintenanceEnabled = () => {
 
 // IP checking is now handled by lib/accessConfig.ts
 
-// Get client IP from request
+// Get client IP from request.
+// SECURITY: Never log IP values — they are PII and the CLAUDE.md security rule
+// forbids it. Returned IP is used only for in-memory matching against the master
+// allowlist; it never leaves the function as a string.
 function getClientIP(request: NextRequest): string | null {
-  // Try various headers (Vercel, Cloudflare, etc.)
-  // Priority order matters - try most reliable first
-  
-  // 1. Cloudflare (if using Cloudflare)
+  // Try various headers (Vercel, Cloudflare, etc.) — most reliable first.
   const cfConnectingIP = request.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    console.log("[getClientIP] Using cf-connecting-ip:", cfConnectingIP);
-    return cfConnectingIP;
-  }
-  
-  // 2. x-real-ip (common in many proxies)
+  if (cfConnectingIP) return cfConnectingIP;
+
   const realIP = request.headers.get("x-real-ip");
-  if (realIP) {
-    console.log("[getClientIP] Using x-real-ip:", realIP);
-    return realIP;
-  }
-  
-  // 3. x-forwarded-for (last resort, may contain multiple IPs)
+  if (realIP) return realIP;
+
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
-    // Take the first IP (client IP, before proxies)
-    const firstIP = forwardedFor.split(",")[0].trim();
-    console.log("[getClientIP] Using x-forwarded-for (first):", firstIP, "full:", forwardedFor);
-    return firstIP;
+    return forwardedFor.split(",")[0].trim();
   }
-  
-  // 4. Try Vercel-specific headers
+
   const vercelIP = request.headers.get("x-vercel-forwarded-for");
   if (vercelIP) {
-    const firstIP = vercelIP.split(",")[0].trim();
-    console.log("[getClientIP] Using x-vercel-forwarded-for:", firstIP);
-    return firstIP;
+    return vercelIP.split(",")[0].trim();
   }
-  
-  console.log("[getClientIP] No IP found in headers");
+
   return null;
 }
 
@@ -92,14 +77,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const clientIP = getClientIP(request);
   const isMasterIPAddress = isMasterIP(clientIP);
   
-  // Debug logging for IP detection
-  if (process.env.NODE_ENV === "development" || request.nextUrl.pathname === "/") {
-    console.log("[proxy] IP Detection:", {
-      clientIP,
+  // Sanitized debug log — never include IP values or raw headers (CLAUDE.md rule).
+  // Only emit boolean status + pathname so flow can still be traced in logs.
+  if (process.env.NODE_ENV === "development") {
+    console.log("[proxy] access check", {
+      hasClientIP: !!clientIP,
       isMasterIP: isMasterIPAddress,
-      forwardedFor: request.headers.get("x-forwarded-for"),
-      realIP: request.headers.get("x-real-ip"),
-      cfConnectingIP: request.headers.get("cf-connecting-ip"),
       pathname: request.nextUrl.pathname,
     });
   }
@@ -174,7 +157,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   if (request.nextUrl.pathname === "/" && !trialToken) {
     // Master IP always has access
     if (isMasterIPAddress) {
-      console.log("[proxy] Master IP detected, granting access:", clientIP);
+      // Do not log the IP value — CLAUDE.md security rule.
       const response = NextResponse.next();
       // Set cookies with proper attributes for cross-domain support
       response.cookies.set("is_master_ip", "true", {
@@ -226,7 +209,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     }
     // Master IP always has access
     if (isMasterIPAddress) {
-      console.log("[proxy] Master IP detected for API route, granting access:", clientIP);
+      // Do not log the IP value — CLAUDE.md security rule.
       const response = NextResponse.next();
       // Set cookies with proper attributes for cross-domain support
       response.cookies.set("is_master_ip", "true", {
@@ -261,7 +244,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   if (!trialToken && !request.nextUrl.pathname.startsWith("/api/") && request.nextUrl.pathname !== "/") {
     // Master IP always has access
     if (isMasterIPAddress) {
-      console.log("[proxy] Master IP detected for other route, granting access:", clientIP);
+      // Do not log the IP value — CLAUDE.md security rule.
       const response = NextResponse.next();
       // Set cookies with proper attributes for cross-domain support
       response.cookies.set("is_master_ip", "true", {
@@ -286,7 +269,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next();
   // Mark master IP in cookie for client-side check
   if (isMasterIPAddress) {
-    console.log("[proxy] Master IP detected, setting cookies:", clientIP);
+    // Do not log the IP value — CLAUDE.md security rule.
     // Set cookies with proper attributes for cross-domain support
     response.cookies.set("is_master_ip", "true", {
       path: "/",

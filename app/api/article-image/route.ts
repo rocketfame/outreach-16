@@ -5,6 +5,7 @@ import { getOpenAIClient, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { selectImageBoxPrompt, buildImagePromptFromBox } from "@/lib/imageBoxPrompts";
 import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken } from "@/lib/trialLimits";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 // Simple debug logger
 const debugLog = (...args: any[]) => {
@@ -314,6 +315,17 @@ export async function POST(req: Request) {
   const logEntry = {location:'article-image/route.ts:POST',message:'POST /api/article-image called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
   debugLog(logEntry);
   // #endregion
+
+  // Rate limit: image generation is expensive (OpenAI Images API) — 10 req/hour per IP.
+  // Per CLAUDE.md security rule, every generation endpoint MUST call checkRateLimit.
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, "generate");
+  if (rl.limited) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait before generating more images." }),
+      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
+    );
+  }
 
   // Check trial limits before processing
   const trialToken = extractTrialToken(req);

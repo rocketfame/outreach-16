@@ -1,6 +1,14 @@
 // lib/articleStructure.ts
 // Block-based article structure for live humanization
 
+// Debug logger — silent in production unless DEBUG_ANCHORS=1 is set.
+// Replaces noisy `[debug-7bb5e0]` style instrumentation that was kept around for
+// troubleshooting the anchor pipeline. console.warn/error stay loud.
+const dbg: (...args: unknown[]) => void =
+  process.env.DEBUG_ANCHORS === '1' || process.env.NODE_ENV !== 'production'
+    ? (...args) => console.log(...args)
+    : () => {};
+
 export type BlockType = 'h1' | 'h2' | 'h3' | 'h4' | 'p' | 'li' | 'ul' | 'ol' | 'table';
 
 export interface ArticleBlockBase {
@@ -106,10 +114,10 @@ export function injectAnchorsIntoText(
   const hasA1InText = text.includes('[A1]');
   const hasA1InAnchors = anchors.some(a => a.id === 'A1');
   if (hasA1InText && !hasA1InAnchors) {
-    console.log('[debug-7bb5e0] CRITICAL: [A1] found in text but NO A1 in anchors array!', JSON.stringify({textPreview:text.substring(0,150),anchorsCount:anchors.length,anchors:anchors.map(a=>({id:a.id,text:a.text})),trustsCount:trusts.length}));
+    dbg('[debug-7bb5e0] CRITICAL: [A1] found in text but NO A1 in anchors array!', JSON.stringify({textPreview:text.substring(0,150),anchorsCount:anchors.length,anchors:anchors.map(a=>({id:a.id,text:a.text})),trustsCount:trusts.length}));
   }
   if (hasA1InText || hasA1InAnchors) {
-    console.log('[debug-7bb5e0] injectAnchorsIntoText A1 status:', JSON.stringify({hasA1InText,hasA1InAnchors,anchorsIds:anchors.map(a=>a.id),textA1Context:hasA1InText?text.substring(Math.max(0,text.indexOf('[A1]')-30),text.indexOf('[A1]')+35):'N/A'}));
+    dbg('[debug-7bb5e0] injectAnchorsIntoText A1 status:', JSON.stringify({hasA1InText,hasA1InAnchors,anchorsIds:anchors.map(a=>a.id),textA1Context:hasA1InText?text.substring(Math.max(0,text.indexOf('[A1]')-30),text.indexOf('[A1]')+35):'N/A'}));
   }
   // #endregion
 
@@ -136,7 +144,7 @@ export function injectAnchorsIntoText(
   });
   
   if (allPlaceholders.length > 0) {
-    console.log(`[injectAnchorsIntoText] Found ${allPlaceholders.length} placeholders in text:`, allPlaceholders, {
+    dbg(`[injectAnchorsIntoText] Found ${allPlaceholders.length} placeholders in text:`, allPlaceholders, {
       textLength: text.length,
       textPreview: text.substring(0, 300),
       anchorsProvided: anchors.length,
@@ -164,17 +172,17 @@ export function injectAnchorsIntoText(
       placeholderMap.set(token, placeholder);
       protectedText = protectedText.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), token);
       tokenIndex++;
-      console.log(`[injectAnchorsIntoText] Protected placeholder ${placeholder} -> ${token}`);
+      dbg(`[injectAnchorsIntoText] Protected placeholder ${placeholder} -> ${token}`);
     }
   });
   
   if (placeholderMap.size > 0) {
-    console.log(`[injectAnchorsIntoText] Protected ${placeholderMap.size} placeholders. Protected text preview:`, protectedText.substring(0, 300));
+    dbg(`[injectAnchorsIntoText] Protected ${placeholderMap.size} placeholders. Protected text preview:`, protectedText.substring(0, 300));
   }
   
   // Now escape HTML (placeholders are protected as tokens)
   let result = escapeHtml(protectedText);
-  console.log(`[injectAnchorsIntoText] After escapeHtml, text length: ${result.length}, tokens found: ${Array.from(placeholderMap.keys()).filter(t => result.includes(t)).length}`);
+  dbg(`[injectAnchorsIntoText] After escapeHtml, text length: ${result.length}, tokens found: ${Array.from(placeholderMap.keys()).filter(t => result.includes(t)).length}`);
 
   // Convert markdown-style bold (**text**) to HTML <b> tags
   result = result.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
@@ -190,7 +198,7 @@ export function injectAnchorsIntoText(
     const afterRestore = result.includes(placeholder);
     if (beforeRestore && afterRestore) {
       restoredCount++;
-      console.log(`[injectAnchorsIntoText] Successfully restored ${placeholder} from ${token}`);
+      dbg(`[injectAnchorsIntoText] Successfully restored ${placeholder} from ${token}`);
     } else if (beforeRestore && !afterRestore) {
       console.error(`[injectAnchorsIntoText] ERROR: Failed to restore ${placeholder} from ${token}`);
     } else if (!beforeRestore) {
@@ -200,7 +208,7 @@ export function injectAnchorsIntoText(
   
   if (placeholderMap.size > 0) {
     const finalPlaceholders = (result.match(/\[([AT][1-8])\]/g) || []).length;
-    console.log(`[injectAnchorsIntoText] After restoration: ${restoredCount}/${placeholderMap.size} placeholders restored, ${finalPlaceholders} total placeholders found in result`);
+    dbg(`[injectAnchorsIntoText] After restoration: ${restoredCount}/${placeholderMap.size} placeholders restored, ${finalPlaceholders} total placeholders found in result`);
   }
 
   // Replace anchor placeholders [A1], [A2], etc.
@@ -236,7 +244,7 @@ export function injectAnchorsIntoText(
       const unescapedRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
       const unescapedMatches = (result.match(unescapedRegex) || []).length;
       if (unescapedMatches > 0) {
-        console.log(`[injectAnchorsIntoText] Using unescaped regex for ${placeholder} (found ${unescapedMatches} matches)`);
+        dbg(`[injectAnchorsIntoText] Using unescaped regex for ${placeholder} (found ${unescapedMatches} matches)`);
         result = result.replace(unescapedRegex, anchorHtml);
       } else {
         console.error(`[injectAnchorsIntoText] CRITICAL: Placeholder ${placeholder} exists in text but regex finds 0 matches! Text sample: ${result.substring(result.indexOf(placeholder) - 50, result.indexOf(placeholder) + 50)}`);
@@ -252,7 +260,7 @@ export function injectAnchorsIntoText(
     if (beforeReplace === result && placeholderExists) {
       console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}, matches before: ${matchesBefore}, text preview: ${result.substring(0, 300)}`);
     } else if (beforeReplace !== result) {
-      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} (${matchesBefore} matches -> ${matchesAfter} remaining, ${linksAfter} links total)`);
+      dbg(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} (${matchesBefore} matches -> ${matchesAfter} remaining, ${linksAfter} links total)`);
     } else if (!placeholderExists) {
       console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text, skipping replacement`);
     }
@@ -266,7 +274,7 @@ export function injectAnchorsIntoText(
     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     
     // BUG 2: Debug logging for trust source substitution
-    console.log("[trust-source] Substituting", placeholder, "with url:", t?.url, "text:", t?.text);
+    dbg("[trust-source] Substituting", placeholder, "with url:", t?.url, "text:", t?.text);
     
     if (!isValidTrustUrl(t.url)) {
       console.warn("[trust-source] Invalid URL skipped:", t.url);
@@ -325,7 +333,7 @@ export function injectAnchorsIntoText(
       const unescapedRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
       const unescapedMatches = (result.match(unescapedRegex) || []).length;
       if (unescapedMatches > 0) {
-        console.log(`[injectAnchorsIntoText] Using unescaped regex for ${placeholder} (found ${unescapedMatches} matches)`);
+        dbg(`[injectAnchorsIntoText] Using unescaped regex for ${placeholder} (found ${unescapedMatches} matches)`);
         result = result.replace(unescapedRegex, trustHtml);
       } else {
         console.error(`[injectAnchorsIntoText] CRITICAL: Placeholder ${placeholder} exists in text but regex finds 0 matches! Text sample: ${result.substring(result.indexOf(placeholder) - 50, result.indexOf(placeholder) + 50)}`);
@@ -341,7 +349,7 @@ export function injectAnchorsIntoText(
     if (beforeReplace === result && placeholderExists) {
       console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}, matches before: ${matchesBefore}, text preview: ${result.substring(0, 300)}`);
     } else if (beforeReplace !== result) {
-      console.log(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with trust source link (${matchesBefore} matches -> ${matchesAfter} remaining, ${linksAfter} links total)`);
+      dbg(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with trust source link (${matchesBefore} matches -> ${matchesAfter} remaining, ${linksAfter} links total)`);
     } else if (!placeholderExists) {
       console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text, skipping replacement`);
     }
@@ -395,10 +403,10 @@ export function blocksToHtml(
   // #region agent log
   const a1InBlocks = allPlaceholders.includes('[A1]');
   const a1InAnchors = anchors.some(a => a.id === 'A1');
-  console.log('[debug-7bb5e0] blocksToHtml summary:', JSON.stringify({placeholders:[...new Set(allPlaceholders)],a1InBlocks,a1InAnchors,anchorsProvided:anchors.map(a=>({id:a.id,text:a.text?.substring(0,30),url:a.url?.substring(0,50)})),trustsProvided:trusts.map(t=>({id:t.id,text:t.text?.substring(0,30)})),mismatch:a1InBlocks&&!a1InAnchors?'A1_IN_TEXT_BUT_NOT_IN_ANCHORS':'OK'}));
+  dbg('[debug-7bb5e0] blocksToHtml summary:', JSON.stringify({placeholders:[...new Set(allPlaceholders)],a1InBlocks,a1InAnchors,anchorsProvided:anchors.map(a=>({id:a.id,text:a.text?.substring(0,30),url:a.url?.substring(0,50)})),trustsProvided:trusts.map(t=>({id:t.id,text:t.text?.substring(0,30)})),mismatch:a1InBlocks&&!a1InAnchors?'A1_IN_TEXT_BUT_NOT_IN_ANCHORS':'OK'}));
   // #endregion
   if (allPlaceholders.length > 0) {
-    console.log(`[blocksToHtml] Found ${allPlaceholders.length} placeholders in blocks:`, {
+    dbg(`[blocksToHtml] Found ${allPlaceholders.length} placeholders in blocks:`, {
       placeholders: [...new Set(allPlaceholders)],
       anchorsExpected: anchors.map(a => `[${a.id}]`),
       trustsExpected: trusts.map(t => `[${t.id}]`),
@@ -517,7 +525,7 @@ export function modelBlocksToArticleStructure(
   }
 
   // #region agent log
-  console.log('[debug-7bb5e0] modelBlocksToArticleStructure anchor check:', JSON.stringify({anchorText,anchorUrl,anchorTextTruthy:!!anchorText,anchorUrlTruthy:!!anchorUrl,willAddA1:!!(anchorText&&anchorUrl),anchorTextCharCodes:anchorText?[...anchorText].slice(0,5).map(c=>c.charCodeAt(0)):[],anchorUrlCharCodes:anchorUrl?[...anchorUrl].slice(0,10).map(c=>c.charCodeAt(0)):[]}));
+  dbg('[debug-7bb5e0] modelBlocksToArticleStructure anchor check:', JSON.stringify({anchorText,anchorUrl,anchorTextTruthy:!!anchorText,anchorUrlTruthy:!!anchorUrl,willAddA1:!!(anchorText&&anchorUrl),anchorTextCharCodes:anchorText?[...anchorText].slice(0,5).map(c=>c.charCodeAt(0)):[],anchorUrlCharCodes:anchorUrl?[...anchorUrl].slice(0,10).map(c=>c.charCodeAt(0)):[]}));
   // #endregion
   if (anchorText && anchorUrl) {
     anchors.push({ id: 'A1', text: anchorText, url: anchorUrl });

@@ -72,17 +72,14 @@ export default function LoadingOverlay({ isOpen, mode }: LoadingOverlayProps) {
     return () => clearInterval(messageInterval);
   }, [isOpen, messages.length]);
 
-  // Timer (updates every second)
+  // Timer (updates every second). Resets at the start of each open cycle,
+  // so no setState needed on close — prevents an extra render on unmount.
   useEffect(() => {
-    if (!isOpen) {
-      setElapsedSeconds(0);
-      return;
-    }
-
+    if (!isOpen) return;
+    setElapsedSeconds(0);
     const timerInterval = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
-
     return () => clearInterval(timerInterval);
   }, [isOpen]);
 

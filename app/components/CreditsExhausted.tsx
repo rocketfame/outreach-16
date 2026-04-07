@@ -162,7 +162,7 @@ export default function CreditsExhausted({ isOpen, onClose, onUpgrade, trialStat
                 maxWidth: 320,
               }}
             >
-              You've explored what our AI content creator can do! Ready to unlock unlimited potential?
+              You&apos;ve explored what our AI content creator can do! Ready to unlock unlimited potential?
             </p>
           </div>
 

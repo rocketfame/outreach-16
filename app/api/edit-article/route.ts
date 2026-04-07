@@ -5,6 +5,7 @@ import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { getOpenAIApiKey } from "@/lib/config";
 import { cleanText, fixHtmlTagSpacing } from "@/lib/textPostProcessing";
 import { getCostTracker } from "@/lib/costTracker";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export interface EditHistoryEntry {
   timestamp: string;
@@ -41,6 +42,17 @@ export interface EditArticleResponse {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: edit-article calls OpenAI and is treated as a generation endpoint.
+    // 10 req/hour per IP (same budget as initial generation).
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(ip, "generate");
+    if (rl.limited) {
+      return NextResponse.json(
+        { success: false, error: "Rate limit exceeded. Please wait before editing more articles." },
+        { status: 429, headers: { "Retry-After": String(rl.resetIn) } }
+      );
+    }
+
     const body: EditArticleRequest = await req.json();
 
     const {

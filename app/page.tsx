@@ -6003,7 +6003,7 @@ export default function Home() {
 
                                       {/* Why Non-Generic */}
                                       <div className="topic-preview-field">
-                                        <strong className="preview-label">Why it's non-generic and link-worthy:</strong>
+                                        <strong className="preview-label">Why it&apos;s non-generic and link-worthy:</strong>
                                         <p className="preview-text">{topic.whyNonGeneric}</p>
                                       </div>
 

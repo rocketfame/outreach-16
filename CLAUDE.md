@@ -52,7 +52,7 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 - **`app/api/articles/route.ts`** — main generation endpoint (maxDuration: 300s). Detects mode from first topic (Direct = no `shortAngle`/`whyNonGeneric`/`howAnchorFits`). Rate-limited `generate`. Increments trial count per mode after successful generation.
 - **`lib/articlePrompt.ts`** — `buildArticlePrompt` (Discovery) and `buildDirectArticlePrompt` (Direct).
 - **`lib/articleStructure.ts`** — structured article format (blocks, tables, trust sources).
-- **`lib/textPostProcessing.ts`** — `cleanText`, `fixHtmlTagSpacing`, `removeExcessiveBold`. **Note:** `lightHumanEdit` function still exists here but is no longer imported or used anywhere (dead code — safe to remove).
+- **`lib/textPostProcessing.ts`** — `cleanText`, `fixHtmlTagSpacing`, `removeExcessiveBold`. (`lightHumanEdit` was removed in the cleanup pass — humanization fully owns that responsibility now.)
 - **`lib/humanizerClient.ts`** — Undetectable.AI v2 submit + polling.
 - **`lib/sectionHumanize.ts`** — section-level humanization during writing.
 - **`lib/trustSourceFilter.ts`** + **`lib/sourceClassifier.ts`** — Tavily-validated source handling with LLM classification.
@@ -118,7 +118,7 @@ Required on Vercel (and `.env.local` for dev):
 ## Deprecated / removed features
 
 These are fully removed — do not reintroduce:
-- **Light Human Edit** — was a separate post-processing pass. Removed in favor of Undetectable.AI humanization. The `lightHumanEdit` function in `lib/textPostProcessing.ts` is dead code kept only to avoid a larger diff.
+- **Light Human Edit** — was a separate post-processing pass. Removed in favor of Undetectable.AI humanization. The `lightHumanEdit` function has been fully deleted from `lib/textPostProcessing.ts`.
 - **Hardcoded trial token list in `MaintenanceGate.tsx`** — replaced with server-side validation via `/api/trial-usage`.
 - **`lightHumanEditEnabled` field in persisted state** — removed from `usePersistentAppState.ts`.
 

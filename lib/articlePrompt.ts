@@ -11,6 +11,13 @@ const writeDebugLine = (payload: Record<string, unknown>) => {
   } catch (_) {}
 };
 
+// Debug logger — silent in production unless DEBUG_ANCHORS=1 is set.
+// console.warn/error remain loud and unguarded.
+const dbg: (...args: unknown[]) => void =
+  process.env.DEBUG_ANCHORS === '1' || process.env.NODE_ENV !== 'production'
+    ? (...args) => console.log(...args)
+    : () => {};
+
 /**
  * ============================================================================
  * CRITICAL ARCHITECTURE DECISION - DO NOT CHANGE WITHOUT EXPLICIT APPROVAL
@@ -1115,10 +1122,10 @@ the title. It must create tension or curiosity through a plain fact.
   const hasAnchors = !!(params.anchorText && params.anchorText.trim() && params.anchorUrl && params.anchorUrl.trim());
   const shouldUseAnchors = hasAnchors;
   // #region agent log
-  console.log('[debug-7bb5e0] buildArticlePrompt anchor state:', JSON.stringify({anchorText:params.anchorText,anchorUrl:params.anchorUrl,hasAnchors,anchorTextTrimmed:params.anchorText?.trim(),anchorUrlTrimmed:params.anchorUrl?.trim()}));
+  dbg('[debug-7bb5e0] buildArticlePrompt anchor state:', JSON.stringify({anchorText:params.anchorText,anchorUrl:params.anchorUrl,hasAnchors,anchorTextTrimmed:params.anchorText?.trim(),anchorUrlTrimmed:params.anchorUrl?.trim()}));
   // #endregion
   if (hasAnchors) {
-    console.log("[buildArticlePrompt] Anchors from Project basics WILL be used:", { anchorText: params.anchorText?.slice(0, 50), anchorUrl: params.anchorUrl?.slice(0, 50) });
+    dbg("[buildArticlePrompt] Anchors from Project basics WILL be used:", { anchorText: params.anchorText?.slice(0, 50), anchorUrl: params.anchorUrl?.slice(0, 50) });
   }
   
   // If no anchors should be used, modify anchor-related instructions BEFORE replacing placeholders
@@ -1159,7 +1166,7 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
   
   // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
   const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
-  console.log("[buildArticlePrompt] Brand name processing:", {
+  dbg("[buildArticlePrompt] Brand name processing:", {
     original: params.brandName,
     processed: brandNameValue,
     isEmpty: !params.brandName || params.brandName.trim().length === 0,
@@ -1168,7 +1175,7 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
   
   // Count occurrences of [[BRAND_NAME]] in prompt BEFORE replacement
   const brandPlaceholderCountBefore = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
-  console.log("[buildArticlePrompt] Brand placeholder count BEFORE replacement:", brandPlaceholderCountBefore);
+  dbg("[buildArticlePrompt] Brand placeholder count BEFORE replacement:", brandPlaceholderCountBefore);
   
   prompt = prompt.replaceAll("[[BRAND_NAME]]", brandNameValue);
   
@@ -1176,7 +1183,7 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
   const brandPlaceholderCountAfter = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
   const brandValueCountAfter = (prompt.match(new RegExp(brandNameValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
   
-  console.log("[buildArticlePrompt] Brand replacement verification:", {
+  dbg("[buildArticlePrompt] Brand replacement verification:", {
     placeholderCountAfter: brandPlaceholderCountAfter,
     brandValueCountAfter: brandValueCountAfter,
     allReplaced: brandPlaceholderCountAfter === 0,
@@ -1188,14 +1195,14 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
   // After replacement, check for brand instructions that mention the brand value or NONE
   const brandInstructionsAfter = prompt.match(/Brand.*?integration/i) || prompt.match(/Client.*?brand/i) || prompt.match(/brand.*?presence/i);
   if (brandInstructionsAfter) {
-    console.log("[buildArticlePrompt] Brand integration instructions found (after replacement, sample):", brandInstructionsAfter[0].substring(0, 500));
+    dbg("[buildArticlePrompt] Brand integration instructions found (after replacement, sample):", brandInstructionsAfter[0].substring(0, 500));
     
     // Check if brand value appears in brand-related sections
     const brandMentionSections = prompt.match(/Brand[\s\S]{0,500}/gi) || [];
     const brandMentionCount = brandMentionSections.reduce((count, section) => {
       return count + (section.includes(brandNameValue) ? 1 : 0);
     }, 0);
-    console.log("[buildArticlePrompt] Brand value appears in brand-related sections:", {
+    dbg("[buildArticlePrompt] Brand value appears in brand-related sections:", {
       brandMentionCount: brandMentionCount,
       brandValue: brandNameValue,
       sectionsFound: brandMentionSections.length,
@@ -1226,15 +1233,45 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
   const unreplacedMax = prompt.includes("[[WORD_COUNT_MAX]]");
   const hasMaxNum = prompt.includes(String(wordCountMaxAllowed));
   writeDebugLine({location:'articlePrompt.ts:buildArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWords,wordCountMinAllowed,wordCountMaxAllowed,unreplacedMin,unreplacedMax,hasMaxNum,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H2-H3'});
-  console.log("[wordcount-audit] buildArticlePrompt: wordCountStr=", wordCountStr, "targetWords=", targetWords, "min=", wordCountMinAllowed, "max=", wordCountMaxAllowed, "unreplacedMin/Max=", unreplacedMin, unreplacedMax, "hasMaxNum=", hasMaxNum);
+  dbg("[wordcount-audit] buildArticlePrompt: wordCountStr=", wordCountStr, "targetWords=", targetWords, "min=", wordCountMinAllowed, "max=", wordCountMaxAllowed, "unreplacedMin/Max=", unreplacedMin, unreplacedMax, "hasMaxNum=", hasMaxNum);
   // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildArticlePrompt (Topic Discovery Mode)
   const writingModeTopicDiscovery = params.writingMode || "seo";
   prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeTopicDiscovery);
 
-  // Replace editorial angle placeholder
-  prompt = prompt.replaceAll("[[EDITORIAL_ANGLE]]", editorialAngleBlock);
+  // CRITICAL ANCHOR REQUIREMENT — prepended to editorial angle when anchor is provided.
+  // Same rationale as buildDirectArticlePrompt: hard top-of-prompt requirement to prevent
+  // silent [A1] omission. Topic Discovery has more anchor instructions buried mid-prompt
+  // already, but a top-level summary still helps.
+  const criticalAnchorBlockTD = hasAnchors
+    ? `
+================================================================
+CRITICAL — COMMERCIAL ANCHOR IS MANDATORY (READ FIRST)
+================================================================
+A commercial anchor link has been provided in the project brief:
+  • Anchor text: ${params.anchorText}
+  • URL: ${params.anchorUrl}
+
+You MUST place the placeholder [A1] EXACTLY ONCE inside the FIRST or SECOND
+"p" block of articleBlocks. This is NON-NEGOTIABLE.
+
+• [A1] is a literal string token. Write it exactly as: [A1]
+• It must appear inside the natural prose of paragraph 1 or 2 — never in
+  a heading, never in the first sentence, never at the very end of the
+  paragraph (mid-paragraph integration only).
+• If you forget [A1], the article is BROKEN and will be rejected.
+• Before producing your final JSON, scan articleBlocks and confirm [A1]
+  appears exactly once inside paragraph 1 or 2.
+
+This requirement OVERRIDES any other rule in this prompt that might suggest
+omitting the anchor. The anchor was supplied — it MUST appear.
+================================================================
+`
+    : "";
+
+  // Replace editorial angle placeholder (with critical anchor block prepended when applicable)
+  prompt = prompt.replaceAll("[[EDITORIAL_ANGLE]]", criticalAnchorBlockTD + editorialAngleBlock);
 
   // Format trust sources - prefer JSON format if available, otherwise use old format
   let trustSourcesFormatted = "";
@@ -1248,8 +1285,8 @@ COMMERCIAL ANCHOR – NOT REQUIRED: This article does not include anchor links. 
   
   // #region agent log
   const log = {location:'articlePrompt.ts:247',message:'[article-prompt] Trust sources formatted for prompt',data:{trustSourcesCount:params.trustSourcesList.length,hasJSON:!!params.trustSourcesJSON,trustSourcesFormatted:trustSourcesFormatted.substring(0,500),hasTrustSources:params.trustSourcesList.length > 0 || !!params.trustSourcesJSON,allSourcesFromTavily:true,fullSourcesList:params.trustSourcesList},timestamp:Date.now(),sessionId:'debug-session',runId:'article-prompt',hypothesisId:'trust-sources'};
-  console.log(`[article-prompt] trustSourcesList is ${params.trustSourcesList.length > 0 || !!params.trustSourcesJSON ? 'non-empty' : 'empty'} (${params.trustSourcesList.length} sources from Tavily, JSON: ${!!params.trustSourcesJSON})`);
-  console.log("[article-prompt-debug]", log);
+  dbg(`[article-prompt] trustSourcesList is ${params.trustSourcesList.length > 0 || !!params.trustSourcesJSON ? 'non-empty' : 'empty'} (${params.trustSourcesList.length} sources from Tavily, JSON: ${!!params.trustSourcesJSON})`);
+  dbg("[article-prompt-debug]", log);
   // #endregion
   
   // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
@@ -2153,7 +2190,7 @@ the title. It must create tension or curiosity through a plain fact.
   // Replace placeholders
   // #region agent log
   const hasAnchorsD = !!(params.anchorText && params.anchorText.trim() && params.anchorUrl && params.anchorUrl.trim());
-  console.log('[debug-7bb5e0] buildDirectArticlePrompt anchor state:', JSON.stringify({anchorText:params.anchorText,anchorUrl:params.anchorUrl,hasAnchors:hasAnchorsD,anchorTextEmpty:!params.anchorText||!params.anchorText.trim(),anchorUrlEmpty:!params.anchorUrl||!params.anchorUrl.trim()}));
+  dbg('[debug-7bb5e0] buildDirectArticlePrompt anchor state:', JSON.stringify({anchorText:params.anchorText,anchorUrl:params.anchorUrl,hasAnchors:hasAnchorsD,anchorTextEmpty:!params.anchorText||!params.anchorText.trim(),anchorUrlEmpty:!params.anchorUrl||!params.anchorUrl.trim()}));
   // #endregion
   prompt = prompt.replaceAll("[[TOPIC_TITLE]]", params.topicTitle);
   prompt = prompt.replaceAll("[[TOPIC_BRIEF]]", params.topicBrief);
@@ -2164,7 +2201,7 @@ the title. It must create tension or curiosity through a plain fact.
   prompt = prompt.replaceAll("[[ANCHOR_URL]]", params.anchorUrl || "");
   // Only replace with "NONE" if brandName is truly empty/undefined, not if it's an empty string from user input
   const brandNameValue = (params.brandName && params.brandName.trim()) ? params.brandName.trim() : "NONE";
-  console.log("[buildDirectArticlePrompt] Brand name processing:", {
+  dbg("[buildDirectArticlePrompt] Brand name processing:", {
     original: params.brandName,
     processed: brandNameValue,
     isEmpty: !params.brandName || params.brandName.trim().length === 0,
@@ -2173,7 +2210,7 @@ the title. It must create tension or curiosity through a plain fact.
   
   // Count occurrences of [[BRAND_NAME]] in prompt BEFORE replacement
   const brandPlaceholderCountBefore = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
-  console.log("[buildDirectArticlePrompt] Brand placeholder count BEFORE replacement:", brandPlaceholderCountBefore);
+  dbg("[buildDirectArticlePrompt] Brand placeholder count BEFORE replacement:", brandPlaceholderCountBefore);
   
   prompt = prompt.replaceAll("[[BRAND_NAME]]", brandNameValue);
   
@@ -2181,7 +2218,7 @@ the title. It must create tension or curiosity through a plain fact.
   const brandPlaceholderCountAfter = (prompt.match(/\[\[BRAND_NAME\]\]/g) || []).length;
   const brandValueCountAfter = (prompt.match(new RegExp(brandNameValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
   
-  console.log("[buildDirectArticlePrompt] Brand replacement verification:", {
+  dbg("[buildDirectArticlePrompt] Brand replacement verification:", {
     placeholderCountAfter: brandPlaceholderCountAfter,
     brandValueCountAfter: brandValueCountAfter,
     allReplaced: brandPlaceholderCountAfter === 0,
@@ -2193,14 +2230,14 @@ the title. It must create tension or curiosity through a plain fact.
   // After replacement, check for brand instructions that mention the brand value or NONE
   const brandInstructionsAfter = prompt.match(/Brand.*?integration/i) || prompt.match(/Client.*?brand/i) || prompt.match(/brand.*?presence/i);
   if (brandInstructionsAfter) {
-    console.log("[buildDirectArticlePrompt] Brand integration instructions found (after replacement, sample):", brandInstructionsAfter[0].substring(0, 500));
+    dbg("[buildDirectArticlePrompt] Brand integration instructions found (after replacement, sample):", brandInstructionsAfter[0].substring(0, 500));
     
     // Check if brand value appears in brand-related sections
     const brandMentionSections = prompt.match(/Brand[\s\S]{0,500}/gi) || [];
     const brandMentionCount = brandMentionSections.reduce((count, section) => {
       return count + (section.includes(brandNameValue) ? 1 : 0);
     }, 0);
-    console.log("[buildDirectArticlePrompt] Brand value appears in brand-related sections:", {
+    dbg("[buildDirectArticlePrompt] Brand value appears in brand-related sections:", {
       brandMentionCount: brandMentionCount,
       brandValue: brandNameValue,
       sectionsFound: brandMentionSections.length,
@@ -2250,15 +2287,47 @@ Before outputting, verify that every phrase above appears in your article text w
   const unreplacedMaxD = prompt.includes("[[WORD_COUNT_MAX]]");
   const hasMaxNumD = prompt.includes(String(wordCountMaxAllowedDirect));
   writeDebugLine({location:'articlePrompt.ts:buildDirectArticlePrompt',message:'wordCount replacement',data:{wordCountStr,targetWordsDirect,wordCountMinAllowedDirect,wordCountMaxAllowedDirect,unreplacedMinD,unreplacedMaxD,hasMaxNumD,isBlog:params.contentPurpose?.toLowerCase()==='blog'},timestamp:Date.now(),sessionId:'debug-session',runId:'wordcount-audit',hypothesisId:'H4-H5'});
-  console.log("[wordcount-audit] buildDirectArticlePrompt: wordCountStr=", wordCountStr, "targetWords=", targetWordsDirect, "min=", wordCountMinAllowedDirect, "max=", wordCountMaxAllowedDirect, "unreplacedMin/Max=", unreplacedMinD, unreplacedMaxD, "hasMaxNum=", hasMaxNumD);
+  dbg("[wordcount-audit] buildDirectArticlePrompt: wordCountStr=", wordCountStr, "targetWords=", targetWordsDirect, "min=", wordCountMinAllowedDirect, "max=", wordCountMaxAllowedDirect, "unreplacedMin/Max=", unreplacedMinD, unreplacedMaxD, "hasMaxNum=", hasMaxNumD);
   // #endregion
 
   // Replace writing mode (default to "seo" if not provided) - for buildDirectArticlePrompt
   const writingModeDirect = params.writingMode || "seo";
   prompt = prompt.replaceAll("[[WRITING_MODE]]", writingModeDirect);
 
-  // Replace editorial angle placeholder
-  prompt = prompt.replaceAll("[[EDITORIAL_ANGLE]]", editorialAngleBlock);
+  // CRITICAL ANCHOR REQUIREMENT — prepended to editorial angle block when anchor is provided.
+  // This puts a hard, unmissable [A1] requirement at the very top of the prompt, before any other
+  // content rules. The model has been observed to silently drop [A1] in Direct mode despite the
+  // section-5 rules buried mid-prompt; placing the requirement first dramatically reduces omission.
+  const criticalAnchorBlock = hasAnchorsD
+    ? `
+================================================================
+CRITICAL — COMMERCIAL ANCHOR IS MANDATORY (READ FIRST)
+================================================================
+A commercial anchor link has been provided in the project brief:
+  • Anchor text: ${params.anchorText}
+  • URL: ${params.anchorUrl}
+
+You MUST place the placeholder [A1] EXACTLY ONCE inside the FIRST or SECOND
+"p" block of articleBlocks. This is NON-NEGOTIABLE.
+
+• [A1] is a literal string token. Write it exactly as: [A1]
+• It must appear inside the natural prose of paragraph 1 or 2 — never in
+  a heading, never in the first sentence, never at the very end of the
+  paragraph (mid-paragraph integration only).
+• Surround it with regular words. Example shape:
+    "Many creators experiment with services where they [A1] to test signals..."
+• If you forget [A1], the article is BROKEN and will be rejected.
+• Before producing your final JSON, scan articleBlocks and confirm [A1]
+  appears exactly once inside paragraph 1 or 2.
+
+This requirement OVERRIDES any other rule in this prompt that might suggest
+omitting the anchor. The anchor was supplied — it MUST appear.
+================================================================
+`
+    : "";
+
+  // Replace editorial angle placeholder (with critical anchor block prepended when applicable)
+  prompt = prompt.replaceAll("[[EDITORIAL_ANGLE]]", criticalAnchorBlock + editorialAngleBlock);
 
   // Format trust sources - prefer JSON format if available, otherwise use old format
   let trustSourcesFormatted = "";

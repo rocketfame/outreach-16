@@ -173,6 +173,7 @@ export interface ArticleResponse {
   articleBodyHtml?: string; // New field for HTML-formatted body
   humanizedOnWrite?: boolean; // Flag indicating if article was humanized during generation
   humanizationReport?: HumanizationReport; // Internal control: verify humanizer ran
+  anchorWarning?: string; // Set when anchor was provided in brief but model omitted [A1] (fallback injection used or skipped)
 }
 
 export async function POST(req: Request) {
@@ -246,6 +247,9 @@ export async function POST(req: Request) {
 
     // Generate article for each selected topic
     for (const topic of selectedTopics) {
+      // Per-iteration anchor fallback state — set if [A1] was missing from model output
+      // and we had to inject it programmatically (or detection failed entirely).
+      let anchorFallbackUsed: "injected" | "no-paragraph" | null = null;
       try {
         // Determine if this is Direct Article Creation Mode or Topic Discovery Mode
         // Direct Mode: No detailed brief fields (shortAngle, whyNonGeneric, howAnchorFits)
@@ -839,6 +843,52 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 });
               }
             }
+
+            // ANCHOR FALLBACK: if anchor was provided in brief but model omitted [A1],
+            // inject [A1] into the first non-empty paragraph. The downstream pipeline
+            // (modelBlocksToArticleStructure → injectAnchorsIntoText) will then replace it
+            // with the proper <a href={anchorUrl}>{anchorText}</a>. This guarantees the
+            // anchor never silently disappears, even if the model ignores prompt rules.
+            const anchorProvidedForFallback = !!(brief.anchorText?.trim() && (brief.anchorUrl || brief.clientSite)?.trim());
+            if (anchorProvidedForFallback) {
+              const containsA1 = (text: unknown): boolean =>
+                typeof text === "string" && text.includes("[A1]");
+              let a1Found = false;
+              for (const block of articleBlocks) {
+                if (containsA1(block?.text)) { a1Found = true; break; }
+                if (Array.isArray(block?.items)) {
+                  for (const item of block.items) {
+                    const itemText = typeof item === "string" ? item : item?.text;
+                    if (containsA1(itemText)) { a1Found = true; break; }
+                  }
+                  if (a1Found) break;
+                }
+              }
+              if (!a1Found) {
+                // Find first non-empty paragraph block and append [A1] (with space).
+                // Surrounding spaces/normalization handled by injectAnchorsIntoText.
+                let injected = false;
+                for (const block of articleBlocks) {
+                  if (block?.type === "p" && typeof block.text === "string" && block.text.trim().length > 0) {
+                    block.text = block.text.replace(/\s+$/, "") + " [A1]";
+                    injected = true;
+                    break;
+                  }
+                }
+                if (injected) {
+                  anchorFallbackUsed = "injected";
+                  console.warn(
+                    `[articles-api] ANCHOR FALLBACK: model omitted [A1], programmatically injected into first paragraph. Topic: "${topic.title}"`
+                  );
+                } else {
+                  anchorFallbackUsed = "no-paragraph";
+                  console.error(
+                    `[articles-api] ANCHOR FALLBACK FAILED: no paragraph block available to inject [A1]. Topic: "${topic.title}"`
+                  );
+                }
+              }
+            }
+
             parsedResponse.articleBlocks = articleBlocks;
           }
           // Use trusted sources (convert to "Name|URL" format for backward compatibility)
@@ -1378,6 +1428,11 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           humanizationWarning: (humanizationReportForResponse?.enabled && humanizationReportForResponse?.blocksActuallyHumanized === 0 && humanizationReportForResponse?.blocksProcessed > 0)
             ? "Humanization was enabled but no blocks were successfully humanized. Check API key and credit balance."
             : undefined,
+          anchorWarning: anchorFallbackUsed === "injected"
+            ? "Model omitted the commercial anchor in its initial output. The anchor was injected into the first paragraph automatically — please review its placement."
+            : anchorFallbackUsed === "no-paragraph"
+              ? "Model omitted the commercial anchor and no paragraph was available for fallback injection. The article was generated WITHOUT the anchor link."
+              : undefined,
         };
         
         generatedArticles.push(articleResponse);
