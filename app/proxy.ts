@@ -188,30 +188,29 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return response;
     }
     
-    // Check maintenance gate for non-master IPs
+    // Non-master IP without trial token on main URL
+    // Always show the nice MaintenanceGate page (not raw 403)
+    // Stale bypass_maintenance cookies are ignored — only a live master IP check counts
     if (isMaintenanceEnabled()) {
-      const bypassCookie = request.cookies.get("bypass_maintenance");
-      if (bypassCookie?.value !== "true") {
-        // Show maintenance gate for everyone else
-        const response = NextResponse.next();
-        response.headers.set("x-maintenance-gate", "true");
-        return response;
-      }
+      const response = NextResponse.next();
+      response.headers.set("x-maintenance-gate", "true");
+      // Clear any stale bypass cookie so client-side check reflects reality
+      response.cookies.set("bypass_maintenance", "", { ...COOKIE_OPTIONS, maxAge: 0 });
+      response.cookies.set("is_master_ip", "", { ...COOKIE_OPTIONS, maxAge: 0 });
+      return response;
     }
-    
-    // No valid trial token and not master IP - require basic auth if configured
+
+    // Maintenance disabled — fall back to basic auth if configured
     if (isAuthConfigured()) {
       const authHeader = request.headers.get("authorization");
       if (!isValidAuth(authHeader)) {
         return unauthorizedResponse();
       }
     } else {
-      // If auth is not configured, block access for non-master IPs
-      // This ensures main URL is only accessible to master IPs
-      return new NextResponse("Access Denied", {
-        status: 403,
-        headers: { "Content-Type": "text/plain" },
-      });
+      // No auth, no maintenance, non-master IP → still show gate instead of raw 403
+      const response = NextResponse.next();
+      response.headers.set("x-maintenance-gate", "true");
+      return response;
     }
   }
 
