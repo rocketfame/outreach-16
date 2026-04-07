@@ -409,6 +409,42 @@ IF [[BRAND_NAME]] IS EMPTY OR "NONE":
 
 EXTERNAL SOURCES & REFERENCES
 
+================================================================
+TRUST SOURCE PLACEHOLDER FORMAT — PREFERRED (READ FIRST)
+================================================================
+Use the CONTEXTUAL placeholder format for every trust source:
+
+    [Tn:short descriptive phrase]
+
+The phrase between the colon and the closing bracket BECOMES the
+clickable link text in the final article. It MUST describe what the
+SOURCE'S CONTENT is (the data, finding, guideline, statistic), NOT
+the source's brand/platform name.
+
+GOOD examples:
+  ✓ "...as the [T1:creator income breakdown] from industry data shows..."
+  ✓ "...platform guidelines confirm that [T2:stories expire after 24 hours]..."
+  ✓ "...a recent [T1:audience retention study] found that..."
+
+BAD examples (DO NOT DO THIS):
+  ✗ "[T1:Routenote]"        — that's just the brand name
+  ✗ "[T1:Spotify]"          — brand-only is FORBIDDEN
+  ✗ "[T1:read more]"        — generic anchor is FORBIDDEN
+  ✗ "[T1:click here]"       — generic anchor is FORBIDDEN
+  ✗ "[T1:source]"           — meaningless
+  ✗ "[T1]"                  — bare placeholder is a fallback only;
+                              prefer the explicit form whenever possible
+
+The phrase inside [Tn:...] should be 2–5 words. It must read naturally
+as part of the surrounding sentence — when the reader's eye moves
+through the prose, the highlighted phrase should describe what the
+linked source proves or shows.
+
+LEGACY FORMAT (fallback only): bare [Tn] without a phrase still works,
+but the system will auto-wrap the 1-3 words preceding it as the link
+text. Always prefer [Tn:phrase] for full control.
+================================================================
+
 You receive a pre-filtered list of trusted external sources in [[TRUST_SOURCES_LIST]].
 Each item has:
 - id: "T1" | "T2" | "T3"
@@ -448,17 +484,17 @@ ANCHOR TEXT RULE — STRICTLY ENFORCED:
 The anchor text (the words before the placeholder) must describe what the source actually IS or CONTAINS, not just name the platform.
 
 WRONG examples:
-- "according to YouTube [T1]" → "YouTube" tells nothing
-- "as Blog shows [T2]" → "Blog" is meaningless
-- "via Hootsuite [T1]" → platform name only
-- "from Socialmediaexaminer [T2]" → platform name only
+- "[T1:YouTube]" → brand-only is FORBIDDEN
+- "[T2:Blog]" → meaningless one-word anchor is FORBIDDEN
+- "[T1:Hootsuite]" → brand-only is FORBIDDEN
+- "[T2:Socialmediaexaminer]" → brand-only is FORBIDDEN
 
 CORRECT examples:
-- "creator income breakdown [T1]" → describes what the source contains
-- "YouTube statistics report [T2]" → describes the data
-- "platform behavior analysis [T1]" → describes the insight
-- "industry engagement data [T2]" → describes what it proves
-- "audience retention study [T1]" → describes the finding
+- "[T1:creator income breakdown]" → describes what the source contains
+- "[T2:YouTube statistics report]" → describes the data
+- "[T1:platform behavior analysis]" → describes the insight
+- "[T2:industry engagement data]" → describes what it proves
+- "[T1:audience retention study]" → describes the finding
 
 The anchor text must be 2–4 words that describe the TYPE or CONTENT of the source, not its brand name. The brand name is irrelevant to the reader — what matters is what the source proves or shows.
 
@@ -467,9 +503,9 @@ Do NOT use: the platform name alone, "guide", "article", "source", "link", "here
 - ANCHOR FORMAT — STRICTLY ENFORCED:
   - Write the anchor phrase, then ONE space, then the placeholder
   - The space between anchor and placeholder is MANDATORY
-  - CORRECT: "creator economy breakdown [T1]" or "platform guidelines [T2]"
+  - CORRECT: "[T1:creator economy breakdown]" or "[T2:platform guidelines]"
   - WRONG: "YouTube [T1]" or "Blog [T2]" (platform name only - meaningless)
-  - WRONG: "audio guidelines[T1]" (no space - FORBIDDEN)
+  - WRONG: legacy "audio guidelines[T1]" with no space — FORBIDDEN. Use the new format "[T1:audio guidelines]" instead.
 
 - For each reference:
   - Choose 2–4 words that describe the CONTENT or TYPE of the source
@@ -488,15 +524,16 @@ Before you output the final article, verify:
 • The source should feel like a natural part of your argument, not a forced citation.
 • Do NOT copy the page title verbatim if it sounds clunky; you may paraphrase the title while keeping the meaning.
 • Vary how you introduce sources. You MUST NOT reuse the same lead-in phrase more than once (for example, do not use "According to…" or "Data from…" multiple times).
-• Improvise to fit the context. Examples of different patterns:
-  • "A recent breakdown from [T1] shows that…"
-  • "[T1] reports that…"
-  • "In an analysis published on [T1], …"
-  • "Research highlighted on [T1] suggests…"
-  • "Streaming data from [T1] indicates…"
-  • "As [T1] explains, …"
-  • "Findings from [T1] reveal that…"
-  • "A study featured on [T1] demonstrates…"
+• Improvise to fit the context. Use the contextual format [Tn:phrase] so the
+  link text describes the source's content, never the brand. Examples:
+  • "A recent [T1:income breakdown] shows that…"
+  • "[T1:platform engagement data] confirms that…"
+  • "In a published [T1:retention analysis], …"
+  • "Industry [T1:research on creator burnout] suggests…"
+  • "[T1:streaming payout data] indicates…"
+  • "As the [T1:official platform guidelines] explain, …"
+  • "Findings from a [T1:2025 audience survey] reveal that…"
+  • "A [T1:case study on early playlist signals] demonstrates…"
 • The source should support your point, not distract from it.
 • Place sources in the first half or middle of the article, not only at the end.
 • Each source should add something concrete: a number, a term, a trend, or a guideline.
@@ -507,17 +544,17 @@ ANCHOR TEXT RULE — STRICTLY ENFORCED:
 The anchor text (the words before the placeholder) must describe what the source actually IS or CONTAINS, not just name the platform.
 
 WRONG examples:
-- "according to YouTube [T1]" → "YouTube" tells nothing
-- "as Blog shows [T2]" → "Blog" is meaningless
-- "via Hootsuite [T1]" → platform name only
-- "RouteNote [T1]" or "Spotify [T3]" → platform name only
+- "[T1:YouTube]" → brand-only is FORBIDDEN
+- "[T2:Blog]" → meaningless one-word anchor is FORBIDDEN
+- "[T1:Hootsuite]" → brand-only is FORBIDDEN
+- "[T1:RouteNote]" or "[T3:Spotify]" → brand-only is FORBIDDEN
 
 CORRECT examples:
-- "creator income breakdown [T1]" → describes what the source contains
-- "YouTube statistics report [T2]" → describes the data
-- "platform behavior analysis [T1]" → describes the insight
-- "industry engagement data [T2]" → describes what it proves
-- "audience retention study [T1]" → describes the finding
+- "[T1:creator income breakdown]" → describes what the source contains
+- "[T2:YouTube statistics report]" → describes the data
+- "[T1:platform behavior analysis]" → describes the insight
+- "[T2:industry engagement data]" → describes what it proves
+- "[T1:audience retention study]" → describes the finding
 
 The anchor text must be 2–4 words that describe the TYPE or CONTENT of the source, not its brand name. The brand name is irrelevant to the reader — what matters is what the source proves or shows.
 
@@ -526,9 +563,9 @@ Do NOT use: the platform name alone, "guide", "article", "source", "link", "here
 • ANCHOR FORMAT — STRICTLY ENFORCED:
   - Write the anchor phrase, then ONE space, then the placeholder
   - The space between anchor and placeholder is MANDATORY
-  - CORRECT: "creator economy breakdown [T1]" or "platform guidelines [T2]"
+  - CORRECT: "[T1:creator economy breakdown]" or "[T2:platform guidelines]"
   - WRONG: "YouTube [T1]" or "Blog [T2]" (platform name only - meaningless)
-  - WRONG: "audio guidelines[T1]" (no space - FORBIDDEN)
+  - WRONG: legacy "audio guidelines[T1]" with no space — FORBIDDEN. Use the new format "[T1:audio guidelines]" instead.
 
 • Every external source must appear as a placeholder INSIDE a natural sentence.
 • Use placeholders [T1], [T2], [T3] for trust sources (in order of appearance).
@@ -547,9 +584,9 @@ Do NOT use: the platform name alone, "guide", "article", "source", "link", "here
   ✓ "As industry analysis [T1] explains, algorithmic playlists favor consistency."
 • Examples of INCORRECT anchor integration:
   ✗ "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows..." (full URL - FORBIDDEN)
-  ✗ "A breakdown on playlist pitching in 2026 what artists need to know [T1] shows..." (too long, copied from title - FORBIDDEN)
-  ✗ "A breakdown on this article about playlist pitching [T1] shows..." (too generic - FORBIDDEN)
-  ✗ "A breakdown onofficial guide[T1] shows..." (no spaces - FORBIDDEN)
+  ✗ "[T1:playlist pitching in 2026 what artists need to know]" (too long, copied from title - FORBIDDEN)
+  ✗ "[T1:this article about playlist pitching]" (too generic - FORBIDDEN)
+  ✗ legacy bare "official guide[T1]" with no space — FORBIDDEN. Use "[T1:official guide]" instead.
 • The sentence should remain clear even if you remove the placeholder.
 • Do not change or clean the URL - use it EXACTLY as given in [[TRUST_SOURCES_LIST]].
 
@@ -586,23 +623,23 @@ c) "Does the sentence remain clear with the placeholder?"
 CORRECT (natural integration with descriptive anchor):
 "Playlists remain important, but where the power sits has changed. Editorial placements are rare;
 user curated and niche algorithmic playlists are where most indie artists actually gain momentum.
-A creator economy breakdown [T1] shows how smaller, targeted lists often bring more engaged listeners than a single massive playlist."
+A [T1:creator economy breakdown] shows how smaller, targeted lists often bring more engaged listeners than a single massive playlist."
 
 INCORRECT (full URL as anchor - FORBIDDEN):
 "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows…"
 
 INCORRECT (long anchor text copied from title - FORBIDDEN):
-"A breakdown on playlist pitching in 2026 what artists need to know [T1] shows…"
+"[T1:playlist pitching in 2026 what artists need to know]"
 
 INCORRECT (placeholder breaks sentence flow - FORBIDDEN):
 "Playlists remain important. [T1].
 Editorial placements are rare."
 
 CORRECT (descriptive anchor integrated naturally):
-"Research from platform engagement data [T1] indicates that short form content is gaining traction among independent artists."
+"Research on [T1:platform engagement data] indicates that short form content is gaining traction among independent artists."
 
 CORRECT (descriptive anchor):
-"As industry analysis [T1] explains, algorithmic playlists favor consistency over volume."
+"As an [T1:industry analysis] explains, algorithmic playlists favor consistency over volume."
 
 REMEMBER: The anchor must describe the CONTENT or TYPE of the source (2–4 words), not the platform name. It will be replaced with the actual anchor link during processing.
 
@@ -623,10 +660,10 @@ If [[CONTENT_PURPOSE]] is "Guest post / outreach", you MUST follow these additio
 
 1. AUTHORITATIVE QUOTES AND INDUSTRY STATISTICS (MANDATORY):
 • Add 2-4 external authoritative quotes or industry statistics throughout the article where they naturally fit.
-• These should come from [[TRUST_SOURCES_LIST]] or be referenced naturally (e.g., "According to [T1], 68% of creators report...").
+• These should come from [[TRUST_SOURCES_LIST]] or be referenced naturally (e.g., "According to a [T1:2024 creator income survey], 68% of creators report...").
 • Include at least one strong data-point (percentage, number, research finding) in the first half of the article - this significantly increases acceptance rate.
 • Examples of strong data-points:
-  - "A 2024 study from [T1] found that 73% of independent artists..."
+  - "A [T1:2024 study on independent artists] found that 73%..."
   - "Research shows that playlists with fewer than 1,000 followers generate 40% more engagement..."
   - "Industry data indicates that creators who post consistently see a 2.5x increase in reach..."
 • These statistics and quotes make the article more credible and link-worthy for outreach campaigns.
@@ -920,17 +957,17 @@ ANCHOR TEXT RULE — STRICTLY ENFORCED:
 The anchor text (the words before the placeholder) must describe what the source actually IS or CONTAINS, not just name the platform.
 
 WRONG examples:
-- "according to YouTube [T1]" → "YouTube" tells nothing
-- "as Blog shows [T2]" → "Blog" is meaningless
-- "via Hootsuite [T1]" → platform name only
-- "Instagram Help [T2]" or "Downdetector [T3]" → platform name only
+- "[T1:YouTube]" → brand-only is FORBIDDEN
+- "[T2:Blog]" → meaningless one-word anchor is FORBIDDEN
+- "[T1:Hootsuite]" → brand-only is FORBIDDEN
+- "[T2:Instagram Help]" or "[T3:Downdetector]" → brand-only is FORBIDDEN
 
 CORRECT examples:
-- "creator income breakdown [T1]" → describes what the source contains
-- "YouTube statistics report [T2]" → describes the data
-- "platform behavior analysis [T1]" → describes the insight
-- "outage status tracker [T3]" → describes what it proves
-- "stories expiration guidelines [T1]" → describes the finding
+- "[T1:creator income breakdown]" → describes what the source contains
+- "[T2:YouTube statistics report]" → describes the data
+- "[T1:platform behavior analysis]" → describes the insight
+- "[T3:outage status tracker]" → describes what it proves
+- "[T1:stories expiration guidelines]" → describes the finding
 
 The anchor text must be 2–4 words that describe the TYPE or CONTENT of the source, not its brand name. The brand name is irrelevant to the reader — what matters is what the source proves or shows.
 
@@ -939,9 +976,9 @@ Do NOT use: the platform name alone, "guide", "article", "source", "link", "here
 ANCHOR FORMAT — STRICTLY ENFORCED:
 • Write the anchor phrase, then ONE space, then the placeholder
 • The space between anchor and placeholder is MANDATORY
-• CORRECT: "creator economy breakdown [T1]" or "platform guidelines [T2]"
+• CORRECT: "[T1:creator economy breakdown]" or "[T2:platform guidelines]"
 • WRONG: "YouTube [T1]" or "Blog [T2]" (platform name only - meaningless)
-• WRONG: "audio guidelines[T1]" (no space - FORBIDDEN)
+• WRONG: legacy "audio guidelines[T1]" with no space — FORBIDDEN. Use the new format "[T1:audio guidelines]" instead.
 
 ---
 TRUST SOURCE PLACEMENT RULE (strictly enforced):
@@ -1296,7 +1333,7 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
   let placeholderMappingBlock = "";
   if (params.trustSourcesSpecs && params.trustSourcesSpecs.length > 0) {
-    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL INSTRUCTIONS FOR USING PLACEHOLDERS:\n• You have ${params.trustSourcesSpecs.length} external source(s) available.\n• Use 1-${params.trustSourcesSpecs.length} of these in your article.\n• When you reference them, DO NOT write any URLs.\n• Instead, insert the placeholders [${params.trustSourcesSpecs.map(ts => ts.id).join('], [')}] directly into the sentence.\n• Each placeholder must be part of a natural sentence, with a short 2-5 word anchor phrase that describes the source.\n• The anchor phrase should match the description provided (e.g., "[T1]" should be used where "${params.trustSourcesSpecs[0]?.text || 'the source'}" would naturally appear).\n• Example: "Research from [T1] indicates that..." (where [T1] represents "${params.trustSourcesSpecs[0]?.text || 'the source'}").\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs - use ONLY the placeholders provided above.\n`;
+    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL — USE THE CONTEXTUAL PLACEHOLDER FORMAT:\n• Format: [Tn:short descriptive phrase]\n• The phrase BETWEEN the colon and ] becomes the clickable link text.\n• It MUST describe what the source's content IS (the data, finding, guideline) — NEVER the brand or platform name.\n• You have ${params.trustSourcesSpecs.length} external source(s) available — use 1-${params.trustSourcesSpecs.length} of them.\n• Each placeholder must be part of a natural sentence; the phrase inside [Tn:...] should be 2-5 descriptive words that fit the surrounding prose.\n• GOOD: "...as a [T1:recent income breakdown] of independent artists shows..."\n• GOOD: "...platform docs confirm that [T2:stories expire after 24 hours]..."\n• BAD:  "[T1:Routenote]" — brand-only is FORBIDDEN.\n• BAD:  "[T1:read more]" — generic anchor is FORBIDDEN.\n• BAD:  bare "[T1]" without a phrase — only use as a last resort; the contextual form is strongly preferred.\n• NEVER write URLs in the article body. Only the [Tn:phrase] placeholders.\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs — use ONLY the placeholders provided above.\n`;
   }
   
   // Build verification block - use JSON format if available
@@ -1667,8 +1704,8 @@ clearly asks for a different number.
 	•	Use 1-3 sources from [[TRUST_SOURCES_LIST]] only if they clearly match the topic.
 	•	Prefer official websites and strong editorial roundups.
 	•	Integrate placeholders ([T1], [T2], [T3]) inside the relevant item description.
-	•	Placeholder format: Use [T1], [T2], [T3] where the anchor text should appear.
-	•	Example: "This festival [T1] attracts thousands of visitors each year."
+	•	Placeholder format (PREFERRED): [Tn:contextual phrase] — the phrase becomes the link text. Bare [Tn] is a fallback only.
+	•	Example: "This [T1:annual electronic music festival] attracts thousands of visitors each year."
 	•	Never show raw URLs as visible text.
 	•	Placeholders will be replaced with actual anchor links during processing.
 	4.	Brand and growth content in list topics (VERY LIMITED)
@@ -1753,6 +1790,42 @@ Brand mention: Use neutral phrasing — "some creators use tools like [[BRAND_NA
 ================================
 6. EXTERNAL SOURCES & REFERENCES
 
+================================================================
+TRUST SOURCE PLACEHOLDER FORMAT — PREFERRED (READ FIRST)
+================================================================
+Use the CONTEXTUAL placeholder format for every trust source:
+
+    [Tn:short descriptive phrase]
+
+The phrase between the colon and the closing bracket BECOMES the
+clickable link text in the final article. It MUST describe what the
+SOURCE'S CONTENT is (the data, finding, guideline, statistic), NOT
+the source's brand/platform name.
+
+GOOD examples:
+  ✓ "...as the [T1:creator income breakdown] from industry data shows..."
+  ✓ "...platform guidelines confirm that [T2:stories expire after 24 hours]..."
+  ✓ "...a recent [T1:audience retention study] found that..."
+
+BAD examples (DO NOT DO THIS):
+  ✗ "[T1:Routenote]"        — that's just the brand name
+  ✗ "[T1:Spotify]"          — brand-only is FORBIDDEN
+  ✗ "[T1:read more]"        — generic anchor is FORBIDDEN
+  ✗ "[T1:click here]"       — generic anchor is FORBIDDEN
+  ✗ "[T1:source]"           — meaningless
+  ✗ "[T1]"                  — bare placeholder is a fallback only;
+                              prefer the explicit form whenever possible
+
+The phrase inside [Tn:...] should be 2–5 words. It must read naturally
+as part of the surrounding sentence — when the reader's eye moves
+through the prose, the highlighted phrase should describe what the
+linked source proves or shows.
+
+LEGACY FORMAT (fallback only): bare [Tn] without a phrase still works,
+but the system will auto-wrap the 1-3 words preceding it as the link
+text. Always prefer [Tn:phrase] for full control.
+================================================================
+
 You receive a pre-filtered list of trusted external sources in [[TRUST_SOURCES_LIST]].
 Each item has:
 - id: "T1" | "T2" | "T3"
@@ -1792,17 +1865,17 @@ ANCHOR TEXT RULE — STRICTLY ENFORCED:
 The anchor text (the words before the placeholder) must describe what the source actually IS or CONTAINS, not just name the platform.
 
 WRONG examples:
-- "according to YouTube [T1]" → "YouTube" tells nothing
-- "as Blog shows [T2]" → "Blog" is meaningless
-- "via Hootsuite [T1]" → platform name only
-- "from Socialmediaexaminer [T2]" → platform name only
+- "[T1:YouTube]" → brand-only is FORBIDDEN
+- "[T2:Blog]" → meaningless one-word anchor is FORBIDDEN
+- "[T1:Hootsuite]" → brand-only is FORBIDDEN
+- "[T2:Socialmediaexaminer]" → brand-only is FORBIDDEN
 
 CORRECT examples:
-- "creator income breakdown [T1]" → describes what the source contains
-- "YouTube statistics report [T2]" → describes the data
-- "platform behavior analysis [T1]" → describes the insight
-- "industry engagement data [T2]" → describes what it proves
-- "audience retention study [T1]" → describes the finding
+- "[T1:creator income breakdown]" → describes what the source contains
+- "[T2:YouTube statistics report]" → describes the data
+- "[T1:platform behavior analysis]" → describes the insight
+- "[T2:industry engagement data]" → describes what it proves
+- "[T1:audience retention study]" → describes the finding
 
 The anchor text must be 2–4 words that describe the TYPE or CONTENT of the source, not its brand name. The brand name is irrelevant to the reader — what matters is what the source proves or shows.
 
@@ -1811,9 +1884,9 @@ Do NOT use: the platform name alone, "guide", "article", "source", "link", "here
 - ANCHOR FORMAT — STRICTLY ENFORCED:
   - Write the anchor phrase, then ONE space, then the placeholder
   - The space between anchor and placeholder is MANDATORY
-  - CORRECT: "creator economy breakdown [T1]" or "platform guidelines [T2]"
+  - CORRECT: "[T1:creator economy breakdown]" or "[T2:platform guidelines]"
   - WRONG: "YouTube [T1]" or "Blog [T2]" (platform name only - meaningless)
-  - WRONG: "audio guidelines[T1]" (no space - FORBIDDEN)
+  - WRONG: legacy "audio guidelines[T1]" with no space — FORBIDDEN. Use the new format "[T1:audio guidelines]" instead.
 
 - For each reference:
   - Choose 2–4 words that describe the CONTENT or TYPE of the source
@@ -1854,9 +1927,9 @@ Before you output the final article, verify:
 - References read naturally and are relevant to the surrounding sentence.
 • Placeholders will be replaced with actual anchor links during processing.
 • Examples of CORRECT anchor integration:
-  ✓ "A creator economy breakdown [T1] shows how smaller playlists work better."
-  ✓ "Research from platform engagement data [T1] indicates that short form content is gaining traction."
-  ✓ "As industry analysis [T1] explains, algorithmic playlists favor consistency."
+  ✓ "A [T1:creator economy breakdown] shows how smaller playlists work better."
+  ✓ "Research on [T1:platform engagement patterns] indicates that short form content is gaining traction."
+  ✓ "As an [T1:industry analysis] explains, algorithmic playlists favor consistency."
 • Examples of INCORRECT anchor integration:
   ✗ "A breakdown on https://routenote.com/blog/playlist-pitching-in-2026-what-artists-need-to-know/ shows..." (full URL)
   ✗ "A breakdown on playlist pitching in 2026 what artists need to know [T1] shows..." (too long, copied from title)
@@ -1880,10 +1953,10 @@ If [[CONTENT_PURPOSE]] is "Guest post / outreach", you MUST follow these additio
 
 1. AUTHORITATIVE QUOTES AND INDUSTRY STATISTICS (MANDATORY):
 	•	Add 2-4 external authoritative quotes or industry statistics throughout the article where they naturally fit.
-	•	These should come from [[TRUST_SOURCES_LIST]] or be referenced naturally (e.g., "According to [T1], 68% of creators report...").
+	•	These should come from [[TRUST_SOURCES_LIST]] or be referenced naturally (e.g., "According to a [T1:2024 creator income survey], 68% of creators report...").
 	•	Include at least one strong data-point (percentage, number, research finding) in the first half of the article - this significantly increases acceptance rate.
 	•	Examples of strong data-points:
-	  - "A 2024 study from [T1] found that 73% of independent artists..."
+	  - "A [T1:2024 study on independent artists] found that 73%..."
 	  - "Research shows that playlists with fewer than 1,000 followers generate 40% more engagement..."
 	  - "Industry data indicates that creators who post consistently see a 2.5x increase in reach..."
 	•	These statistics and quotes make the article more credible and link-worthy for outreach campaigns.
@@ -2350,7 +2423,7 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
   let placeholderMappingBlock = "";
   if (params.trustSourcesSpecs && params.trustSourcesSpecs.length > 0) {
-    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL INSTRUCTIONS FOR USING PLACEHOLDERS:\n• You have ${params.trustSourcesSpecs.length} external source(s) available.\n• Use 1-${params.trustSourcesSpecs.length} of these in your article.\n• When you reference them, DO NOT write any URLs.\n• Instead, insert the placeholders [${params.trustSourcesSpecs.map(ts => ts.id).join('], [')}] directly into the sentence.\n• Each placeholder must be part of a natural sentence, with a short 2-5 word anchor phrase that describes the source.\n• The anchor phrase should match the description provided (e.g., "[T1]" should be used where "${params.trustSourcesSpecs[0]?.text || 'the source'}" would naturally appear).\n• Example: "Research from [T1] indicates that..." (where [T1] represents "${params.trustSourcesSpecs[0]?.text || 'the source'}").\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs - use ONLY the placeholders provided above.\n`;
+    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL — USE THE CONTEXTUAL PLACEHOLDER FORMAT:\n• Format: [Tn:short descriptive phrase]\n• The phrase BETWEEN the colon and ] becomes the clickable link text.\n• It MUST describe what the source's content IS (the data, finding, guideline) — NEVER the brand or platform name.\n• You have ${params.trustSourcesSpecs.length} external source(s) available — use 1-${params.trustSourcesSpecs.length} of them.\n• Each placeholder must be part of a natural sentence; the phrase inside [Tn:...] should be 2-5 descriptive words that fit the surrounding prose.\n• GOOD: "...as a [T1:recent income breakdown] of independent artists shows..."\n• GOOD: "...platform docs confirm that [T2:stories expire after 24 hours]..."\n• BAD:  "[T1:Routenote]" — brand-only is FORBIDDEN.\n• BAD:  "[T1:read more]" — generic anchor is FORBIDDEN.\n• BAD:  bare "[T1]" without a phrase — only use as a last resort; the contextual form is strongly preferred.\n• NEVER write URLs in the article body. Only the [Tn:phrase] placeholders.\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs — use ONLY the placeholders provided above.\n`;
   }
   
   // Build verification block - use JSON format if available

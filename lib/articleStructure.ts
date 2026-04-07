@@ -128,6 +128,15 @@ export function injectAnchorsIntoText(
   text = text.replace(/\[(A1|T[1-8])\]([^\s])/g, '[$1] $2');
   text = text.replace(/\s*\[(A1|T[1-8])\]\s*/g, ' [$1] ');
 
+  // CONTEXTUAL TRUST SOURCE FORMAT: also normalize spacing around [Tn:phrase] placeholders.
+  // The new format lets the model declare the exact link text inline, e.g.
+  //   "...as the [T1:creator income breakdown] shows..."
+  // becomes "<a href={T1.url}>creator income breakdown</a>". This regex makes sure the
+  // placeholder never glues to surrounding words (model output is unpredictable).
+  text = text.replace(/([^\s])(\[T[1-8]:[^\]]+\])/g, '$1 $2');
+  text = text.replace(/(\[T[1-8]:[^\]]+\])([^\s])/g, '$1 $2');
+  text = text.replace(/\s*(\[T[1-8]:[^\]]+\])\s*/g, ' $1 ');
+
   // CRITICAL: First, check if placeholders exist in the original text
   const allPlaceholders: string[] = [];
   anchors.forEach(a => {
@@ -269,95 +278,94 @@ export function injectAnchorsIntoText(
     }
   });
 
-  // Replace trust source placeholders [T1], [T2], etc.
-  // CRITICAL: Add spaces around anchors to prevent them from merging with adjacent text
-  // This ensures anchors are always separated from surrounding words
+  // ====================================================================
+  // STEP A — Contextual trust source format: [Tn:phrase]
+  // ====================================================================
+  // The model is instructed to wrap the contextual link text inside the placeholder
+  // itself, e.g. "...as the [T1:creator income breakdown] from industry shows...".
+  // This guarantees the clickable text describes the SOURCE'S CONTENT instead of
+  // being just the source's brand name (which was the legacy behavior). Brackets
+  // and ":" survive escapeHtml unchanged, so we can match this AFTER escaping.
+  result = result.replace(/\[T([1-8]):([^\]]+)\]/g, (match, idNum, rawPhrase) => {
+    const id = `T${idNum}`;
+    const trust = trusts.find(t => t.id === id);
+    if (!trust || !isValidTrustUrl(trust.url)) {
+      console.warn(`[trust-source] Contextual format ${match}: no valid trust source for ${id} — stripping placeholder, leaving phrase as text`);
+      return rawPhrase.trim();
+    }
+    const phrase = rawPhrase.trim();
+    if (!phrase) {
+      console.warn(`[trust-source] Contextual format ${match}: empty phrase for ${id}`);
+      return "";
+    }
+    const safeUrl = escapeHtmlAttr(trust.url.trim());
+    // `phrase` is already HTML-escaped because escapeHtml ran on the whole string earlier.
+    // Wrap with surrounding spaces so the anchor never glues to adjacent words.
+    return ` <a href="${safeUrl}">${phrase}</a> `;
+  });
+
+  // ====================================================================
+  // STEP B — Legacy bare format: [Tn]
+  // ====================================================================
+  // Backwards compatible. Used when the model didn't add the contextual phrase.
+  // Fallback strategy: capture 1-3 non-whitespace tokens IMMEDIATELY before [Tn]
+  // and use them as the link text. This produces a contextual anchor like
+  // "creator income breakdown" instead of the source's brand name.
   trusts.forEach(t => {
     const placeholder = `[${t.id}]`;
-    const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // BUG 2: Debug logging for trust source substitution
-    dbg("[trust-source] Substituting", placeholder, "with url:", t?.url, "text:", t?.text);
-    
+    if (!result.includes(placeholder)) return;
+
+    dbg("[trust-source] Bare placeholder fallback for", placeholder, "url:", t?.url);
+
     if (!isValidTrustUrl(t.url)) {
-      console.warn("[trust-source] Invalid URL skipped:", t.url);
+      console.warn("[trust-source] Invalid URL — placeholder will be stripped:", placeholder, t.url);
+      // Remove placeholder entirely if URL is invalid (no broken <a> in output).
+      result = result.split(placeholder).join("");
+      return;
     }
-    const safeUrl = isValidTrustUrl(t.url) ? escapeHtmlAttr(t.url.trim()) : "";
+    const safeUrl = escapeHtmlAttr(t.url.trim());
 
-    // CRITICAL: Trim anchor text to 1-3 words (enforce maximum)
-    // This ensures short, natural anchor text instead of long article titles
-    const words = t.text.trim().split(/\s+/);
-    let anchorText = t.text;
-    if (words.length > 3) {
-      // Take first 1-3 words, preferring shorter if it makes sense
-      // Extract MAIN brand from URL (creators.spotify.com → Spotify, not Creators)
-      const brandFromUrl = isValidTrustUrl(t.url) ? getBrandFromUrl(t.url) : null;
-      if (brandFromUrl) {
-        anchorText = brandFromUrl;
-      } else {
-        const shortWords = words.slice(0, 2).join(' ');
-        if (shortWords.length < 5 || /^(the|a|an|this|that|how|what|why|when|where)\s/i.test(shortWords)) {
-          anchorText = words.slice(0, 3).join(' ');
-        } else {
-          anchorText = shortWords;
-        }
-      }
-    } else if (words.length > 2) {
-      // If 3 words, keep as is (within limit)
-      anchorText = words.slice(0, 3).join(' ');
+    // PRIMARY FALLBACK: capture 1-3 non-whitespace tokens immediately preceding [Tn] and
+    // wrap them as the link text. This produces a contextual anchor like
+    // "creator income breakdown" instead of just the source's brand name.
+    // Regex notes:
+    //   (?:\S+\s+){0,2}\S+   → 1-3 non-whitespace tokens separated by whitespace
+    //   \s+                  → mandatory whitespace before the placeholder
+    //   \[Tn\]               → the literal placeholder
+    // We avoid matching across HTML tags by requiring tokens to not contain '<' or '>'.
+    const idEsc = t.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const wordsBeforeRegex = new RegExp(
+      `((?:[^\\s<>]+\\s+){0,2}[^\\s<>]+)\\s+\\[${idEsc}\\]`,
+      'g'
+    );
+
+    let consumed = false;
+    result = result.replace(wordsBeforeRegex, (match, capturedWords: string) => {
+      // Strip trailing punctuation from the link text — we want clean anchor words,
+      // and any trailing comma/period stays AFTER the closing tag in the prose.
+      const trailingPunct = capturedWords.match(/[.,;:!?]+$/);
+      const cleaned = capturedWords.replace(/[.,;:!?]+$/, "").trim();
+      if (!cleaned) return match; // Nothing usable — leave the original to fall through.
+      consumed = true;
+      const tail = trailingPunct ? trailingPunct[0] : "";
+      return ` <a href="${safeUrl}">${cleaned}</a>${tail} `;
+    });
+
+    if (consumed) {
+      dbg(`[trust-source] Bare ${placeholder}: wrapped preceding words as contextual link`);
+      return;
     }
-    
-    // CRITICAL: trim() to make sure no leading/trailing whitespace ends up INSIDE the
-    // <a> tag — that would render as an underlined, clickable empty space.
+
+    // LAST-RESORT FALLBACK: no preceding words available (e.g. placeholder at very start
+    // of a sentence). Use a 1-3 word slice of the source title — better than nothing.
+    const words = (t.text || "").trim().split(/\s+/).filter(Boolean);
+    const anchorText = words.length > 3
+      ? words.slice(0, 3).join(" ")
+      : (words.join(" ") || t.id);
     const safeText = escapeHtml(anchorText.trim());
-    // BUG 2: If no valid URL, use <strong> instead of broken link
-    // STEP 2 FIX: Wrap with spaces so anchor never glues to adjacent words
-    const trustHtml = isValidTrustUrl(t.url)
-      ? ` <a href="${safeUrl}">${safeText}</a> `
-      : ` <strong>${safeText}</strong> `;
-
-    // BUG 1: Normalize spacing RIGHT BEFORE trust source substitution
-    result = result.replace(new RegExp(`([^\\s])${escapedPlaceholder}`, 'g'), `$1 ${placeholder}`);
-    result = result.replace(new RegExp(`${escapedPlaceholder}([^\\s])`, 'g'), `${placeholder} $1`);
-
-    // DEBUG: Check if placeholder exists in text before replacement
-    const placeholderExists = result.includes(placeholder);
-    if (!placeholderExists) {
-      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text after restoration. Text preview: ${result.substring(0, 200)}`);
-      return; // Skip if placeholder not found
-    }
-    
-    // Replace placeholder with trust source HTML
-    const beforeReplace = result;
-    // CRITICAL: escapedPlaceholder is already escaped, don't escape it again!
-    const placeholderRegex = new RegExp(escapedPlaceholder, 'g');
-    const matchesBefore = (result.match(placeholderRegex) || []).length;
-    
-    if (matchesBefore === 0 && placeholderExists) {
-      // Fallback: try with unescaped placeholder (in case escapeHtml changed something)
-      const unescapedRegex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      const unescapedMatches = (result.match(unescapedRegex) || []).length;
-      if (unescapedMatches > 0) {
-        dbg(`[injectAnchorsIntoText] Using unescaped regex for ${placeholder} (found ${unescapedMatches} matches)`);
-        result = result.replace(unescapedRegex, trustHtml);
-      } else {
-        console.error(`[injectAnchorsIntoText] CRITICAL: Placeholder ${placeholder} exists in text but regex finds 0 matches! Text sample: ${result.substring(result.indexOf(placeholder) - 50, result.indexOf(placeholder) + 50)}`);
-      }
-    } else {
-      result = result.replace(placeholderRegex, trustHtml);
-    }
-    
-    const matchesAfter = (result.match(placeholderRegex) || []).length;
-    const linksAfter = (result.match(new RegExp(`<a[^>]*>.*?</a>`, 'g')) || []).length;
-    
-    // DEBUG: Verify replacement happened
-    if (beforeReplace === result && placeholderExists) {
-      console.error(`[injectAnchorsIntoText] Failed to replace placeholder ${placeholder}. Regex: ${escapedPlaceholder}, matches before: ${matchesBefore}, text preview: ${result.substring(0, 300)}`);
-    } else if (beforeReplace !== result) {
-      dbg(`[injectAnchorsIntoText] Successfully replaced placeholder ${placeholder} with trust source link (${matchesBefore} matches -> ${matchesAfter} remaining, ${linksAfter} links total)`);
-    } else if (!placeholderExists) {
-      console.warn(`[injectAnchorsIntoText] Placeholder ${placeholder} not found in text, skipping replacement`);
-    }
+    const trustHtml = ` <a href="${safeUrl}">${safeText}</a> `;
+    result = result.split(placeholder).join(trustHtml);
+    console.warn(`[trust-source] Bare ${placeholder} had no preceding words to wrap; fell back to short title "${anchorText}"`);
   });
 
   // STEP 2: Clean double spaces after all placeholder replacements
