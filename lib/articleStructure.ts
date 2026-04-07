@@ -217,8 +217,11 @@ export function injectAnchorsIntoText(
   anchors.forEach(a => {
     const placeholder = `[${a.id}]`;
     const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const safeUrl = escapeHtmlAttr(a.url);
-    const safeText = escapeHtml(a.text);
+    // CRITICAL: trim() the text and URL before escaping. Without trim(), any leading or
+    // trailing whitespace from the brief input ends up INSIDE the <a> tag, which makes
+    // the empty space underlined and clickable as part of the link.
+    const safeUrl = escapeHtmlAttr(a.url.trim());
+    const safeText = escapeHtml(a.text.trim());
     // STEP 2 FIX: Wrap <a> tag with spaces so it never glues to adjacent words
     const anchorHtml = ` <a href="${safeUrl}">${safeText}</a> `;
     
@@ -304,7 +307,9 @@ export function injectAnchorsIntoText(
       anchorText = words.slice(0, 3).join(' ');
     }
     
-    const safeText = escapeHtml(anchorText);
+    // CRITICAL: trim() to make sure no leading/trailing whitespace ends up INSIDE the
+    // <a> tag — that would render as an underlined, clickable empty space.
+    const safeText = escapeHtml(anchorText.trim());
     // BUG 2: If no valid URL, use <strong> instead of broken link
     // STEP 2 FIX: Wrap with spaces so anchor never glues to adjacent words
     const trustHtml = isValidTrustUrl(t.url)
@@ -530,7 +535,9 @@ export function modelBlocksToArticleStructure(
   dbg('[debug-7bb5e0] modelBlocksToArticleStructure anchor check:', JSON.stringify({anchorText,anchorUrl,anchorTextTruthy:!!anchorText,anchorUrlTruthy:!!anchorUrl,willAddA1:!!(anchorText&&anchorUrl),anchorTextCharCodes:anchorText?[...anchorText].slice(0,5).map(c=>c.charCodeAt(0)):[],anchorUrlCharCodes:anchorUrl?[...anchorUrl].slice(0,10).map(c=>c.charCodeAt(0)):[]}));
   // #endregion
   if (anchorText && anchorUrl) {
-    anchors.push({ id: 'A1', text: anchorText, url: anchorUrl });
+    // Trim at the AnchorSpec construction site as well — defence in depth so any
+    // trailing whitespace from brief input never reaches the <a> tag rendering.
+    anchors.push({ id: 'A1', text: anchorText.trim(), url: anchorUrl.trim() });
   }
 
   if (trustSourcesList && trustSourcesList.length > 0) {
