@@ -885,20 +885,46 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                 }
               }
               if (!a1Found) {
-                // Find first non-empty paragraph block and append [A1] (with space).
-                // Surrounding spaces/normalization handled by injectAnchorsIntoText.
-                let injected = false;
-                for (const block of articleBlocks) {
+                // Collect indices of all non-empty <p> blocks in document order.
+                // Anchor placement rule: must land inside the FIRST THREE paragraphs of
+                // the article — early enough to be seen, never at the end. Prefer paragraph
+                // 2 or 3 (more natural integration than the very first sentence). Fall back
+                // to paragraph 1 only if 2/3 don't exist.
+                const paragraphIndices: number[] = [];
+                for (let i = 0; i < articleBlocks.length; i++) {
+                  const block = articleBlocks[i];
                   if (block?.type === "p" && typeof block.text === "string" && block.text.trim().length > 0) {
-                    block.text = block.text.replace(/\s+$/, "") + " [A1]";
-                    injected = true;
-                    break;
+                    paragraphIndices.push(i);
+                    if (paragraphIndices.length >= 3) break; // We only care about the first 3.
                   }
                 }
-                if (injected) {
+
+                let targetIdx: number | null = null;
+                if (paragraphIndices.length >= 2) {
+                  // Pick randomly between paragraph 2 and 3 (indices 1 and 2 in our collected list).
+                  // If only 2 paragraphs exist, paragraphIndices[2] is undefined → use paragraph 2.
+                  const candidates = paragraphIndices.slice(1, 3); // [p2] or [p2, p3]
+                  targetIdx = candidates[Math.floor(Math.random() * candidates.length)];
+                } else if (paragraphIndices.length === 1) {
+                  // Only one paragraph — fall back to it.
+                  targetIdx = paragraphIndices[0];
+                }
+
+                if (targetIdx !== null) {
+                  const target = articleBlocks[targetIdx];
+                  // Insert [A1] mid-paragraph: after the first sentence if there is one,
+                  // otherwise at the end. This avoids the "anchor stuck at end" pattern
+                  // and matches the model's natural integration shape.
+                  const text = target.text as string;
+                  const firstSentenceEnd = text.search(/[.!?]\s/);
+                  if (firstSentenceEnd > 0 && firstSentenceEnd < text.length - 2) {
+                    target.text = text.slice(0, firstSentenceEnd + 1) + " [A1]" + text.slice(firstSentenceEnd + 1);
+                  } else {
+                    target.text = text.replace(/\s+$/, "") + " [A1]";
+                  }
                   anchorFallbackUsed = "injected";
                   console.warn(
-                    `[articles-api] ANCHOR FALLBACK: model omitted [A1], programmatically injected into first paragraph. Topic: "${topic.title}"`
+                    `[articles-api] ANCHOR FALLBACK: model omitted [A1], injected into paragraph ${paragraphIndices.indexOf(targetIdx) + 1} (of first 3). Topic: "${topic.title}"`
                   );
                 } else {
                   anchorFallbackUsed = "no-paragraph";
@@ -944,13 +970,14 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
           // VALIDATION: [A1] must be in first or second paragraph when anchor is provided
           const hasAnchor = !!(brief.anchorText?.trim() && (brief.anchorUrl || brief.clientSite)?.trim());
           if (hasAnchor) {
+            // [A1] must land in paragraph 1, 2, or 3 (preferably 2/3 — see prompt rules + fallback injection).
             const pBlocks = articleStructure.blocks
               .filter((b: ArticleBlock) => b.type === "p")
-              .slice(0, 2)
+              .slice(0, 3)
               .map((b: ArticleBlock) => (b.text || "").toLowerCase());
-            const a1InFirstTwo = pBlocks.some((text: string) => text.includes("[a1]"));
-            if (!a1InFirstTwo) {
-              console.warn("[articles-api] ANCHOR PLACEMENT VIOLATION: [A1] should be in paragraph 1 or 2 but was placed later. Anchor:", brief.anchorText?.slice(0, 30));
+            const a1InFirstThree = pBlocks.some((text: string) => text.includes("[a1]"));
+            if (!a1InFirstThree) {
+              console.warn("[articles-api] ANCHOR PLACEMENT VIOLATION: [A1] should be in paragraph 1, 2, or 3 but was placed later. Anchor:", brief.anchorText?.slice(0, 30));
             }
           }
 
@@ -1357,9 +1384,16 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
             });
           }
           
-          cleanedArticleBodyHtml = cleanText(
-            removeExcessiveBold(
-              fixHtmlTagSpacing(htmlBeforeClean)
+          // ORDER MATTERS: cleanText must run BEFORE the final fixHtmlTagSpacing pass.
+          // Historically cleanText (cleanInvisibleChars) was stripping whitespace around
+          // inline tags like <a>, gluing anchors to surrounding words. That regex has been
+          // tightened, but to be safe we run fixHtmlTagSpacing as the LAST step so any
+          // residual missing-space-before-or-after-<a> gets fixed before the response leaves.
+          cleanedArticleBodyHtml = fixHtmlTagSpacing(
+            cleanText(
+              removeExcessiveBold(
+                fixHtmlTagSpacing(htmlBeforeClean)
+              )
             )
           );
           

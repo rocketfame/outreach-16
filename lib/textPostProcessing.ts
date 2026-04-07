@@ -142,12 +142,14 @@ export function cleanInvisibleChars(text: string): string {
   // Normalize spaces outside tags
   cleaned = cleaned.replace(/([^>])\s{2,}([^<])/g, '$1 $2');
   
-  // Since we've replaced all LFs with spaces, we now clean up HTML structure
-  // Remove spaces between tags (but preserve text content)
-  cleaned = cleaned.replace(/>\s+</g, '><'); // Remove spaces between consecutive tags
-  cleaned = cleaned.replace(/>\s+/g, '>'); // Remove leading spaces after opening tags
-  cleaned = cleaned.replace(/\s+</g, '<'); // Remove trailing spaces before closing tags
-  
+  // Since we've replaced all LFs with spaces, we now clean up HTML structure.
+  // CRITICAL: Only collapse whitespace strictly BETWEEN adjacent tags (e.g. `</p> <p>`).
+  // Do NOT strip whitespace between text and an inline tag — that was the cause of
+  // anchors gluing to surrounding words ("tests aTikTok promotion packafter" — the
+  // legitimate space before `<a>` and after `</a>` was being eaten by overly aggressive
+  // regexes here, AFTER fixHtmlTagSpacing had already added them correctly).
+  cleaned = cleaned.replace(/>\s+</g, '><'); // Safe: only matches whitespace between two tags
+
   // Remove excessive consecutive spaces (more than 2)
   cleaned = cleaned.replace(/ {3,}/g, ' '); // Max 1 space (multiple spaces collapsed)
 
