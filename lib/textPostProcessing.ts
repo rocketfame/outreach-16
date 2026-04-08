@@ -366,3 +366,103 @@ export function cleanText(text: string): string {
   return cleaned;
 }
 
+/**
+ * Detect and strip AI prompt-scaffolding leaks from generated text.
+ *
+ * Background: The Undetectable.AI humanizer (and occasionally GPT itself) sometimes
+ * leaks fragments of its internal prompt into the final article — phrases like
+ * "Hier die Eingabe des Benutzers:" (German for "Here is the user's input:") or
+ * English equivalents. An editor will reject the article instantly if such a marker
+ * is present, so we strip them defensively as a final safety net.
+ *
+ * Strategy:
+ *   1. Match any sentence containing a known leak marker (case-insensitive,
+ *      multilingual — model can output any language).
+ *   2. Remove the entire offending sentence (from the previous sentence boundary
+ *      up to and including the next . ! ? newline).
+ *   3. Collapse the resulting whitespace.
+ *   4. Return the cleaned text + a list of detected markers (for logging).
+ *
+ * Markers are intentionally specific. We do NOT strip generic words like "input" or
+ * "user" alone — only phrases that are clearly prompt scaffolding. False positives
+ * here would damage real content, so the bar is high.
+ */
+// IMPORTANT: every marker below must be HIGHLY SPECIFIC to prompt/system scaffolding.
+// We must NOT trigger on legitimate article content, especially in German where the
+// user may write articles about form input, user experience, etc. The bar for inclusion
+// is: "this phrase has no place in published article prose, only in model-internal
+// prompt instructions". When in doubt — leave it out.
+const PROMPT_LEAK_MARKERS: RegExp[] = [
+  // ── German prompt-scaffolding leaks (observed in GPT-5.2 German output) ────────
+  // "Hier (ist) die Eingabe des Benutzers" — literal "Here is the user's input"
+  /Hier (?:ist )?die Eingabe des Benutzers/i,
+  /Hier ist die Benutzereingabe/i,
+  // Stand-alone scaffolding labels at line/sentence start
+  /(?:^|\n)\s*Eingabe(?:\s+des\s+Benutzers)?\s*:/i,
+  /(?:^|\n)\s*Benutzereingabe\s*:/i,
+  /(?:^|\n)\s*Anweisung(?:en)?\s*:/i,
+  /(?:^|\n)\s*Systemnachricht\s*:/i,
+  // ── English ────────────────────────────────────────────────────────────────────
+  /Here(?:'s| is) the (?:user(?:'s)?|original) input/i,
+  /Below is the (?:user(?:'s)?|original) (?:input|prompt|message)/i,
+  /(?:^|\n)\s*User (?:input|prompt|message)\s*:/i,
+  /(?:^|\n)\s*System (?:message|prompt)\s*:/i,
+  /As an AI (?:language )?model/i,
+  /I(?:'m| am) (?:an? )?(?:AI|language model|large language model|LLM)\b/i,
+  /\bI cannot (?:fulfill|comply with) (?:this|that|your) (?:request|prompt)/i,
+  // ── Spanish / French / Italian / Russian / Ukrainian leak prefixes ─────────────
+  /Aquí (?:está|tienes) la entrada del usuario/i,
+  /Voici l['']entrée de l['']utilisateur/i,
+  /Ecco l['']input dell['']utente/i,
+  /Вот ввод пользователя/i,
+  /Ось ввід користувача/i,
+  // ── Generic system / template markers ──────────────────────────────────────────
+  /\[Your response here\]/i,
+  /\{\{[A-Z_]+\}\}/, // un-replaced template variables like {{TOPIC_TITLE}}
+  /\[\[[A-Z_]+\]\]/, // un-replaced [[ANCHOR_TEXT]] etc.
+];
+
+export interface PromptLeakStripResult {
+  cleaned: string;
+  removedSentences: string[];
+}
+
+export function stripPromptLeaks(text: string): PromptLeakStripResult {
+  if (!text) return { cleaned: text, removedSentences: [] };
+
+  // Quick reject: only do the expensive sentence walk if at least one marker matches.
+  const hasAnyMarker = PROMPT_LEAK_MARKERS.some((re) => re.test(text));
+  if (!hasAnyMarker) return { cleaned: text, removedSentences: [] };
+
+  // Split into sentences using punctuation + whitespace as boundaries.
+  // Keep punctuation attached to each sentence so reassembly stays natural.
+  // Regex captures groups of (sentence text + ending punctuation + trailing space).
+  const sentences = text.match(/[^.!?\n]+[.!?]+(?:\s+|$)|[^.!?\n]+$/g) || [text];
+
+  const removed: string[] = [];
+  const kept = sentences.filter((sentence) => {
+    const hit = PROMPT_LEAK_MARKERS.some((re) => re.test(sentence));
+    if (hit) {
+      removed.push(sentence.trim());
+      return false;
+    }
+    return true;
+  });
+
+  if (removed.length === 0) {
+    // Marker matched the whole text but no individual sentence captured it
+    // (e.g. multi-line marker). Fall back: replace the marker substring directly.
+    let fallback = text;
+    for (const re of PROMPT_LEAK_MARKERS) {
+      fallback = fallback.replace(new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g"), "");
+    }
+    return {
+      cleaned: fallback.replace(/\s{2,}/g, " ").trim(),
+      removedSentences: ["<inline marker(s) stripped>"],
+    };
+  }
+
+  const cleaned = kept.join("").replace(/\s{2,}/g, " ").trim();
+  return { cleaned, removedSentences: removed };
+}
+

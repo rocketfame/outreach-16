@@ -29,7 +29,7 @@
 export const maxDuration = 300;
 
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
-import { cleanText, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
+import { cleanText, fixHtmlTagSpacing, removeExcessiveBold, stripPromptLeaks } from "@/lib/textPostProcessing";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
@@ -507,11 +507,29 @@ export async function POST(req: Request) {
           ? `This is a LONG article (${targetWords} words). Plan ${Math.round(targetWords / 200)}-${Math.round(targetWords / 150)} sections. Each section should be substantive (150-400 words). Use the full word budget — do NOT under-write.`
           : `This is a SHORT article (${targetWords} words). Plan ${Math.max(2, Math.round(targetWords / 250))}-${Math.max(3, Math.round(targetWords / 150))} compact sections. Be concise — every sentence must earn its place.`;
 
+        // CRITICAL: language must match what the user picked in Project Basics — not
+        // hard-coded English. A mismatched system prompt was causing the model to leak
+        // German prompt scaffolding (e.g. "Hier die Eingabe des Benutzers:") because it
+        // received conflicting language signals.
+        const articleLanguage = (brief.language && brief.language.trim()) || "English";
+
         const systemMessage = `You are an expert content strategist and editorial writer with deep experience in ${brief.niche || "general topics"}.
 You write articles that feel like an experienced practitioner wrote them — not AI.
 ${brandNameForSystem ? `Brand to feature: ${brandNameForSystem}` : "No specific brand to feature."}
 Goal: Create a useful, non-pushy article that educates, builds trust and naturally integrates the provided anchor link.
-Language: US English.
+Language: ${articleLanguage}. Write the ENTIRE article in ${articleLanguage} — no mixed-language fragments, no English phrases unless they are proper nouns.
+
+ABSOLUTE OUTPUT CONTRACT (NON-NEGOTIABLE):
+Your response must be ONLY the JSON object described in the user message. NEVER include any meta-text, prompt scaffolding, instructions, or labels in the article body. Specifically, the following are FORBIDDEN inside articleBlocks (or anywhere in your response):
+  • "Hier die Eingabe des Benutzers" / "Hier ist die Eingabe" / "Eingabe:" / "Benutzereingabe:" (German)
+  • "Here is the user's input" / "User input:" / "System message:" (English)
+  • "Aquí está la entrada" / "Voici l'entrée" / "Ecco l'input" (other languages)
+  • Any phrase that labels, frames, or echoes the request
+  • Any reference to yourself as an AI, language model, assistant, or tool
+The article must read as if a human practitioner wrote it from scratch — there is no prompt, no input, no instructions visible to the reader.
+
+PERSONAL-VOICE VARIATION RULE:
+If you use first-person observations ("I have personally seen…", "Ich habe das selbst erlebt…", etc.), you may use AT MOST TWO such openers across the entire article and they MUST use different phrasings. NEVER repeat the same personal-experience opener twice.
 
 STRICT WORD COUNT CONSTRAINT (HIGHEST PRIORITY — ENFORCED BEFORE ALL OTHER RULES):
 Target: exactly ${targetWords} words. Hard minimum: ${wordCountMinSys}. Hard maximum: ${wordCountMaxSys}.
@@ -1292,6 +1310,70 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
               totalWordsInArticle: 0,
               humanizationRatio: 0,
             };
+          }
+
+          // ========================================================================
+          // PROMPT-LEAK SAFETY NET
+          // ========================================================================
+          // GPT-5.2 (and the Undetectable.AI humanizer) occasionally leak prompt
+          // scaffolding into the article body — phrases like "Hier die Eingabe des
+          // Benutzers:" (German) or "Here is the user's input:" (English). An editor
+          // will instantly reject the article if such a marker survives. This pass
+          // walks every block (paragraphs, list items, table caption/cells) and
+          // strips offending sentences. False positives are guarded against by
+          // keeping the marker list HIGHLY specific in lib/textPostProcessing.ts.
+          {
+            const leaksFound: string[] = [];
+            const stripBlock = (s: string | undefined): string | undefined => {
+              if (!s) return s;
+              const r = stripPromptLeaks(s);
+              if (r.removedSentences.length > 0) leaksFound.push(...r.removedSentences);
+              return r.cleaned;
+            };
+            articleStructure.blocks = articleStructure.blocks.map((block) => {
+              if (block.type === "ul" || block.type === "ol") {
+                const lb = block as ListBlock;
+                return {
+                  ...lb,
+                  items: (lb.items || []).map((item) => ({
+                    ...item,
+                    text: stripBlock(item.text) || "",
+                  })),
+                };
+              }
+              if (block.type === "table") {
+                const tb = block as TableBlock;
+                return {
+                  ...tb,
+                  caption: stripBlock(tb.caption),
+                  rows: (tb.rows || []).map((row) =>
+                    (row || []).map((cell) => stripBlock(cell) || "")
+                  ),
+                };
+              }
+              return { ...block, text: stripBlock(block.text) || "" };
+            });
+            // Drop any block whose text was completely emptied by leak removal
+            // (otherwise we'd render <p></p> in the final HTML).
+            articleStructure.blocks = articleStructure.blocks.filter((block) => {
+              if (block.type === "ul" || block.type === "ol") {
+                const items = (block as ListBlock).items || [];
+                return items.some((i) => (i.text || "").trim().length > 0);
+              }
+              if (block.type === "table") {
+                const tb = block as TableBlock;
+                const hasContent =
+                  (tb.caption && tb.caption.trim().length > 0) ||
+                  (tb.rows || []).some((r) => (r || []).some((c) => (c || "").trim().length > 0));
+                return !!hasContent;
+              }
+              return (block.text || "").trim().length > 0;
+            });
+            if (leaksFound.length > 0) {
+              console.warn(
+                `[articles-api] PROMPT LEAK STRIPPED: removed ${leaksFound.length} sentence(s) containing AI scaffolding markers from topic "${topic.title}". First match: "${leaksFound[0].slice(0, 120)}"`
+              );
+            }
           }
 
           // ========================================================================
