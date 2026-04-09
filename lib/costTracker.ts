@@ -18,6 +18,11 @@ const PRICING = {
       '1792x1024': 0.08,
       '1024x1792': 0.08,
     },
+    'gpt-image-1.5': {
+      '1024x1024': 0.133,    // high quality
+      '1536x1024': 0.20,     // high quality landscape
+      '1024x1536': 0.20,     // high quality portrait
+    },
   },
   // Undetectable.AI Humanizer (formerly AIHumanize): ~$0.0005 per word
   aihumanize: {

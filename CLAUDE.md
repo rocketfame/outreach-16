@@ -16,7 +16,7 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 
 - Next.js 16.0.8 (App Router), React 19.2.1, TypeScript strict
 - Vercel hosting + Vercel KV (Upstash Redis) for persistent trial usage
-- OpenAI GPT-5.2 for article generation
+- OpenAI GPT-5.2 for article generation, gpt-image-1.5 for hero images (migrated from DALL-E 3)
 - Undetectable.AI Humanization API v2 (submit + polling)
 - Tavily for trust-source validation
 - Stripe for upgrade checkout

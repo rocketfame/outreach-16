@@ -279,8 +279,8 @@ Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT techn
     }
   }
   
-  // Ensure prompt is under 4000 characters (DALL-E 3 limit)
-  if (prompt.length > 4000) {
+  // Ensure prompt is under 32000 characters (gpt-image-1.5 supports much longer prompts than DALL-E 3)
+  if (prompt.length > 32000) {
     if (customStyle && customStyle.trim()) {
       // Reference mode: truncate customStyle if needed (keep core content)
       const excessLength = prompt.length - 3900; // Leave 100 char buffer
@@ -302,8 +302,8 @@ Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT techn
     }
     
     // Final safety truncation if still too long
-    if (prompt.length > 4000) {
-      prompt = prompt.substring(0, 4000).trim();
+    if (prompt.length > 32000) {
+      prompt = prompt.substring(0, 32000).trim();
     }
   }
   
@@ -382,37 +382,37 @@ export async function POST(req: Request) {
       usedBoxIndices,
     });
     
-    // Ensure prompt is under 4000 characters (DALL-E 3 limit)
+    // Ensure prompt is under 32000 characters (gpt-image-1.5 supports much longer prompts than DALL-E 3)
     let prompt = promptText;
-    if (prompt.length > 4000) {
-      console.warn(`[article-image] Prompt too long (${prompt.length} chars), truncating to 4000`);
-      prompt = prompt.substring(0, 4000).trim();
+    if (prompt.length > 32000) {
+      console.warn(`[article-image] Prompt too long (${prompt.length} chars), truncating to 32000`);
+      prompt = prompt.substring(0, 32000).trim();
     }
     
     debugLog({ location: 'article-image/route.ts:POST', message: 'Prompt built', data: { promptLength: prompt.length, selectedBoxIndex } });
 
     // #region agent log
-    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:'dall-e-3',size:'1792x1024'},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:'gpt-image-1.5',size:'1536x1024',quality:'high'},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(apiCallLog);
     // #endregion
 
-    // Call OpenAI Images API
-    // Note: GPT-5.2 is for text generation (Chat Completions API), not image generation
-    // For image generation, we must use DALL-E models (Images API)
-    // DALL-E 3 supports sizes: "1024x1024", "1792x1024", "1024x1792"
+    // Call OpenAI Images API with gpt-image-1.5 (DALL-E 3 deprecated May 12 2026).
+    // gpt-image-1.5 supports: "1024x1024", "1536x1024" (landscape), "1024x1536" (portrait), "auto".
+    // Quality: "low", "medium", "high". We use "high" for best hero image quality.
+    // Response: b64_json only (URL not supported by gpt-image models).
     const imageResponse = await openai.images.generate({
-      model: "dall-e-3",
+      model: "gpt-image-1.5",
       prompt,
       n: 1,
-      size: "1792x1024", // horizontal hero, close to 16:9
-      response_format: "b64_json",
+      size: "1536x1024", // landscape hero
+      quality: "high",
     });
 
     const imageBase64 = imageResponse.data?.[0]?.b64_json;
 
     // Track cost
     const costTracker = getCostTracker();
-    costTracker.trackOpenAIImageGeneration('dall-e-3', '1792x1024', 1);
+    costTracker.trackOpenAIImageGeneration('gpt-image-1.5', '1536x1024', 1);
 
     if (!imageBase64) {
       // #region agent log
