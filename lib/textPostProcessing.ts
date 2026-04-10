@@ -268,9 +268,11 @@ export function removeExcessiveBold(text: string): string {
   
   let cleaned = text;
   
-  // Split by paragraph-like boundaries (</p>, </h2>, </h3>, etc.)
-  // For simplicity, we'll process the whole text but limit bold per "block"
-  const blocks = cleaned.split(/(<\/p>|<\/h[1-6]>|<\/li>)/);
+  // Split by paragraph-like boundaries AND table cell boundaries.
+  // Each segment is checked independently for excessive bold — this prevents a
+  // table with many bolded cells from having later cells stripped while earlier
+  // ones keep their formatting (which produces visually inconsistent tables).
+  const blocks = cleaned.split(/(<\/p>|<\/h[1-6]>|<\/li>|<\/td>|<\/th>)/);
   
   cleaned = blocks.map(block => {
     // Count bold tags in this block
