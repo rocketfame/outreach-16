@@ -2830,8 +2830,8 @@ export default function Home() {
       // Filter out empty strings and strings that are only punctuation/special chars
       const trimmed = word.trim();
       if (!trimmed) return false;
-      // Check if it contains at least one letter or digit (not just punctuation)
-      return /[a-zA-Z0-9]/.test(trimmed);
+      // Check if it contains at least one letter or digit in ANY script (Latin, Cyrillic, etc.)
+      return /\p{L}|\p{N}/u.test(trimmed);
     });
     
     return words.length;

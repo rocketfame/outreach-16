@@ -1420,6 +1420,48 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
             }
           }
 
+          // RAW URL SAFETY NET: if model dumped a raw URL instead of using a [Tn] or
+          // [Tn:phrase] placeholder, match the URL against trust sources and convert it
+          // to the contextual placeholder format. Also strip orphaned bare "Tn:text"
+          // fragments (model sometimes writes T1:2014 without brackets).
+          // This runs BEFORE blocksToHtml so the existing substitution pipeline picks
+          // up the converted placeholders normally.
+          if (articleStructure.trustSources.length > 0) {
+            const rawUrlRe = /https?:\/\/[^\s,)}\]<"']+/g;
+            const bareTnRe = /(?:^|\s)T[1-8]:\S+/g;
+            const fixText = (text: string): string => {
+              if (!text) return text;
+              // Step 1: convert raw URLs to [Tn:phrase] if they match a trust source
+              let fixed = text.replace(rawUrlRe, (rawUrl) => {
+                const clean = rawUrl.replace(/[.,;:!?]+$/, "");
+                const ts = articleStructure!.trustSources.find(
+                  (s) => clean === s.url || s.url.startsWith(clean) || clean.startsWith(s.url)
+                );
+                if (!ts) return rawUrl; // keep unmatched URLs
+                const phrase = ts.text.trim().split(/\s+/).slice(0, 3).join(" ");
+                return `[${ts.id}:${phrase}]`;
+              });
+              // Step 2: strip orphaned bare Tn:text (without brackets)
+              fixed = fixed.replace(bareTnRe, " ");
+              return fixed.replace(/\s{2,}/g, " ").trim();
+            };
+            articleStructure.blocks = articleStructure.blocks.map((block) => {
+              if (block.type === "ul" || block.type === "ol") {
+                const lb = block as ListBlock;
+                return { ...lb, items: (lb.items || []).map((i) => ({ ...i, text: fixText(i.text || "") })) };
+              }
+              if (block.type === "table") {
+                const tb = block as TableBlock;
+                return {
+                  ...tb,
+                  caption: fixText(tb.caption || ""),
+                  rows: (tb.rows || []).map((r) => (r || []).map((c) => fixText(c || ""))),
+                };
+              }
+              return { ...block, text: fixText(block.text || "") };
+            });
+          }
+
           // CRITICAL: Check for placeholders in blocks BEFORE converting to HTML
           const allPlaceholdersInBlocks: string[] = [];
           articleStructure.blocks.forEach(block => {
