@@ -30,6 +30,7 @@ export const maxDuration = 300;
 
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
 import { cleanText, fixHtmlTagSpacing, removeExcessiveBold, stripPromptLeaks } from "@/lib/textPostProcessing";
+import { repairHumanizedText } from "@/lib/humanizeRepair";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
@@ -1136,12 +1137,13 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                         (listBlock.items || []).map(async (item: ArticleBlockBase) => {
                           if (!item?.text || item.text.length < 100) return item;
                           try {
-                            const originalItem = item.text;
-                            const result = await humanizeSectionText(cleanText(item.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                            const originalText = cleanText(item.text);
+                            const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                             listWordsUsed += result.wordsUsed;
                             const humanizedText = cleanText(result.humanizedText);
-                            if (hasGluedWords(humanizedText) || humanizedText.length < originalItem.length * 0.6) return item;
-                            return { ...item, text: humanizedText };
+                            if (hasGluedWords(humanizedText) || humanizedText.length < originalText.length * 0.6) return item;
+                            const repair = repairHumanizedText(originalText, humanizedText);
+                            return { ...item, text: repair.text };
                           } catch { return item; }
                         })
                       );
@@ -1201,13 +1203,22 @@ Outputting outside ${wordCountMinSys}-${wordCountMaxSys} is a CRITICAL FAILURE.`
                   }
                   tasks.push({ idx: i, process: async () => {
                     try {
-                      const result = await humanizeSectionText(cleanText(block.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                      const originalText = cleanText(block.text);
+                      const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
                       const humanizedText = cleanText(result.humanizedText);
-                      if (hasGluedWords(humanizedText) || hasSpacedLetterArtifact(humanizedText) || humanizedText.length < block.text.length * 0.5) {
-                        console.warn("[humanizer] Paragraph rejected:", block.text.substring(0, 60));
+                      // Full-block reject: glued words, spaced letters, or extreme shrinkage
+                      if (hasGluedWords(humanizedText) || hasSpacedLetterArtifact(humanizedText) || humanizedText.length < originalText.length * 0.5) {
+                        console.warn("[humanizer] Paragraph rejected (full block):", originalText.substring(0, 60));
                         return { block, wordsUsed: result.wordsUsed, processed: true, humanized: false };
                       }
-                      return { block: { ...block, text: humanizedText }, wordsUsed: result.wordsUsed, processed: true, humanized: result.wordsUsed > 0 };
+                      // Sentence-level repair: revert only corrupted sentences to original GPT text.
+                      // Keeps 90%+ humanized while fixing token corruption, semantic collapse,
+                      // and soothing-phrase injection from Undetectable.AI.
+                      const repair = repairHumanizedText(originalText, humanizedText);
+                      if (repair.revertedCount > 0) {
+                        console.warn(`[humanizer] Paragraph repaired: ${repair.revertedCount} sentence(s) reverted to original. Block: "${originalText.substring(0, 60)}"`);
+                      }
+                      return { block: { ...block, text: repair.text }, wordsUsed: result.wordsUsed, processed: true, humanized: result.wordsUsed > 0 };
                     } catch { return { block, wordsUsed: 0, processed: true, humanized: false }; }
                   }});
                 }
