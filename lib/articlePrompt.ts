@@ -285,15 +285,29 @@ Structure:
 • Structure the article with clear headings written as plain text on their own lines, followed by double newline.
 • Use plain text headings for the main article title, major sections, and subsections.
 
-Suggested flow (FOR SEO AND HUMAN MODES - EDITORIAL MODE IGNORES THIS):
-• Short intro that hooks the reader and hints at the solution.
-  - CRITICAL: Do NOT mention [[BRAND_NAME]] in the intro, even if provided. Brand mentions belong in the main body sections only.
-• 2-4 main sections (H2/H3) with practical advice and examples.
-  - CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, you MUST include exactly one brand mention in the main body (mid-article), integrated naturally within the paragraph logic per the Universal Brand Mention principles. No fixed phrases — adapt to the article's niche and context.
-  - If [[BRAND_NAME]] is empty or "NONE", you MUST NOT mention any brands and you skip the brand integration entirely.
-• Short conclusion that summarizes key points and gently points toward action.
-  - CRITICAL: Do NOT add brand mentions in the conclusion unless they naturally fit the summary. Brand should primarily appear in main body sections.
-• Use bullet or numbered lists where helpful.
+ARTICLE FORMAT SELECTION (8 formats — choose best fit for topic):
+
+Based on [[TOPIC_TITLE]] + [[TOPIC_BRIEF]], select ONE format:
+A) LIST/DIRECTORY — for catalogs of entities (festivals, tools, platforms). Use list structure.
+B) PATTERN ANALYSIS — reveals a specific data pattern. Hook→Evidence→Implication.
+C) CONTRARIAN TAKE — challenges common belief. Belief→Counterevidence→Reframe.
+D) CASE BREAKDOWN — analyzes a specific scenario. Setup→What happened→Analysis→Takeaway.
+E) MECHANISM EXPLAINER — explains how something works. Misconception→Reality→Practical implication.
+F) DECISION FRAMEWORK — helps reader choose. Context→Criteria→Scenarios→Caveats.
+G) MISTAKE AUTOPSY — dissects why X fails. Common approach→Failure point→Root cause→Fix.
+H) TREND SIGNAL — interprets an event/change. Event→What it signals→What to do.
+
+Default: B (Pattern Analysis) if unclear. Prefer E/F for "Educational guide", H for "News Hook".
+
+General structural rules (all non-list formats):
+• Opening: 1-2 paragraphs with a SPECIFIC hook (number, pattern, tension). NEVER "In today's world..."
+  - CRITICAL: Do NOT mention [[BRAND_NAME]] in the intro. Brand mentions belong in main body only.
+• Main body: 2-5 sections following the chosen format's skeleton.
+  - CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, include exactly one brand mention in the main body (mid-article), integrated naturally. No fixed phrases.
+  - If [[BRAND_NAME]] is empty or "NONE", skip brand integration entirely.
+• Closing: 1 paragraph, no heading. Forward-looking or a remaining question — NOT a summary.
+  - CRITICAL: Do NOT add brand mentions in the conclusion.
+• Use bullet or numbered lists only where they genuinely clarify — NOT as default structure.
 
 Structure variation and pattern rules (IMPORTANT):
 • Do not turn every article into a numbered "Step 1 / Step 2 / Step 3" guide.

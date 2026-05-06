@@ -162,11 +162,13 @@ Topic 1:
 Working title: [compelling, specific, non-commodity H1 title — must contain a concrete angle, pattern, or finding. NEVER generic "Top N" / "Guide to" / "How to" unless followed by a highly specific narrow focus]
 Primary keyword: [main search query / keyword]
 Search intent: [informational / how to / problem solving / comparison / strategic insight]
+Recommended format: [one of: Pattern Analysis / Contrarian Take / Case Breakdown / Mechanism Explainer / Decision Framework / Mistake Autopsy / Comparison Deep-Dive / Trend Signal / List-Directory — pick the format that best fits this specific topic's angle]
 Short angle (2–3 sentences): [what the article will actually cover, concrete angle, not generic tips]
 Why it is non generic and link-worthy (1–2 sentences): [explain what makes this article deeper, more specific, or more useful than typical posts]
 How your anchor fits: [1–2 sentences with a concrete example sentence showing how [ANCHOR_TEXT] linking to [ANCHOR_URL] can appear naturally in the article. This text will be reused directly in the article brief.]
 Evergreen potential (1–2 sentences): [rate from 1 to 5 and briefly justify, e.g. "4 – exact features change, but the core logic stays the same."]
 Competition / difficulty (1–2 sentences): [low / medium / high + why, e.g. "Medium – many generic posts exist, but few focus on this specific angle for musicians and creators."]
+Traffic potential (1–2 sentences): [rate from 1 to 5 and justify: does this topic target a query people actually search? Is there clear informational intent? Would someone type something close to this into Google?]
 
 Topic 2:
 [Repeat the same fields as for Topic 1]
