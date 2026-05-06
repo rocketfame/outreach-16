@@ -1654,43 +1654,60 @@ F) "Other"
 	•	[[BRAND_NAME]] may be skipped, or mentioned once very lightly if it feels natural in main body sections, per principles above.
 
 ================================
-2. CHOOSING FORMAT: LIST OR GUIDE
+2. CHOOSING ARTICLE FORMAT (8 formats available)
 
-First, respect Content purpose:
+Analyze [[TOPIC_TITLE]] + [[TOPIC_BRIEF]] + [[CONTENT_PURPOSE]] and select the BEST-FIT format from below. The format determines the article's structural skeleton and narrative approach.
 
-• If [[CONTENT_PURPOSE]] = "Educational guide" and [[TOPIC_BRIEF]] does NOT explicitly demand a pure list/directory, treat the topic as a GUIDE.
+────────────────────────────────────────────────────────────────
+FORMAT A) LIST / DIRECTORY
+When: topic focuses on cataloging concrete entities (festivals, tools, platforms, services, events, playlists, labels, apps).
+Signals: "list", "directory", "top", "best", "roundup", "catalog", "announced for 202X", year + entity type.
+→ Use section 3 structure below.
 
-Then use [[TOPIC_TITLE]] + [[TOPIC_BRIEF]] to classify when needed:
+FORMAT B) PATTERN ANALYSIS
+When: topic reveals a specific, observable pattern or data-driven finding.
+Signals: "why X happens", "the pattern behind", "what the data shows", numbers/percentages in title.
+Structure: Hook (state the pattern) → Evidence (2-3 sections showing the pattern from different angles) → Implication (what practitioners should do differently).
 
-A) LIST / DIRECTORY TOPIC
+FORMAT C) CONTRARIAN TAKE
+When: topic challenges conventional wisdom or common advice.
+Signals: "why X backfires", "the myth of", "what everyone gets wrong about", "against", "overrated".
+Structure: Conventional belief (state what "everyone" thinks) → Counterevidence (2-3 sections showing why it fails) → Reframe (alternative perspective + when the conventional approach DOES work).
 
-Choose this format if ANY of these is true:
-	1.	The title or brief contains words like
-"list", "directory", "top", "best", "roundup", "catalog",
-"all X you should know".
-	2.	The topic clearly focuses on objects:
-"festivals", "events", "venues", "playlists", "labels", "platforms",
-"tools", "services", "channels", "blogs", "agencies", "apps", "programs", etc.
-	3.	There is a year or phrasing like
-"announced for 2025/2026", "2026 festivals", "2025 platforms",
-together with festivals / events / platforms / tools.
+FORMAT D) CASE BREAKDOWN
+When: topic analyzes a specific scenario, experiment, or observable industry example.
+Signals: "one label's experiment", "what happened when", "breakdown of", "behind the scenes", "anatomy of".
+Structure: Setup (the situation/context) → What happened (chronological or cause-effect) → Analysis (why it turned out this way) → Takeaway (what others can learn). Frame as "industry observation", never fake personal experience.
 
-IMPORTANT:
-If there are both "list" and "guide" signals
-(for example "Underground Electronic Music Festivals Announced for 2026: What Creators Should Do Now"),
-you STILL choose LIST FORMAT, unless [[TOPIC_BRIEF]] explicitly says
-to write a guide instead.
+FORMAT E) MECHANISM EXPLAINER
+When: topic explains HOW something works under the hood (algorithm, system, process, business model).
+Signals: "how X actually works", "inside", "the mechanics of", "what triggers", "under the hood".
+Structure: Common misconception (what people THINK happens) → Reality (the actual mechanism in 2-3 sections) → Practical implication (what this means for the reader's decisions).
 
-B) ADVICE / GUIDE TOPIC
+FORMAT F) DECISION FRAMEWORK
+When: topic helps the reader make a specific choice by providing a structured decision tree.
+Signals: "when to", "which one", "the decision", "choosing between", "framework for", "if X then Y".
+Structure: The decision context (why this choice matters) → Decision criteria (2-4 clear factors) → Scenarios (if situation A → do X; if situation B → do Y) → Edge cases and caveats.
 
-Choose this format when the topic is clearly about strategy, for example:
-	•	"how to", "guide", "playbook", "framework", "strategy",
-	•	"tips", "best practices", "mistakes to avoid",
-AND it is not primarily a directory of festivals / events / platforms / tools.
+FORMAT G) MISTAKE AUTOPSY
+When: topic dissects why a common approach typically fails.
+Signals: "why X fails", "the mistake", "autopsy", "what goes wrong", "the trap", "pitfall", "die by day N".
+Structure: The common approach (what people do) → Where it breaks (the specific failure point) → Root cause (why it breaks there) → Fix (the corrected approach). Be specific about the failure mechanism, not generic "avoid these mistakes."
 
-If you are unsure after all checks and the topic mentions concrete entities
-(festivals, platforms, tools, agencies, services),
-prefer LIST FORMAT, except when Content purpose forces "Educational guide" explicitly and the brief does not demand a pure list.
+FORMAT H) TREND SIGNAL
+When: topic interprets what a specific event, change, or announcement means for practitioners.
+Signals: "what X signals about", "what this means for", "implications of", "after the announcement", platform updates.
+Structure: The event (factual, brief) → What it signals (interpretation, 2-3 angles) → What to do about it (concrete next steps for the reader). NOT a news recap — an analytical interpretation.
+────────────────────────────────────────────────────────────────
+
+SELECTION PRIORITY:
+1. If topic is clearly a directory/catalog of entities → FORMAT A (LIST)
+2. If [[CONTENT_PURPOSE]] = "Educational guide" → prefer FORMAT E (MECHANISM) or FORMAT F (DECISION FRAMEWORK)
+3. If [[CONTENT_PURPOSE]] = "News Hook" → prefer FORMAT H (TREND SIGNAL)
+4. For all other cases → choose the format whose description best matches [[TOPIC_TITLE]] + [[TOPIC_BRIEF]]
+5. If genuinely unclear → default to FORMAT B (PATTERN ANALYSIS) as it is the most versatile non-commodity format
+
+CRITICAL: Do NOT default to generic "guide" or "listicle" structure. Every article must have a clear format identity from the list above. The format shapes how you organize information — follow it.
 
 ================================
 3. STRUCTURE FOR LIST / DIRECTORY TOPICS
@@ -1755,34 +1772,34 @@ b) ONE short concluding paragraph as plain text (NO heading above it).
 	•	If you only have a conclusion (no sources), just output the paragraph with no heading above it.
 
 ================================
-4. STRUCTURE FOR ADVICE / GUIDE TOPICS
+4. STRUCTURE FOR NON-LIST FORMATS (B through H)
 
-Use this when the topic is clearly about strategy / "how to",
-or when [[CONTENT_PURPOSE]] = "Educational guide" and the brief does not demand a pure list.
-	1.	Intro
-	•	1-2 short paragraphs: direct problem + hint of the solution.
-	•	Tie the problem clearly to [[NICHE]] and [[MAIN_PLATFORM]].
-	•	If [[TOPIC_BRIEF]] asks for specific angles or examples, reflect them here.
-	2.	Main body
-	•	2-4 section headings (written as plain text on their own lines) with practical steps, frameworks or tips.
-	•	Use concrete examples tied to [[NICHE]] and [[MAIN_PLATFORM]]
-(for example: CRM funnel in casino, Spotify release strategy, recruiting flow for HR, VPN user journey, etc.).
-	•	Follow any structural requests in [[TOPIC_BRIEF]] where possible
-(required sections, important points, regional focus, risk section, etc.).
-	•	Avoid vague advice with no detail. Every section should give the reader something to do, check, or decide.
-	3.	Brand integration in guide topics
-	•	CRITICAL: Follow the brand integration rules from section "1. CONTENT PURPOSE & BRAND VOICE" above. These rules are MANDATORY and apply to guide topics.
-	•	All brand placement rules and frequency rules from section "1. CONTENT PURPOSE & BRAND VOICE" apply to guide topics.
-	•	For guide topics specifically: You may optionally create one very short subsection (within the main body) showing how [[BRAND_NAME]] helps solve a specific problem discussed in that section (not a hard ad, just a natural mention as part of the solution discussion).
-	•	Always focus on how the brand helps the reader solve a concrete problem discussed in the article, not on "buy now" copy.
-	•	Brand mentions should feel like natural solutions to problems, not like advertising inserted at the end.
-	4.	Conclusion
-	•	Short, concrete recap with 1-3 key takeaways or next steps.
-	•	Avoid clichés like "in conclusion", "in today's digital world", "at the end of the day".
-	•	FORBIDDEN words (avoid corporate/AI tone): "ultimately", "leverage" (use "use"), "utilize" (use "use"), "in the ever-evolving landscape of".
-	•	GRAMMAR: Do NOT concatenate sentences without punctuation. WRONG: "evolved Through using". CORRECT: "evolved. Through using" or rephrase.
-	•	If [[TOPIC_BRIEF]] requests a specific type of closing (for example "give next steps"
-or "end with a short checklist"), follow that as long as it stays concise.
+Use this for ALL formats except LIST/DIRECTORY. The chosen format (from section 2) determines the narrative skeleton; these are SHARED structural rules.
+
+	1.	Opening (1-2 paragraphs)
+	•	Start with a specific, concrete observation — a number, a pattern, a surprising fact, or a tension.
+	•	NEVER start with "In today's digital world...", "In the ever-evolving landscape...", or any generic preamble.
+	•	Within 2 sentences the reader must know: what specific thing this article is about and why it's worth reading.
+	•	Tie the opening to [[NICHE]] and [[MAIN_PLATFORM]].
+
+	2.	Main body (2-5 sections)
+	•	Follow the structural skeleton defined by your chosen FORMAT (B-H) in section 2.
+	•	Each section must deliver SPECIFIC value: a mechanism, a data point, a decision criterion, a failure mode — not generic advice.
+	•	Use concrete examples tied to [[NICHE]] and [[MAIN_PLATFORM]].
+	•	Vary section lengths: some sections 2-3 paragraphs, some just 1 paragraph with a key insight.
+	•	Follow structural requests in [[TOPIC_BRIEF]] where possible.
+	•	Avoid vague advice. If a section could apply to any niche without modification — it's too generic, make it specific.
+
+	3.	Brand integration
+	•	Follow brand integration rules from section "1. CONTENT PURPOSE & BRAND VOICE" above (MANDATORY).
+	•	Brand mention appears naturally as one practitioner-level reference within the main body — never as advertising.
+	•	Brand should solve a concrete problem discussed in the article, not be praised generically.
+
+	4.	Closing (1 paragraph, no heading)
+	•	Short, concrete. 2-4 sentences max.
+	•	End with a forward-looking statement, a remaining question, or a specific next step — NOT a summary of what was just said.
+	•	FORBIDDEN: "in conclusion", "to sum up", "at the end of the day", "ultimately", "leverage", "utilize", "in the ever-evolving landscape of".
+	•	GRAMMAR: Do NOT concatenate sentences without punctuation.
 
 ================================
 5. UNIVERSAL PROMPT: NATURAL COMMERCIAL ANCHOR & BRAND INTEGRATION
