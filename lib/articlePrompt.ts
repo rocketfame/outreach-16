@@ -136,10 +136,10 @@ Human-written style and anti-AI-signature rules (v2 – CRITICAL):
   – Avoid repeating the pattern "Label: explanation" in every bullet.
   – In some sections, skip bullets completely and keep it as narrative text.
 
-• Add small human "imperfections":
-  – Occasional side notes in brackets.
-  – One or two slightly informal phrases per section ("honestly", "the funny part is", "here's the catch").
-  – A couple of sentences that are a bit longer and messy, like natural thinking, not textbook-perfect.
+• Keep the tone natural but CLEAN:
+  – Occasional side notes in brackets are fine.
+  – One or two slightly informal phrases per section are fine ("honestly", "here's the catch").
+  – But NEVER introduce grammatical errors, broken sentences, or intentional messiness. The text goes through a humanizer later — deliberate imperfections become real errors after processing. Write CLEAN, grammatically correct text with natural voice.
 
 • Use 1–2 micro anecdotes or realistic snapshots per article:
   – For example: "I keep seeing artists who…", "One team I worked with tried…".
@@ -159,7 +159,7 @@ Human-written style and anti-AI-signature rules (v2 – CRITICAL):
   – Do not overuse words like "strategy", "framework", "step-by-step system" in tight clusters.
   – When you describe a process, you can break it into parts, but keep the wording natural, as if explaining it aloud.
 
-• Important: do NOT over-optimise for "smartness". A slightly rough, conversational, opinionated article is better than a perfectly polished, highly symmetrical one. The text should be something a human editor might tweak, not something that already looks like a polished manual.
+• Important: do NOT over-optimise for "smartness". A conversational, opinionated article is better than a sterile, overly symmetrical one. But the text must be grammatically CLEAN — no broken sentences, no intentional typos, no "messy" writing. The humanizer runs after generation and will amplify any errors. Write correct, natural prose.
 
 • Avoid generic SEO filler and overused phrases:
   – Do NOT use cliches like "in today's digital world", "in the ever evolving landscape of", "it is no secret that".
@@ -782,7 +782,7 @@ After generating the article, perform a quick human QA:
 	•	Remove 1-2 overly "academic" sentences.
 	•	Add one micro-comment from yourself ("honestly, most people mess this up" or similar vibe) – in English, but with that casual tone.
 	2.	If you see perfect "Phase 1/2/3" structure with identical formatting – regenerate that section with instruction:
-"Rewrite this section in a more narrative, slightly messy paragraph style, with fewer formal subheadings and more conversational flow."
+"Rewrite this section in a more narrative paragraph style, with fewer formal subheadings and more conversational flow. Keep grammar clean."
 	3.	For the most important articles – run a "plain text rewrite" through your Human Rewrite Mode (second prompt designed for plain text).
 
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
@@ -796,7 +796,7 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • CRITICAL - Commercial anchor from Project basics: If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, [A1] MUST appear EXACTLY ONCE inside paragraph 1, 2, or 3 (preferably 2 or 3, never the conclusion). Verify before output. NEVER skip the anchor.
 • The article structure matches the brief requirements.
 • All formatting rules are followed (plain text with newlines, markdown-style bold, placeholder rules, character rules).
-• The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
+• The article feels conversational and opinionated, but grammatically clean — no broken sentences, no intentional errors.
 
 MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. If over, shorten the weakest sections first (intro fluff, conclusion restatements, redundant examples) before outputting.
 
@@ -2055,10 +2055,10 @@ Remember: For outreach articles, authoritative quotes, industry statistics, and 
 	– Avoid repeating the pattern "Label: explanation" in every bullet.
 	– In some sections, skip bullets completely and keep it as narrative text.
 
-• Add small human "imperfections":
-	– Occasional side notes in brackets.
-	– One or two slightly informal phrases per section ("honestly", "the funny part is", "here's the catch").
-	– A couple of sentences that are a bit longer and messy, like natural thinking, not textbook-perfect.
+• Keep the tone natural but CLEAN:
+	– Occasional side notes in brackets are fine.
+	– One or two slightly informal phrases per section are fine ("honestly", "here's the catch").
+	– But NEVER introduce grammatical errors, broken sentences, or intentional messiness. The text goes through a humanizer later — deliberate imperfections become real errors after processing. Write CLEAN, grammatically correct text with natural voice.
 
 • Use 1–2 micro anecdotes or realistic snapshots per article:
 	– For example: "I keep seeing artists who…", "One team I worked with tried…".
@@ -2091,7 +2091,7 @@ Remember: For outreach articles, authoritative quotes, industry statistics, and 
 	– Do not overuse words like "strategy", "framework", "step-by-step system" in tight clusters.
 	– When you describe a process, you can break it into parts, but keep the wording natural, as if explaining it aloud.
 
-• Important: do NOT over-optimise for "smartness". A slightly rough, conversational, opinionated article is better than a perfectly polished, highly symmetrical one. The text should be something a human editor might tweak, not something that already looks like a polished manual.
+• Important: do NOT over-optimise for "smartness". A conversational, opinionated article is better than a sterile, overly symmetrical one. But the text must be grammatically CLEAN — no broken sentences, no intentional typos, no "messy" writing. The humanizer runs after generation and will amplify any errors. Write correct, natural prose.
 
 • Avoid generic SEO filler and overused phrases:
 	– Do NOT use clichés like "in today's digital world", "in the ever-evolving landscape of…", "it's no secret that…".
@@ -2257,7 +2257,7 @@ After generating the article, perform a quick human QA:
 	•	Remove 1-2 overly "academic" sentences.
 	•	Add one micro-comment from yourself ("honestly, most people mess this up" or similar vibe) – in English, but with that casual tone.
 	2.	If you see perfect "Phase 1/2/3" structure with identical formatting – regenerate that section with instruction:
-"Rewrite this section in a more narrative, slightly messy paragraph style, with fewer formal subheadings and more conversational flow."
+"Rewrite this section in a more narrative paragraph style, with fewer formal subheadings and more conversational flow. Keep grammar clean."
 	3.	For the most important articles – run a "plain text rewrite" through your Human Rewrite Mode (second prompt designed for plain text).
 
 Note: This check is a reminder for post-processing. Focus on generating naturally human-sounding content from the start.
@@ -2277,7 +2277,7 @@ FINAL VERIFICATION BEFORE OUTPUT:
 • If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are valid, check that the [A1] placeholder appears exactly once inside paragraph 1, 2, or 3 (preferably 2 or 3, never the conclusion). NEVER skip it.
 • Confirm that you used 0-3 relevant trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]].
 • Scan all block texts/items/cells for forbidden characters (em dash, en dash, smart quotes, ellipsis character) and remove or replace them.
-• The article feels slightly rough and conversational, not perfectly polished – like something a human editor might tweak.
+• The article feels conversational and opinionated, but grammatically clean — no broken sentences, no intentional errors.
 • Make sure there is NO extra text outside the JSON object.
 
 MANDATORY: Total word count of all text in articleBlocks MUST be ≤ [[WORD_COUNT_MAX]]. If over, shorten the weakest sections first (intro fluff, conclusion restatements, redundant examples) before outputting.
