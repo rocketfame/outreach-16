@@ -5698,9 +5698,28 @@ export default function Home() {
                         clustersMap.get(topic.clusterName)!.push(topic);
                       });
 
-                      // Helper function to map searchIntent to human-readable label
+                      // Helper function to map searchIntent/format to human-readable label
                       const getSearchIntentLabel = (intent: Topic['searchIntent']) => {
                         switch (intent) {
+                          case 'pattern_analysis':
+                            return 'Pattern Analysis';
+                          case 'contrarian_take':
+                            return 'Contrarian Take';
+                          case 'case_breakdown':
+                            return 'Case Breakdown';
+                          case 'mechanism_explainer':
+                            return 'Mechanism Explainer';
+                          case 'decision_framework':
+                            return 'Decision Framework';
+                          case 'mistake_autopsy':
+                            return 'Mistake Autopsy';
+                          case 'comparison_deep_dive':
+                            return 'Comparison Deep-Dive';
+                          case 'trend_signal':
+                            return 'Trend Signal';
+                          case 'list_directory':
+                            return 'List / Directory';
+                          // Legacy values (backward compat with old saved topics)
                           case 'how_to':
                             return 'How-to';
                           case 'informational':
@@ -5769,11 +5788,11 @@ export default function Home() {
                                     </div>
                                   )}
                                   
-                                  {/* Second Row: Title with Number Badge */}
+                                  {/* Second Row: Article Title with Number Badge */}
                                   <div className="topic-title-wrapper">
                                     <span className="cluster-number-badge">{clusterNumber}</span>
                                     <h4 className="topic-cluster-name">
-                                      {clusterName}
+                                      {firstTopic?.workingTitle || clusterName}
                                     </h4>
                                     {hasArticle && (
                                       <span className="topic-completed-badge-header" title={headerArticle?.createdAt ? `Article created: ${new Date(headerArticle.createdAt).toLocaleString()}` : "Article created"}>

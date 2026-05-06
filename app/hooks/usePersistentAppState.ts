@@ -21,7 +21,7 @@ export type Topic = {
   problem: string;
   workingTitle: string;
   primaryKeyword: string;
-  searchIntent: 'informational' | 'strategic' | 'how_to' | 'problem_solving' | 'comparison';
+  searchIntent: 'pattern_analysis' | 'contrarian_take' | 'case_breakdown' | 'mechanism_explainer' | 'decision_framework' | 'mistake_autopsy' | 'comparison_deep_dive' | 'trend_signal' | 'list_directory' | 'informational' | 'strategic' | 'how_to' | 'problem_solving' | 'comparison';
   shortAngle: string;
   whyNonGeneric: string;
   howAnchorFits: string;

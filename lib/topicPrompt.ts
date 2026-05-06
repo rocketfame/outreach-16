@@ -70,11 +70,12 @@ Research and strategy rules:
 1. Think in clusters, not isolated ideas:
 • Each cluster should represent a clear angle or problem space (for example: algorithms and reach, safe/ethical promotion, funnels, analytics, monetization, long-term strategy, mistakes to avoid, news and industry changes, etc.).
 • Each cluster must be described so that an outsider immediately understands who it is for and what problem it solves.
-• Cluster by search intent:
-  • 'how to / practical guides' (informational, how_to)
-  • 'comparison / best X vs Y' (comparison)
-  • 'informational / explanatory' (informational)
-  • 'opinion / future / next-year angle' (strategic)
+• Cluster by article format (use the 8 formats from the NON-COMMODITY CONTENT RULE above):
+  • Pattern Analysis / Mechanism Explainer (how/why something works)
+  • Contrarian Take / Mistake Autopsy (challenging assumptions, failure analysis)
+  • Case Breakdown / Trend Signal (specific scenario or event interpretation)
+  • Decision Framework / Comparison Deep-Dive (helping reader choose)
+  • List/Directory (only for catalogs of entities)
 • Cluster by reader level:
   • Basic topics for beginners (fundamentals, first steps)
   • Advanced topics (analytics, case studies, strategy)
@@ -161,8 +162,7 @@ Audience & problem: [one sentence: who this cluster is for and what problem it s
 Topic 1:
 Working title: [compelling, specific, non-commodity H1 title — must contain a concrete angle, pattern, or finding. NEVER generic "Top N" / "Guide to" / "How to" unless followed by a highly specific narrow focus]
 Primary keyword: [main search query / keyword]
-Search intent: [informational / how to / problem solving / comparison / strategic insight]
-Recommended format: [one of: Pattern Analysis / Contrarian Take / Case Breakdown / Mechanism Explainer / Decision Framework / Mistake Autopsy / Comparison Deep-Dive / Trend Signal / List-Directory — pick the format that best fits this specific topic's angle]
+Article format: [one of: Pattern Analysis / Contrarian Take / Case Breakdown / Mechanism Explainer / Decision Framework / Mistake Autopsy / Comparison Deep-Dive / Trend Signal / List-Directory — pick the format that best fits this specific topic's angle. This determines the article structure.]
 Short angle (2–3 sentences): [what the article will actually cover, concrete angle, not generic tips]
 Why it is non generic and link-worthy (1–2 sentences): [explain what makes this article deeper, more specific, or more useful than typical posts]
 How your anchor fits: [1–2 sentences with a concrete example sentence showing how [ANCHOR_TEXT] linking to [ANCHOR_URL] can appear naturally in the article. This text will be reused directly in the article brief.]
@@ -259,12 +259,12 @@ Return exactly this JSON shape:
   "overview": "2–4 sentences describing the biggest content opportunities for MAIN_PLATFORM within MAIN_NICHE, and how outreach articles can support BRAND_NAME positioning.",
   "topics": [
     {
-      "clusterName": "string - short cluster name",
+      "clusterName": "string - short thematic cluster label (2-4 words). NEVER reuse generic labels like 'Algorithms', 'Safety', 'Analytics', 'Timing'. Make each cluster name SPECIFIC to the angle, e.g. 'Post-Release Drop-off', 'Metadata Blind Spots', 'DJ Promo Timing'",
       "forWho": "string - one sentence: who this cluster is for",
       "problem": "string - one sentence: what problem it solves",
-      "workingTitle": "string - compelling H1-style title",
+      "workingTitle": "string - the ACTUAL article title (H1). Must be specific, non-commodity, curiosity-driven. This is displayed directly to the user as the topic name. NEVER generic ('Guide to X', 'Tips for Y'). Must read like a published article headline.",
       "primaryKeyword": "string - main search query / keyword",
-      "searchIntent": "informational | how_to | problem_solving | comparison | strategic",
+      "searchIntent": "pattern_analysis | contrarian_take | case_breakdown | mechanism_explainer | decision_framework | mistake_autopsy | comparison_deep_dive | trend_signal | list_directory",
       "shortAngle": "string - 2–3 sentences describing the concrete angle",
       "whyNonGeneric": "string - 1–2 sentences explaining what makes this deeper/more specific",
       "howAnchorFits": "string - 1–2 sentences with concrete example showing how ANCHOR_TEXT → ANCHOR_URL fits naturally (or 'N/A - This is a blog article without anchor links' if no anchors provided)",
@@ -279,7 +279,7 @@ Return exactly this JSON shape:
 REQUIREMENTS:
 * Always return at least 5 topics and at most 8 topics in the topics array.
 * Spread topics across 3–5 different clusters (clusterName can repeat across topics if they belong to the same cluster).
-* searchIntent must be one of: "informational", "how_to", "problem_solving", "comparison", "strategic"
+* searchIntent must be one of: "pattern_analysis", "contrarian_take", "case_breakdown", "mechanism_explainer", "decision_framework", "mistake_autopsy", "comparison_deep_dive", "trend_signal", "list_directory"
 * evergreenScore must be a number from 1 to 5
 * competitionLevel must be one of: "low", "medium", "high"
 * All string fields must be non-empty (except howAnchorFits can be 'N/A' if no anchors are provided)
