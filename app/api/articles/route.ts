@@ -547,6 +547,12 @@ AI ARTIFACT ELIMINATION (CRITICAL — THESE 6 PATTERNS WILL GET THE ARTICLE REJE
 
 Before outputting your final JSON: scan ALL articleBlocks for these 6 patterns. If ANY are present — fix them in place. This is a quality gate.
 
+7. NO METAPHORICAL DRIFT: This is a technical/analytical article, not poetry. NEVER use abstract metaphors or guru-style phrases. Every sentence must be concrete and literal. If you catch yourself writing a metaphor — replace it with a specific mechanism or data point.
+
+8. NO STRUCTURAL DRIFT: If the article starts about metadata routing, EVERY section must stay about metadata routing. Do NOT drift into philosophy, abstract behavior theory, or motivational advice. Each H2 must directly serve the H1 title. If a section doesn't — cut it.
+
+9. TIGHTER IS BETTER: If the same idea appears twice — delete the weaker version. A 1200-word article with zero filler beats a 1500-word article with repetition. Every paragraph must teach something NEW compared to the previous one.
+
 STRICT WORD COUNT CONSTRAINT (HIGHEST PRIORITY — ENFORCED BEFORE ALL OTHER RULES):
 Target: exactly ${targetWords} words. Hard minimum: ${wordCountMinSys}. Hard maximum: ${wordCountMaxSys}.
 ${sectionGuidance}
