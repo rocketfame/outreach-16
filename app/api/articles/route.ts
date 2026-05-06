@@ -529,7 +529,23 @@ Your response must be ONLY the JSON object described in the user message. NEVER 
 The article must read as if a human practitioner wrote it from scratch — there is no prompt, no input, no instructions visible to the reader.
 
 PERSONAL-VOICE VARIATION RULE:
-If you use first-person observations ("I have personally seen…", "Ich habe das selbst erlebt…", etc.), you may use AT MOST TWO such openers across the entire article and they MUST use different phrasings. NEVER repeat the same personal-experience opener twice.
+If you use first-person observations ("I have personally seen…", "Ich habe das selbst erlebt…", "Mir ist aufgefallen…", "Ich habe bemerkt…", etc.), you may use AT MOST TWO such phrases across the ENTIRE article. They MUST use completely different wording. Before outputting, COUNT every first-person experience phrase — if more than 2, DELETE the extras. This is non-negotiable.
+
+AI ARTIFACT ELIMINATION (CRITICAL — THESE 6 PATTERNS WILL GET THE ARTICLE REJECTED):
+
+1. FILLER SENTENCES: Every sentence must add NEW information. If a sentence restates what the previous sentence already said — DELETE it. Example of FORBIDDEN filler: "Der Track bekommt dann neue Chancen, weil das System die Daten nutzt." — says nothing new. Either add a specific detail or remove entirely.
+
+2. GENERATIVE REPETITION: NEVER repeat a phrase or noun within the same paragraph. FORBIDDEN: "Die Melodic-Techno-Nummer hat... Die Melodic-Techno-Nummer klingt... Die Melodic-Techno-Nummer..." — use pronouns, synonyms, or restructure. FORBIDDEN: "mehr Schärfe in den Metadaten, mehr Schärfe in den Metadaten hilft" — this is a broken duplicate sentence. Fix it or delete it.
+
+3. OVER-EXPLAINING: State a point ONCE. Trust the reader. Do NOT rephrase the same idea in the next sentence. If you explained that metadata determines audience targeting, do NOT then write "Ich finde das wichtig, weil das System die Metadaten braucht, um richtig zu funktionieren" — that adds zero new information.
+
+4. OBVIOUS COMMENTARY: If a fact speaks for itself, do NOT add "Das zeigt, dass..." / "This shows that..." / "This means that..." commentary after it. FORBIDDEN: "Spotify hat einen Prozess dafür. Das zeigt, dass das oft vorkommt." — the second sentence is unnecessary editorial hand-holding. Delete it.
+
+5. RHYTHMIC MONOTONY: Do NOT build every paragraph as thesis → explanation → "Ich habe das erlebt" → restatement. VARY structure aggressively: some paragraphs are 1-2 sharp sentences. Some start with a question. Some start with a number or data point. Some are 4-5 sentences of detailed mechanism. If two consecutive paragraphs have the same shape — rewrite one.
+
+6. HUMAN-PHRASE STUFFING: "Ich finde das wichtig", "Ich habe das selbst erlebt", "Mir ist aufgefallen" — fine 1-2 times TOTAL. Beyond that it becomes a visible AI pattern. The article already has a human voice through its specific content and analytical angle — you do not need to ANNOUNCE that you are human by repeating experience phrases.
+
+Before outputting your final JSON: scan ALL articleBlocks for these 6 patterns. If ANY are present — fix them in place. This is a quality gate.
 
 STRICT WORD COUNT CONSTRAINT (HIGHEST PRIORITY — ENFORCED BEFORE ALL OTHER RULES):
 Target: exactly ${targetWords} words. Hard minimum: ${wordCountMinSys}. Hard maximum: ${wordCountMaxSys}.

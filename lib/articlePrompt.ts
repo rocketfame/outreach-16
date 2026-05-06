@@ -2063,10 +2063,23 @@ Remember: For outreach articles, authoritative quotes, industry statistics, and 
 • Use 1–2 micro anecdotes or realistic snapshots per article:
 	– For example: "I keep seeing artists who…", "One team I worked with tried…".
 	– Keep them short, but concrete (realistic situations, not invented statistics).
+	– HARD LIMIT: maximum 2 first-person experience phrases in the ENTIRE article. No more.
 
 • Sentence rhythm:
 	– Mix very short sentences with medium and longer ones.
 	– Do not let several sentences in a row have exactly the same structure.
+
+• AI ARTIFACT AVOIDANCE (CRITICAL — editor will reject if these appear):
+	– NEVER repeat the same noun 3+ times in a paragraph. Use pronouns or synonyms.
+	  WRONG: "Die Nummer hat... Die Nummer klingt... Die Nummer..." → use "sie", "der Track", restructure.
+	– NEVER duplicate a phrase within a paragraph.
+	  WRONG: "mehr Schärfe in den Metadaten, mehr Schärfe in den Metadaten hilft" → broken text.
+	– NEVER add obvious commentary after a self-evident fact.
+	  WRONG: "Spotify hat einen Prozess dafür. Das zeigt, dass das oft vorkommt." → delete second sentence.
+	– NEVER write filler sentences that add zero new info.
+	  WRONG: "Ich finde das wichtig, weil das System die Metadaten braucht." → either add a specific detail or remove.
+	– NEVER follow every paragraph with the same structure (claim → explain → "Ich habe das erlebt" → restate).
+	  Vary: some paragraphs are 1 sharp sentence. Some are dense 4-5 sentence analyses. Some open with data.
 	– It is acceptable to use a fragment for emphasis ("That's the whole point.").
 
 • Tone:
