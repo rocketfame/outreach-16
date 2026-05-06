@@ -29,6 +29,43 @@ Context and audience:
   • non-generic and worth linking to
   • naturally compatible with placing the anchor [ANCHOR_TEXT] → [ANCHOR_URL] inside the body of the article.
 
+================================================================
+NON-COMMODITY CONTENT RULE (CRITICAL — READ FIRST)
+================================================================
+Google and editorial gatekeepers are actively devaluing "commodity content" —
+generic listicles, standard advice collections, and predictable "Top N" posts.
+
+Your topics MUST be NON-COMMODITY. This means:
+• SPECIFIC over general: one concrete situation, one real pattern, one unexpected finding
+• ANALYTICAL over prescriptive: "why X happens" beats "how to do X"
+• CONTRARIAN or NON-OBVIOUS: challenge assumptions, reveal hidden patterns, present unexpected conclusions
+• CASE-STUDY shaped: frame around a specific scenario, data point, or observable pattern — not abstract advice
+
+COMMODITY (FORBIDDEN):
+  ❌ "Top 10 Tips for Growing on Spotify"
+  ❌ "Complete Guide to TikTok Marketing"
+  ❌ "Best Practices for Playlist Pitching"
+  ❌ "How to Get More Followers in 2026"
+  ❌ "Everything You Need to Know About..."
+
+NON-COMMODITY (REQUIRED):
+  ✓ "Why Playlist Placement Before 1000 Monthly Listeners Backfires: The Drop-off Pattern"
+  ✓ "The 48-Hour Window After Release: What Actually Triggers Algorithm Pickup"
+  ✓ "Why Most DJ Promo Campaigns Fail by Day 3: A Timing Breakdown"
+  ✓ "One Label's Experiment: Releasing at 2AM vs Friday Noon and What the Data Showed"
+  ✓ "The Metadata Detail That Costs Mid-Tier Artists 30% of Their Discovery Traffic"
+
+Non-commodity topics share these traits:
+  • A specific, narrow focus (not "everything about X")
+  • An observable pattern or finding (not generic advice)
+  • A built-in reason to keep reading (curiosity, tension, surprise)
+  • An angle that can't be replicated by asking ChatGPT "give me tips about X"
+
+Apply this lens to EVERY topic you generate. If a topic could be the title of a
+generic blog post that already exists in 50 copies on the internet — REJECT it
+and find a more specific, analytical, or contrarian angle.
+================================================================
+
 Research and strategy rules:
 1. Think in clusters, not isolated ideas:
 • Each cluster should represent a clear angle or problem space (for example: algorithms and reach, safe/ethical promotion, funnels, analytics, monetization, long-term strategy, mistakes to avoid, news and industry changes, etc.).
@@ -57,20 +94,26 @@ Pay special attention to the following:
 • Fresh data: MAU, DAU, share numbers, studies, and case studies from the last 24 months relative to the current date (not older than two years)
 • Gaps: topics that are missing, too shallow, outdated, or overly generic
 
-3. Reject low-quality topics (REJECT):
-• Any '10 tips to grow on X' type topics without depth and a clear framework
+3. Reject low-quality and COMMODITY topics (REJECT):
+• Any 'N tips to grow on X' / 'Complete Guide to X' / 'Best Practices for X' type topics — these are commodity content
+• Any topic that reads like a generic blog post title already published by 50 different sites
+• Any topic framed as a broad overview rather than a specific analytical angle
 • Pure news posts that will expire in a month and do not provide structural takeaways
 • Topics where it is impossible to write 800+ words without fluff
 • Ideas where the anchor can only be inserted as obvious advertising
 • Topics that repeat the same pattern (for example, several different articles with the same 'how to make money with…' scheme)
 • More than one topic whose primary focus is direct monetization. Monetization can appear as a side effect but not as the only lens.
+• Topics that start with "How to", "Top", "Best", "Ultimate", "Complete", "Everything" — unless the rest of the title adds a highly specific, narrow angle that makes it non-commodity
 
-4. Keep only high-quality topics (ACCEPT):
+4. Keep only high-quality NON-COMMODITY topics (ACCEPT):
+• Topics built around a SPECIFIC pattern, finding, or scenario — not general advice
+• Topics with a contrarian, non-obvious, or analytical angle that creates curiosity
 • Topics where you can provide a real structure / framework / decision system
 • Topics where the anchor can be woven in as a logical tool in the middle of the article (not in the intro)
 • Topics with high evergreen potential (score 3–5/5), even if they rely on recent data and case studies
 • Topics that naturally lead to the anchor: real problem → explanation → then a mention that some companies/users solve this through [ANCHOR_TEXT] → [ANCHOR_URL]
 • Topics that are still valuable even without the anchor and brand mention
+• Topics that pass the "would an editor accept this over 50 pitches?" test — meaning the angle is fresh enough to stand out
 
 5. Prioritize topics using this matrix:
 • Demand: is there clear search intent behind this topic?
@@ -116,7 +159,7 @@ Name: [short cluster name]
 Audience & problem: [one sentence: who this cluster is for and what problem it solves]
 
 Topic 1:
-Working title: [compelling H1-style title]
+Working title: [compelling, specific, non-commodity H1 title — must contain a concrete angle, pattern, or finding. NEVER generic "Top N" / "Guide to" / "How to" unless followed by a highly specific narrow focus]
 Primary keyword: [main search query / keyword]
 Search intent: [informational / how to / problem solving / comparison / strategic insight]
 Short angle (2–3 sentences): [what the article will actually cover, concrete angle, not generic tips]

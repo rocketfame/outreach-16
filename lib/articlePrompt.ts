@@ -246,6 +246,16 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
+	0.	NON-COMMODITY CONTENT STRUCTURE (MANDATORY):
+You are writing NON-COMMODITY content. This means:
+• Do NOT write a generic listicle or "Complete Guide" structure.
+• Frame the article around a SPECIFIC pattern, finding, scenario, or analytical angle — not broad tips.
+• Open with tension, curiosity, or a concrete observation — not "In today's digital landscape..."
+• Each section should reveal something specific (a pattern, a number, a mechanism) — not just restate common knowledge.
+• Prefer narrative/analytical structure over numbered-tips structure.
+• The reader should finish thinking "I learned something specific I didn't know" — not "I already knew all of this."
+• If the topic title contains a specific angle, the article MUST deliver on that specificity throughout — do not dilute into generic advice.
+
 	1.	WORD COUNT REQUIREMENT (STRICTLY ENFORCED — HIGHEST PRIORITY):
 Target: [[WORD_COUNT]] words. Hard limits: minimum [[WORD_COUNT_MIN]], maximum [[WORD_COUNT_MAX]].
 BEFORE generating your final JSON, mentally count the total words across all articleBlocks text fields. If the count is outside [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]], revise until it fits. Outputting outside this range is a CRITICAL ERROR.
@@ -1456,6 +1466,16 @@ GENERAL (HUMAN MODE)
 Current WritingMode: [[WRITING_MODE]]
 
 CRITICAL REQUIREMENTS - READ CAREFULLY:
+	0.	NON-COMMODITY CONTENT STRUCTURE (MANDATORY):
+You are writing NON-COMMODITY content. This means:
+• Do NOT write a generic listicle or "Complete Guide" structure.
+• Frame the article around a SPECIFIC pattern, finding, scenario, or analytical angle — not broad tips.
+• Open with tension, curiosity, or a concrete observation — not "In today's digital landscape..."
+• Each section should reveal something specific (a pattern, a number, a mechanism) — not just restate common knowledge.
+• Prefer narrative/analytical structure over numbered-tips structure.
+• The reader should finish thinking "I learned something specific I didn't know" — not "I already knew all of this."
+• If the topic title contains a specific angle, the article MUST deliver on that specificity throughout — do not dilute into generic advice.
+
 	1.	WORD COUNT REQUIREMENT (STRICTLY ENFORCED — HIGHEST PRIORITY):
 Target: [[WORD_COUNT]] words. Hard limits: minimum [[WORD_COUNT_MIN]], maximum [[WORD_COUNT_MAX]].
 BEFORE generating your final JSON, mentally count the total words across all articleBlocks text fields. If the count is outside [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]], revise until it fits. Outputting outside this range is a CRITICAL ERROR.
