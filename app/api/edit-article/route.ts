@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-5.2",
+        model: "gpt-5.5",
         messages: [
           {
             role: "system",
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
     const outputTokens = usage?.completion_tokens || 0;
     console.log("[edit-article] Token usage:", { inputTokens, outputTokens, usage });
     if (inputTokens > 0 || outputTokens > 0) {
-      costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
+      costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
       const totals = costTracker.getTotalCosts();
       console.log("[edit-article] Cost tracked. Current totals:", {
         tavily: totals.tavily,

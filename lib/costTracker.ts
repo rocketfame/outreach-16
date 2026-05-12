@@ -9,16 +9,16 @@ const PRICING = {
     image: 0.02, // $0.02 per image search query
   },
   openai: {
-    'gpt-5.2': {
-      input: 0.01 / 1000, // $0.01 per 1K input tokens
-      output: 0.03 / 1000, // $0.03 per 1K output tokens
+    'gpt-5.5': {
+      input: 5.00 / 1_000_000, // $5.00 per 1M input tokens
+      output: 30.00 / 1_000_000, // $30.00 per 1M output tokens
     },
     'dall-e-3': {
       '1024x1024': 0.04,
       '1792x1024': 0.08,
       '1024x1792': 0.08,
     },
-    'gpt-image-1.5': {
+    'gpt-image-2': {
       '1024x1024': 0.133,    // high quality
       '1536x1024': 0.20,     // high quality landscape
       '1024x1536': 0.20,     // high quality portrait

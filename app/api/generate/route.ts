@@ -102,11 +102,11 @@ export async function POST(req: Request) {
 
   try {
     // #region agent log
-    const apiCallLog = {location:'route.ts:63',message:'Calling OpenAI API',data:{model:'gpt-5.2',type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const apiCallLog = {location:'route.ts:63',message:'Calling OpenAI API',data:{model:'gpt-5.5',type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(apiCallLog);
     // #endregion
     const completion = await client.chat.completions.create({
-      model: "gpt-5.2",
+      model: "gpt-5.5",
       messages: [
         { role: "system", content: prompts.systemPrompt },
         { role: "user", content: prompts.userPrompt },
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
     if (inputTokens > 0 || outputTokens > 0) {
-      costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
+      costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
     }
     
     // #region agent log

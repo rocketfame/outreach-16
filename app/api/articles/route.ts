@@ -528,12 +528,15 @@ QUALITY RULES (5 rules — follow all):
 WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tight > long. A 1200-word article with zero filler beats 1800 words with padding.`;
 
         // API parameters for OpenAI
-        // Word count enforcement comes from the PROMPT, not token limits.
-        // Token budget must be generous enough to never truncate the response.
-        // Floor: 18000 (proven safe for articles up to ~2000 words).
-        // Scale up for larger articles.
-        const contentBudget = Math.ceil(targetWords * 2) + 800;
-        const dynamicMaxTokens = Math.max(18000, contentBudget + 10000);
+        // Token budget must give the model enough room to generate the article
+        // but NOT so much that it fills the space with padding/duplicates.
+        // Scale proportionally: ~1.5 tokens/word for Latin scripts, ~2.5 for Cyrillic/CJK.
+        // Headroom: 3x content budget — enough for JSON structure, title/meta, and
+        // model to finish the last paragraph cleanly without mid-sentence truncation.
+        // Minimum 5000 to avoid cutting very short articles.
+        const tokensPerWord = /^(English|Spanish|French|Italian|Portuguese)$/i.test(articleLanguage) ? 1.5 : 2.5;
+        const contentBudget = Math.ceil(targetWords * tokensPerWord);
+        const dynamicMaxTokens = Math.max(5000, Math.ceil(contentBudget * 3));
         console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
         const apiParams = { 
           max_completion_tokens: dynamicMaxTokens
@@ -547,7 +550,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           // Try with response_format first
           try {
             completion = await openai.chat.completions.create({
-              model: "gpt-5.2",
+              model: "gpt-5.5",
               messages: [
                 {
                   role: "system",
@@ -565,7 +568,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
             void formatError;
             // If response_format is not supported, try without it
               completion = await openai.chat.completions.create({
-              model: "gpt-5.2",
+              model: "gpt-5.5",
                 messages: [
                   {
                     role: "system",
@@ -593,7 +596,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
         const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens || 0;
         console.log("[articles-api] Token usage:", { inputTokens, outputTokens, reasoningTokens, usage });
         if (inputTokens > 0 || outputTokens > 0) {
-          costTracker.trackOpenAIChat('gpt-5.2', inputTokens, outputTokens);
+          costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
           const totals = costTracker.getTotalCosts();
           console.log("[articles-api] Cost tracked. Current totals:", {
             tavily: totals.tavily,
@@ -869,6 +872,66 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                   }
                   return item;
                 });
+              }
+            }
+
+            // SENTENCE DEDUPLICATION: GPT-5.2 sometimes enters a generation loop and
+            // outputs the same sentence (or near-identical sentence) 2-4 times within a
+            // paragraph. This pass removes exact and near-duplicate sentences from each
+            // block's text. Runs BEFORE anchor injection so we don't accidentally remove
+            // a sentence that contains [A1].
+            {
+              let totalRemoved = 0;
+              const dedup = (text: string): string => {
+                if (!text || text.length < 100) return text;
+                // Split into sentences
+                const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+                if (!sentences || sentences.length < 2) return text;
+
+                const kept: string[] = [];
+                const seen = new Set<string>();
+                for (const raw of sentences) {
+                  const s = raw.trim();
+                  if (!s) continue;
+                  // Normalize for comparison: lowercase, collapse whitespace, strip punctuation
+                  const norm = s.toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u0400-\u04FF\s]/g, "").replace(/\s+/g, " ").trim();
+                  if (norm.length < 15) { kept.push(s); continue; } // keep very short sentences
+                  // Exact duplicate check
+                  if (seen.has(norm)) { totalRemoved++; continue; }
+                  // Near-duplicate: check if >80% word overlap with any seen sentence
+                  const words = new Set(norm.split(" ").filter(w => w.length >= 4));
+                  let isDupe = false;
+                  if (words.size >= 5) {
+                    for (const prev of seen) {
+                      const prevWords = new Set(prev.split(" ").filter(w => w.length >= 4));
+                      if (prevWords.size < 5) continue;
+                      let overlap = 0;
+                      for (const w of words) { if (prevWords.has(w)) overlap++; }
+                      const ratio = overlap / Math.min(words.size, prevWords.size);
+                      if (ratio > 0.8) { isDupe = true; break; }
+                    }
+                  }
+                  if (isDupe) { totalRemoved++; continue; }
+                  seen.add(norm);
+                  kept.push(s);
+                }
+                return kept.join(" ").replace(/\s{2,}/g, " ").trim();
+              };
+
+              for (const block of articleBlocks) {
+                if (block.text && typeof block.text === "string") {
+                  block.text = dedup(block.text);
+                }
+                if (block.items && Array.isArray(block.items)) {
+                  for (const item of block.items) {
+                    if (typeof item === "object" && item?.text) {
+                      item.text = dedup(item.text);
+                    }
+                  }
+                }
+              }
+              if (totalRemoved > 0) {
+                console.warn(`[articles-api] DEDUP: removed ${totalRemoved} duplicate/near-duplicate sentences from topic "${topic.title}"`);
               }
             }
 

@@ -279,7 +279,7 @@ Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT techn
     }
   }
   
-  // Ensure prompt is under 32000 characters (gpt-image-1.5 supports much longer prompts than DALL-E 3)
+  // Ensure prompt is under 32000 characters (gpt-image-2 supports much longer prompts than DALL-E 3)
   if (prompt.length > 32000) {
     if (customStyle && customStyle.trim()) {
       // Reference mode: truncate customStyle if needed (keep core content)
@@ -382,7 +382,7 @@ export async function POST(req: Request) {
       usedBoxIndices,
     });
     
-    // Ensure prompt is under 32000 characters (gpt-image-1.5 supports much longer prompts than DALL-E 3)
+    // Ensure prompt is under 32000 characters (gpt-image-2 supports much longer prompts than DALL-E 3)
     let prompt = promptText;
     if (prompt.length > 32000) {
       console.warn(`[article-image] Prompt too long (${prompt.length} chars), truncating to 32000`);
@@ -392,16 +392,16 @@ export async function POST(req: Request) {
     debugLog({ location: 'article-image/route.ts:POST', message: 'Prompt built', data: { promptLength: prompt.length, selectedBoxIndex } });
 
     // #region agent log
-    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:'gpt-image-1.5',size:'1536x1024',quality:'high'},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:'gpt-image-2',size:'1536x1024',quality:'high'},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(apiCallLog);
     // #endregion
 
-    // Call OpenAI Images API with gpt-image-1.5 (DALL-E 3 deprecated May 12 2026).
-    // gpt-image-1.5 supports: "1024x1024", "1536x1024" (landscape), "1024x1536" (portrait), "auto".
+    // Call OpenAI Images API with gpt-image-2 (DALL-E 3 deprecated May 12 2026).
+    // gpt-image-2 supports: "1024x1024", "1536x1024" (landscape), "1024x1536" (portrait), "auto".
     // Quality: "low", "medium", "high". We use "high" for best hero image quality.
     // Response: b64_json only (URL not supported by gpt-image models).
     const imageResponse = await openai.images.generate({
-      model: "gpt-image-1.5",
+      model: "gpt-image-2",
       prompt,
       n: 1,
       size: "1536x1024", // landscape hero
@@ -412,7 +412,7 @@ export async function POST(req: Request) {
 
     // Track cost
     const costTracker = getCostTracker();
-    costTracker.trackOpenAIImageGeneration('gpt-image-1.5', '1536x1024', 1);
+    costTracker.trackOpenAIImageGeneration('gpt-image-2', '1536x1024', 1);
 
     if (!imageBase64) {
       // #region agent log

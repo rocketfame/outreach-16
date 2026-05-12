@@ -70,7 +70,7 @@ export async function POST(req: Request) {
 
     // Analyze image style using GPT-5.2
     const response = await openai.chat.completions.create({
-      model: "gpt-5.2", // GPT-5.2 for style analysis
+      model: "gpt-5.5", // GPT-5.2 for style analysis
       messages: [
         {
           role: "system",
