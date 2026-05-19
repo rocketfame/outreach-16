@@ -884,9 +884,14 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
               let totalRemoved = 0;
               const dedup = (text: string): string => {
                 if (!text || text.length < 100) return text;
-                // Split into sentences
-                const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
-                if (!sentences || sentences.length < 2) return text;
+                // Split into sentences — protect numbers with dots (German thousands: 10.000)
+                const NUM_PH = "\x00NUM\x00";
+                const safeText = text.replace(/(\d)\.(\d)/g, `$1${NUM_PH}$2`);
+                const rawSentences = safeText.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+                if (!rawSentences || rawSentences.length < 2) return text;
+                // Restore number dots in each sentence
+                const sentences = rawSentences.map(s => s.replace(/\x00NUM\x00/g, "."));
+                if (sentences.length < 2) return text;
 
                 const kept: string[] = [];
                 const seen = new Set<string>();

@@ -12,9 +12,15 @@
  * Split text into sentences. Handles common abbreviations and edge cases.
  */
 function splitSentences(text: string): string[] {
-  const raw = text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
+  // Protect numbers with dots (German thousands separator: 10.000, 1.500.000)
+  // and common abbreviations (z.B., e.g., etc.) from being treated as sentence ends.
+  const PLACEHOLDER = "\x00NUM\x00";
+  let safe = text.replace(/(\d)\.(\d)/g, `$1${PLACEHOLDER}$2`);
+  const raw = safe.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
   if (!raw) return [text];
-  return raw.map((s) => s.trim()).filter((s) => s.length > 0);
+  return raw
+    .map((s) => s.replace(new RegExp(PLACEHOLDER.replace(/\x00/g, "\\x00"), "g"), ".").trim())
+    .filter((s) => s.length > 0);
 }
 
 /**

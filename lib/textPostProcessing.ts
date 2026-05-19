@@ -438,8 +438,11 @@ export function stripPromptLeaks(text: string): PromptLeakStripResult {
 
   // Split into sentences using punctuation + whitespace as boundaries.
   // Keep punctuation attached to each sentence so reassembly stays natural.
-  // Regex captures groups of (sentence text + ending punctuation + trailing space).
-  const sentences = text.match(/[^.!?\n]+[.!?]+(?:\s+|$)|[^.!?\n]+$/g) || [text];
+  // Protect numbers with dots (German thousands: 10.000) before splitting.
+  const NUM_PH = "\x00NUM\x00";
+  const safeText = text.replace(/(\d)\.(\d)/g, `$1${NUM_PH}$2`);
+  const rawSentences = safeText.match(/[^.!?\n]+[.!?]+(?:\s+|$)|[^.!?\n]+$/g) || [text];
+  const sentences = rawSentences.map(s => s.replace(/\x00NUM\x00/g, "."));
 
   const removed: string[] = [];
   const kept = sentences.filter((sentence) => {
