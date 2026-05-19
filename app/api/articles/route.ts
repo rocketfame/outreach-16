@@ -31,6 +31,7 @@ export const maxDuration = 300;
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
 import { cleanText, fixHtmlTagSpacing, removeExcessiveBold, stripPromptLeaks } from "@/lib/textPostProcessing";
 import { repairHumanizedText } from "@/lib/humanizeRepair";
+import { validateArticleOutput } from "@/lib/outputValidator";
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
@@ -1670,6 +1671,18 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           console.warn(`[wordcount-check] OVER LIMIT by ${actualWordCount - wordCountMaxSys} words (${wordCountDeviation}% deviation)`);
         } else if (actualWordCount < wordCountMinSys) {
           console.warn(`[wordcount-check] UNDER LIMIT by ${wordCountMinSys - actualWordCount} words (${wordCountDeviation}% deviation)`);
+        }
+
+        // ── FINAL VALIDATION PASS ──────────────────────────────────────
+        // Detects and fixes: duplicated sentences, truncated numbers,
+        // broken tables/lists, dangling clauses, placeholder artifacts.
+        const validation = validateArticleOutput(cleanedArticleBodyHtml);
+        cleanedArticleBodyHtml = validation.html;
+        if (validation.fixes.length > 0) {
+          console.log(`[articles-api] VALIDATOR fixes for "${topic.title}":`, validation.fixes);
+        }
+        if (validation.warnings.length > 0) {
+          console.warn(`[articles-api] VALIDATOR warnings for "${topic.title}":`, validation.warnings);
         }
 
         const articleResponse = {
