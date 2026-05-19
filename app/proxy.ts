@@ -10,7 +10,7 @@ const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS || "";
 const COOKIE_OPTIONS = {
   path: "/",
   sameSite: "strict" as const,
-  httpOnly: true,
+  httpOnly: false, // Must be readable by client-side MaintenanceGate
   secure: process.env.NODE_ENV === "production",
   maxAge: 60 * 60 * 24 * 30, // 30 days
 };

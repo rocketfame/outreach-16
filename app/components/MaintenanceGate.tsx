@@ -72,8 +72,8 @@ export default function MaintenanceGate({ children }: { children: React.ReactNod
           });
           if (res.ok) {
             const d = await res.json();
-            if (d.isTrial) {
-              // Valid trial token — bypass gate
+            if (d.isTrial || d.isMaster) {
+              // Valid trial or master token — bypass gate
               setShowGate(false);
               setIsLoading(false);
               return;
