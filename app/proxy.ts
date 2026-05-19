@@ -199,6 +199,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   // For API routes and other paths without trial token:
   // - Master IP: always allowed
+  // - bypass_maintenance cookie: allowed (set by proxy when valid token was used on page load)
   // - Basic auth: allowed if configured
   // - Others: blocked (for API routes)
   // CRITICAL: Allow /api/check-access for all users (needed for MaintenanceGate)
@@ -221,7 +222,13 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       response.headers.set("x-master-ip", "true");
       return response;
     }
-    
+
+    // Check bypass_maintenance cookie (set when user accessed with valid trial/master token)
+    const bypassCookie = request.cookies.get("bypass_maintenance");
+    if (bypassCookie?.value === "true") {
+      return NextResponse.next();
+    }
+
     // Require basic auth if configured
     if (isAuthConfigured()) {
       const authHeader = request.headers.get("authorization");
@@ -239,6 +246,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   
   // For other routes (not API, not main page) without trial token:
   // - Master IP: always allowed
+  // - bypass_maintenance cookie: allowed
   // - Basic auth: allowed if configured
   // - Others: allow (for static assets, etc.)
   if (!trialToken && !request.nextUrl.pathname.startsWith("/api/") && request.nextUrl.pathname !== "/") {
@@ -256,7 +264,13 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       response.headers.set("x-master-ip", "true");
       return response;
     }
-    
+
+    // Check bypass_maintenance cookie
+    const bypassCookie = request.cookies.get("bypass_maintenance");
+    if (bypassCookie?.value === "true") {
+      return NextResponse.next();
+    }
+
     // Require basic auth if configured
     if (isAuthConfigured()) {
       const authHeader = request.headers.get("authorization");
