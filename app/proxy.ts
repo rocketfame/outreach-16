@@ -5,6 +5,7 @@ import { isMasterIP } from "@/lib/accessConfig";
 
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "";
 const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS || "";
+const AUTOMATION_API_KEY = process.env.AUTOMATION_API_KEY?.trim() || "";
 
 /** Secure cookie defaults */
 const COOKIE_OPTIONS = {
@@ -72,6 +73,14 @@ function isValidAuth(authHeader: string | null) {
   }
 }
 
+function isAutomationApiPath(pathname: string) {
+  return pathname === "/api/automation" || pathname.startsWith("/api/automation/");
+}
+
+function hasValidAutomationAuth(authHeader: string | null) {
+  return AUTOMATION_API_KEY.length > 0 && authHeader === `Bearer ${AUTOMATION_API_KEY}`;
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   // Get client IP
   const clientIP = getClientIP(request);
@@ -132,6 +141,35 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       // CRITICAL: Allow access to all routes including API
       return response;
     }
+  }
+
+  // Automation API is consumed by an external scheduler with non-static IPs.
+  // Let valid Bearer-authenticated calls reach the route handler, which
+  // performs the same auth check again before starting any generation work.
+  if (isAutomationApiPath(request.nextUrl.pathname)) {
+    if (!AUTOMATION_API_KEY) {
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "automation_key_not_configured",
+          message: "AUTOMATION_API_KEY is not configured.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!hasValidAutomationAuth(request.headers.get("authorization"))) {
+      return NextResponse.json(
+        {
+          status: "error",
+          code: "unauthorized",
+          message: "Missing or invalid automation API key.",
+        },
+        { status: 401 }
+      );
+    }
+
+    return NextResponse.next();
   }
   
   // Check for invalid query parameters (any query param other than valid ones)
