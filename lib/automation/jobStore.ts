@@ -7,6 +7,12 @@ const memoryLocks = new Set<string>();
 const JOB_TTL_SECONDS = 60 * 60 * 24;
 const ACTIVE_LOCK_KEY = "automation:active";
 
+export type AutomationJobStoreBackend = "kv" | "memory";
+
+export function requiresPersistentAutomationJobStore(): boolean {
+  return process.env.VERCEL === "1";
+}
+
 function isKvAvailable(): boolean {
   try {
     return !!kv && !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
@@ -19,17 +25,18 @@ function jobKey(jobId: string): string {
   return `automation:job:${jobId}`;
 }
 
-export async function saveAutomationJob(job: AutomationJob): Promise<void> {
+export async function saveAutomationJob(job: AutomationJob): Promise<AutomationJobStoreBackend> {
   const next = { ...job, updatedAt: Date.now() };
   if (isKvAvailable()) {
     try {
       await kv.set(jobKey(job.id), next, { ex: JOB_TTL_SECONDS });
-      return;
+      return "kv";
     } catch (error) {
       console.error("[automationJobStore] KV error saving job, falling back to in-memory:", error);
     }
   }
   memoryJobs.set(job.id, next);
+  return "memory";
 }
 
 export async function getAutomationJob(jobId: string): Promise<AutomationJob | null> {

@@ -1,6 +1,11 @@
 import { after } from "next/server";
 import { requireAutomationAuth } from "@/lib/automation/auth";
-import { acquireAutomationSlot, releaseAutomationSlot, saveAutomationJob } from "@/lib/automation/jobStore";
+import {
+  acquireAutomationSlot,
+  releaseAutomationSlot,
+  requiresPersistentAutomationJobStore,
+  saveAutomationJob,
+} from "@/lib/automation/jobStore";
 import { runAutomationGeneration, validateAutomationRequest } from "@/lib/automation/pipeline";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 
@@ -91,11 +96,20 @@ export async function POST(req: Request) {
     updatedAt: now,
   };
 
+  let jobStoreBackend;
   try {
-    await saveAutomationJob(job);
+    jobStoreBackend = await saveAutomationJob(job);
   } catch (error) {
     console.error("[automationGenerate] Failed to create job:", error);
     return errorResponse("job_store_unavailable", "Automation job store is unavailable.", 500);
+  }
+
+  if (jobStoreBackend === "memory" && requiresPersistentAutomationJobStore()) {
+    return errorResponse(
+      "job_store_not_persistent",
+      "Automation job store is using in-memory fallback. Configure KV_REST_API_URL and KV_REST_API_TOKEN for this Vercel environment.",
+      503
+    );
   }
 
   try {
