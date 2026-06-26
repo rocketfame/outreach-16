@@ -1,3 +1,11 @@
+## Режим пригадування
+При старті нової сесії:
+1. Прочитай цей CLAUDE.md
+2. Прочитай файли в knowledge/
+3. Перевір актуальність даних перед тим як щось пропонувати
+
+---
+
 # CLAUDE.md — Project Context for Claude Code
 
 This file gives Claude Code a fast, accurate mental model of the project so any new session is productive immediately. Keep it updated when architecture changes.
