@@ -2,6 +2,7 @@ import { POST as generateArticleRoute } from "@/app/api/articles/route";
 import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
 import { searchReliableSources } from "@/lib/tavilyClient";
+import { filterSourcesByPolicy, getSourcePriority } from "@/lib/sourcePolicy";
 import {
   AUTOMATION_CATEGORIES,
   type AutomationArticle,
@@ -43,9 +44,11 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
   if (!category || !AUTOMATION_CATEGORIES.includes(category)) {
     throw new Error(`Invalid category. Expected one of: ${AUTOMATION_CATEGORIES.join(", ")}.`);
   }
-  if (!anchor) throw new Error("Missing required field: anchor.");
-  if (!anchorUrl || !/^https?:\/\//i.test(anchorUrl)) {
-    throw new Error("Missing or invalid required field: anchorUrl.");
+  if ((anchor && !anchorUrl) || (!anchor && anchorUrl)) {
+    throw new Error("anchor and anchorUrl must be provided together, or both omitted.");
+  }
+  if (anchorUrl && !/^https?:\/\//i.test(anchorUrl)) {
+    throw new Error("Invalid field: anchorUrl must be an absolute http(s) URL.");
   }
   if (mode !== "human" && mode !== "standard") {
     throw new Error('Invalid mode. Expected "human" or "standard".');
@@ -79,8 +82,9 @@ export async function runAutomationGeneration(
   const topic = request.topic || buildFallbackTopic(request);
   const targetWords = Math.round(((request.minWords || 1200) + (request.maxWords || 1800)) / 2);
 
-  const sources = await searchReliableSources(`${topic} ${request.category} official statistics guide`);
-  const trustSourcesList = sources
+  const sources = await searchAutomationTrustSources(topic, request.category);
+  const trustSourcesList = filterSourcesByPolicy(sources)
+    .sort((a, b) => getSourcePriority(b) - getSourcePriority(a))
     .slice(0, 6)
     .map((source) => `${source.title}|${source.url}|${source.snippet}`);
 
@@ -99,9 +103,9 @@ export async function runAutomationGeneration(
         niche: request.niche,
         platform: request.category,
         contentPurpose: "Guest post / outreach",
-        clientSite: request.anchorUrl,
-        anchorText: request.anchor,
-        anchorUrl: request.anchorUrl,
+        clientSite: request.anchorUrl || "",
+        anchorText: request.anchor || "",
+        anchorUrl: request.anchorUrl || "",
         language: "English",
         wordCount: String(targetWords),
       },
@@ -130,10 +134,10 @@ export async function runAutomationGeneration(
   const generated = articleJson.articles[0];
   const title = stripTags(generated.titleTag || topic).trim();
   const rawHtml = generated.articleBodyHtml || generated.fullArticleText || "";
-  const contentHtml = enforceSingleBrandMention(
-    sanitizeAutomationHtml(rawHtml),
-    request.anchor
-  );
+  const sanitizedHtml = sanitizeAutomationHtml(rawHtml);
+  const contentHtml = request.anchor
+    ? enforceSingleBrandMention(sanitizedHtml, request.anchor)
+    : sanitizedHtml;
   const seoDescription = cleanDescription(generated.metaDescription || summarizeText(contentHtml, 155));
   const seoTitle = truncateText(title, 60);
 
@@ -150,7 +154,7 @@ export async function runAutomationGeneration(
         niche: request.niche,
         mainPlatform: request.category,
         contentPurpose: "Guest post / outreach",
-        brandName: "Free-Followers.net",
+        brandName: request.anchor || "",
         usedBoxIndices: [],
       }),
     }));
@@ -189,6 +193,46 @@ export async function runAutomationGeneration(
   };
 }
 
+async function searchAutomationTrustSources(topic: string, category: string) {
+  const officialQuery = buildOfficialSourceQuery(topic, category);
+  const researchQuery = `${topic} ${category} statistics report industry data`;
+  const videoQuery = `site:youtube.com/watch ${topic} ${category} official creator`;
+
+  const resultSets = await Promise.all([
+    searchReliableSources(officialQuery),
+    searchReliableSources(researchQuery),
+  ]);
+
+  const merged = dedupeSources(resultSets.flat());
+  const policyApproved = filterSourcesByPolicy(merged);
+  const nonVideo = policyApproved.filter(source => !/youtube\.com\/watch|youtu\.be\/|vimeo\.com\//i.test(source.url));
+
+  if (nonVideo.length >= 3) {
+    return policyApproved;
+  }
+
+  const videoSources = await searchReliableSources(videoQuery);
+  return dedupeSources([...policyApproved, ...filterSourcesByPolicy(videoSources)]);
+}
+
+function buildOfficialSourceQuery(topic: string, category: string): string {
+  const platformSites: Record<string, string[]> = {
+    Spotify: ["site:artists.spotify.com", "site:newsroom.spotify.com"],
+    YouTube: ["site:support.google.com/youtube", "site:blog.youtube", "site:youtube.com/creators"],
+    TikTok: ["site:tiktok.com/business", "site:newsroom.tiktok.com", "site:support.tiktok.com"],
+    Instagram: ["site:business.instagram.com", "site:creators.instagram.com", "site:help.instagram.com"],
+    Facebook: ["site:facebook.com/business", "site:about.fb.com", "site:transparency.meta.com"],
+    SoundCloud: ["site:soundcloud.com/blog", "site:help.soundcloud.com"],
+    Growth: ["site:shopify.com/blog", "site:datareportal.com", "site:pewresearch.org"],
+  };
+  const sites = platformSites[category] || platformSites.Growth;
+  return `${sites.join(" OR ")} ${topic} ${category} guide`;
+}
+
+function dedupeSources<T extends { url: string }>(sources: T[]): T[] {
+  return Array.from(new Map(sources.map(source => [source.url, source])).values());
+}
+
 function buildFallbackTopic(request: AutomationGenerateRequest): string {
   return `How to grow on ${request.category} in the ${request.niche} niche`;
 }
@@ -196,8 +240,10 @@ function buildFallbackTopic(request: AutomationGenerateRequest): string {
 function buildTopicBrief(request: AutomationGenerateRequest, topic: string): string {
   return [
     topic,
-    `Write for free-followers.net blog readers who want practical ${request.category} growth advice.`,
-    `Include exactly one natural mention of ${request.anchor}.`,
+    request.anchor
+      ? `Write for ${request.anchor} blog readers who want practical ${request.category} growth advice.`
+      : `Write for readers who want practical ${request.category} growth advice.`,
+    request.anchor ? `Include exactly one natural mention of ${request.anchor}.` : "Do not mention any client brand or commercial anchor.",
     "Avoid competitors, SMM panels, bought-follower services, fake engagement claims, and placeholder related-read sections.",
   ].join("\n");
 }

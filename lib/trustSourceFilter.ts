@@ -4,6 +4,8 @@
  * Filters and validates trust sources based on niche and relevance rules
  */
 
+import { getSourcePriority, isCommercialOrCompetitorSource } from "@/lib/sourcePolicy";
+
 export interface TrustSourceInput {
   title: string;
   url: string;
@@ -126,12 +128,15 @@ function isDeepUrl(url: string): boolean {
  * Checks if source is a competitor (should be excluded)
  */
 function isCompetitor(source: TrustSourceInput, niche: string): boolean {
-  const nicheLower = niche.toLowerCase();
   const titleLower = source.title.toLowerCase();
   const urlLower = source.url.toLowerCase();
   const snippetLower = source.snippet?.toLowerCase() || "";
   
   const combinedText = `${titleLower} ${urlLower} ${snippetLower}`;
+
+  if (isCommercialOrCompetitorSource(source)) {
+    return true;
+  }
   
   // Check competitor keywords for this niche
   const competitorKeywords = COMPETITOR_KEYWORDS[niche] || [];
@@ -154,19 +159,6 @@ function isCompetitor(source: TrustSourceInput, niche: string): boolean {
   }
   
   return false;
-}
-
-/**
- * Checks if source is from an official platform
- */
-function isOfficialPlatform(url: string): boolean {
-  try {
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname.replace('www.', '');
-    return OFFICIAL_PLATFORMS.some(domain => hostname.includes(domain));
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -248,10 +240,7 @@ export function filterAndSelectTrustSources(
   const scored = relevant.map(source => {
     let score = 0;
     
-    // Official platforms get high priority
-    if (isOfficialPlatform(source.url)) {
-      score += 10;
-    }
+    score += getSourcePriority(source);
     
     // Deep URLs get priority
     if (isDeepUrl(source.url)) {
@@ -280,4 +269,3 @@ export function filterAndSelectTrustSources(
   
   return selected;
 }
-

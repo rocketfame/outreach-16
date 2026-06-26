@@ -6,6 +6,12 @@
 
 import { getOpenAIClient } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
+import {
+  filterSourcesByPolicy,
+  getForcedSourceType,
+  getSourcePolicyDecision,
+  getSourcePriority,
+} from "@/lib/sourcePolicy";
 
 const SOURCE_CLASSIFIER_MODEL = "gpt-5.4-mini";
 
@@ -139,12 +145,24 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
       typeof p.is_competitor === "boolean" &&
       typeof p.relevance_score === "number"
     ) {
+      const policy = getSourcePolicyDecision(result);
+      if (!policy.allowed) {
+        return {
+          url: result.url,
+          title: result.title,
+          type: "service_or_promo",
+          is_competitor: true,
+          relevance_score: 0,
+        };
+      }
+
+      const forcedType = policy.forcedType;
       return {
         url: result.url,
         title: result.title,
-        type: p.type as SourceType,
+        type: forcedType || p.type as SourceType,
         is_competitor: p.is_competitor,
-        relevance_score: Math.max(0, Math.min(10, Math.round(p.relevance_score))), // Clamp to 0-10
+        relevance_score: Math.max(0, Math.min(10, Math.round(p.relevance_score + policy.priority / 100))), // Clamp to 0-10
       };
     } else {
       console.error("[sourceClassifier] Invalid classification result:", parsed);
@@ -298,23 +316,32 @@ export async function getTrustedSourcesFromTavily(
     return [];
   }
 
-  console.log(`[sourceClassifier] Classifying ${tavilyResults.length} sources for topic: ${topicTitle}`);
+  const policyAllowedResults = filterSourcesByPolicy(tavilyResults);
+  const blockedCount = tavilyResults.length - policyAllowedResults.length;
+  if (blockedCount > 0) {
+    console.warn(`[sourceClassifier] Blocked ${blockedCount} commercial/competitor sources before LLM classification`);
+  }
+
+  if (policyAllowedResults.length === 0) {
+    console.warn("[sourceClassifier] No policy-approved sources available");
+    return [];
+  }
+
+  console.log(`[sourceClassifier] Classifying ${policyAllowedResults.length} policy-approved sources for topic: ${topicTitle}`);
 
   // Classify all sources
-  const classified = await classifySourcesBatch(tavilyResults, topicTitle, niche);
+  const classified = await classifySourcesBatch(policyAllowedResults, topicTitle, niche);
 
   if (classified.length === 0) {
     console.warn("[sourceClassifier] No sources successfully classified");
-    // Fallback: if classification fails completely, return first 3 sources as trusted
-    // This ensures we don't lose all sources due to classification errors
-    console.warn("[sourceClassifier] Using fallback: returning first 3 sources without classification");
+    console.warn("[sourceClassifier] Using policy-approved fallback only; raw Tavily sources are not allowed");
     const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
-    return tavilyResults.slice(0, 3).map((source, i) => ({
+    return rankPolicyApprovedSources(policyAllowedResults).slice(0, 3).map((source, i) => ({
       id: ids[i],
       url: source.url,
       title: source.title,
-      type: "independent_media" as const, // Default type
-      relevance_score: 5, // Default score
+      type: getForcedSourceType(source) || "independent_media" as const,
+      relevance_score: Math.max(3, Math.min(7, Math.round(getSourcePriority(source) / 15))),
     }));
   }
 
@@ -323,11 +350,13 @@ export async function getTrustedSourcesFromTavily(
 
   console.log(`[sourceClassifier] Selected ${trusted.length} trusted sources from ${tavilyResults.length} total sources`);
 
-  // If filtering removed all sources, use fallback: return first 3 classified sources
-  // (even if they have lower scores, as long as they're not competitors)
+  // If filtering removed all sources, use only policy-approved non-promo classified sources.
   if (trusted.length === 0 && classified.length > 0) {
-    console.warn("[sourceClassifier] All sources filtered out, using fallback: returning top classified sources");
-    const nonCompetitorSources = classified.filter(s => !s.is_competitor && s.type !== "service_or_promo");
+    console.warn("[sourceClassifier] All sources filtered out, using strict non-promo classified fallback");
+    const nonCompetitorSources = classified.filter(s => {
+      const policy = getSourcePolicyDecision(s);
+      return policy.allowed && !s.is_competitor && s.type !== "service_or_promo";
+    }).sort((a, b) => getSourcePriority(b) - getSourcePriority(a));
     if (nonCompetitorSources.length > 0) {
       const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
       return nonCompetitorSources.slice(0, 3).map((source, i) => ({
@@ -342,19 +371,9 @@ export async function getTrustedSourcesFromTavily(
     }
   }
 
-  // Final fallback: if still no sources, return first 3 raw sources from Tavily
-  // This ensures we always have sources even if classification completely fails
-  if (trusted.length === 0 && tavilyResults.length > 0) {
-    console.warn("[sourceClassifier] All classification and filtering failed, using final fallback: returning first 3 raw sources");
-    const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
-    return tavilyResults.slice(0, 3).map((source, i) => ({
-      id: ids[i],
-      url: source.url,
-      title: source.title,
-      type: "independent_media" as const,
-      relevance_score: 5, // Default score
-    }));
-  }
-
   return trusted;
+}
+
+function rankPolicyApprovedSources(sources: RawSearchResult[]): RawSearchResult[] {
+  return [...sources].sort((a, b) => getSourcePriority(b) - getSourcePriority(a));
 }

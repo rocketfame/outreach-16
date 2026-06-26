@@ -17,8 +17,8 @@ export interface AutomationGenerateRequest {
   topic?: string | null;
   niche: string;
   category: AutomationCategory;
-  anchor: string;
-  anchorUrl: string;
+  anchor?: string;
+  anchorUrl?: string;
   mode: AutomationMode;
   image?: boolean;
   imageRatio?: "16:9";

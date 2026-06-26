@@ -659,14 +659,14 @@ Do NOT use: the platform name alone, "guide", "article", "source", "link", "here
     - there are no glued words like brandreport[T1].
   If any link violates these rules — REWRITE that sentence so the link looks natural and consists of 1–3 words, logically attached to the external source.
 	7.	MANDATORY SOURCE USAGE
-• If [[TRUST_SOURCES_LIST]] contains ANY sources, you MUST use 1-3 of them.
-• You MUST find the most relevant ones, even if they are not a perfect match.
-• Write without external links only if [[TRUST_SOURCES_LIST]] is completely empty.
-• If all sources seem slightly off topic, choose the 1-3 closest ones and integrate them as naturally as possible.
-• Focus on strong reasoning, real life style examples, and clear explanations, BUT always add 1-3 external links when the list is not empty.
+• If [[TRUST_SOURCES_LIST]] contains trusted and relevant sources, use 1-3 of them.
+• Do NOT force a citation if the available source does not support the surrounding claim.
+• Write without external links if [[TRUST_SOURCES_LIST]] is empty or none of the available sources directly supports a claim.
+• If all sources seem slightly off topic, use only the source that adds concrete support; if none adds value, write the article without external links.
+• Focus on strong reasoning, real life style examples, and clear explanations. External links are support, not decoration.
 	8.	MANDATORY VALIDATION - EXTERNAL LINK PLACEHOLDERS
-• Before final output, verify that you have added EXACTLY 1-3 trust source placeholders ([T1], [T2], [T3]).
-• If you have 0 placeholders and [[TRUST_SOURCES_LIST]] is not empty, you MUST add at least 1.
+• Before final output, verify that you have added 0-3 trust source placeholders ([T1], [T2], [T3]).
+• If you have 0 placeholders and [[TRUST_SOURCES_LIST]] is not empty, that is acceptable only when no source directly supports a claim.
 • If you have more than 3 placeholders, reduce them to 3 and keep only the most relevant ones.
 • Every placeholder must correspond to a source from [[TRUST_SOURCES_LIST]] and be integrated organically in the article body.
 
@@ -676,7 +676,7 @@ b) "Does the placeholder fit naturally into the sentence where an anchor (1-3 wo
 c) "Does the sentence remain clear with the placeholder?"
 
 • If any placeholder does not match a record in [[TRUST_SOURCES_LIST]], REMOVE it immediately.
-• CRITICAL: In the final text, count your placeholders. You MUST have 1-3 trust source placeholders ([T1], [T2], [T3]) from [[TRUST_SOURCES_LIST]] (if the list is not empty).
+• CRITICAL: In the final text, count your placeholders. Use 1-3 trust source placeholders ([T1], [T2], [T3]) only when they directly support the surrounding claim.
 	9.	EXAMPLES OF CORRECT VS INCORRECT INTEGRATION
 
 CORRECT (natural integration with descriptive anchor):
@@ -827,7 +827,7 @@ FINAL CHECKLIST BEFORE OUTPUT:
 • The article follows the topic brief ([[TOPIC_BRIEF]]) exactly - all main points are covered.
 • The article is relevant to the topic ([[TOPIC_TITLE]]) and niche ([[NICHE]]).
 • CRITICAL - Brand integration: If [[BRAND_NAME]] is provided and NOT empty/NONE, verify that [[BRAND_NAME]] is mentioned exactly once in the main body (mid-article), integrated naturally per the Universal Brand Mention principles. The brand should feel natural, NOT like advertising. If [[BRAND_NAME]] is empty/NONE, verify that no client brands are mentioned.
-• EXACTLY 1-3 external trust source links from [[TRUST_SOURCES_LIST]] are included (if the list is not empty). These [T1]-[T3] go in MAIN BODY only, NOT in intro.
+• 0-3 external trust source links from [[TRUST_SOURCES_LIST]] are included only when they directly support a claim. These [T1]-[T3] go in MAIN BODY only, NOT in intro.
 • CRITICAL - Commercial anchor from Project basics: If [[ANCHOR_TEXT]] and [[ANCHOR_URL]] are provided, [A1] MUST appear EXACTLY ONCE inside paragraph 1, 2, or 3 (preferably 2 or 3, never the conclusion). Verify before output. NEVER skip the anchor.
 • The article structure matches the brief requirements.
 • All formatting rules are followed (plain text with newlines, markdown-style bold, placeholder rules, character rules).
@@ -1392,7 +1392,7 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
   let placeholderMappingBlock = "";
   if (params.trustSourcesSpecs && params.trustSourcesSpecs.length > 0) {
-    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL — USE THE CONTEXTUAL PLACEHOLDER FORMAT:\n• Format: [Tn:short descriptive phrase]\n• The phrase BETWEEN the colon and ] becomes the clickable link text.\n• It MUST describe what the source's content IS (the data, finding, guideline) — NEVER the brand or platform name.\n• You have ${params.trustSourcesSpecs.length} external source(s) available — use 1-${params.trustSourcesSpecs.length} of them.\n• Each placeholder must be part of a natural sentence; the phrase inside [Tn:...] should be 2-5 descriptive words that fit the surrounding prose.\n• GOOD: "...as a [T1:recent income breakdown] of independent artists shows..."\n• GOOD: "...platform docs confirm that [T2:stories expire after 24 hours]..."\n• BAD:  "[T1:Routenote]" — brand-only is FORBIDDEN.\n• BAD:  "[T1:read more]" — generic anchor is FORBIDDEN.\n• BAD:  bare "[T1]" without a phrase — only use as a last resort; the contextual form is strongly preferred.\n• NEVER write URLs in the article body. Only the [Tn:phrase] placeholders.\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs — use ONLY the placeholders provided above.\n`;
+    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL — USE THE CONTEXTUAL PLACEHOLDER FORMAT:\n• Format: [Tn:short descriptive phrase]\n• The phrase BETWEEN the colon and ] becomes the clickable link text.\n• It MUST describe what the source's content IS (the data, finding, guideline) — NEVER the brand or platform name.\n• You have ${params.trustSourcesSpecs.length} external source(s) available — use up to ${params.trustSourcesSpecs.length} of them only when they directly support a claim.\n• Each placeholder must be part of a natural sentence; the phrase inside [Tn:...] should be 2-5 descriptive words that fit the surrounding prose.\n• GOOD: "...as a [T1:recent income breakdown] of independent artists shows..."\n• GOOD: "...platform docs confirm that [T2:stories expire after 24 hours]..."\n• BAD:  "[T1:Routenote]" — brand-only is FORBIDDEN.\n• BAD:  "[T1:read more]" — generic anchor is FORBIDDEN.\n• BAD:  bare "[T1]" without a phrase — only use as a last resort; the contextual form is strongly preferred.\n• NEVER write URLs in the article body. Only the [Tn:phrase] placeholders.\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs — use ONLY the placeholders provided above.\n`;
   }
   
   // Build verification block - use JSON format if available
@@ -2557,7 +2557,7 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   // Add explicit placeholder mapping with anchor text descriptions (if trustSourcesSpecs provided)
   let placeholderMappingBlock = "";
   if (params.trustSourcesSpecs && params.trustSourcesSpecs.length > 0) {
-    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL — USE THE CONTEXTUAL PLACEHOLDER FORMAT:\n• Format: [Tn:short descriptive phrase]\n• The phrase BETWEEN the colon and ] becomes the clickable link text.\n• It MUST describe what the source's content IS (the data, finding, guideline) — NEVER the brand or platform name.\n• You have ${params.trustSourcesSpecs.length} external source(s) available — use 1-${params.trustSourcesSpecs.length} of them.\n• Each placeholder must be part of a natural sentence; the phrase inside [Tn:...] should be 2-5 descriptive words that fit the surrounding prose.\n• GOOD: "...as a [T1:recent income breakdown] of independent artists shows..."\n• GOOD: "...platform docs confirm that [T2:stories expire after 24 hours]..."\n• BAD:  "[T1:Routenote]" — brand-only is FORBIDDEN.\n• BAD:  "[T1:read more]" — generic anchor is FORBIDDEN.\n• BAD:  bare "[T1]" without a phrase — only use as a last resort; the contextual form is strongly preferred.\n• NEVER write URLs in the article body. Only the [Tn:phrase] placeholders.\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs — use ONLY the placeholders provided above.\n`;
+    placeholderMappingBlock = `\n\nEXTERNAL SOURCE PLACEHOLDERS - Use these EXACT placeholders:\n${params.trustSourcesSpecs.map(ts => `- [${ts.id}]: ${ts.text} (URL: ${ts.url})`).join('\n')}\n\nCRITICAL — USE THE CONTEXTUAL PLACEHOLDER FORMAT:\n• Format: [Tn:short descriptive phrase]\n• The phrase BETWEEN the colon and ] becomes the clickable link text.\n• It MUST describe what the source's content IS (the data, finding, guideline) — NEVER the brand or platform name.\n• You have ${params.trustSourcesSpecs.length} external source(s) available — use up to ${params.trustSourcesSpecs.length} of them only when they directly support a claim.\n• Each placeholder must be part of a natural sentence; the phrase inside [Tn:...] should be 2-5 descriptive words that fit the surrounding prose.\n• GOOD: "...as a [T1:recent income breakdown] of independent artists shows..."\n• GOOD: "...platform docs confirm that [T2:stories expire after 24 hours]..."\n• BAD:  "[T1:Routenote]" — brand-only is FORBIDDEN.\n• BAD:  "[T1:read more]" — generic anchor is FORBIDDEN.\n• BAD:  bare "[T1]" without a phrase — only use as a last resort; the contextual form is strongly preferred.\n• NEVER write URLs in the article body. Only the [Tn:phrase] placeholders.\n• DO NOT use more than ${params.trustSourcesSpecs.length} placeholders total.\n• Placeholders must be spread across the middle parts of the article, not all in one sentence.\n• NEVER invent new sources or URLs — use ONLY the placeholders provided above.\n`;
   }
   
   // Build verification block - use JSON format if available

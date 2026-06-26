@@ -386,18 +386,8 @@ export async function POST(req: Request) {
           }));
         }
         
-        // Final fallback: if still no sources, use first 3 raw sources
-        // This ensures we always have at least some sources to work with
         if (trustedSources.length === 0 && rawSources.length > 0) {
-          console.warn("[articles/route] All filtering failed, using raw sources as final fallback");
-          const ids: TrustedSource["id"][] = ["T1", "T2", "T3"];
-          trustedSources = rawSources.slice(0, 3).map((source, i) => ({
-            id: ids[i],
-            url: source.url,
-            title: source.title,
-            type: "independent_media" as const,
-            relevance_score: 5, // Default score
-          }));
+          console.warn("[articles/route] All source filtering failed; generating without external trust sources instead of using raw sources");
         }
 
         // Convert to format expected by prompt builders
