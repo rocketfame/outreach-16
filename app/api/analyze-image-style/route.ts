@@ -68,9 +68,9 @@ export async function POST(req: Request) {
     // API parameters for OpenAI
     const apiParams = {};
 
-    // Analyze image style using GPT-5.2
+    // Analyze image style using GPT-5.5
     const response = await openai.chat.completions.create({
-      model: "gpt-5.5", // GPT-5.2 for style analysis
+      model: "gpt-5.5", // GPT-5.5 for style analysis
       messages: [
         {
           role: "system",

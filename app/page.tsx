@@ -4438,7 +4438,17 @@ export default function Home() {
         throw new Error(errorData.error || "Failed to generate image");
       }
 
-      const data = await response.json() as { success: boolean; imageBase64?: string; selectedBoxIndex?: number; error?: string };
+      const data = await response.json() as {
+        success: boolean;
+        imageBase64?: string;
+        mimeType?: "image/png";
+        extension?: "png";
+        width?: 1536;
+        height?: 864;
+        aspectRatio?: "16:9";
+        selectedBoxIndex?: number;
+        error?: string;
+      };
 
       if (data.success && data.imageBase64) {
         setArticleImages(prev => {

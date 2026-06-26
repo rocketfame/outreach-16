@@ -129,7 +129,7 @@ export async function POST(req: Request) {
     // API parameters for OpenAI
     const apiParams = {};
 
-    // Generate topics using GPT-5.2
+    // Generate topics using GPT-5.5
     let completion;
     try {
       completion = await openai.chat.completions.create({

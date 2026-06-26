@@ -103,13 +103,12 @@ export async function formatHumanizedHtml(
 
   try {
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini", // Use cheaper model for formatting
+      model: "gpt-5.5",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
-      temperature: 0.1, // Low temperature for deterministic formatting
-      max_tokens: 8000, // Enough for long articles
+      max_completion_tokens: 8000, // Enough for long articles
     });
 
     const formattedHtml = completion.choices[0]?.message?.content?.trim() || "";
@@ -123,7 +122,7 @@ export async function formatHumanizedHtml(
     const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
-    costTracker.trackOpenAIChat("gpt-4o-mini", inputTokens, outputTokens);
+    costTracker.trackOpenAIChat("gpt-5.5", inputTokens, outputTokens);
 
     // Remove any markdown code blocks if present
     let cleaned = formattedHtml;
@@ -139,4 +138,3 @@ export async function formatHumanizedHtml(
     throw error;
   }
 }
-

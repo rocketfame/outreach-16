@@ -7,6 +7,18 @@ import { selectImageBoxPrompt, buildImagePromptFromBox } from "@/lib/imageBoxPro
 import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken } from "@/lib/trialLimits";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
+const HERO_IMAGE_FORMAT = {
+  model: "gpt-image-2",
+  size: "1536x864",
+  width: 1536,
+  height: 864,
+  aspectRatio: "16:9",
+  quality: "high",
+  outputFormat: "png",
+  mimeType: "image/png",
+  extension: "png",
+} as const;
+
 // Simple debug logger
 const debugLog = (...args: unknown[]) => {
   console.log("[article-image-debug]", ...args);
@@ -25,8 +37,24 @@ export interface ArticleImageRequest {
 export interface ArticleImageResponse {
   success: boolean;
   imageBase64?: string; // raw base64 from OpenAI, no prefix
+  mimeType?: typeof HERO_IMAGE_FORMAT.mimeType;
+  extension?: typeof HERO_IMAGE_FORMAT.extension;
+  width?: typeof HERO_IMAGE_FORMAT.width;
+  height?: typeof HERO_IMAGE_FORMAT.height;
+  aspectRatio?: typeof HERO_IMAGE_FORMAT.aspectRatio;
   selectedBoxIndex?: number; // Index of the selected box (for tracking used boxes)
   error?: string;
+}
+
+function appendHeroFormatLock(prompt: string): string {
+  return `${prompt}
+
+OUTPUT FORMAT LOCK:
+- Generate the final image as an exact ${HERO_IMAGE_FORMAT.aspectRatio} horizontal hero canvas.
+- The requested output canvas is ${HERO_IMAGE_FORMAT.width}x${HERO_IMAGE_FORMAT.height}px.
+- Do not compose for square, portrait, 4:3, 3:2, or poster formats.
+- Keep all important subjects safely inside the ${HERO_IMAGE_FORMAT.aspectRatio} frame with enough edge padding for web hero cropping.
+- No text, captions, labels, watermarks, or typography in the image.`.trim();
 }
 
 /**
@@ -278,6 +306,8 @@ FORMAT: 16:9 horizontal hero image.
 Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT technical equipment, NOT isometric 3D, NOT childish style. Professional Red Dot design agency quality.`.trim();
     }
   }
+
+  prompt = appendHeroFormatLock(prompt);
   
   // Ensure prompt is under 32000 characters (gpt-image-2 supports much longer prompts than DALL-E 3)
   if (prompt.length > 32000) {
@@ -392,27 +422,29 @@ export async function POST(req: Request) {
     debugLog({ location: 'article-image/route.ts:POST', message: 'Prompt built', data: { promptLength: prompt.length, selectedBoxIndex } });
 
     // #region agent log
-    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:'gpt-image-2',size:'1536x1024',quality:'high'},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:HERO_IMAGE_FORMAT.model,size:HERO_IMAGE_FORMAT.size,quality:HERO_IMAGE_FORMAT.quality,outputFormat:HERO_IMAGE_FORMAT.outputFormat},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(apiCallLog);
     // #endregion
 
     // Call OpenAI Images API with gpt-image-2 (DALL-E 3 deprecated May 12 2026).
-    // gpt-image-2 supports: "1024x1024", "1536x1024" (landscape), "1024x1536" (portrait), "auto".
+    // gpt-image-2 supports arbitrary WIDTHxHEIGHT strings when both edges are divisible by 16.
+    // 1536x864 is an exact 16:9 hero canvas.
     // Quality: "low", "medium", "high". We use "high" for best hero image quality.
     // Response: b64_json only (URL not supported by gpt-image models).
     const imageResponse = await openai.images.generate({
-      model: "gpt-image-2",
+      model: HERO_IMAGE_FORMAT.model,
       prompt,
       n: 1,
-      size: "1536x1024", // landscape hero
-      quality: "high",
+      size: HERO_IMAGE_FORMAT.size,
+      quality: HERO_IMAGE_FORMAT.quality,
+      output_format: HERO_IMAGE_FORMAT.outputFormat,
     });
 
     const imageBase64 = imageResponse.data?.[0]?.b64_json;
 
     // Track cost
     const costTracker = getCostTracker();
-    costTracker.trackOpenAIImageGeneration('gpt-image-2', '1536x1024', 1);
+    costTracker.trackOpenAIImageGeneration(HERO_IMAGE_FORMAT.model, HERO_IMAGE_FORMAT.size, 1);
 
     if (!imageBase64) {
       // #region agent log
@@ -436,7 +468,16 @@ export async function POST(req: Request) {
     }
 
     return new Response(
-      JSON.stringify({ success: true, imageBase64, selectedBoxIndex }),
+      JSON.stringify({
+        success: true,
+        imageBase64,
+        mimeType: HERO_IMAGE_FORMAT.mimeType,
+        extension: HERO_IMAGE_FORMAT.extension,
+        width: HERO_IMAGE_FORMAT.width,
+        height: HERO_IMAGE_FORMAT.height,
+        aspectRatio: HERO_IMAGE_FORMAT.aspectRatio,
+        selectedBoxIndex,
+      }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -467,4 +508,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

@@ -5,6 +5,9 @@
  */
 
 import { getOpenAIClient } from "@/lib/config";
+import { getCostTracker } from "@/lib/costTracker";
+
+const SOURCE_CLASSIFIER_MODEL = "gpt-5.4-mini";
 
 export type SourceType = 
   | "official_platform" 
@@ -83,7 +86,7 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Use cheaper model for classification
+      model: SOURCE_CLASSIFIER_MODEL,
       messages: [
         {
           role: "system",
@@ -94,10 +97,17 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
           content: prompt,
         },
       ],
-      temperature: 0.1, // Low temperature for consistent classification
-      max_tokens: 200,
+      max_completion_tokens: 200,
       response_format: { type: "json_object" },
     });
+
+    const costTracker = getCostTracker();
+    const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+    costTracker.trackOpenAIChat(
+      SOURCE_CLASSIFIER_MODEL,
+      usage?.prompt_tokens || 0,
+      usage?.completion_tokens || 0
+    );
 
     const responseText = completion.choices[0]?.message?.content?.trim();
     if (!responseText) {
@@ -109,7 +119,7 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
     let parsed: unknown;
     try {
       parsed = JSON.parse(responseText);
-    } catch (e) {
+    } catch {
       // Try to extract JSON from markdown code blocks if present
       const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) || 
                        responseText.match(/(\{[\s\S]*\})/);
@@ -348,4 +358,3 @@ export async function getTrustedSourcesFromTavily(
 
   return trusted;
 }
-

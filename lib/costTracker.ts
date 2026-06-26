@@ -13,6 +13,10 @@ const PRICING = {
       input: 5.00 / 1_000_000, // $5.00 per 1M input tokens
       output: 30.00 / 1_000_000, // $30.00 per 1M output tokens
     },
+    'gpt-5.4-mini': {
+      input: 0.75 / 1_000_000, // $0.75 per 1M input tokens
+      output: 4.50 / 1_000_000, // $4.50 per 1M output tokens
+    },
     'dall-e-3': {
       '1024x1024': 0.04,
       '1792x1024': 0.08,
@@ -20,6 +24,7 @@ const PRICING = {
     },
     'gpt-image-2': {
       '1024x1024': 0.133,    // high quality
+      '1536x864': 0.20,      // high quality 16:9 hero
       '1536x1024': 0.20,     // high quality landscape
       '1024x1536': 0.20,     // high quality portrait
     },
@@ -280,4 +285,3 @@ export function formatTokens(tokens: number): string {
     maximumFractionDigits: 0,
   }).format(tokens);
 }
-

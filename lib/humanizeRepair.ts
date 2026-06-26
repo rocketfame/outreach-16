@@ -15,7 +15,7 @@ function splitSentences(text: string): string[] {
   // Protect numbers with dots (German thousands separator: 10.000, 1.500.000)
   // and common abbreviations (z.B., e.g., etc.) from being treated as sentence ends.
   const PLACEHOLDER = "\x00NUM\x00";
-  let safe = text.replace(/(\d)\.(\d)/g, `$1${PLACEHOLDER}$2`);
+  const safe = text.replace(/(\d)\.(\d)/g, `$1${PLACEHOLDER}$2`);
   const raw = safe.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g);
   if (!raw) return [text];
   return raw

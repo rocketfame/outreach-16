@@ -876,7 +876,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
               }
             }
 
-            // SENTENCE DEDUPLICATION: GPT-5.2 sometimes enters a generation loop and
+            // SENTENCE DEDUPLICATION: GPT-5.5 sometimes enters a generation loop and
             // outputs the same sentence (or near-identical sentence) 2-4 times within a
             // paragraph. This pass removes exact and near-duplicate sentences from each
             // block's text. Runs BEFORE anchor injection so we don't accidentally remove
@@ -1384,7 +1384,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           // ========================================================================
           // PROMPT-LEAK SAFETY NET
           // ========================================================================
-          // GPT-5.2 (and the Undetectable.AI humanizer) occasionally leak prompt
+          // GPT-5.5 (and the Undetectable.AI humanizer) occasionally leak prompt
           // scaffolding into the article body — phrases like "Hier die Eingabe des
           // Benutzers:" (German) or "Here is the user's input:" (English). An editor
           // will instantly reject the article if such a marker survives. This pass
@@ -1749,4 +1749,3 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
     );
   }
 }
-
