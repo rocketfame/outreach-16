@@ -91,8 +91,19 @@ export async function POST(req: Request) {
     updatedAt: now,
   };
 
-  await saveAutomationJob(job);
-  after(() => executeAutomationJob(jobId, job));
+  try {
+    await saveAutomationJob(job);
+  } catch (error) {
+    console.error("[automationGenerate] Failed to create job:", error);
+    return errorResponse("job_store_unavailable", "Automation job store is unavailable.", 500);
+  }
+
+  try {
+    after(() => executeAutomationJob(jobId, job));
+  } catch (error) {
+    console.error("[automationGenerate] Failed to schedule job:", error);
+    return errorResponse("job_schedule_failed", "Automation job could not be scheduled.", 500);
+  }
 
   return json({ status: "queued", jobId }, 202);
 }
