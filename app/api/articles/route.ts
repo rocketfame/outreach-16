@@ -162,6 +162,8 @@ export interface ArticleRequest {
   trustSourcesList?: string[]; // Legacy: shared pool for all topics (fallback)
   /** Per-topic trust sources: topic title -> sources. When provided, each article uses only its topic's sources. */
   trustSourcesPerTopic?: Record<string, string[]>;
+  /** Internal automation fallback: allow article generation without external links when no safe sources pass policy. */
+  allowMissingTrustSources?: boolean;
   // lightHumanEdit removed — humanization handles this
   humanizeOnWrite?: boolean; // NEW: enable live humanization during generation
   humanizeSettings?: { // Optional: humanize settings
@@ -249,7 +251,7 @@ export async function POST(req: Request) {
     // Validate that trust sources are provided (mandatory for article generation)
     const hasSharedSources = trustSourcesList && trustSourcesList.length > 0;
     const hasPerTopicSources = trustSourcesPerTopic && Object.values(trustSourcesPerTopic).some(arr => arr?.length > 0);
-    if (!hasSharedSources && !hasPerTopicSources) {
+    if (!body.allowMissingTrustSources && !hasSharedSources && !hasPerTopicSources) {
       return new Response(
         JSON.stringify({ error: "Cannot generate articles without trust sources. Trust sources are mandatory (1-3 per article). Please ensure browsing/search is working correctly." }),
         { status: 400, headers: { "Content-Type": "application/json" } }

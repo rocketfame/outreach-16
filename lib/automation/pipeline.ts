@@ -89,7 +89,7 @@ export async function runAutomationGeneration(
     .map((source) => `${source.title}|${source.url}|${source.snippet}`);
 
   if (trustSourcesList.length === 0) {
-    throw new Error("No trusted sources found for automation article generation.");
+    console.warn("[automationPipeline] No policy-approved trust sources found; continuing without external links.");
   }
 
   const articleResponse = await generateArticleRoute(new Request("https://automation.local/api/articles", {
@@ -116,6 +116,7 @@ export async function runAutomationGeneration(
         },
       ],
       trustSourcesList,
+      allowMissingTrustSources: true,
       writingMode: request.mode === "human" ? "human" : "seo",
       humanizeOnWrite: request.mode === "human",
       humanizeSettings: {
