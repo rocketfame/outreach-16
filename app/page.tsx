@@ -5239,7 +5239,7 @@ export default function Home() {
                 type="text"
                 value={brief.niche}
                 onChange={handleBriefChange("niche")}
-                placeholder="e.g. Music industry, IT, Med tech, Casino, VPN, HR, or your custom niche"
+                placeholder="e.g. Music industry, Ecommerce, SaaS, AI tools, iGaming, Astrology / Spirituality, or your custom niche"
               />
               <small>Describe the main topic or industry focus</small>
               

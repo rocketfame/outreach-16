@@ -30,13 +30,42 @@ const COMPETITOR_KEYWORDS: Record<string, string[]> = {
     "casino affiliate", "affiliate program", "referral bonus",
     "casino review site", "gambling affiliate"
   ],
+  "Gambling": [
+    "casino affiliate", "affiliate program", "referral bonus",
+    "casino review site", "gambling affiliate"
+  ],
+  "iGaming": [
+    "casino affiliate", "affiliate program", "referral bonus",
+    "casino review site", "gambling affiliate"
+  ],
   "VPN": [
+    "vpn affiliate", "vpn review site", "vpn comparison affiliate"
+  ],
+  "VPN / Privacy": [
     "vpn affiliate", "vpn review site", "vpn comparison affiliate"
   ],
   "IT": [
     "it services affiliate", "software affiliate"
   ],
+  "Software / IT": [
+    "it services affiliate", "software affiliate"
+  ],
+  "SaaS": [
+    "software affiliate", "saas affiliate", "software review affiliate"
+  ],
+  "AI tools": [
+    "ai tools affiliate", "ai tool review site", "software affiliate"
+  ],
+  "Cybersecurity": [
+    "security software affiliate", "vpn affiliate", "antivirus affiliate"
+  ],
+  "Fintech": [
+    "broker affiliate", "crypto affiliate", "loan affiliate", "trading affiliate"
+  ],
   "HR": [
+    "hr services affiliate", "recruitment affiliate"
+  ],
+  "HR / Recruiting": [
     "hr services affiliate", "recruitment affiliate"
   ],
   // Add more niches as needed
