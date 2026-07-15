@@ -1,4 +1,12 @@
-export const AUTOMATION_CATEGORIES = [
+/**
+ * Categories with dedicated official-source search mappings in the pipeline
+ * (see buildOfficialSourceQuery). The automation API accepts ANY free-text
+ * category — this list is NOT a validator, it only documents which platforms
+ * get curated `site:` queries for trust sources. Keep the seven legacy
+ * Free-Followers autopilot values (Instagram, TikTok, YouTube, Facebook,
+ * SoundCloud, Spotify, Growth) working forever.
+ */
+export const KNOWN_AUTOMATION_CATEGORIES = [
   "Instagram",
   "TikTok",
   "YouTube",
@@ -6,30 +14,50 @@ export const AUTOMATION_CATEGORIES = [
   "SoundCloud",
   "Spotify",
   "Growth",
+  "Beatport",
+  "Twitch",
 ] as const;
-
-export type AutomationCategory = (typeof AUTOMATION_CATEGORIES)[number];
 
 export type AutomationMode = "human" | "standard";
 export type AutomationJobStatus = "queued" | "running" | "done" | "error";
 
-export interface AutomationGenerateRequest {
+/** Raw request body accepted by POST /api/automation/generate. */
+export interface AutomationGenerateInput {
   topic?: string | null;
   niche: string;
-  category: AutomationCategory;
+  /** Free text. Optional — derived from niche platform presets when omitted. */
+  category?: string;
   anchor?: string;
   anchorUrl?: string;
-  mode: AutomationMode;
+  /** Optional — defaults to "human". */
+  mode?: AutomationMode;
+  /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
+  language?: string;
   image?: boolean;
-  imageRatio?: "16:9";
   minWords?: number;
   maxWords?: number;
+}
+
+/** Normalized request after validation — all defaults resolved. */
+export interface AutomationGenerateRequest {
+  topic: string | null;
+  niche: string;
+  category: string;
+  anchor: string;
+  anchorUrl: string;
+  mode: AutomationMode;
+  /** Canonical supported language name, e.g. "Spanish". */
+  language: string;
+  image: boolean;
+  imageRatio: "16:9";
+  minWords: number;
+  maxWords: number;
 }
 
 export interface AutomationArticle {
   title: string;
   slug?: string;
-  category: AutomationCategory;
+  category: string;
   seoTitle: string;
   excerpt: string;
   seoDescription: string;
@@ -49,6 +77,8 @@ export interface AutomationGenerateSuccess {
   meta: {
     model: string;
     humanized: boolean;
+    /** Resolved article language, echoed so callers can assert on it. */
+    language: string;
     costUsd: number;
   };
 }
@@ -72,4 +102,16 @@ export interface AutomationErrorResponse {
   status: "error";
   code: string;
   message: string;
+  /** Machine-readable list of accepted values for the offending field. */
+  allowed?: readonly string[];
+  /** Name of the request field that failed validation. */
+  field?: string;
+}
+
+/** Queue placement info returned for queued jobs (submit + polling). */
+export interface AutomationQueueInfo {
+  /** 1 = next to run. Counts currently running jobs ahead of this one. */
+  position: number;
+  /** Rough estimate until this job starts, based on average job duration. */
+  etaSeconds: number;
 }

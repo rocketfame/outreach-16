@@ -110,7 +110,7 @@ Required on Vercel (and `.env.local` for dev):
 - Trial tokens read from `TRIAL_TOKENS` env ONLY — never hardcode tokens on the client
 - Master IPs read from `MASTER_IPS` env with fallback — never log the full list
 - Cookies set via `COOKIE_OPTIONS` constant in `app/proxy.ts` (httpOnly, secure in prod, sameSite strict)
-- Every API route that does generation or search MUST call `checkRateLimit(getClientIP(req), category)`
+- Every API route that does generation or search MUST call `checkRateLimit(getClientIP(req), category)`. Single sanctioned exception: in-process internal calls from the automation pipeline, verified via `isInternalAutomationCall()` (`lib/automation/internal.ts` — per-process random token, unforgeable externally). They are authenticated upstream via `AUTOMATION_API_KEY` and throttled by the automation job queue. Do NOT "fix" this bypass back.
 - Non-master IPs on `/` must see `MaintenanceGate`, never raw 403
 
 ### Build / deploy

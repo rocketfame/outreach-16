@@ -10,6 +10,7 @@ import { TagPill } from "./components/TagPill";
 import { usePersistentAppState, type Brief, type Topic, type TopicResponse, type GeneratedArticle, type WritingMode } from "./hooks/usePersistentAppState";
 import { HUMAN_MODE_EXPERIMENT } from "@/lib/config";
 import { PLATFORM_PRESETS, NICHE_TO_PRESET_KEY, NICHE_PRESET_LABELS } from "@/config/platformPresets";
+import { SUPPORTED_LANGUAGES } from "@/config/languages";
 import { copyArticleAsPlainText, downloadArticleAsTxt, extractPlainTextFromElement } from "@/lib/articlePlainText";
 import { cleanText } from "@/lib/textPostProcessing";
 
@@ -5270,7 +5271,7 @@ export default function Home() {
               <span>Language</span>
               <select
                 value={
-                  brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian", "Russian"].includes(brief.language)
+                  brief.language && !(SUPPORTED_LANGUAGES as readonly string[]).includes(brief.language)
                     ? "Other (custom)"
                     : (brief.language || "English")
                 }
@@ -5278,7 +5279,7 @@ export default function Home() {
                   const value = e.target.value;
                   if (value === "Other (custom)") {
                     // Show custom input field, keep current language value if it's custom
-                    const currentCustom = brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian", "Russian"].includes(brief.language)
+                    const currentCustom = brief.language && !(SUPPORTED_LANGUAGES as readonly string[]).includes(brief.language)
                       ? brief.language
                       : "";
                     updateBrief({ 
@@ -5292,18 +5293,12 @@ export default function Home() {
                   }
                 }}
               >
-                <option value="English">English</option>
-                <option value="German">German</option>
-                <option value="Spanish">Spanish</option>
-                <option value="Portuguese">Portuguese</option>
-                <option value="French">French</option>
-                <option value="Italian">Italian</option>
-                <option value="Polish">Polish</option>
-                <option value="Ukrainian">Ukrainian</option>
-                <option value="Russian">Russian</option>
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
                 <option value="Other (custom)">Other (custom)</option>
               </select>
-              {brief.language && !["English", "German", "Spanish", "Portuguese", "French", "Italian", "Polish", "Ukrainian", "Russian"].includes(brief.language) && (
+              {brief.language && !(SUPPORTED_LANGUAGES as readonly string[]).includes(brief.language) && (
                 <input
                   type="text"
                   value={brief.language}

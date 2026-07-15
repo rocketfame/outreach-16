@@ -6,6 +6,7 @@ import { getCostTracker } from "@/lib/costTracker";
 import { selectImageBoxPrompt, buildImagePromptFromBox } from "@/lib/imageBoxPrompts";
 import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken } from "@/lib/trialLimits";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
+import { isInternalAutomationCall } from "@/lib/automation/internal";
 
 const HERO_IMAGE_FORMAT = {
   model: "gpt-image-2",
@@ -348,13 +349,17 @@ export async function POST(req: Request) {
 
   // Rate limit: image generation is expensive (OpenAI Images API) — 10 req/hour per IP.
   // Per CLAUDE.md security rule, every generation endpoint MUST call checkRateLimit.
-  const ip = getClientIP(req);
-  const rl = checkRateLimit(ip, "generate");
-  if (rl.limited) {
-    return new Response(
-      JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait before generating more images." }),
-      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
-    );
+  // Internal automation calls (in-process token, lib/automation/internal.ts)
+  // skip it — authenticated via AUTOMATION_API_KEY and throttled by the queue.
+  if (!isInternalAutomationCall(req)) {
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(ip, "generate");
+    if (rl.limited) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait before generating more images." }),
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
+      );
+    }
   }
 
   // Check trial limits before processing

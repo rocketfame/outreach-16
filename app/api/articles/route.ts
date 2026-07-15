@@ -71,6 +71,7 @@ import {
 import path from "path";
 import fs from "fs";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
+import { isInternalAutomationCall } from "@/lib/automation/internal";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: unknown[]) => {
@@ -200,14 +201,20 @@ export interface ArticleResponse {
 
 export async function POST(req: Request) {
 
-  // Rate limit: 10 req/hour per IP (expensive OpenAI calls)
-  const ip = getClientIP(req);
-  const rl = checkRateLimit(ip, "generate");
-  if (rl.limited) {
-    return new Response(
-      JSON.stringify({ error: "Rate limit exceeded. Please wait before generating more articles." }),
-      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
-    );
+  // Rate limit: 10 req/hour per IP (expensive OpenAI calls).
+  // Internal automation calls (verified via in-process token, see
+  // lib/automation/internal.ts) skip it: they are authenticated upstream via
+  // AUTOMATION_API_KEY and throttled by the automation queue — otherwise a
+  // 10-article batch starves on the shared "automation" IP bucket.
+  if (!isInternalAutomationCall(req)) {
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(ip, "generate");
+    if (rl.limited) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please wait before generating more articles." }),
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.resetIn) } }
+      );
+    }
   }
 
   // Validate all API keys using centralized configuration

@@ -1,12 +1,13 @@
 import { after } from "next/server";
 import { requireAutomationAuth } from "@/lib/automation/auth";
 import {
-  acquireAutomationSlot,
-  releaseAutomationSlot,
+  enqueueAutomationJob,
+  getAutomationQueueInfo,
   requiresPersistentAutomationJobStore,
   saveAutomationJob,
 } from "@/lib/automation/jobStore";
-import { runAutomationGeneration, validateAutomationRequest } from "@/lib/automation/pipeline";
+import { drainAutomationQueue } from "@/lib/automation/runner";
+import { AutomationValidationError, validateAutomationRequest } from "@/lib/automation/validate";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 
 export const maxDuration = 300;
@@ -23,51 +24,6 @@ function errorResponse(code: string, message: string, status: number): Response 
   return json(body, status);
 }
 
-async function executeAutomationJob(jobId: string, job: AutomationJob): Promise<void> {
-  const acquired = await acquireAutomationSlot(jobId);
-  if (!acquired) {
-    await saveAutomationJob({
-      ...job,
-      status: "error",
-      completedAt: Date.now(),
-      error: {
-        code: "concurrency_limit",
-        message: "Another automation generation is already running. Retry later.",
-      },
-    });
-    return;
-  }
-
-  try {
-    const runningJob: AutomationJob = {
-      ...job,
-      status: "running",
-      startedAt: Date.now(),
-    };
-    await saveAutomationJob(runningJob);
-
-    const result = await runAutomationGeneration(jobId, job.request);
-    await saveAutomationJob({
-      ...runningJob,
-      status: "done",
-      completedAt: Date.now(),
-      result,
-    });
-  } catch (error) {
-    await saveAutomationJob({
-      ...job,
-      status: "error",
-      completedAt: Date.now(),
-      error: {
-        code: "generation_failed",
-        message: error instanceof Error ? error.message : "Automation generation failed.",
-      },
-    });
-  } finally {
-    await releaseAutomationSlot(jobId);
-  }
-}
-
 export async function POST(req: Request) {
   const authError = requireAutomationAuth(req);
   if (authError) {
@@ -79,11 +35,16 @@ export async function POST(req: Request) {
   try {
     request = validateAutomationRequest(await req.json());
   } catch (error) {
-    return errorResponse(
-      "invalid_request",
-      error instanceof Error ? error.message : "Invalid automation request.",
-      400
-    );
+    const body: AutomationErrorResponse = {
+      status: "error",
+      code: "invalid_request",
+      message: error instanceof Error ? error.message : "Invalid automation request.",
+    };
+    if (error instanceof AutomationValidationError) {
+      if (error.field) body.field = error.field;
+      if (error.allowed) body.allowed = error.allowed;
+    }
+    return json(body, 400);
   }
 
   const jobId = `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
@@ -112,12 +73,17 @@ export async function POST(req: Request) {
     );
   }
 
+  // "queued" is a promise the server keeps: the job goes into a FIFO queue
+  // and runs when a slot frees. The queue drains from after() hooks on every
+  // submit and every poll (see drainAutomationQueue), never rejects post-hoc.
   try {
-    after(() => executeAutomationJob(jobId, job));
+    await enqueueAutomationJob(jobId);
+    after(() => drainAutomationQueue());
   } catch (error) {
     console.error("[automationGenerate] Failed to schedule job:", error);
     return errorResponse("job_schedule_failed", "Automation job could not be scheduled.", 500);
   }
 
-  return json({ status: "queued", jobId }, 202);
+  const { position, etaSeconds } = await getAutomationQueueInfo(jobId);
+  return json({ status: "queued", jobId, position, etaSeconds }, 202);
 }

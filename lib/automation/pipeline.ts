@@ -3,11 +3,11 @@ import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
 import { searchReliableSources } from "@/lib/tavilyClient";
 import { filterSourcesByPolicy, getSourcePriority } from "@/lib/sourcePolicy";
-import {
-  AUTOMATION_CATEGORIES,
-  type AutomationArticle,
-  type AutomationGenerateRequest,
-  type AutomationGenerateSuccess,
+import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
+import type {
+  AutomationArticle,
+  AutomationGenerateRequest,
+  AutomationGenerateSuccess,
 } from "@/lib/automation/types";
 
 type InternalArticleResponse = {
@@ -27,52 +27,6 @@ type InternalImageResponse = {
   imageBase64?: string;
   error?: string;
 };
-
-export function validateAutomationRequest(input: unknown): AutomationGenerateRequest {
-  const body = input as Partial<AutomationGenerateRequest> | null;
-  if (!body || typeof body !== "object") {
-    throw new Error("Request body must be a JSON object.");
-  }
-
-  const niche = typeof body.niche === "string" ? body.niche.trim() : "";
-  const category = body.category;
-  const anchor = typeof body.anchor === "string" ? body.anchor.trim() : "";
-  const anchorUrl = typeof body.anchorUrl === "string" ? body.anchorUrl.trim() : "";
-  const mode = body.mode;
-
-  if (!niche) throw new Error("Missing required field: niche.");
-  if (!category || !AUTOMATION_CATEGORIES.includes(category)) {
-    throw new Error(`Invalid category. Expected one of: ${AUTOMATION_CATEGORIES.join(", ")}.`);
-  }
-  if ((anchor && !anchorUrl) || (!anchor && anchorUrl)) {
-    throw new Error("anchor and anchorUrl must be provided together, or both omitted.");
-  }
-  if (anchorUrl && !/^https?:\/\//i.test(anchorUrl)) {
-    throw new Error("Invalid field: anchorUrl must be an absolute http(s) URL.");
-  }
-  if (mode !== "human" && mode !== "standard") {
-    throw new Error('Invalid mode. Expected "human" or "standard".');
-  }
-
-  const minWords = Number.isFinite(body.minWords) ? Number(body.minWords) : 1200;
-  const maxWords = Number.isFinite(body.maxWords) ? Number(body.maxWords) : 1800;
-  if (minWords < 500 || maxWords < minWords || maxWords > 3000) {
-    throw new Error("Invalid minWords/maxWords range. Use 500-3000 words and maxWords >= minWords.");
-  }
-
-  return {
-    topic: typeof body.topic === "string" && body.topic.trim() ? body.topic.trim() : null,
-    niche,
-    category,
-    anchor,
-    anchorUrl,
-    mode,
-    image: body.image !== false,
-    imageRatio: "16:9",
-    minWords,
-    maxWords,
-  };
-}
 
 export async function runAutomationGeneration(
   generationId: string,
@@ -97,6 +51,7 @@ export async function runAutomationGeneration(
     headers: {
       "Content-Type": "application/json",
       "x-forwarded-for": "automation",
+      [INTERNAL_CALL_HEADER]: INTERNAL_CALL_TOKEN,
     },
     body: JSON.stringify({
       brief: {
@@ -106,7 +61,7 @@ export async function runAutomationGeneration(
         clientSite: request.anchorUrl || "",
         anchorText: request.anchor || "",
         anchorUrl: request.anchorUrl || "",
-        language: "English",
+        language: request.language || "English",
         wordCount: String(targetWords),
       },
       selectedTopics: [
@@ -149,6 +104,7 @@ export async function runAutomationGeneration(
       headers: {
         "Content-Type": "application/json",
         "x-forwarded-for": "automation",
+        [INTERNAL_CALL_HEADER]: INTERNAL_CALL_TOKEN,
       },
       body: JSON.stringify({
         articleTitle: title,
@@ -189,6 +145,7 @@ export async function runAutomationGeneration(
     meta: {
       model: "gpt-5.5",
       humanized: request.mode === "human",
+      language: request.language || "English",
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
     },
   };
@@ -216,17 +173,26 @@ async function searchAutomationTrustSources(topic: string, category: string) {
   return dedupeSources([...policyApproved, ...filterSourcesByPolicy(videoSources)]);
 }
 
+const PLATFORM_OFFICIAL_SITES: Record<string, string[]> = {
+  spotify: ["site:artists.spotify.com", "site:newsroom.spotify.com"],
+  youtube: ["site:support.google.com/youtube", "site:blog.youtube", "site:youtube.com/creators"],
+  tiktok: ["site:tiktok.com/business", "site:newsroom.tiktok.com", "site:support.tiktok.com"],
+  instagram: ["site:business.instagram.com", "site:creators.instagram.com", "site:help.instagram.com"],
+  facebook: ["site:facebook.com/business", "site:about.fb.com", "site:transparency.meta.com"],
+  soundcloud: ["site:soundcloud.com/blog", "site:help.soundcloud.com"],
+  beatport: ["site:support.beatport.com", "site:beatportal.com"],
+  twitch: ["site:blog.twitch.tv", "site:help.twitch.tv", "site:safety.twitch.tv"],
+  growth: ["site:shopify.com/blog", "site:datareportal.com", "site:pewresearch.org"],
+};
+
 function buildOfficialSourceQuery(topic: string, category: string): string {
-  const platformSites: Record<string, string[]> = {
-    Spotify: ["site:artists.spotify.com", "site:newsroom.spotify.com"],
-    YouTube: ["site:support.google.com/youtube", "site:blog.youtube", "site:youtube.com/creators"],
-    TikTok: ["site:tiktok.com/business", "site:newsroom.tiktok.com", "site:support.tiktok.com"],
-    Instagram: ["site:business.instagram.com", "site:creators.instagram.com", "site:help.instagram.com"],
-    Facebook: ["site:facebook.com/business", "site:about.fb.com", "site:transparency.meta.com"],
-    SoundCloud: ["site:soundcloud.com/blog", "site:help.soundcloud.com"],
-    Growth: ["site:shopify.com/blog", "site:datareportal.com", "site:pewresearch.org"],
-  };
-  const sites = platformSites[category] || platformSites.Growth;
+  const sites = PLATFORM_OFFICIAL_SITES[category.trim().toLowerCase()];
+  // Unknown platforms get a generic official-sources query instead of a
+  // site: restriction — falling back to Growth sites (Shopify/Pew) would
+  // inject irrelevant sources for e.g. Beatport-adjacent niches.
+  if (!sites) {
+    return `${topic} ${category} official help center guide documentation`;
+  }
   return `${sites.join(" OR ")} ${topic} ${category} guide`;
 }
 

@@ -6,8 +6,13 @@
 - `GET /api/trial-usage` — поточний стан trial usage
 - `POST /api/search-images` — пошук зображень (rate limit: search)
 - `POST /api/checkout` — Stripe checkout session
-- `POST /api/automation/generate` — async blog autopilot generation job (Bearer `AUTOMATION_API_KEY`, returns `202 { jobId }`)
-- `GET /api/automation/generate/:jobId` — polling endpoint for automation jobs (`queued|running|done|error`)
+- `POST /api/automation/generate` — async blog autopilot generation job (Bearer `AUTOMATION_API_KEY`). Повертає `202 { status:"queued", jobId, position, etaSeconds }` — джоба реально стає в FIFO-чергу (KV list `automation:queue`), а не відхиляється пост-фактум.
+  - `niche` — required, вільний текст
+  - `category` — optional, вільний текст (будь-яка платформа); якщо omitted — деривується з platform presets ніші (`config/platformPresets.ts`). Відомі платформи (Instagram/TikTok/YouTube/Facebook/SoundCloud/Spotify/Growth/Beatport/Twitch) отримують кураторські `site:` запити для trust sources, невідомі — generic-запит без site-обмежень
+  - `mode` — optional, `"human"` (default) | `"standard"`
+  - `language` — optional, повна назва ("Spanish") або ISO-код ("es"); валідується проти `SUPPORTED_LANGUAGES` (`config/languages.ts`), default English. Резолвнута мова ехається в `meta.language` результату
+  - Помилки валідації machine-readable: `{ code, message, field?, allowed? }`
+- `GET /api/automation/generate/:jobId` — polling endpoint (`queued|running|done|error`). Для queued повертає `position` (1 = наступна до виконання) та `etaSeconds`. Кожен poll — drain-тригер черги (наступна джоба виконується в `after()` цієї ж інвокації). Running довше 10 хв → `job_timeout` error. Concurrency: `AUTOMATION_CONCURRENCY` env (default 1, max 8). Внутрішні automation-виклики `/api/articles` та `/api/article-image` обходять per-IP rate limiter через in-process токен (`lib/automation/internal.ts`)
 
 ## External Services
 - **OpenAI GPT-5.5** — генерація статей та topic clusters
