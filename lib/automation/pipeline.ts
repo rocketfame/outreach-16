@@ -4,6 +4,7 @@ import { getCostTracker } from "@/lib/costTracker";
 import { searchReliableSources } from "@/lib/tavilyClient";
 import { filterSourcesByPolicy, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
 import { normalizeGoogleSupportLocale, stripDisallowedLinks } from "@/lib/automation/linkGuard";
+import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
 import type {
   AutomationArticle,
@@ -37,6 +38,7 @@ type InternalArticleResponse = {
 type InternalImageResponse = {
   success: boolean;
   imageBase64?: string;
+  selectedBoxId?: string;
   error?: string;
 };
 
@@ -158,7 +160,15 @@ export async function runAutomationGeneration(
   const seoTitle = truncateText(title, 60);
 
   let cover: AutomationArticle["cover"];
+  let imageStyleUsed: string | undefined;
   if (request.image !== false) {
+    // excludeImageStyles (stable ids) → box indices for the route's
+    // no-repeat mechanism. Selection itself is stateless per job — batch
+    // de-duplication is the caller's loop: read meta.imageStyle from each
+    // done job and pass the accumulated list into the next request.
+    const excludedIndices = (request.excludeImageStyles || [])
+      .map((id) => IMAGE_BOX_PROMPTS.findIndex((box) => box.id === id))
+      .filter((index) => index >= 0);
     const imageResponse = await generateImageRoute(new Request("https://automation.local/api/article-image", {
       method: "POST",
       headers: {
@@ -171,14 +181,16 @@ export async function runAutomationGeneration(
         niche: request.niche,
         mainPlatform: request.category,
         contentPurpose: "Guest post / outreach",
-        brandName: request.anchor || "",
-        usedBoxIndices: [],
+        brandName: request.brand || request.anchor || "",
+        usedBoxIndices: excludedIndices,
+        imageBoxId: request.imageStyle || undefined,
       }),
     }));
     const imageJson = (await imageResponse.json()) as InternalImageResponse;
     if (!imageResponse.ok || !imageJson.success || !imageJson.imageBase64) {
       throw new Error(imageJson.error || "Cover image generation failed.");
     }
+    imageStyleUsed = imageJson.selectedBoxId;
     cover = {
       base64: imageJson.imageBase64,
       format: "png",
@@ -207,6 +219,7 @@ export async function runAutomationGeneration(
       humanized: request.mode === "human",
       language: request.language || "English",
       wordCount,
+      imageStyle: imageStyleUsed,
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
     },
   };

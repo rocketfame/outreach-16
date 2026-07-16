@@ -58,3 +58,33 @@ ok("thread link unwrapped, text kept", !guarded.includes("thread/1") && guarded.
 ok("video link unwrapped", !guarded.includes("watch?v="));
 ok("anchor link preserved", guarded.includes('href="https://promosoundgroup.net/promo"'));
 ok("docs link hl rewritten", guarded.includes("hl=en") && !guarded.includes("hl=hi"));
+
+// ── Imagebox params ─────────────────────────────────────────────
+import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
+{
+  const validId = IMAGE_BOX_PROMPTS[0].id;
+  let rr = validateAutomationRequest({ ...base, imageStyle: validId });
+  ok("imageStyle valid id accepted", rr.imageStyle === validId);
+  try {
+    validateAutomationRequest({ ...base, imageStyle: "zzz-not-a-style" });
+    ok("imageStyle unknown rejected with allowed[]", false);
+  } catch (e) {
+    const err = e as AutomationValidationError;
+    ok("imageStyle unknown rejected with allowed[]", err.field === "imageStyle" && Array.isArray(err.allowed) && err.allowed.length >= 20, `allowed=${err.allowed?.length}`);
+  }
+  try {
+    validateAutomationRequest({ ...base, imageStyle: validId, image: false });
+    ok("imageStyle + image:false rejected", false);
+  } catch (e) { ok("imageStyle + image:false rejected", (e as AutomationValidationError).field === "imageStyle"); }
+  rr = validateAutomationRequest({ ...base, excludeImageStyles: [validId, IMAGE_BOX_PROMPTS[1].id] });
+  ok("excludeImageStyles accepted", rr.excludeImageStyles.length === 2);
+  try {
+    validateAutomationRequest({ ...base, excludeImageStyles: ["nope"] });
+    ok("excludeImageStyles unknown rejected", false);
+  } catch (e) { ok("excludeImageStyles unknown rejected", (e as AutomationValidationError).field === "excludeImageStyles"); }
+  try {
+    validateAutomationRequest({ ...base, excludeImageStyles: IMAGE_BOX_PROMPTS.map(b => b.id) });
+    ok("exclude-all rejected", false);
+  } catch (e) { ok("exclude-all rejected", (e as AutomationValidationError).field === "excludeImageStyles"); }
+  console.log(`INFO active image boxes: ${IMAGE_BOX_PROMPTS.length}`);
+}

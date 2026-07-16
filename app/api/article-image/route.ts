@@ -3,7 +3,7 @@
 
 import { getOpenAIClient, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
-import { selectImageBoxPrompt, buildImagePromptFromBox } from "@/lib/imageBoxPrompts";
+import { selectImageBoxPrompt, buildImagePromptFromBox, IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken } from "@/lib/trialLimits";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 import { isInternalAutomationCall } from "@/lib/automation/internal";
@@ -33,6 +33,7 @@ export interface ArticleImageRequest {
   brandName: string;
   customStyle?: string; // Optional: personalized style description learned from reference images
   usedBoxIndices?: number[]; // Optional: array of box indices already used for this article (for random selection without repeats)
+  imageBoxId?: string; // Optional: pin a specific image box preset by id (skips random selection)
 }
 
 export interface ArticleImageResponse {
@@ -44,6 +45,7 @@ export interface ArticleImageResponse {
   height?: typeof HERO_IMAGE_FORMAT.height;
   aspectRatio?: typeof HERO_IMAGE_FORMAT.aspectRatio;
   selectedBoxIndex?: number; // Index of the selected box (for tracking used boxes)
+  selectedBoxId?: string; // Stable id of the selected box (indices shift when presets change)
   error?: string;
 }
 
@@ -71,8 +73,9 @@ function buildImagePrompt(params: {
   brandName: string;
   customStyle?: string; // Optional personalized style from reference images
   usedBoxIndices?: number[]; // Optional: array of box indices already used for this article
-}): { prompt: string; selectedBoxIndex?: number } {
-  const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, usedBoxIndices = [] } = params;
+  imageBoxId?: string; // Optional: pin a specific box preset by id
+}): { prompt: string; selectedBoxIndex?: number; selectedBoxId?: string } {
+  const { articleTitle, niche, mainPlatform, contentPurpose, brandName, customStyle, usedBoxIndices = [], imageBoxId } = params;
 
   // Deterministic hash function for consistent "randomness" based on input
   const getHash = (str: string) => str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -194,6 +197,7 @@ function buildImagePrompt(params: {
 
   let prompt: string;
   let selectedBoxIndex: number | undefined = undefined;
+  let selectedBoxId: string | undefined = undefined;
 
   if (customStyle && customStyle.trim()) {
     // REFERENCE IMAGE MODE: Generate image in the EXACT style of the reference
@@ -234,9 +238,20 @@ Generate an image that looks like it was created by the same artist using the sa
   } else {
     // DEFAULT MODE: Use Image Box Prompt component system
     try {
+      // Pinned preset takes precedence over random selection.
+      const pinnedIndex = imageBoxId
+        ? IMAGE_BOX_PROMPTS.findIndex((box) => box.id === imageBoxId)
+        : -1;
+      if (imageBoxId && pinnedIndex === -1) {
+        throw new Error(`Unknown imageBoxId "${imageBoxId}".`);
+      }
       const usedIndicesSet = new Set(usedBoxIndices);
-      const { box: selectedBox, index: selectedIndex } = selectImageBoxPrompt(usedIndicesSet);
+      const { box: selectedBox, index: selectedIndex } =
+        pinnedIndex >= 0
+          ? { box: IMAGE_BOX_PROMPTS[pinnedIndex], index: pinnedIndex }
+          : selectImageBoxPrompt(usedIndicesSet);
       selectedBoxIndex = selectedIndex;
+      selectedBoxId = selectedBox.id;
       prompt = buildImagePromptFromBox(selectedBox, {
         articleTitle,
         niche,
@@ -338,7 +353,7 @@ Remember: This is MODERN DIGITAL ART with CHARACTERS and ABSTRACTIONS. NOT techn
     }
   }
   
-  return { prompt, selectedBoxIndex };
+  return { prompt, selectedBoxIndex, selectedBoxId };
 }
 
 export async function POST(req: Request) {
@@ -389,7 +404,7 @@ export async function POST(req: Request) {
 
   try {
     const body: ArticleImageRequest = await req.json();
-    const { articleTitle, niche, mainPlatform, contentPurpose, brandName: rawBrandName, customStyle, usedBoxIndices = [] } = body;
+    const { articleTitle, niche, mainPlatform, contentPurpose, brandName: rawBrandName, customStyle, usedBoxIndices = [], imageBoxId } = body;
     // Brand is optional - use "Generic" when empty (e.g. Direct mode without clientSite)
     const brandName = rawBrandName && rawBrandName.trim() ? rawBrandName.trim() : "Generic";
 
@@ -407,7 +422,7 @@ export async function POST(req: Request) {
     }
 
     // Build image prompt
-    const { prompt: promptText, selectedBoxIndex } = buildImagePrompt({
+    const { prompt: promptText, selectedBoxIndex, selectedBoxId } = buildImagePrompt({
       articleTitle,
       niche,
       mainPlatform,
@@ -415,6 +430,7 @@ export async function POST(req: Request) {
       brandName,
       customStyle,
       usedBoxIndices,
+      imageBoxId,
     });
     
     // Ensure prompt is under 32000 characters (gpt-image-2 supports much longer prompts than DALL-E 3)
@@ -482,6 +498,7 @@ export async function POST(req: Request) {
         height: HERO_IMAGE_FORMAT.height,
         aspectRatio: HERO_IMAGE_FORMAT.aspectRatio,
         selectedBoxIndex,
+        selectedBoxId,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

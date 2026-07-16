@@ -41,6 +41,10 @@ export interface AutomationGenerateInput {
   /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
   language?: string;
   image?: boolean;
+  /** Pin a specific image box preset by id (see lib/imageBoxPrompts.ts). */
+  imageStyle?: string;
+  /** Preset ids to exclude — lets a batch caller guarantee distinct covers. */
+  excludeImageStyles?: string[];
   minWords?: number;
   maxWords?: number;
 }
@@ -58,6 +62,8 @@ export interface AutomationGenerateRequest {
   /** Canonical supported language name, e.g. "Spanish". */
   language: string;
   image: boolean;
+  imageStyle: string;
+  excludeImageStyles: string[];
   imageRatio: "16:9";
   minWords: number;
   maxWords: number;
@@ -90,6 +96,8 @@ export interface AutomationGenerateSuccess {
     language: string;
     /** Word count of the final body — callers can assert against minWords. */
     wordCount: number;
+    /** Image box preset id used for the cover — assert on it, don't eyeball. */
+    imageStyle?: string;
     costUsd: number;
   };
 }

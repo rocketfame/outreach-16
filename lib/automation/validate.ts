@@ -1,6 +1,9 @@
 import { NICHE_TO_PRESET_KEY, PLATFORM_PRESETS } from "@/config/platformPresets";
 import { SUPPORTED_LANGUAGES, resolveLanguage } from "@/config/languages";
+import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import type { AutomationGenerateInput, AutomationGenerateRequest } from "@/lib/automation/types";
+
+const IMAGE_STYLE_IDS = IMAGE_BOX_PROMPTS.map((box) => box.id);
 
 export class AutomationValidationError extends Error {
   readonly field?: string;
@@ -134,6 +137,58 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     language = resolved;
   }
 
+  const image = body.image !== false;
+
+  const imageStyle = typeof body.imageStyle === "string" ? body.imageStyle.trim() : "";
+  if (body.imageStyle !== undefined && body.imageStyle !== null && typeof body.imageStyle !== "string") {
+    throw new AutomationValidationError("Invalid imageStyle. Expected a string.", {
+      field: "imageStyle",
+      allowed: IMAGE_STYLE_IDS,
+    });
+  }
+  if (imageStyle && !IMAGE_STYLE_IDS.includes(imageStyle)) {
+    throw new AutomationValidationError(
+      `Unknown imageStyle "${imageStyle}". Expected one of the image box preset ids.`,
+      { field: "imageStyle", allowed: IMAGE_STYLE_IDS }
+    );
+  }
+  if (imageStyle && !image) {
+    throw new AutomationValidationError(
+      "imageStyle requires image generation — remove it or set image: true.",
+      { field: "imageStyle" }
+    );
+  }
+
+  let excludeImageStyles: string[] = [];
+  if (body.excludeImageStyles !== undefined && body.excludeImageStyles !== null) {
+    if (!Array.isArray(body.excludeImageStyles) || body.excludeImageStyles.some((s) => typeof s !== "string")) {
+      throw new AutomationValidationError("Invalid excludeImageStyles. Expected an array of strings.", {
+        field: "excludeImageStyles",
+        allowed: IMAGE_STYLE_IDS,
+      });
+    }
+    excludeImageStyles = body.excludeImageStyles.map((s) => s.trim()).filter(Boolean);
+    const unknown = excludeImageStyles.filter((s) => !IMAGE_STYLE_IDS.includes(s));
+    if (unknown.length > 0) {
+      throw new AutomationValidationError(
+        `Unknown excludeImageStyles: ${unknown.join(", ")}.`,
+        { field: "excludeImageStyles", allowed: IMAGE_STYLE_IDS }
+      );
+    }
+    if (excludeImageStyles.length >= IMAGE_STYLE_IDS.length) {
+      throw new AutomationValidationError(
+        "excludeImageStyles excludes every preset — leave at least one available.",
+        { field: "excludeImageStyles" }
+      );
+    }
+    if (imageStyle && excludeImageStyles.includes(imageStyle)) {
+      throw new AutomationValidationError(
+        `imageStyle "${imageStyle}" is also in excludeImageStyles.`,
+        { field: "imageStyle" }
+      );
+    }
+  }
+
   const minWords = Number.isFinite(body.minWords) ? Number(body.minWords) : 1200;
   const maxWords = Number.isFinite(body.maxWords) ? Number(body.maxWords) : 1800;
   if (minWords < 500 || maxWords < minWords || maxWords > 3000) {
@@ -153,7 +208,9 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     brief: customBrief,
     mode,
     language,
-    image: body.image !== false,
+    image,
+    imageStyle,
+    excludeImageStyles,
     imageRatio: "16:9",
     minWords,
     maxWords,
