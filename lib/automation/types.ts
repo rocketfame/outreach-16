@@ -29,6 +29,13 @@ export interface AutomationGenerateInput {
   category?: string;
   anchor?: string;
   anchorUrl?: string;
+  /**
+   * Brand NAME as plain text (e.g. "PromoSoundGroup"), never a URL or bare
+   * domain — domains get mangled by the humanizer and read as spam.
+   */
+  brand?: string;
+  /** Free-text instructions appended to the generated topic brief. */
+  brief?: string;
   /** Optional — defaults to "human". */
   mode?: AutomationMode;
   /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
@@ -45,6 +52,8 @@ export interface AutomationGenerateRequest {
   category: string;
   anchor: string;
   anchorUrl: string;
+  brand: string;
+  brief: string;
   mode: AutomationMode;
   /** Canonical supported language name, e.g. "Spanish". */
   language: string;
@@ -79,6 +88,8 @@ export interface AutomationGenerateSuccess {
     humanized: boolean;
     /** Resolved article language, echoed so callers can assert on it. */
     language: string;
+    /** Word count of the final body — callers can assert against minWords. */
+    wordCount: number;
     costUsd: number;
   };
 }

@@ -11,6 +11,10 @@
   - `category` — optional, вільний текст (будь-яка платформа); якщо omitted — деривується з platform presets ніші (`config/platformPresets.ts`). Відомі платформи (Instagram/TikTok/YouTube/Facebook/SoundCloud/Spotify/Growth/Beatport/Twitch) отримують кураторські `site:` запити для trust sources, невідомі — generic-запит без site-обмежень
   - `mode` — optional, `"human"` (default) | `"standard"`
   - `language` — optional, повна назва ("Spanish") або ISO-код ("es"); валідується проти `SUPPORTED_LANGUAGES` (`config/languages.ts`), default English. Резолвнута мова ехається в `meta.language` результату
+  - `brand` — optional, ІМʼЯ бренду plain text ("PromoSoundGroup"); URL або голий домен → 400 (домен у тексті жує гуманізатор — "net-glitch"). Йде в brief.clientSite → [[BRAND_NAME]] промпта, інструкція "mention 2-3 times as plain name", заморожується перед Undetectable
+  - `brief` — optional, до 2000 символів; додається до згенерованого topic brief
+  - `minWords` — це floor, не hint: draft нижче floor → один retry з підвищеним таргетом, потім error code `below_min_words` (а не `done` зі стабом). `meta.wordCount` у результаті для assert
+  - Джерела: `/thread/`, форуми, reddit/quora, SEO-блоги (backlinko тощо) і video-цитати відфільтровуються (`lib/sourcePolicy.ts` + `lib/automation/linkGuard.ts`); `hl` на support.google.com форситься в `en`; фінальний guard розгортає заборонені лінки в тексті (анкор недоторканий)
   - Помилки валідації machine-readable: `{ code, message, field?, allowed? }`
 - `GET /api/automation/generate/:jobId` — polling endpoint (`queued|running|done|error`). Для queued повертає `position` (1 = наступна до виконання) та `etaSeconds`. Кожен poll — drain-тригер черги (наступна джоба виконується в `after()` цієї ж інвокації). Running довше 10 хв → `job_timeout` error. Concurrency: `AUTOMATION_CONCURRENCY` env (default 1, max 8). Внутрішні automation-виклики `/api/articles` та `/api/article-image` обходять per-IP rate limiter через in-process токен (`lib/automation/internal.ts`)
 

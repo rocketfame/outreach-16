@@ -80,6 +80,34 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     );
   }
 
+  // Brand must be a plain NAME. A URL or bare domain here ends up in body
+  // copy as "Brand.tld", which the humanizer mangles into orphaned "tld".
+  const brand = typeof body.brand === "string" ? body.brand.trim() : "";
+  if (body.brand !== undefined && body.brand !== null && typeof body.brand !== "string") {
+    throw new AutomationValidationError("Invalid brand. Expected a string.", { field: "brand" });
+  }
+  if (brand.length > 80) {
+    throw new AutomationValidationError("Invalid brand. Maximum length is 80 characters.", {
+      field: "brand",
+    });
+  }
+  if (brand && (/^https?:\/\//i.test(brand) || /^[a-z0-9-]+(\.[a-z0-9-]+)+\/?$/i.test(brand))) {
+    throw new AutomationValidationError(
+      `Invalid brand "${brand}". Provide the brand NAME as plain text (e.g. "PromoSoundGroup"), not a URL or domain — pass the site via anchorUrl instead.`,
+      { field: "brand" }
+    );
+  }
+
+  const customBrief = typeof body.brief === "string" ? body.brief.trim() : "";
+  if (body.brief !== undefined && body.brief !== null && typeof body.brief !== "string") {
+    throw new AutomationValidationError("Invalid brief. Expected a string.", { field: "brief" });
+  }
+  if (customBrief.length > 2000) {
+    throw new AutomationValidationError("Invalid brief. Maximum length is 2000 characters.", {
+      field: "brief",
+    });
+  }
+
   const mode = body.mode === undefined || body.mode === null ? "human" : body.mode;
   if (mode !== "human" && mode !== "standard") {
     throw new AutomationValidationError('Invalid mode. Expected "human" or "standard".', {
@@ -121,6 +149,8 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     category,
     anchor,
     anchorUrl,
+    brand,
+    brief: customBrief,
     mode,
     language,
     image: body.image !== false,

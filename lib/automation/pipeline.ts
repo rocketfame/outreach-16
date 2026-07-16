@@ -2,13 +2,25 @@ import { POST as generateArticleRoute } from "@/app/api/articles/route";
 import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
 import { searchReliableSources } from "@/lib/tavilyClient";
-import { filterSourcesByPolicy, getSourcePriority } from "@/lib/sourcePolicy";
+import { filterSourcesByPolicy, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
+import { normalizeGoogleSupportLocale, stripDisallowedLinks } from "@/lib/automation/linkGuard";
 import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
 import type {
   AutomationArticle,
   AutomationGenerateRequest,
   AutomationGenerateSuccess,
 } from "@/lib/automation/types";
+
+/** Pipeline failure with a machine-readable code surfaced in the job error. */
+export class AutomationPipelineError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "AutomationPipelineError";
+    this.code = code;
+  }
+}
 
 type InternalArticleResponse = {
   articles?: Array<{
@@ -28,24 +40,13 @@ type InternalImageResponse = {
   error?: string;
 };
 
-export async function runAutomationGeneration(
-  generationId: string,
-  request: AutomationGenerateRequest
-): Promise<AutomationGenerateSuccess> {
-  const costBefore = getCostTracker().getTotalCosts().total;
-  const topic = request.topic || buildFallbackTopic(request);
-  const targetWords = Math.round(((request.minWords || 1200) + (request.maxWords || 1800)) / 2);
-
-  const sources = await searchAutomationTrustSources(topic, request.category);
-  const trustSourcesList = filterSourcesByPolicy(sources)
-    .sort((a, b) => getSourcePriority(b) - getSourcePriority(a))
-    .slice(0, 6)
-    .map((source) => `${source.title}|${source.url}|${source.snippet}`);
-
-  if (trustSourcesList.length === 0) {
-    console.warn("[automationPipeline] No policy-approved trust sources found; continuing without external links.");
-  }
-
+async function generateArticleOnce(
+  request: AutomationGenerateRequest,
+  topic: string,
+  trustSourcesList: string[],
+  targetWords: number,
+  extraInstruction: string
+): Promise<{ title: string; contentHtml: string; metaDescription: string }> {
   const articleResponse = await generateArticleRoute(new Request("https://automation.local/api/articles", {
     method: "POST",
     headers: {
@@ -58,7 +59,10 @@ export async function runAutomationGeneration(
         niche: request.niche,
         platform: request.category,
         contentPurpose: "Guest post / outreach",
-        clientSite: request.anchorUrl || "",
+        // Brand NAME goes into clientSite (the UI "Brand" field). Never the
+        // URL: the route extracts a bare domain from URLs, the model then
+        // writes "Brand.tld" and the humanizer mangles it (net-glitch).
+        clientSite: request.brand || request.anchorUrl || "",
         anchorText: request.anchor || "",
         anchorUrl: request.anchorUrl || "",
         language: request.language || "English",
@@ -67,7 +71,7 @@ export async function runAutomationGeneration(
       selectedTopics: [
         {
           title: topic,
-          brief: buildTopicBrief(request, topic),
+          brief: buildTopicBrief(request, topic) + (extraInstruction ? `\n${extraInstruction}` : ""),
         },
       ],
       trustSourcesList,
@@ -90,11 +94,67 @@ export async function runAutomationGeneration(
   const generated = articleJson.articles[0];
   const title = stripTags(generated.titleTag || topic).trim();
   const rawHtml = generated.articleBodyHtml || generated.fullArticleText || "";
-  const sanitizedHtml = sanitizeAutomationHtml(rawHtml);
-  const contentHtml = request.anchor
-    ? enforceSingleBrandMention(sanitizedHtml, request.anchor)
-    : sanitizedHtml;
-  const seoDescription = cleanDescription(generated.metaDescription || summarizeText(contentHtml, 155));
+  let contentHtml = sanitizeAutomationHtml(rawHtml);
+  contentHtml = stripDisallowedLinks(contentHtml, request.anchorUrl);
+  // Enforce the single ANCHOR mention only when the anchor text is not the
+  // brand itself — brand mentions (2-3x) must survive.
+  const anchorIsBrand =
+    request.brand && request.anchor.toLowerCase().includes(request.brand.toLowerCase());
+  if (request.anchor && !anchorIsBrand) {
+    contentHtml = enforceSingleBrandMention(contentHtml, request.anchor);
+  }
+  return { title, contentHtml, metaDescription: generated.metaDescription || "" };
+}
+
+function countWords(html: string): number {
+  return stripTags(html).split(/\s+/).filter(Boolean).length;
+}
+
+export async function runAutomationGeneration(
+  generationId: string,
+  request: AutomationGenerateRequest
+): Promise<AutomationGenerateSuccess> {
+  const costBefore = getCostTracker().getTotalCosts().total;
+  const topic = request.topic || buildFallbackTopic(request);
+  const minWords = request.minWords || 1200;
+  const targetWords = Math.round((minWords + (request.maxWords || 1800)) / 2);
+
+  const sources = await searchAutomationTrustSources(topic, request.category);
+  const trustSourcesList = filterSourcesByPolicy(sources)
+    .sort((a, b) => getSourcePriority(b) - getSourcePriority(a))
+    .slice(0, 6)
+    .map((source) => `${source.title}|${source.url}|${source.snippet}`);
+
+  if (trustSourcesList.length === 0) {
+    console.warn("[automationPipeline] No policy-approved trust sources found; continuing without external links.");
+  }
+
+  // minWords is a floor, not a hint: one retry with a boosted target and an
+  // explicit floor instruction, then an honest error. A 245-word stub with
+  // status "done" is the same class of bug as masked insufficient_quota.
+  let article = await generateArticleOnce(request, topic, trustSourcesList, targetWords, "");
+  let wordCount = countWords(article.contentHtml);
+  if (wordCount < minWords) {
+    console.warn(`[automationPipeline] Draft is ${wordCount} words (< floor ${minWords}); retrying with boosted target.`);
+    const boostedTarget = Math.max(targetWords, Math.round(minWords * 1.3));
+    article = await generateArticleOnce(
+      request,
+      topic,
+      trustSourcesList,
+      boostedTarget,
+      `The article MUST contain at least ${minWords} words of substantive content. Do not pad with filler — add concrete examples, steps, and specifics instead.`
+    );
+    wordCount = countWords(article.contentHtml);
+  }
+  if (wordCount < minWords) {
+    throw new AutomationPipelineError(
+      "below_min_words",
+      `Generated article has ${wordCount} words after retry; the floor is ${minWords}. Likely too little research material for this niche+category pair — try a more specific niche (e.g. "Electronic music industry" instead of "Music industry") or lower minWords.`
+    );
+  }
+
+  const { title, contentHtml } = article;
+  const seoDescription = cleanDescription(article.metaDescription || summarizeText(contentHtml, 155));
   const seoTitle = truncateText(title, 60);
 
   let cover: AutomationArticle["cover"];
@@ -146,6 +206,7 @@ export async function runAutomationGeneration(
       model: "gpt-5.5",
       humanized: request.mode === "human",
       language: request.language || "English",
+      wordCount,
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
     },
   };
@@ -154,23 +215,35 @@ export async function runAutomationGeneration(
 async function searchAutomationTrustSources(topic: string, category: string) {
   const officialQuery = buildOfficialSourceQuery(topic, category);
   const researchQuery = `${topic} ${category} statistics report industry data`;
-  const videoQuery = `site:youtube.com/watch ${topic} ${category} official creator`;
 
   const resultSets = await Promise.all([
     searchReliableSources(officialQuery),
     searchReliableSources(researchQuery),
   ]);
 
-  const merged = dedupeSources(resultSets.flat());
-  const policyApproved = filterSourcesByPolicy(merged);
-  const nonVideo = policyApproved.filter(source => !/youtube\.com\/watch|youtu\.be\/|vimeo\.com\//i.test(source.url));
+  const merged = dedupeSources(resultSets.flat()).map((source) => ({
+    ...source,
+    url: normalizeGoogleSupportLocale(source.url),
+  }));
 
-  if (nonVideo.length >= 3) {
-    return policyApproved;
+  return filterSourcesByPolicy(merged).filter((source) => {
+    // Videos are never citations in outreach articles — host editors reject them.
+    if (isVideoUrl(source.url)) return false;
+    // Shopify content is an official source ONLY for the Growth category;
+    // in a TikTok/Spotify article it reads as a third-party commercial blog.
+    if (category.trim().toLowerCase() !== "growth" && /(^|\.)shopify\.com$/i.test(hostnameOf(source.url))) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
   }
-
-  const videoSources = await searchReliableSources(videoQuery);
-  return dedupeSources([...policyApproved, ...filterSourcesByPolicy(videoSources)]);
 }
 
 const PLATFORM_OFFICIAL_SITES: Record<string, string[]> = {
@@ -205,14 +278,27 @@ function buildFallbackTopic(request: AutomationGenerateRequest): string {
 }
 
 function buildTopicBrief(request: AutomationGenerateRequest, topic: string): string {
-  return [
+  const lines = [
     topic,
-    request.anchor
-      ? `Write for ${request.anchor} blog readers who want practical ${request.category} growth advice.`
-      : `Write for readers who want practical ${request.category} growth advice.`,
-    request.anchor ? `Include exactly one natural mention of ${request.anchor}.` : "Do not mention any client brand or commercial anchor.",
-    "Avoid competitors, SMM panels, bought-follower services, fake engagement claims, and placeholder related-read sections.",
-  ].join("\n");
+    `Write for readers who want practical ${request.category} growth advice.`,
+  ];
+  if (request.brand) {
+    lines.push(
+      `Mention the brand "${request.brand}" naturally 2-3 times across the article, always as the plain name — never as a URL, domain, or link.`
+    );
+  }
+  if (request.anchor) {
+    lines.push(`Include exactly one natural mention of ${request.anchor}.`);
+  } else if (!request.brand) {
+    lines.push("Do not mention any client brand or commercial anchor.");
+  }
+  lines.push(
+    "Avoid competitors, SMM panels, bought-follower services, fake engagement claims, and placeholder related-read sections."
+  );
+  if (request.brief) {
+    lines.push(request.brief);
+  }
+  return lines.join("\n");
 }
 
 function sanitizeAutomationHtml(html: string): string {

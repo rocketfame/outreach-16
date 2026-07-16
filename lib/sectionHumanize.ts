@@ -36,19 +36,37 @@ export function chunkTextForHumanization(text: string): string[] {
 }
 
 /**
- * Protect [A1], [T1]-[T8] placeholders before humanization.
- * Humanizer may modify these; we replace with stable tokens and restore after.
+ * Protect [A1], [T1]-[T8] placeholders AND frozen phrases (brand names,
+ * anchor texts) before humanization. The humanizer mangles both: placeholders
+ * get rewritten, and dotted brand strings like "PromoSoundGroup.net" get
+ * split at the domain dot leaving an orphaned "net" mid-sentence (the
+ * "net-glitch"). Both are replaced with stable tokens and restored after.
  */
-function createPlaceholderProtection() {
+export function createPlaceholderProtection(frozenPhrases: string[] = []) {
   const placeholderMap: Record<string, string> = {};
   let placeholderIndex = 0;
+  let phraseIndex = 0;
 
   const protectPlaceholders = (text: string): string => {
-    return text.replace(/\[(A1|T[1-8])\]/g, (match) => {
+    let result = text.replace(/\[(A1|T[1-8])\]/g, (match) => {
       const token = `LINKREF${String(placeholderIndex++).padStart(3, "0")}`;
       placeholderMap[token] = match;
       return token;
     });
+
+    for (const phrase of frozenPhrases) {
+      const trimmed = (phrase || "").trim();
+      // Skip [A1]/[T1-8] placeholders (handled above) and empty entries.
+      if (!trimmed || /^\[(A1|T[1-8])\]$/.test(trimmed)) continue;
+      const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      result = result.replace(new RegExp(escaped, "gi"), (match) => {
+        const token = `BRANDREF${String(phraseIndex++).padStart(3, "0")}`;
+        placeholderMap[token] = match;
+        return token;
+      });
+    }
+
+    return result;
   };
 
   const restorePlaceholders = (text: string): string => {
@@ -168,7 +186,7 @@ const cleanHumanizedText = (text: string): string => {
  * @param text Plain text section to humanize
  * @param model Legacy model: 0=Quality, 1=Balanced, 2=More Human
  * @param _registeredEmail Deprecated (Undetectable does not use email); kept for API compatibility
- * @param _frozenPhrases Deprecated — placeholders are protected internally via createPlaceholderProtection() regex
+ * @param frozenPhrases Phrases the humanizer must never touch (brand names, anchor texts). [A1]/[T1-8] placeholders are protected automatically.
  * @param style Optional style hint (for logging)
  * @param mode Optional mode (for logging)
  * @param _previousBlockText Deprecated — context sending removed (doubled credit cost with Undetectable)
@@ -177,7 +195,7 @@ export async function humanizeSectionText(
   text: string,
   model: number,
   _registeredEmail: string,
-  _frozenPhrases: string[] = [],
+  frozenPhrases: string[] = [],
   style?: string,
   mode?: "Basic" | "Autopilot",
   _previousBlockText?: string
@@ -198,7 +216,7 @@ export async function humanizeSectionText(
   // and causes duplication bugs when the delimiter is lost. Each block is humanized independently.
 
   try {
-    const { protectPlaceholders, restorePlaceholders } = createPlaceholderProtection();
+    const { protectPlaceholders, restorePlaceholders } = createPlaceholderProtection(frozenPhrases);
     const humanizer = getHumanizerService();
 
     if (text.length > 10000) {

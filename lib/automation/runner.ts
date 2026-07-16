@@ -5,7 +5,7 @@ import {
   releaseAutomationSlot,
   saveAutomationJob,
 } from "@/lib/automation/jobStore";
-import { runAutomationGeneration } from "@/lib/automation/pipeline";
+import { AutomationPipelineError, runAutomationGeneration } from "@/lib/automation/pipeline";
 import type { AutomationJob } from "@/lib/automation/types";
 
 /**
@@ -34,7 +34,7 @@ async function executeAutomationJob(jobId: string, slot: number, job: Automation
       status: "error",
       completedAt: Date.now(),
       error: {
-        code: "generation_failed",
+        code: error instanceof AutomationPipelineError ? error.code : "generation_failed",
         message: error instanceof Error ? error.message : "Automation generation failed.",
       },
     });

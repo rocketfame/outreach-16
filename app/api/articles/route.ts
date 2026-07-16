@@ -1115,7 +1115,16 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
 
           if (enableHumanizeOnWrite) {
             const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY || "";
+            // Freeze brand name and anchor text so the humanizer can never
+            // rewrite them. Dotted brands ("PromoSoundGroup.net") otherwise
+            // get split at the domain dot, leaving an orphaned "net".
             const frozenPlaceholders = ["[A1]", "[T1]", "[T2]", "[T3]", "[T4]", "[T5]", "[T6]", "[T7]", "[T8]"];
+            if (brandName && brandName.trim() && brandName.trim().toUpperCase() !== "NONE") {
+              frozenPlaceholders.push(brandName.trim());
+            }
+            if (brief.anchorText && brief.anchorText.trim()) {
+              frozenPlaceholders.push(brief.anchorText.trim());
+            }
 
             // Get humanize settings from request (default: More Human for best AI detection bypass)
             const humanizeModel = body.humanizeSettings?.model ?? 2; // Default: More Human (2)

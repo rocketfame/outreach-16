@@ -76,6 +76,48 @@ const COMMERCIAL_DOMAIN_PARTS = [
   "promotion",
 ];
 
+// User-generated content surfaces (complaint threads, forums, Q&A). These are
+// NOT documentation even when hosted on an official domain — citing
+// "my shorts get 2 views please help" as an authority gets a guest post
+// rejected by the host editor on sight.
+const UGC_PATH_PATTERNS = [
+  /\/thread\//i,
+  /\/threads\//i,
+  /\/forum(s)?\//i,
+  /\/community\//i,
+  /\/questions?\//i,
+];
+
+const UGC_DOMAINS = [
+  "reddit.com",
+  "quora.com",
+  "stackexchange.com",
+  "stackoverflow.com",
+];
+
+// Third-party SEO/affiliate content mills — high-ranking, low-authority.
+const SEO_BLOG_DOMAINS = [
+  "backlinko.com",
+  "neilpatel.com",
+  "streamscheme.com",
+  "streamscharts.com",
+  "influencermarketinghub.com",
+  "wordstream.com",
+  "sproutsocial.com",
+];
+
+/** True for forum/Q&A/complaint-thread URLs that must never be cited. */
+export function isUgcOrForumUrl(url: string): boolean {
+  const hostname = getHostname(url);
+  if (matchesDomain(hostname, UGC_DOMAINS)) return true;
+  return UGC_PATH_PATTERNS.some((pattern) => pattern.test(url));
+}
+
+/** True for known SEO/affiliate blog domains. */
+export function isSeoBlogUrl(url: string): boolean {
+  return matchesDomain(getHostname(url), SEO_BLOG_DOMAINS);
+}
+
 export type SourcePolicyDecision = {
   allowed: boolean;
   reason: string;
@@ -96,6 +138,16 @@ export function getSourcePolicyDecision(source: Pick<RawSearchResult, "url" | "t
   const isResearch = matchesDomain(hostname, RESEARCH_DOMAINS);
   const isTrustedMedia = matchesDomain(hostname, TRUSTED_MEDIA_DOMAINS);
   const isVideo = isVideoUrl(source.url);
+
+  // UGC/forum check runs BEFORE the official-domain allow: complaint threads
+  // on support.google.com would otherwise pass with top priority.
+  if (isUgcOrForumUrl(source.url)) {
+    return { allowed: false, reason: "ugc_or_forum_surface", priority: -100 };
+  }
+
+  if (isSeoBlogUrl(source.url)) {
+    return { allowed: false, reason: "seo_blog_domain", priority: -100 };
+  }
 
   if (!isOfficial && !isResearch && !isTrustedMedia) {
     if (COMMERCIAL_PROMO_PATTERNS.some((pattern) => pattern.test(combined))) {
