@@ -1,9 +1,22 @@
 import { NICHE_TO_PRESET_KEY, PLATFORM_PRESETS } from "@/config/platformPresets";
 import { SUPPORTED_LANGUAGES, resolveLanguage } from "@/config/languages";
-import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
+import { IMAGE_BOX_PROMPTS, PALETTE_FAMILIES } from "@/lib/imageBoxPrompts";
 import type { AutomationGenerateInput, AutomationGenerateRequest } from "@/lib/automation/types";
 
 const IMAGE_STYLE_IDS = IMAGE_BOX_PROMPTS.map((box) => box.id);
+const FAMILY_EXCLUDES = PALETTE_FAMILIES.map((family) => `family:${family}`);
+/** Values accepted in excludeImageStyles: box ids plus whole palette families. */
+const EXCLUDE_ALLOWED = [...IMAGE_STYLE_IDS, ...FAMILY_EXCLUDES];
+
+/** Expand a `family:<name>` entry to the ids of every box in that family. */
+function expandExcludeEntry(entry: string): string[] | null {
+  if (entry.startsWith("family:")) {
+    const family = entry.slice("family:".length);
+    if (!(PALETTE_FAMILIES as readonly string[]).includes(family)) return null;
+    return IMAGE_BOX_PROMPTS.filter((box) => box.paletteFamily === family).map((box) => box.id);
+  }
+  return IMAGE_STYLE_IDS.includes(entry) ? [entry] : null;
+}
 
 export class AutomationValidationError extends Error {
   readonly field?: string;
@@ -164,17 +177,27 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     if (!Array.isArray(body.excludeImageStyles) || body.excludeImageStyles.some((s) => typeof s !== "string")) {
       throw new AutomationValidationError("Invalid excludeImageStyles. Expected an array of strings.", {
         field: "excludeImageStyles",
-        allowed: IMAGE_STYLE_IDS,
+        allowed: EXCLUDE_ALLOWED,
       });
     }
-    excludeImageStyles = body.excludeImageStyles.map((s) => s.trim()).filter(Boolean);
-    const unknown = excludeImageStyles.filter((s) => !IMAGE_STYLE_IDS.includes(s));
+    const entries = body.excludeImageStyles.map((s) => s.trim()).filter(Boolean);
+    const unknown: string[] = [];
+    const expanded = new Set<string>();
+    for (const entry of entries) {
+      const ids = expandExcludeEntry(entry);
+      if (!ids) {
+        unknown.push(entry);
+        continue;
+      }
+      for (const id of ids) expanded.add(id);
+    }
     if (unknown.length > 0) {
       throw new AutomationValidationError(
-        `Unknown excludeImageStyles: ${unknown.join(", ")}.`,
-        { field: "excludeImageStyles", allowed: IMAGE_STYLE_IDS }
+        `Unknown excludeImageStyles: ${unknown.join(", ")}. Use box ids or "family:<name>".`,
+        { field: "excludeImageStyles", allowed: EXCLUDE_ALLOWED }
       );
     }
+    excludeImageStyles = Array.from(expanded);
     if (excludeImageStyles.length >= IMAGE_STYLE_IDS.length) {
       throw new AutomationValidationError(
         "excludeImageStyles excludes every preset — leave at least one available.",
@@ -183,7 +206,7 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     }
     if (imageStyle && excludeImageStyles.includes(imageStyle)) {
       throw new AutomationValidationError(
-        `imageStyle "${imageStyle}" is also in excludeImageStyles.`,
+        `imageStyle "${imageStyle}" is also covered by excludeImageStyles.`,
         { field: "imageStyle" }
       );
     }

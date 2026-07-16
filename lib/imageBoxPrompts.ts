@@ -2,22 +2,46 @@
 // Image Box Prompts / Components for hero image generation
 // Each component defines a specific visual style and approach for generating article hero images
 
+/**
+ * Palette families group boxes by dominant palette/mood. Selection picks a
+ * family first, then a box within it — this flattens the palette
+ * distribution so style-heavy families (dark-neon) can't dominate a batch.
+ */
+export const PALETTE_FAMILIES = [
+  "dark-neon",
+  "loud-pop",
+  "light-minimal",
+  "pastel",
+  "warm-analog",
+  "painterly",
+  "print-graphic",
+  "collage-editorial",
+  "premium-3d",
+] as const;
+
+export type PaletteFamily = (typeof PALETTE_FAMILIES)[number];
+
 export interface ImageBoxPrompt {
   /**
    * Unique identifier for this image box component
    */
   id: string;
-  
+
+  /**
+   * Palette family this box belongs to (see PALETTE_FAMILIES)
+   */
+  paletteFamily: PaletteFamily;
+
   /**
    * Human-readable name for this component
    */
   name: string;
-  
+
   /**
    * Short description of the visual style/approach
    */
   description: string;
-  
+
   /**
    * Detailed prompt template for image generation
    * Supports placeholders: [[ARTICLE_TITLE]], [[NICHE]], [[MAIN_PLATFORM]], [[BRAND_NAME]]
@@ -39,6 +63,7 @@ export interface ImageBoxPrompt {
 export const IMAGE_BOX_PROMPTS: ImageBoxPrompt[] = [
   {
     id: "bw_photo_color_collage_character",
+    paletteFamily: "collage-editorial",
     name: "B&W portrait + colorful collage overlay",
     description: "Hybrid editorial collage with high-contrast black-and-white photographic portrait and bold colorful illustrated/collage elements",
     promptTemplate: `Hybrid editorial collage.
@@ -91,6 +116,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "ink_wash_action_ninja_illustration",
+    paletteFamily: "painterly",
     name: "Ink-wash action character",
     description: "Energetic watercolor/ink sketch of a dynamic character in motion, textured paper, loose linework, and bold brush accents",
     promptTemplate: `BOX 25 – "Ink-wash action character"
@@ -131,6 +157,7 @@ Format:
   },
   {
     id: "retro_futuristic_space_studio",
+    paletteFamily: "dark-neon",
     name: "Retro-futuristic space studio",
     description: "Cinematic retro-futuristic studio scene with character in futuristic helmet, vintage audio gear, and deep space background",
     promptTemplate: `Retro-futuristic "space studio" hero image for the article "[[ARTICLE_TITLE]]". Niche: [[NICHE]], Platform: [[MAIN_PLATFORM]].
@@ -178,6 +205,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "signal_hands",
+    paletteFamily: "light-minimal",
     name: "Signal Hands",
     description: "Bold minimalist hero image with stylized hands (robotic/cybernetic/human) and abstract platform symbols on clean background",
     promptTemplate: `BOX 3 – "Signal Hands"
@@ -231,6 +259,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "velocity_poster",
+    paletteFamily: "light-minimal",
     name: "Velocity Poster",
     description: "Dynamic minimalist poster with moving subject, abstract platform symbol, and colorful engagement trail on pastel background",
     promptTemplate: `BOX 4 – "Velocity Poster"
@@ -285,6 +314,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "pixel_creature_vault",
+    paletteFamily: "dark-neon",
     name: "Pixel Creature Vault",
     description: "Playful pixel-art hero image with quirky creature guarding/interacting with digital vault and pixel particle effects on dark background",
     promptTemplate: `BOX 5 – "Pixel Creature Vault"
@@ -337,6 +367,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "neon_twins_solid_color",
+    paletteFamily: "loud-pop",
     name: "Neon Twins On Solid Color",
     description: "Bold editorial hero image with futuristic human figures, visor glasses, and platform emblem on single loud background color",
     promptTemplate: `BOX 6 – "Neon Twins On Solid Color"
@@ -389,6 +420,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box7_surreal_central_object_gradient",
+    paletteFamily: "light-minimal",
     name: "Surreal central object on soft gradient background",
     description: "Surreal editorial hero illustration with 3D-looking central object on soft gradient background with floating platform-inspired symbols",
     promptTemplate: `Create a surreal editorial hero illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, designed as a cover-style visual for [[MAIN_PLATFORM]] content.
@@ -429,6 +461,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box8_minimal_monumental_sphere_plinth",
+    paletteFamily: "light-minimal",
     name: "Minimal monumental object on plinth in empty space",
     description: "Minimalist editorial hero illustration with large geometric form on plinth and tiny human figures in vast empty space",
     promptTemplate: `Create a minimalist editorial hero illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, designed as a premium visual for [[MAIN_PLATFORM]] content.
@@ -476,6 +509,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box9_minimal_split_panel_character_icons",
+    paletteFamily: "light-minimal",
     name: "Minimal split-panel character with platform icons",
     description: "Minimal editorial hero illustration with split-panel composition, character at split line, and platform-inspired icons",
     promptTemplate: `Create a minimal editorial hero illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, designed for [[MAIN_PLATFORM]] content.
@@ -525,6 +559,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box10_drowned_device_surrealism",
+    paletteFamily: "dark-neon",
     name: "Drowned Device Surrealism",
     description: "Cinematic surreal hero image with futuristic device partly submerged in liquid, dark moody 3D render with platform logo integration",
     promptTemplate: `Create a cinematic surreal hero image for "[[ARTICLE_TITLE]]" about [[NICHE]] on [[MAIN_PLATFORM]].
@@ -586,6 +621,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box11_neon_gradient_creator_portrait",
+    paletteFamily: "dark-neon",
     name: "Neon Gradient Creator Portrait",
     description: "Futuristic creator portrait hero image with stylized 3D/2D hybrid portrait and soft neon gradient background",
     promptTemplate: `Create a futuristic creator portrait hero image for "[[ARTICLE_TITLE]]" about [[NICHE]] on [[MAIN_PLATFORM]].
@@ -644,6 +680,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box12_neon_lounge_pop_art",
+    paletteFamily: "dark-neon",
     name: "Neon Lounge Pop Art",
     description: "Bold pop-art hero image with relaxed creator lounging, hyper-saturated neon palette, and 80s/90s vaporwave mood",
     promptTemplate: `Create a bold pop-art hero image for "[[ARTICLE_TITLE]]" about [[NICHE]] on [[MAIN_PLATFORM]].
@@ -703,6 +740,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box13_bubble_pop_crew",
+    paletteFamily: "loud-pop",
     name: "Bubble Pop Crew",
     description: "Playful pop-art hero image with 2-4 friends, overlapping circles/bubbles, and bright flat colors",
     promptTemplate: `Create a playful pop-art hero image for "[[ARTICLE_TITLE]]" about [[NICHE]] on [[MAIN_PLATFORM]].
@@ -762,6 +800,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box14_neon_organic_anti_bot",
+    paletteFamily: "dark-neon",
     name: "Neon Portrait – Organic Anti-Bot Energy",
     description: "Bold neon digital illustration with modern music creator, polished digital painting, and vivid magenta background",
     promptTemplate: `Create a bold neon digital illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Use a SINGLE main character as the clear focal point (60–70% of the composition): a modern music creator / producer / digital native in headphones, hoodie or jacket, sitting with a laptop, sampler, or DJ gear in front of them.
@@ -814,6 +853,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box15_crew_fisheye_circle",
+    paletteFamily: "loud-pop",
     name: "Fisheye Creator Crew Circle",
     description: "Dynamic group-portrait illustration with fisheye/ultra-wide perspective, diverse crew of creators in circular arrangement",
     promptTemplate: `Create a dynamic group-portrait illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Use a FISHEYE / ULTRA-WIDE perspective: the viewer looks up from the center of a circle, surrounded by a diverse crew of modern creators leaning in toward the "camera".
@@ -864,6 +904,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box16_retro_music_collage",
+    paletteFamily: "collage-editorial",
     name: "Surreal Retro Gear Money-Collage",
     description: "Bold surreal collage illustration with stack of retro music devices and abstract money energy elements",
     promptTemplate: `Create a bold surreal collage illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Center the composition on a towering stack of RETRO MUSIC DEVICES: old-school samplers, cassette decks, synths, radios and boomboxes, all stylized and colorful, arranged like a totem in the middle of the frame.
@@ -912,6 +953,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box17_neon_stream_lab",
+    paletteFamily: "dark-neon",
     name: "Neon Stream Strategists Lab",
     description: "Cinematic neon illustration with hooded strategists working on laptops in dark room, cyberpunk/techno-lab mood",
     promptTemplate: `Create a cinematic neon illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The scene shows a small group of anonymous, hooded music strategists working on laptops in a dark room, lit almost entirely by glowing screens and headphones.
@@ -956,6 +998,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box19_glitch_fighter",
+    paletteFamily: "dark-neon",
     name: "Glitch Fighter vs Algorithm",
     description: "Bold high-energy illustration with fighter character, glitch energy, and VHS/90s arcade aesthetic",
     promptTemplate: `Create a bold, high-energy illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should feel like a surreal fight against an invisible algorithm, with a strong central fighter figure and intense glitch energy.
@@ -1002,6 +1045,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box20_clay_question_energy",
+    paletteFamily: "warm-analog",
     name: "Clay Question Marks Teaser",
     description: "Teaser-style illustration with soft 3D clay/plastiline abstract question-mark forms and warm gradient background",
     promptTemplate: `Create a teaser-style illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should feel like a playful mystery announcement with bold color and sculpted abstract forms.
@@ -1047,6 +1091,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box21_pixel_creator_overload",
+    paletteFamily: "collage-editorial",
     name: "Pixel Creators in Real Tunnel",
     description: "Illustration blending realistic photo-style background with bold pixel-art characters in urban/underground setting",
     promptTemplate: `Create an illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should blend a realistic photo-style background with bold pixel-art characters to capture the chaotic, funny energy of modern creators.
@@ -1093,6 +1138,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box22_dark_brain_grid",
+    paletteFamily: "dark-neon",
     name: "Dark Sculptural Brain Grid",
     description: "Bold conceptual illustration with repeated grid of surreal sculptural heads revealing glowing brain/core on dark background",
     promptTemplate: `Create a bold conceptual illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should use a dark, almost black background with a repeated grid of surreal sculptural heads or geometric busts that reveal a glowing "brain" or inner core.
@@ -1140,6 +1186,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box23_grainy_crt_glitch_projection",
+    paletteFamily: "dark-neon",
     name: "Grainy CRT Glitch Projection",
     description: "Retro-futuristic illustration with CRT-style screen projecting neon glitch light, 80s/90s analog tech aesthetic",
     promptTemplate: `Create a retro-futuristic illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. Center the image around an old CRT-style screen or boxy device in a dark room, throwing intense neon glitch light onto the wall.
@@ -1186,6 +1233,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box24_neo_punk_creature_poster",
+    paletteFamily: "loud-pop",
     name: "Neo-Punk Creature Poster",
     description: "Bold neo-punk poster with hand-drawn monster/creature, thick black comic outlines, aggressive typography, and ultra-saturated background",
     promptTemplate: `Create a bold neo-punk poster illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]]. The image should feature a hand-drawn monster/creature as the main character with thick black comic outlines, aggressive attitude, loud typography, and flat, ultra-saturated background.
@@ -1261,6 +1309,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box25_neon_balaclava_portraits",
+    paletteFamily: "dark-neon",
     name: "Neon Balaclava Portraits",
     description: "High-resolution editorial portrait with person wearing striking textured accessory (balaclava/mask), neon accent color, and bold typography",
     promptTemplate: `Create a high-resolution editorial portrait for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
@@ -1321,6 +1370,7 @@ FORMAT: 16:9 horizontal hero image. Professional quality - NOT childish, NOT gen
   },
   {
     id: "box26_neon_dj_halftone_poster",
+    paletteFamily: "loud-pop",
     name: "Neon DJ Halftone Poster",
     description: "High-contrast DJ portrait with lime background, halftone dots, diagonal speed lines, and bold screenprint poster vibe",
     promptTemplate: `Create a bold screenprint-style hero image for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
@@ -1357,6 +1407,7 @@ FORMAT:
   },
   {
     id: "box27_flat_vector_headphones_portrait",
+    paletteFamily: "warm-analog",
     name: "Flat Vector Headphones Portrait",
     description: "Clean vector illustration of a confident music creator with headphones on a solid warm background and a single brand color accent",
     promptTemplate: `Create a clean, flat vector-style hero illustration for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
@@ -1394,6 +1445,7 @@ FORMAT:
   },
   {
     id: "box28_liquid_metal_brand_abstraction",
+    paletteFamily: "premium-3d",
     name: "Liquid Metal Brand Abstraction",
     description: "Abstract liquid-metal forms with glossy reflections and subtle platform-inspired motifs, no text, premium 3D poster vibe",
     promptTemplate: `Create a premium abstract hero image inspired by liquid metal and brand motifs for "[[ARTICLE_TITLE]]" in the [[NICHE]] niche, focused on [[MAIN_PLATFORM]].
@@ -1426,6 +1478,433 @@ CONTEXT:
 
 FORMAT:
 - 16:9 horizontal hero image, premium abstract poster quality.`
+  },
+  {
+    id: "box29_paper_cut_layered_scene",
+    paletteFamily: "light-minimal",
+    name: "Layered Paper-Cut Scene",
+    description: "Handcrafted layered paper-cut diorama with soft shadows, light background, and clean cardboard-craft depth",
+    promptTemplate: `BOX 29 – "Layered Paper-Cut Scene"
+
+Goal:
+Create a hero image that looks like a physical layered paper-cut diorama, photographed straight-on. Handcrafted, warm, premium editorial feel — not digital vector flatness.
+
+Core style rules:
+- 4-6 layers of cut paper with visible thickness and soft real drop shadows between layers.
+- Light background: off-white, warm cream, or very pale sky blue.
+- Colors are matte paper tones: muted coral, sage green, dusty blue, mustard, kraft brown.
+- Slight paper texture visible; edges look scissor-cut, subtly imperfect.
+
+Scene and character:
+- One simple stylized paper character (creator/musician/artist) built from cut shapes, mid-scene.
+- Scene elements relate to the article topic: waves, clouds, hills, simple devices — all as flat cut-paper shapes.
+- Depth comes from layer stacking, not from perspective drawing.
+
+Platform integration:
+- [[MAIN_PLATFORM]] hinted as a small cut-paper shape or badge inside the scene, same material as everything else.
+- No readable text, no typography, no logos as flat overlays.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, main subject centered with generous margins.
+- Professional handcrafted quality — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box30_gouache_white_creator",
+    paletteFamily: "painterly",
+    name: "Gouache Creator on White",
+    description: "Loose gouache-painted character portrait on white paper with confident brush strokes and minimal color spots",
+    promptTemplate: `BOX 30 – "Gouache Creator on White"
+
+Goal:
+A hand-painted gouache illustration of a single creator, sitting on mostly untouched white paper. Gallery-print quality: confident, loose, imperfect in the right ways.
+
+Core style rules:
+- Opaque gouache strokes with visible brush texture and slight paint ridges.
+- Large areas of the white paper stay empty — the painting breathes.
+- Limited palette: 3-4 colors max (e.g. ochre, deep green, brick red, charcoal) plus paper white.
+- No outlines: forms are built by paint shapes and value contrast.
+
+Character:
+- One person related to the topic (musician, streamer, producer) in a natural candid pose.
+- Face simplified but expressive; hands and gesture matter more than facial detail.
+- One topical prop painted in the same loose manner (headphones, mic, controller, phone).
+
+Background:
+- Bare white paper with 1-2 abstract paint swatches or a single loose wash behind the figure.
+- No environment, no scenery.
+
+Platform integration:
+- [[MAIN_PLATFORM]] referenced only as a color cue or an abstract painted mark, never a crisp logo.
+- No text anywhere.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, figure off-center with ample negative space.
+- Professional editorial illustration — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box31_botanical_flow_editorial",
+    paletteFamily: "painterly",
+    name: "Botanical Flow Editorial",
+    description: "Light airy editorial illustration where organic botanical shapes and flowing lines interweave with a calm character",
+    promptTemplate: `BOX 31 – "Botanical Flow Editorial"
+
+Goal:
+A calm, light editorial illustration where organic growth — leaves, vines, flowing ribbons — visualizes the article's idea of growth/reach. Sophisticated wellness-magazine aesthetic.
+
+Core style rules:
+- Light background: warm white, pale blush, or soft mint.
+- Hand-drawn organic shapes: oversized leaves, branching vines, flowing ribbon lines.
+- Watercolor-and-pencil hybrid texture, delicate and airy.
+- Palette: soft botanical greens, terracotta, cream, one deeper accent (plum or navy) used sparingly.
+
+Character and concept:
+- One serene character interacting with the growth: tending it, walking through it, or carried by a flowing line.
+- Growth elements can sprout from a topical object (speaker, phone, instrument) to tie into the article.
+- Movement flows diagonally across the frame like a gentle current.
+
+Platform integration:
+- [[MAIN_PLATFORM]] hinted as a leaf shape, seed, or blossom silhouette within the botanical elements.
+- No readable text or crisp logos.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image with soft asymmetric composition.
+- Premium editorial quality — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box32_risograph_two_color_poster",
+    paletteFamily: "print-graphic",
+    name: "Risograph Two-Color Poster",
+    description: "Risograph print look with 2-3 spot colors, visible grain, slight misregistration, and bold simple shapes on off-white",
+    promptTemplate: `BOX 32 – "Risograph Two-Color Poster"
+
+Goal:
+A hero image that looks like a risograph zine poster: limited spot colors, grainy ink coverage, charmingly imperfect registration. Indie print-studio aesthetic.
+
+Core style rules:
+- Exactly 2-3 spot colors on off-white paper (classic riso pairs: fluorescent pink + teal, orange + blue, green + purple).
+- Visible riso grain and ink texture everywhere; flat fills are never smooth.
+- Slight misregistration: color layers offset by a few pixels, overlaps create a third blended color.
+- Bold, simple, confident shapes — posters, not paintings.
+
+Subject:
+- One central character or oversized object tied to the article topic, drawn with thick simple forms.
+- Halftone or grain shading only, no gradients.
+- Composition like a gig poster: strong silhouette, dynamic angle.
+
+Platform integration:
+- [[MAIN_PLATFORM]] as an abstract printed shape or badge in one of the spot colors.
+- No readable words, no typography.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, poster-like framing with breathing margins.
+- Authentic print aesthetic — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box33_bauhaus_geometric_composition",
+    paletteFamily: "print-graphic",
+    name: "Bauhaus Geometric Composition",
+    description: "Bauhaus-inspired abstract composition of circles, arcs, and bars with a small human silhouette on warm paper background",
+    promptTemplate: `BOX 33 – "Bauhaus Geometric Composition"
+
+Goal:
+An abstract Bauhaus-school composition that encodes the article's concept in pure geometry. Museum-poster quality: rigorous, balanced, timeless.
+
+Core style rules:
+- Warm paper background (cream/eggshell), subtle print texture.
+- Flat geometric elements: large circles, half-circles, arcs, diagonal bars, thin rules.
+- Classic palette: brick red, mustard yellow, deep blue, black, cream — matte, slightly aged.
+- Precise but hand-printed feel; edges crisp with faint ink bleed.
+
+Composition and concept:
+- Geometry illustrates the topic abstractly: growth as ascending circles, reach as radiating arcs, engagement as interlocking forms.
+- One small human silhouette (flat, single color) gives scale and story — walking, climbing, or reaching toward the shapes.
+- Strong diagonal energy, asymmetric balance, generous negative space.
+
+Platform integration:
+- [[MAIN_PLATFORM]] abstracted into one geometric element (a circle, triangle, or arc arrangement) — recognizable only by suggestion.
+- Absolutely no text or letterforms.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image.
+- Museum poster quality — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box34_swiss_minimal_object_grid",
+    paletteFamily: "light-minimal",
+    name: "Swiss Minimal Object Grid",
+    description: "Ultra-clean Swiss design composition with one perfect 3D object on a light grid-structured field and one accent color",
+    promptTemplate: `BOX 34 – "Swiss Minimal Object Grid"
+
+Goal:
+Swiss-design minimalism: one immaculately rendered object on a structured light field. The visual equivalent of a perfect layout grid — calm, premium, precise.
+
+Core style rules:
+- Very light background: white or 5% gray, with a barely visible modular grid or thin rules dividing the space.
+- ONE hero object related to the topic (headphones, microphone, game controller, vinyl, camera), rendered as a clean soft-shaded 3D form.
+- Monochrome scene plus exactly ONE accent color (vivid red, cobalt, or chartreuse) used on a single element.
+- Soft studio lighting, gentle contact shadow, no dramatic effects.
+
+Composition:
+- Object placed off-center on a grid intersection; vast intentional emptiness around it.
+- Optional: 2-3 tiny geometric markers (dots, plus signs, thin circles) aligned to the grid.
+- The restraint IS the style — resist adding anything else.
+
+Platform integration:
+- [[MAIN_PLATFORM]] hinted via the accent color or a tiny abstract mark on the object.
+- No text, no visible logos, no UI.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image.
+- High-end product-design poster quality — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box35_cream_halftone_pop_portrait",
+    paletteFamily: "print-graphic",
+    name: "Cream Halftone Pop Portrait",
+    description: "Light screenprint-style portrait with halftone dots, cream background, and two punchy ink colors — bright counterpart to dark halftone posters",
+    promptTemplate: `BOX 35 – "Cream Halftone Pop Portrait"
+
+Goal:
+A screenprint-style pop portrait on a warm CREAM background — the light, airy counterpart to dark halftone posters. Retro print-shop energy without darkness.
+
+Core style rules:
+- Warm cream/eggshell background covering most of the frame.
+- Portrait built from visible halftone dot patterns in TWO ink colors (e.g. warm red + navy, or teal + orange).
+- Dot size varies to create shading; large dots in shadows, fine dots in light.
+- Slight print texture and one subtle ink smudge or roller mark for authenticity.
+
+Character:
+- One expressive creator mid-gesture: laughing, pointing, mid-performance.
+- Cropped bold — head and shoulders, or waist-up filling one side of the frame.
+- One topical prop (mic, phone, headphones) simplified into the print style.
+
+Background elements:
+- 1-2 flat geometric shapes or a burst of radiating thin lines behind the subject.
+- Keep at least 40% of the cream field empty.
+
+Platform integration:
+- [[MAIN_PLATFORM]] as a small halftone badge or abstract shape in one ink color.
+- No readable text.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image.
+- Premium screenprint poster quality — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box36_warm_film_still_creator",
+    paletteFamily: "warm-analog",
+    name: "Warm Film Still",
+    description: "Cinematic 35mm film photo look: warm golden light, natural grain, candid creator moment in a real environment",
+    promptTemplate: `BOX 36 – "Warm Film Still"
+
+Goal:
+A frame that looks like a still from a film shot on 35mm: warm, grainy, human. Documentary intimacy instead of studio gloss.
+
+Core style rules:
+- Analog film aesthetic: visible fine grain, gentle halation on highlights, slightly lifted blacks.
+- Warm palette: golden hour light, amber and honey tones, muted greens/browns in shadows.
+- Natural imperfections: soft focus falloff, subtle lens flare, authentic depth of field.
+- Looks photographed, not rendered — Kodak Portra / Cinestill mood.
+
+Scene:
+- One creator in a candid working moment tied to the topic: adjusting gear, listening back, mid-recording, editing on a laptop.
+- Real environment: home studio corner, bedroom setup, rehearsal space, evening street — warm practical lights.
+- Shot like a documentary frame: slightly off-angle, honest, unposed.
+
+Platform integration:
+- [[MAIN_PLATFORM]] hinted through a soft glow on a screen or a small out-of-focus interface suggestion — never a sharp logo.
+- No readable text anywhere in the frame.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, cinematic composition with foreground depth.
+- Filmic professional quality — NOT stock-photo, NOT generic AI style.`
+  },
+  {
+    id: "box37_sunrise_gradient_minimal",
+    paletteFamily: "warm-analog",
+    name: "Sunrise Gradient Minimal",
+    description: "Serene minimal composition with one floating silhouette object against a large warm sunrise gradient sky",
+    promptTemplate: `BOX 37 – "Sunrise Gradient Minimal"
+
+Goal:
+A vast warm gradient sky with one quiet silhouette — optimistic, calm, premium. The feeling of a fresh start, matched to the article's promise.
+
+Core style rules:
+- The background IS the hero: a smooth, large sunrise gradient (peach → coral → soft violet, or honey → rose → pale blue) filling 80% of the frame.
+- Extremely minimal foreground: one dark clean silhouette — a character on a thin horizon line, or a single floating topical object.
+- Soft atmospheric haze at the horizon; a small sun disc or glow optional.
+- Absolutely no clutter: two or three visual elements total.
+
+Concept:
+- The silhouette relates to the article: a creator looking toward the light, walking the horizon, or a levitating object (mic, phone, instrument) catching rim light.
+- Scale contrast: tiny subject, enormous sky — aspiration made visual.
+
+Platform integration:
+- [[MAIN_PLATFORM]] hinted as a subtle glow shape or the silhouette of its symbol rising like a sun — abstract, never literal.
+- No text, no logos.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, horizon in lower third.
+- Premium minimal poster quality — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box38_pastel_flat_scene",
+    paletteFamily: "pastel",
+    name: "Pastel Flat Scene",
+    description: "Soft flat-illustration scene in dusty pastels with rounded shapes, calm character, and gentle depth from tone shifts",
+    promptTemplate: `BOX 38 – "Pastel Flat Scene"
+
+Goal:
+A soft flat-illustration editorial scene in dusty pastels — modern app-quality illustration with warmth and taste, never saccharine.
+
+Core style rules:
+- Dusty pastel palette: powder blue, blush pink, soft lilac, sage, butter yellow — all slightly desaturated and warm.
+- Flat shapes with rounded corners; depth from tone-on-tone shifts, not outlines or gradients.
+- Subtle paper-grain texture across everything.
+- Gentle, even lighting; shadows are just deeper pastel tones.
+
+Scene and character:
+- One calm character in a cozy scene related to the topic: at a desk with monitors, on a beanbag with a controller, at a small home-studio setup.
+- Furniture and props simplified into friendly geometric shapes.
+- A window, plant, or lamp adds domestic warmth.
+
+Platform integration:
+- [[MAIN_PLATFORM]] as a soft abstract shape on a screen or poster within the scene — pastel-toned, subtle.
+- No readable text.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, scene composed with clear focal point.
+- Premium flat illustration quality — NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box39_clay_pastel_diorama",
+    paletteFamily: "pastel",
+    name: "Clay Pastel Diorama",
+    description: "Soft 3D clay/plasticine miniature scene in pastel tones with fingerprint texture and toy-photography lighting",
+    promptTemplate: `BOX 39 – "Clay Pastel Diorama"
+
+Goal:
+A miniature scene sculpted from soft clay/plasticine and photographed like premium toy photography. Tactile, charming, crafted — stop-motion film quality.
+
+Core style rules:
+- Everything visibly handmade from clay: soft rounded forms, subtle fingerprint texture, slightly uneven surfaces.
+- Pastel clay colors: mint, peach, lavender, cream, dusty rose — matte, never glossy.
+- Real miniature-photography lighting: soft key light, gentle shadows, shallow depth of field at the edges.
+- One seamless pastel backdrop like a photo studio sweep.
+
+Scene:
+- A tiny clay character engaged with the article topic: holding a clay phone, singing into a clay mic, stacking clay coins/blocks.
+- 2-3 supporting clay props max; the scene reads in one glance.
+- Slight stop-motion imperfection makes it feel alive.
+
+Platform integration:
+- [[MAIN_PLATFORM]] sculpted as a soft clay shape or pressed relief on a prop — same material language.
+- No text or crisp printed logos.
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, subject centered, backdrop filling the frame.
+- Stop-motion film quality — charming but professional, NOT childish, NOT generic AI style.`
+  },
+  {
+    id: "box40_cyanotype_blueprint_concept",
+    paletteFamily: "print-graphic",
+    name: "Cyanotype Blueprint Concept",
+    description: "Deep Prussian-blue cyanotype print with white silhouettes, botanical-photogram texture, and technical blueprint accents",
+    promptTemplate: `BOX 40 – "Cyanotype Blueprint Concept"
+
+Goal:
+A hero image that looks like a real cyanotype print: deep Prussian blue field with ghostly white silhouettes, part photogram, part technical blueprint. Art-book quality.
+
+Core style rules:
+- Entire image in cyanotype monochrome: rich Prussian blue to white, nothing else.
+- White areas look exposed/masked like a photogram: soft edges, slight chemical unevenness, brush-coated borders.
+- Paper texture throughout; edges of the print visibly hand-coated and imperfect.
+- Optional faint technical accents: thin white construction lines, circles, measurement arcs — abstract, not readable.
+
+Subject:
+- A white-silhouette composition related to the topic: a creator's profile, hands holding a device, an instrument, radiating sound waves.
+- Objects layered like a photogram collage: some crisp, some soft-edged and translucent.
+- Blueprint-style abstract diagram elements may frame the subject.
+
+Platform integration:
+- [[MAIN_PLATFORM]] as one white silhouette shape among the composition — suggestion, not logo.
+- No readable text or letterforms (thin lines and arcs only).
+
+Context:
+- Topic: [[ARTICLE_TITLE]]
+- Niche: [[NICHE]]
+- Platform: [[MAIN_PLATFORM]]
+- Brand: [[BRAND_NAME]]
+
+Format:
+- 16:9 horizontal hero image, print centered with coated-paper border feel.
+- Fine-art print quality — NOT childish, NOT generic AI style.`
   },
 ];
 
@@ -1622,15 +2101,27 @@ export function selectImageBoxPrompt(
     };
   }
   
-  // Shuffle available indices - random order within this cycle
-  // Pick the first from shuffled list (ensures no repeat until full cycle)
-  const shuffled = shuffleArray(availableIndices);
+  // FAMILY-AWARE two-step random: pick a palette family uniformly among the
+  // families that still have available boxes, then a box within it. A flat
+  // uniform draw over boxes lets overrepresented families (dark-neon) win
+  // ~40% of covers — family-first flattens the palette distribution.
+  const familiesAvailable = new Map<string, number[]>();
+  for (const index of availableIndices) {
+    const family = IMAGE_BOX_PROMPTS[index].paletteFamily;
+    const bucket = familiesAvailable.get(family) || [];
+    bucket.push(index);
+    familiesAvailable.set(family, bucket);
+  }
+  const familyPick = shuffleArray(Array.from(familiesAvailable.keys()))[0];
+  const shuffled = shuffleArray(familiesAvailable.get(familyPick)!);
   const selectedIndex = shuffled[0];
-  
-  console.log("[selectImageBoxPrompt] Round-robin selection:", {
+
+  console.log("[selectImageBoxPrompt] Family-aware selection:", {
     selectedIndex,
     boxId: IMAGE_BOX_PROMPTS[selectedIndex].id,
     boxName: IMAGE_BOX_PROMPTS[selectedIndex].name,
+    paletteFamily: familyPick,
+    familiesAvailable: familiesAvailable.size,
     usedCount: usedBoxIndices.size,
     availableCount: availableIndices.length,
     cycleReset: usedBoxIndices.size >= totalBoxes,
