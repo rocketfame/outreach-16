@@ -273,6 +273,7 @@ export async function POST(req: Request) {
     }
 
     const generatedArticles: ArticleResponse[] = [];
+    const topicErrors: string[] = [];
 
     // Generate article for each selected topic
     for (const topic of selectedTopics) {
@@ -1710,6 +1711,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
         }
       } catch (error) {
         console.error(`Error generating article for topic ${topic.title}:`, error);
+        topicErrors.push(error instanceof Error ? error.message : String(error));
         // Continue with other topics even if one fails
       }
     }
@@ -1726,10 +1728,14 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
     // When all topics failed, return 500 so client gets proper error (not 200 with empty array)
     if (generatedArticles.length === 0) {
       console.error("[articles-api] No articles generated — all topics failed. Check logs above for parse/validation errors.");
+      // Surface the real upstream error (e.g. OpenAI insufficient_quota) —
+      // a generic "JSON parse errors / truncation" guess sends callers
+      // debugging the wrong layer entirely.
+      const underlying = topicErrors[0]
+        ? ` Underlying error: ${topicErrors[0]}`
+        : " This may be due to JSON parse errors, missing articleBlocks, or model truncation. Check the server terminal for details.";
       return new Response(
-        JSON.stringify({
-          error: "All articles failed to generate. This may be due to JSON parse errors, missing articleBlocks, or model truncation. Check the server terminal for details.",
-        }),
+        JSON.stringify({ error: `All articles failed to generate.${underlying}` }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
