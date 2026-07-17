@@ -60,3 +60,22 @@ try {
   validateAutomationRequest({ ...base, imageStyle: darkIds[0], excludeImageStyles: ["family:dark-neon"] });
   ok("pin inside excluded family rejected", false);
 } catch (e) { ok("pin inside excluded family rejected", (e as AutomationValidationError).field === "imageStyle"); }
+
+// imageQuality validation
+{
+  let rq = validateAutomationRequest({ ...base, imageQuality: "medium" });
+  ok("imageQuality medium accepted", rq.imageQuality === "medium");
+  rq = validateAutomationRequest({ ...base });
+  ok("imageQuality defaults to route default (empty)", rq.imageQuality === "");
+  try {
+    validateAutomationRequest({ ...base, imageQuality: "ultra" });
+    ok("imageQuality unknown rejected", false);
+  } catch (e) {
+    const err = e as AutomationValidationError;
+    ok("imageQuality unknown rejected", err.field === "imageQuality" && Array.isArray(err.allowed));
+  }
+  try {
+    validateAutomationRequest({ ...base, imageQuality: "low", image: false });
+    ok("imageQuality + image:false rejected", false);
+  } catch (e) { ok("imageQuality + image:false rejected", (e as AutomationValidationError).field === "imageQuality"); }
+}

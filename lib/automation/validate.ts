@@ -212,6 +212,26 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     }
   }
 
+  const imageQuality = typeof body.imageQuality === "string" ? body.imageQuality.trim().toLowerCase() : "";
+  if (body.imageQuality !== undefined && body.imageQuality !== null && typeof body.imageQuality !== "string") {
+    throw new AutomationValidationError("Invalid imageQuality. Expected a string.", {
+      field: "imageQuality",
+      allowed: ["low", "medium", "high"],
+    });
+  }
+  if (imageQuality && !["low", "medium", "high"].includes(imageQuality)) {
+    throw new AutomationValidationError(
+      `Unknown imageQuality "${body.imageQuality}". Expected "low", "medium" or "high".`,
+      { field: "imageQuality", allowed: ["low", "medium", "high"] }
+    );
+  }
+  if (imageQuality && !image) {
+    throw new AutomationValidationError(
+      "imageQuality requires image generation — remove it or set image: true.",
+      { field: "imageQuality" }
+    );
+  }
+
   const minWords = Number.isFinite(body.minWords) ? Number(body.minWords) : 1200;
   const maxWords = Number.isFinite(body.maxWords) ? Number(body.maxWords) : 1800;
   if (minWords < 500 || maxWords < minWords || maxWords > 3000) {
@@ -234,6 +254,7 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     image,
     imageStyle,
     excludeImageStyles,
+    imageQuality,
     imageRatio: "16:9",
     minWords,
     maxWords,

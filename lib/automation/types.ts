@@ -45,6 +45,8 @@ export interface AutomationGenerateInput {
   imageStyle?: string;
   /** Preset ids to exclude — lets a batch caller guarantee distinct covers. */
   excludeImageStyles?: string[];
+  /** gpt-image-2 quality tier: ~$0.20 high / ~$0.05 medium / ~$0.013 low per cover. */
+  imageQuality?: "low" | "medium" | "high";
   minWords?: number;
   maxWords?: number;
 }
@@ -64,6 +66,8 @@ export interface AutomationGenerateRequest {
   image: boolean;
   imageStyle: string;
   excludeImageStyles: string[];
+  /** Empty string = route default (HERO_IMAGE_QUALITY env or "high"). */
+  imageQuality: string;
   imageRatio: "16:9";
   minWords: number;
   maxWords: number;

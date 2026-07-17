@@ -184,6 +184,7 @@ export async function runAutomationGeneration(
         brandName: request.brand || request.anchor || "",
         usedBoxIndices: excludedIndices,
         imageBoxId: request.imageStyle || undefined,
+        quality: request.imageQuality || undefined,
       }),
     }));
     const imageJson = (await imageResponse.json()) as InternalImageResponse;

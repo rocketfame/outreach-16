@@ -20,6 +20,26 @@ const HERO_IMAGE_FORMAT = {
   extension: "png",
 } as const;
 
+export type HeroImageQuality = "low" | "medium" | "high";
+
+const HERO_IMAGE_QUALITIES: HeroImageQuality[] = ["low", "medium", "high"];
+
+/**
+ * Effective quality: request param > HERO_IMAGE_QUALITY env > "high" default.
+ * gpt-image-2 at 1536x864 costs ~$0.20 high / ~$0.05 medium / ~$0.013 low,
+ * so medium cuts image spend 4x — stylized presets degrade gracefully there.
+ */
+function resolveImageQuality(requested?: string): HeroImageQuality {
+  if (requested && HERO_IMAGE_QUALITIES.includes(requested as HeroImageQuality)) {
+    return requested as HeroImageQuality;
+  }
+  const envQuality = (process.env.HERO_IMAGE_QUALITY || "").trim().toLowerCase();
+  if (HERO_IMAGE_QUALITIES.includes(envQuality as HeroImageQuality)) {
+    return envQuality as HeroImageQuality;
+  }
+  return HERO_IMAGE_FORMAT.quality;
+}
+
 // Simple debug logger
 const debugLog = (...args: unknown[]) => {
   console.log("[article-image-debug]", ...args);
@@ -34,6 +54,7 @@ export interface ArticleImageRequest {
   customStyle?: string; // Optional: personalized style description learned from reference images
   usedBoxIndices?: number[]; // Optional: array of box indices already used for this article (for random selection without repeats)
   imageBoxId?: string; // Optional: pin a specific image box preset by id (skips random selection)
+  quality?: HeroImageQuality; // Optional: gpt-image-2 quality tier (default: HERO_IMAGE_QUALITY env or "high")
 }
 
 export interface ArticleImageResponse {
@@ -405,6 +426,7 @@ export async function POST(req: Request) {
   try {
     const body: ArticleImageRequest = await req.json();
     const { articleTitle, niche, mainPlatform, contentPurpose, brandName: rawBrandName, customStyle, usedBoxIndices = [], imageBoxId } = body;
+    const imageQuality = resolveImageQuality(body.quality);
     // Brand is optional - use "Generic" when empty (e.g. Direct mode without clientSite)
     const brandName = rawBrandName && rawBrandName.trim() ? rawBrandName.trim() : "Generic";
 
@@ -457,7 +479,7 @@ export async function POST(req: Request) {
       prompt,
       n: 1,
       size: HERO_IMAGE_FORMAT.size,
-      quality: HERO_IMAGE_FORMAT.quality,
+      quality: imageQuality,
       output_format: HERO_IMAGE_FORMAT.outputFormat,
     });
 
@@ -465,7 +487,7 @@ export async function POST(req: Request) {
 
     // Track cost
     const costTracker = getCostTracker();
-    costTracker.trackOpenAIImageGeneration(HERO_IMAGE_FORMAT.model, HERO_IMAGE_FORMAT.size, 1);
+    costTracker.trackOpenAIImageGeneration(HERO_IMAGE_FORMAT.model, HERO_IMAGE_FORMAT.size, 1, imageQuality);
 
     if (!imageBase64) {
       // #region agent log

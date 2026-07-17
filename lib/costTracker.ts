@@ -23,10 +23,20 @@ const PRICING = {
       '1024x1792': 0.08,
     },
     'gpt-image-2': {
+      // Plain size keys = high quality (backward compat).
       '1024x1024': 0.133,    // high quality
       '1536x864': 0.20,      // high quality 16:9 hero
       '1536x1024': 0.20,     // high quality landscape
       '1024x1536': 0.20,     // high quality portrait
+      // Quality-suffixed keys. medium/low estimated from OpenAI image
+      // quality-tier ratios (~4x / ~15x cheaper than high) — verify against
+      // the OpenAI pricing page if exact accounting matters.
+      '1536x864:high': 0.20,
+      '1536x864:medium': 0.05,
+      '1536x864:low': 0.013,
+      '1024x1024:high': 0.133,
+      '1024x1024:medium': 0.034,
+      '1024x1024:low': 0.009,
     },
   },
   // Undetectable.AI Humanizer (formerly AIHumanize): ~$0.0005 per word
@@ -116,17 +126,20 @@ class CostTracker {
   /**
    * Track OpenAI image generation cost
    */
-  trackOpenAIImageGeneration(model: string, size: string, count: number = 1): void {
+  trackOpenAIImageGeneration(model: string, size: string, count: number = 1, quality?: string): void {
     const modelPricing = PRICING.openai[model as keyof typeof PRICING.openai];
-    if (modelPricing && typeof modelPricing === 'object' && size in modelPricing) {
-      const costPerImage = (modelPricing as Record<string, number>)[size];
+    // Prefer the quality-specific rate; plain size key (= high) is the fallback.
+    const qualityKey = quality ? `${size}:${quality}` : size;
+    const key = modelPricing && typeof modelPricing === 'object' && qualityKey in modelPricing ? qualityKey : size;
+    if (modelPricing && typeof modelPricing === 'object' && key in modelPricing) {
+      const costPerImage = (modelPricing as Record<string, number>)[key];
       const totalCost = costPerImage * count;
 
       this.costs.push({
         service: 'openai',
         type: 'image_generation',
         cost: totalCost,
-        details: { images: count, model, size },
+        details: { images: count, model, size: qualityKey },
         timestamp: Date.now(),
       });
     }
