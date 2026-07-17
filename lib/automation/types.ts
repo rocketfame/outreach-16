@@ -109,15 +109,54 @@ export interface AutomationGenerateSuccess {
   };
 }
 
+/** Raw request body accepted by POST /api/automation/cover. */
+export interface AutomationCoverInput {
+  /** What the image box prompt adapts to. Required. */
+  topic: string;
+  niche?: string;
+  category?: string;
+  imageStyle?: string;
+  excludeImageStyles?: string[];
+  imageQuality?: "low" | "medium" | "high";
+}
+
+/** Normalized cover request after validation. */
+export interface AutomationCoverRequest {
+  topic: string;
+  niche: string;
+  category: string;
+  imageStyle: string;
+  excludeImageStyles: string[];
+  imageQuality: string;
+}
+
+export interface AutomationCoverSuccess {
+  status: "ok";
+  generationId: string;
+  cover: {
+    base64: string;
+    format: "png";
+    alt: string;
+  };
+  meta: {
+    imageStyle?: string;
+    costUsd: number;
+  };
+}
+
 export interface AutomationJob {
   id: string;
   status: AutomationJobStatus;
-  request: AutomationGenerateRequest;
+  /** "article" (default, backward compat with stored jobs) or "cover". */
+  kind?: "article" | "cover";
+  request?: AutomationGenerateRequest;
+  coverRequest?: AutomationCoverRequest;
   createdAt: number;
   updatedAt: number;
   startedAt?: number;
   completedAt?: number;
   result?: AutomationGenerateSuccess;
+  coverResult?: AutomationCoverSuccess;
   error?: {
     code: string;
     message: string;

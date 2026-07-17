@@ -1,7 +1,12 @@
 import { NICHE_TO_PRESET_KEY, PLATFORM_PRESETS } from "@/config/platformPresets";
 import { SUPPORTED_LANGUAGES, resolveLanguage } from "@/config/languages";
 import { IMAGE_BOX_PROMPTS, PALETTE_FAMILIES } from "@/lib/imageBoxPrompts";
-import type { AutomationGenerateInput, AutomationGenerateRequest } from "@/lib/automation/types";
+import type {
+  AutomationCoverInput,
+  AutomationCoverRequest,
+  AutomationGenerateInput,
+  AutomationGenerateRequest,
+} from "@/lib/automation/types";
 
 const IMAGE_STYLE_IDS = IMAGE_BOX_PROMPTS.map((box) => box.id);
 const FAMILY_EXCLUDES = PALETTE_FAMILIES.map((family) => `family:${family}`);
@@ -268,4 +273,83 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     maxWords,
     seoTitleMaxChars,
   };
+}
+
+/** Validate the POST /api/automation/cover body. Mirrors /generate semantics. */
+export function validateCoverRequest(input: unknown): AutomationCoverRequest {
+  const body = input as Partial<AutomationCoverInput> | null;
+  if (!body || typeof body !== "object") {
+    throw new AutomationValidationError("Request body must be a JSON object.");
+  }
+
+  const topic = typeof body.topic === "string" ? body.topic.trim() : "";
+  if (!topic) {
+    throw new AutomationValidationError("Missing required field: topic.", { field: "topic" });
+  }
+  if (topic.length > 200) {
+    throw new AutomationValidationError("Invalid topic. Maximum length is 200 characters.", {
+      field: "topic",
+    });
+  }
+
+  const niche = typeof body.niche === "string" ? body.niche.trim() : "";
+  const category = typeof body.category === "string" ? body.category.trim() : "";
+
+  const imageStyle = typeof body.imageStyle === "string" ? body.imageStyle.trim() : "";
+  if (imageStyle && !IMAGE_STYLE_IDS.includes(imageStyle)) {
+    throw new AutomationValidationError(
+      `Unknown imageStyle "${imageStyle}". Expected one of the image box preset ids.`,
+      { field: "imageStyle", allowed: IMAGE_STYLE_IDS }
+    );
+  }
+
+  let excludeImageStyles: string[] = [];
+  if (body.excludeImageStyles !== undefined && body.excludeImageStyles !== null) {
+    if (!Array.isArray(body.excludeImageStyles) || body.excludeImageStyles.some((s) => typeof s !== "string")) {
+      throw new AutomationValidationError("Invalid excludeImageStyles. Expected an array of strings.", {
+        field: "excludeImageStyles",
+        allowed: EXCLUDE_ALLOWED,
+      });
+    }
+    const entries = body.excludeImageStyles.map((s) => s.trim()).filter(Boolean);
+    const unknown: string[] = [];
+    const expanded = new Set<string>();
+    for (const entry of entries) {
+      const ids = expandExcludeEntry(entry);
+      if (!ids) {
+        unknown.push(entry);
+        continue;
+      }
+      for (const id of ids) expanded.add(id);
+    }
+    if (unknown.length > 0) {
+      throw new AutomationValidationError(
+        `Unknown excludeImageStyles: ${unknown.join(", ")}. Use box ids or "family:<name>".`,
+        { field: "excludeImageStyles", allowed: EXCLUDE_ALLOWED }
+      );
+    }
+    excludeImageStyles = Array.from(expanded);
+    if (excludeImageStyles.length >= IMAGE_STYLE_IDS.length) {
+      throw new AutomationValidationError(
+        "excludeImageStyles excludes every preset — leave at least one available.",
+        { field: "excludeImageStyles" }
+      );
+    }
+    if (imageStyle && excludeImageStyles.includes(imageStyle)) {
+      throw new AutomationValidationError(
+        `imageStyle "${imageStyle}" is also covered by excludeImageStyles.`,
+        { field: "imageStyle" }
+      );
+    }
+  }
+
+  const imageQuality = typeof body.imageQuality === "string" ? body.imageQuality.trim().toLowerCase() : "";
+  if (imageQuality && !["low", "medium", "high"].includes(imageQuality)) {
+    throw new AutomationValidationError(
+      `Unknown imageQuality "${body.imageQuality}". Expected "low", "medium" or "high".`,
+      { field: "imageQuality", allowed: ["low", "medium", "high"] }
+    );
+  }
+
+  return { topic, niche, category, imageStyle, excludeImageStyles, imageQuality };
 }

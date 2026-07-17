@@ -49,6 +49,16 @@ export async function GET(
     return json(body, 404);
   }
 
+  if (job.status === "done" && job.kind === "cover" && job.coverResult) {
+    return json({
+      status: "done",
+      jobId: job.id,
+      cover: job.coverResult.cover,
+      meta: job.coverResult.meta,
+      generationId: job.coverResult.generationId,
+    }, 200);
+  }
+
   if (job.status === "done" && job.result) {
     return json({
       status: "done",

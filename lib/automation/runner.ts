@@ -5,7 +5,7 @@ import {
   releaseAutomationSlot,
   saveAutomationJob,
 } from "@/lib/automation/jobStore";
-import { AutomationPipelineError, runAutomationGeneration } from "@/lib/automation/pipeline";
+import { AutomationPipelineError, runAutomationGeneration, runCoverGeneration } from "@/lib/automation/pipeline";
 import type { AutomationJob } from "@/lib/automation/types";
 
 /**
@@ -21,13 +21,25 @@ async function executeAutomationJob(jobId: string, slot: number, job: Automation
     };
     await saveAutomationJob(runningJob);
 
-    const result = await runAutomationGeneration(jobId, job.request);
-    await saveAutomationJob({
-      ...runningJob,
-      status: "done",
-      completedAt: Date.now(),
-      result,
-    });
+    if (job.kind === "cover" && job.coverRequest) {
+      const coverResult = await runCoverGeneration(jobId, job.coverRequest);
+      await saveAutomationJob({
+        ...runningJob,
+        status: "done",
+        completedAt: Date.now(),
+        coverResult,
+      });
+    } else if (job.request) {
+      const result = await runAutomationGeneration(jobId, job.request);
+      await saveAutomationJob({
+        ...runningJob,
+        status: "done",
+        completedAt: Date.now(),
+        result,
+      });
+    } else {
+      throw new AutomationPipelineError("invalid_job", "Job has no request payload.");
+    }
   } catch (error) {
     await saveAutomationJob({
       ...job,

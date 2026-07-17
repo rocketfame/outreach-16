@@ -19,6 +19,8 @@ import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
 import type {
   AutomationArticle,
+  AutomationCoverRequest,
+  AutomationCoverSuccess,
   AutomationGenerateRequest,
   AutomationGenerateSuccess,
 } from "@/lib/automation/types";
@@ -271,6 +273,60 @@ export async function runAutomationGeneration(
       language: request.language || "English",
       wordCount,
       imageStyle: imageStyleUsed,
+      costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
+    },
+  };
+}
+
+/**
+ * Cover-only generation: one gpt-image-2 call through the existing internal
+ * image route, no article text. ~$0.05 at medium quality instead of paying
+ * $0.20 for a throwaway article to replace one bad cover.
+ */
+export async function runCoverGeneration(
+  generationId: string,
+  request: AutomationCoverRequest
+): Promise<AutomationCoverSuccess> {
+  const costBefore = getCostTracker().getTotalCosts().total;
+  const excludedIndices = (request.excludeImageStyles || [])
+    .map((id) => IMAGE_BOX_PROMPTS.findIndex((box) => box.id === id))
+    .filter((index) => index >= 0);
+
+  const imageResponse = await generateImageRoute(new Request("https://automation.local/api/article-image", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-forwarded-for": "automation",
+      [INTERNAL_CALL_HEADER]: INTERNAL_CALL_TOKEN,
+    },
+    body: JSON.stringify({
+      articleTitle: request.topic,
+      niche: request.niche || request.category || "General",
+      mainPlatform: request.category || "multi-platform",
+      contentPurpose: "Guest post / outreach",
+      brandName: "",
+      usedBoxIndices: excludedIndices,
+      imageBoxId: request.imageStyle || undefined,
+      quality: request.imageQuality || undefined,
+    }),
+  }));
+
+  const imageJson = (await imageResponse.json()) as InternalImageResponse;
+  if (!imageResponse.ok || !imageJson.success || !imageJson.imageBase64) {
+    throw new Error(imageJson.error || "Cover image generation failed.");
+  }
+
+  const costAfter = getCostTracker().getTotalCosts().total;
+  return {
+    status: "ok",
+    generationId,
+    cover: {
+      base64: imageJson.imageBase64,
+      format: "png",
+      alt: `${request.topic} hero image`,
+    },
+    meta: {
+      imageStyle: imageJson.selectedBoxId,
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
     },
   };
