@@ -273,9 +273,16 @@ export async function runAutomationGeneration(
       language: request.language || "English",
       wordCount,
       imageStyle: imageStyleUsed,
+      imageFamily: familyOfBox(imageStyleUsed),
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
     },
   };
+}
+
+/** Palette family for a box id — echoed so callers can de-dup at family level. */
+function familyOfBox(boxId?: string): string | undefined {
+  if (!boxId) return undefined;
+  return IMAGE_BOX_PROMPTS.find((box) => box.id === boxId)?.paletteFamily;
 }
 
 /**
@@ -327,6 +334,7 @@ export async function runCoverGeneration(
     },
     meta: {
       imageStyle: imageJson.selectedBoxId,
+      imageFamily: familyOfBox(imageJson.selectedBoxId),
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
     },
   };

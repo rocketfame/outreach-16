@@ -105,6 +105,8 @@ export interface AutomationGenerateSuccess {
     wordCount: number;
     /** Image box preset id used for the cover — assert on it, don't eyeball. */
     imageStyle?: string;
+    /** Palette family of the used preset — for family-level batch de-dup. */
+    imageFamily?: string;
     costUsd: number;
   };
 }
@@ -140,6 +142,7 @@ export interface AutomationCoverSuccess {
   };
   meta: {
     imageStyle?: string;
+    imageFamily?: string;
     costUsd: number;
   };
 }
