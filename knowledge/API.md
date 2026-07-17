@@ -18,6 +18,15 @@
   - `excludeImageStyles` — optional, масив id АБО `family:<назва>` (розгортається на всі бокси сімʼї). Batch de-dup: оркестратор акумулює `meta.imageStyle` з готових джоб і передає список у наступні. Виключити все → 400
   - `meta.imageStyle` — id використаного пресета в результаті. Selection: family-aware двоступеневий random (сімʼя uniform → бокс усередині) — палітрові кластери в батчах вирівнюються статистично; stateless per job
   - `imageQuality` — optional, `"low" | "medium" | "high"` для gpt-image-2 (~$0.013 / ~$0.05 / ~$0.20 за 1536x864). Default: `HERO_IMAGE_QUALITY` env, інакше `medium` (рішення 2026-07-17; батч на 10 → $0.50 замість $2). Без `image:true` → 400
+  - **Outreach spec (2026-07-17), Part A:**
+    - `topic` — авторитетний: `article.title` = topic ВЕРБАТИМ (H1). `seoTitle` — окремий скорочений Title tag (`seoTitleMaxChars`, default 65, діапазон 30-120)
+    - Джерела: platform docs max 2/статтю; **≥1 незалежне** (research/trade press: Billboard, MBW, Pew, MIDiA, IFPI, Luminate, Chartmasters, Soundcharts, Chartmetric, Streams Charts, TwitchTracker, Socialinsider) або error `no_independent_sources`; кожен URL перевіряється на 2xx перед цитуванням (`urlResolves`); назви цитат — канонічні імена ресурсів (`displayNameForUrl`)
+    - Зовнішні анкори лінків: >4 слів → замінюються на імʼя ресурсу (`shortenExternalLinkTexts`); money-анкор недоторканий
+    - Money-анкор: точний текст (репair `repairMoneyAnchor`), дублікати розгортаються, whole-word (`enforceSingleMention` з `\b`, не чіпає текст у `<a>`), позиція в перших 3 абзацах; glued links (`</a>\w`) → error `anchor_broken`
+    - Заборонений лінк у абзаці → видаляється ЦІЛЕ речення (не unwrap); в `<li>` → викидається пункт; речення з money-анкором ніколи не видаляється
+    - Цитати `"..."` заморожуються перед Undetectable (QUOTEREF-токени); debris-guard (`cleanQuoteDebris`): орфанні лапки, непарні лапки
+    - Retry-цикл: усі draft-фейли (`below_min_words`, `anchor_missing`, `anchor_misplaced`, `anchor_broken`) → 1 retry з корективами → чесний error code
+    - A6 (датовані claims) — інструкції в промпті: ranking/top-N лише з as-of датою і джерелом, інакше механізм замість цифр
   - Джерела: `/thread/`, форуми, reddit/quora, SEO-блоги (backlinko тощо) і video-цитати відфільтровуються (`lib/sourcePolicy.ts` + `lib/automation/linkGuard.ts`); `hl` на support.google.com форситься в `en`; фінальний guard розгортає заборонені лінки в тексті (анкор недоторканий)
   - Помилки валідації machine-readable: `{ code, message, field?, allowed? }`
 - `GET /api/automation/generate/:jobId` — polling endpoint (`queued|running|done|error`). Для queued повертає `position` (1 = наступна до виконання) та `etaSeconds`. Кожен poll — drain-тригер черги (наступна джоба виконується в `after()` цієї ж інвокації). Running довше 10 хв → `job_timeout` error. Concurrency: `AUTOMATION_CONCURRENCY` env (default 1, max 8). Внутрішні automation-виклики `/api/articles` та `/api/article-image` обходять per-IP rate limiter через in-process токен (`lib/automation/internal.ts`)

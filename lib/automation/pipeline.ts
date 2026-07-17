@@ -2,8 +2,19 @@ import { POST as generateArticleRoute } from "@/app/api/articles/route";
 import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
 import { searchReliableSources } from "@/lib/tavilyClient";
-import { filterSourcesByPolicy, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
-import { normalizeGoogleSupportLocale, stripDisallowedLinks } from "@/lib/automation/linkGuard";
+import { filterSourcesByPolicy, getSourcePolicyDecision, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
+import {
+  anchorInFirstParagraphs,
+  cleanQuoteDebris,
+  displayNameForUrl,
+  enforceSingleMention,
+  hasGluedLinks,
+  normalizeGoogleSupportLocale,
+  repairMoneyAnchor,
+  shortenExternalLinkTexts,
+  stripDisallowedLinks,
+  urlResolves,
+} from "@/lib/automation/linkGuard";
 import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
 import type {
@@ -48,7 +59,7 @@ async function generateArticleOnce(
   trustSourcesList: string[],
   targetWords: number,
   extraInstruction: string
-): Promise<{ title: string; contentHtml: string; metaDescription: string }> {
+): Promise<{ generatedTitleTag: string; contentHtml: string; metaDescription: string }> {
   const articleResponse = await generateArticleRoute(new Request("https://automation.local/api/articles", {
     method: "POST",
     headers: {
@@ -94,22 +105,68 @@ async function generateArticleOnce(
   }
 
   const generated = articleJson.articles[0];
-  const title = stripTags(generated.titleTag || topic).trim();
+  const generatedTitleTag = stripTags(generated.titleTag || topic).trim();
   const rawHtml = generated.articleBodyHtml || generated.fullArticleText || "";
+
+  // Deterministic repair chain — order matters:
+  // sanitize → drop disallowed citations (whole sentence, no orphan text)
+  // → clause-length citation anchors to resource names → quote debris
+  // → single plain-text anchor mention → exact money anchor.
   let contentHtml = sanitizeAutomationHtml(rawHtml);
   contentHtml = stripDisallowedLinks(contentHtml, request.anchorUrl);
+  contentHtml = shortenExternalLinkTexts(contentHtml, request.anchorUrl);
+  contentHtml = cleanQuoteDebris(contentHtml);
   // Enforce the single ANCHOR mention only when the anchor text is not the
   // brand itself — brand mentions (2-3x) must survive.
   const anchorIsBrand =
     request.brand && request.anchor.toLowerCase().includes(request.brand.toLowerCase());
   if (request.anchor && !anchorIsBrand) {
-    contentHtml = enforceSingleBrandMention(contentHtml, request.anchor);
+    contentHtml = enforceSingleMention(contentHtml, request.anchor);
   }
-  return { title, contentHtml, metaDescription: generated.metaDescription || "" };
+  if (request.anchor && request.anchorUrl) {
+    contentHtml = repairMoneyAnchor(contentHtml, request.anchor, request.anchorUrl).html;
+  }
+  return { generatedTitleTag, contentHtml, metaDescription: generated.metaDescription || "" };
 }
 
 function countWords(html: string): number {
   return stripTags(html).split(/\s+/).filter(Boolean).length;
+}
+
+/** Draft defects that warrant a retry and, if persistent, an honest error. */
+function collectDraftFailures(
+  request: AutomationGenerateRequest,
+  contentHtml: string,
+  minWords: number
+): Array<{ code: string; message: string }> {
+  const failures: Array<{ code: string; message: string }> = [];
+  const wordCount = countWords(contentHtml);
+  if (wordCount < minWords) {
+    failures.push({
+      code: "below_min_words",
+      message: `Generated article has ${wordCount} words; the floor is ${minWords}. Likely too little research material for this niche+category pair — try a more specific niche (e.g. "Electronic music industry" instead of "Music industry") or lower minWords.`,
+    });
+  }
+  if (request.anchor && request.anchorUrl) {
+    if (!contentHtml.includes(request.anchorUrl)) {
+      failures.push({
+        code: "anchor_missing",
+        message: `The commercial anchor link (${request.anchor}) is missing from the article body.`,
+      });
+    } else if (!anchorInFirstParagraphs(contentHtml, request.anchorUrl, 3)) {
+      failures.push({
+        code: "anchor_misplaced",
+        message: "The commercial anchor link is not within the first 3 paragraphs.",
+      });
+    }
+  }
+  if (hasGluedLinks(contentHtml)) {
+    failures.push({
+      code: "anchor_broken",
+      message: "A link is glued to a word (mid-word link placement) — rejecting rather than shipping broken markup.",
+    });
+  }
+  return failures;
 }
 
 export async function runAutomationGeneration(
@@ -121,43 +178,36 @@ export async function runAutomationGeneration(
   const minWords = request.minWords || 1200;
   const targetWords = Math.round((minWords + (request.maxWords || 1800)) / 2);
 
-  const sources = await searchAutomationTrustSources(topic, request.category);
-  const trustSourcesList = filterSourcesByPolicy(sources)
-    .sort((a, b) => getSourcePriority(b) - getSourcePriority(a))
-    .slice(0, 6)
-    .map((source) => `${source.title}|${source.url}|${source.snippet}`);
+  const trustSourcesList = await buildTrustSourcesList(topic, request.category);
 
-  if (trustSourcesList.length === 0) {
-    console.warn("[automationPipeline] No policy-approved trust sources found; continuing without external links.");
-  }
-
-  // minWords is a floor, not a hint: one retry with a boosted target and an
-  // explicit floor instruction, then an honest error. A 245-word stub with
-  // status "done" is the same class of bug as masked insufficient_quota.
+  // Acceptance failures trigger ONE retry with corrective instructions, then
+  // an honest error. A 245-word stub or a broken anchor shipped with status
+  // "done" is the same class of bug as masked insufficient_quota.
   let article = await generateArticleOnce(request, topic, trustSourcesList, targetWords, "");
-  let wordCount = countWords(article.contentHtml);
-  if (wordCount < minWords) {
-    console.warn(`[automationPipeline] Draft is ${wordCount} words (< floor ${minWords}); retrying with boosted target.`);
+  let failures = collectDraftFailures(request, article.contentHtml, minWords);
+  if (failures.length > 0) {
+    console.warn(`[automationPipeline] Draft failed checks (${failures.map(f => f.code).join(", ")}); retrying once.`);
     const boostedTarget = Math.max(targetWords, Math.round(minWords * 1.3));
-    article = await generateArticleOnce(
-      request,
-      topic,
-      trustSourcesList,
-      boostedTarget,
-      `The article MUST contain at least ${minWords} words of substantive content. Do not pad with filler — add concrete examples, steps, and specifics instead.`
-    );
-    wordCount = countWords(article.contentHtml);
+    const corrective = [
+      `The article MUST contain at least ${minWords} words of substantive content. Do not pad with filler — add concrete examples, steps, and specifics instead.`,
+      request.anchor ? `Place the commercial anchor [A1] inside a complete sentence within the first 2-3 paragraphs.` : "",
+    ].filter(Boolean).join("\n");
+    article = await generateArticleOnce(request, topic, trustSourcesList, boostedTarget, corrective);
+    failures = collectDraftFailures(request, article.contentHtml, minWords);
   }
-  if (wordCount < minWords) {
-    throw new AutomationPipelineError(
-      "below_min_words",
-      `Generated article has ${wordCount} words after retry; the floor is ${minWords}. Likely too little research material for this niche+category pair — try a more specific niche (e.g. "Electronic music industry" instead of "Music industry") or lower minWords.`
-    );
+  if (failures.length > 0) {
+    const first = failures[0];
+    throw new AutomationPipelineError(first.code, `${first.message} (after retry)`);
   }
+  const wordCount = countWords(article.contentHtml);
 
-  const { title, contentHtml } = article;
+  const { contentHtml } = article;
+  // The given topic is a deliberate keyword-loaded hook — it IS the H1,
+  // verbatim. The engine's own titleTag only serves as the shortened Title
+  // tag (seoTitle), never as a replacement for the hook.
+  const title = request.topic ? request.topic.trim() : article.generatedTitleTag;
+  const seoTitle = truncateText(article.generatedTitleTag || title, request.seoTitleMaxChars || 65);
   const seoDescription = cleanDescription(article.metaDescription || summarizeText(contentHtml, 155));
-  const seoTitle = truncateText(title, 60);
 
   let cover: AutomationArticle["cover"];
   let imageStyleUsed: string | undefined;
@@ -252,6 +302,73 @@ async function searchAutomationTrustSources(topic: string, category: string) {
   });
 }
 
+/** Targeted tier-2/3 search when the general sweep yields no independent sources. */
+const INDEPENDENT_SOURCE_SITES = [
+  "site:billboard.com",
+  "site:musicbusinessworldwide.com",
+  "site:pewresearch.org",
+  "site:midiaresearch.com",
+  "site:ifpi.org",
+  "site:soundcharts.com",
+  "site:chartmasters.org",
+  "site:streamscharts.com",
+  "site:twitchtracker.com",
+  "site:datareportal.com",
+];
+
+type ScoredSource = { title: string; url: string; snippet?: string };
+
+function isIndependentSource(url: string): boolean {
+  const forcedType = getSourcePolicyDecision({ url, title: "", snippet: "" }).forcedType;
+  return forcedType === "stats_or_research" || forcedType === "independent_media";
+}
+
+function isPlatformDocSource(url: string): boolean {
+  return getSourcePolicyDecision({ url, title: "", snippet: "" }).forcedType === "official_platform";
+}
+
+/**
+ * Source list composition per the outreach spec:
+ * - platform documentation capped at 2 per article;
+ * - at least 1 independent source (research/trade press) or the job errors —
+ *   ten guest posts citing only the platform's own help pages is a
+ *   fingerprint and reads as thin;
+ * - every candidate URL must resolve (2xx) before it can be cited;
+ * - citation titles are canonical resource names (link anchors are 1-4 words).
+ */
+async function buildTrustSourcesList(topic: string, category: string): Promise<string[]> {
+  const sources = await searchAutomationTrustSources(topic, category);
+  let candidates: ScoredSource[] = filterSourcesByPolicy(sources)
+    .sort((a, b) => getSourcePriority(b) - getSourcePriority(a));
+
+  let independents = candidates.filter((s) => isIndependentSource(s.url));
+  if (independents.length === 0) {
+    const extra = await searchReliableSources(
+      `${INDEPENDENT_SOURCE_SITES.join(" OR ")} ${topic} ${category} report data`
+    );
+    const extraApproved = filterSourcesByPolicy(dedupeSources(extra)).filter((s) => isIndependentSource(s.url));
+    independents = extraApproved;
+    candidates = dedupeSources([...candidates, ...extraApproved]);
+  }
+
+  const platformDocs = candidates.filter((s) => isPlatformDocSource(s.url)).slice(0, 2);
+  const nonPlatform = candidates.filter((s) => !isPlatformDocSource(s.url));
+  const composed = dedupeSources([...independents.slice(0, 3), ...platformDocs, ...nonPlatform]).slice(0, 6);
+
+  // Dead links get dropped before they can be cited.
+  const resolutions = await Promise.all(composed.map((s) => urlResolves(s.url)));
+  const alive = composed.filter((_, i) => resolutions[i]);
+
+  if (!alive.some((s) => isIndependentSource(s.url))) {
+    throw new AutomationPipelineError(
+      "no_independent_sources",
+      `No live independent (non-platform) source found for "${topic}" (${category}). An article citing only the platform's own docs does not ship — narrow the topic or retry later.`
+    );
+  }
+
+  return alive.map((s) => `${displayNameForUrl(s.url)}|${s.url}|${s.snippet || ""}`);
+}
+
 function hostnameOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
@@ -294,6 +411,7 @@ function buildFallbackTopic(request: AutomationGenerateRequest): string {
 function buildTopicBrief(request: AutomationGenerateRequest, topic: string): string {
   const lines = [
     topic,
+    "Use the exact article title as given — do not rewrite, shorten, or 'improve' it. It is a deliberate keyword-loaded hook.",
     `Write for readers who want practical ${request.category} growth advice.`,
   ];
   if (request.brand) {
@@ -307,7 +425,9 @@ function buildTopicBrief(request: AutomationGenerateRequest, topic: string): str
     lines.push("Do not mention any client brand or commercial anchor.");
   }
   lines.push(
-    "Avoid competitors, SMM panels, bought-follower services, fake engagement claims, and placeholder related-read sections."
+    "Avoid competitors, SMM panels, bought-follower services, fake engagement claims, and placeholder related-read sections.",
+    "External citation anchors must be 1-4 words — the resource's name (e.g. Billboard, YouTube Help, Pew Research Center), never a clause. Do not repeat the resource name immediately before its link.",
+    "Any ranking, market-size, or top-N claim must carry an explicit as-of date and be backed by one of the provided sources. If a claim cannot be sourced, explain the mechanism instead of inventing numbers or leaderboards."
   );
   if (request.brief) {
     lines.push(request.brief);
@@ -328,30 +448,6 @@ function sanitizeAutomationHtml(html: string): string {
   output = output.replace(/\s+([,.;:!?])/g, "$1");
   output = output.replace(/>\s+</g, "><");
   return output.trim();
-}
-
-function enforceSingleBrandMention(html: string, brand: string): string {
-  const escaped = escapeRegExp(brand.trim());
-  const brandRegex = new RegExp(escaped, "gi");
-  const visibleText = stripTags(html);
-  const matches = [...visibleText.matchAll(brandRegex)];
-  if (matches.length === 1) return html;
-
-  if (matches.length === 0) {
-    if (/<p[^>]*>/i.test(html)) {
-      return html.replace(/<p[^>]*>/i, (tag) => `${tag}${brand} can be a useful starting point when you need a simple visibility baseline. `);
-    }
-    return `<p>${brand} can be a useful starting point when you need a simple visibility baseline.</p>${html}`;
-  }
-
-  let seen = 0;
-  return html.replace(/(^|>)([^<]+)(?=<|$)/g, (full, prefix: string, text: string) => {
-    const updated = text.replace(brandRegex, (match) => {
-      seen += 1;
-      return seen === 1 ? match : "the platform";
-    });
-    return `${prefix}${updated}`;
-  });
 }
 
 function stripTags(html: string): string {

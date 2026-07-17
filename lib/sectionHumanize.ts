@@ -54,6 +54,15 @@ export function createPlaceholderProtection(frozenPhrases: string[] = []) {
       return token;
     });
 
+    // Quoted examples must survive humanization intact — the rewriter eats
+    // quote halves the same way it eats dotted brand names.
+    let quoteIndex = 0;
+    result = result.replace(/"[^"\n]{2,160}"/g, (match) => {
+      const token = `QUOTEREF${String(quoteIndex++).padStart(3, "0")}`;
+      placeholderMap[token] = match;
+      return token;
+    });
+
     for (const phrase of frozenPhrases) {
       const trimmed = (phrase || "").trim();
       // Skip [A1]/[T1-8] placeholders (handled above) and empty entries.

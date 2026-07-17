@@ -49,6 +49,8 @@ export interface AutomationGenerateInput {
   imageQuality?: "low" | "medium" | "high";
   minWords?: number;
   maxWords?: number;
+  /** Max length for the generated seoTitle (Title tag). Default 65. */
+  seoTitleMaxChars?: number;
 }
 
 /** Normalized request after validation — all defaults resolved. */
@@ -71,6 +73,7 @@ export interface AutomationGenerateRequest {
   imageRatio: "16:9";
   minWords: number;
   maxWords: number;
+  seoTitleMaxChars: number;
 }
 
 export interface AutomationArticle {

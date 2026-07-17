@@ -37,6 +37,13 @@ const RESEARCH_DOMAINS = [
   "riaa.com",
   "midiaresearch.com",
   "luminate.xyz",
+  // Credible analytics/trackers (tier 3 per outreach spec 2026-07-17)
+  "chartmasters.org",
+  "soundcharts.com",
+  "chartmetric.com",
+  "streamscharts.com",
+  "twitchtracker.com",
+  "socialinsider.io",
 ];
 
 const TRUSTED_MEDIA_DOMAINS = [
@@ -96,14 +103,16 @@ const UGC_DOMAINS = [
 ];
 
 // Third-party SEO/affiliate content mills — high-ranking, low-authority.
+// NOTE: streamscharts.com moved to RESEARCH_DOMAINS (credible analytics,
+// outreach spec 2026-07-17) — do not re-add it here.
 const SEO_BLOG_DOMAINS = [
   "backlinko.com",
   "neilpatel.com",
   "streamscheme.com",
-  "streamscharts.com",
   "influencermarketinghub.com",
   "wordstream.com",
   "sproutsocial.com",
+  "inksem.com",
 ];
 
 /** True for forum/Q&A/complaint-thread URLs that must never be cited. */

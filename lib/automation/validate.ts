@@ -241,6 +241,14 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     );
   }
 
+  const seoTitleMaxChars = Number.isFinite(body.seoTitleMaxChars) ? Number(body.seoTitleMaxChars) : 65;
+  if (seoTitleMaxChars < 30 || seoTitleMaxChars > 120) {
+    throw new AutomationValidationError(
+      "Invalid seoTitleMaxChars. Use a value between 30 and 120.",
+      { field: "seoTitleMaxChars" }
+    );
+  }
+
   return {
     topic: typeof body.topic === "string" && body.topic.trim() ? body.topic.trim() : null,
     niche,
@@ -258,5 +266,6 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     imageRatio: "16:9",
     minWords,
     maxWords,
+    seoTitleMaxChars,
   };
 }

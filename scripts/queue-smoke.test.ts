@@ -12,7 +12,7 @@ import type { AutomationJob } from "@/lib/automation/types";
 function job(id: string): AutomationJob {
   return {
     id, status: "queued",
-    request: { topic: null, niche: "Music industry", category: "Spotify", anchor: "", anchorUrl: "", brand: "", brief: "", mode: "human", language: "English", image: false, imageStyle: "", excludeImageStyles: [], imageQuality: "", imageRatio: "16:9", minWords: 1200, maxWords: 1800 },
+    request: { topic: null, niche: "Music industry", category: "Spotify", anchor: "", anchorUrl: "", brand: "", brief: "", mode: "human", language: "English", image: false, imageStyle: "", excludeImageStyles: [], imageQuality: "", imageRatio: "16:9", minWords: 1200, maxWords: 1800, seoTitleMaxChars: 65 },
     createdAt: Date.now(), updatedAt: Date.now(),
   };
 }
