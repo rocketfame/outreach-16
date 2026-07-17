@@ -92,7 +92,7 @@ Required on Vercel (and `.env.local` for dev):
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Vercel KV for trial persistence
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` — checkout
 - `BASIC_AUTH_USER` + `BASIC_AUTH_PASS` — optional fallback auth
-- `HERO_IMAGE_QUALITY` — gpt-image-2 quality tier for hero images: `low` (~$0.013) / `medium` (~$0.05) / `high` (~$0.20, default). Per-request `quality`/`imageQuality` params override it.
+- `HERO_IMAGE_QUALITY` — gpt-image-2 quality tier for hero images: `low` (~$0.013) / `medium` (~$0.05, default) / `high` (~$0.20). Per-request `quality`/`imageQuality` params override it.
 - `MAINTENANCE_ENABLED` — set to `false` to disable maintenance gate (defaults to enabled)
 - `NEXT_PUBLIC_MAINTENANCE_ENABLED` — client mirror of the above
 

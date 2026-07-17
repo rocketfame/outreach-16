@@ -14,7 +14,9 @@ const HERO_IMAGE_FORMAT = {
   width: 1536,
   height: 864,
   aspectRatio: "16:9",
-  quality: "high",
+  // Default tier: medium (~$0.05/cover vs $0.20 high) — decided 2026-07-17.
+  // Per-request quality param or HERO_IMAGE_QUALITY env can force high back.
+  quality: "medium",
   outputFormat: "png",
   mimeType: "image/png",
   extension: "png",
