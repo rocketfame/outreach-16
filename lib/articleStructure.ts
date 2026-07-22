@@ -539,6 +539,15 @@ export function modelBlocksToArticleStructure(
     blocks.unshift({ id: crypto.randomUUID(), type: 'h1', text: h1Text || 'Article' });
   }
 
+  // Enforce a single H1 per article: the title (first block) is the only H1.
+  // If the model emits additional h1 blocks in the body, downgrade them to h2
+  // so the article structure never contains two H1 headings.
+  for (let i = 1; i < blocks.length; i++) {
+    if (blocks[i].type === 'h1') {
+      (blocks[i] as { type: BlockType }).type = 'h2';
+    }
+  }
+
   // #region agent log
   dbg('[debug-7bb5e0] modelBlocksToArticleStructure anchor check:', JSON.stringify({anchorText,anchorUrl,anchorTextTruthy:!!anchorText,anchorUrlTruthy:!!anchorUrl,willAddA1:!!(anchorText&&anchorUrl),anchorTextCharCodes:anchorText?[...anchorText].slice(0,5).map(c=>c.charCodeAt(0)):[],anchorUrlCharCodes:anchorUrl?[...anchorUrl].slice(0,10).map(c=>c.charCodeAt(0)):[]}));
   // #endregion

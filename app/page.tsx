@@ -6446,7 +6446,7 @@ export default function Home() {
                                     // Build HTML version too
                                     let fullHtml = '';
                                     if (internalTitle) {
-                                      fullHtml += `<h1>${internalTitle}</h1>\n`;
+                                      fullHtml += `<div class="doc-title">${internalTitle}</div>\n`;
                                     }
                                     if (titleTag) {
                                       fullHtml += `<p><strong>Title tag</strong></p>\n<p>${titleTag}</p>\n`;
@@ -6564,7 +6564,8 @@ export default function Home() {
                                           
                                           // Add internal document title
                                           if (internalTitle) {
-                                            const titleEl = document.createElement('h1');
+                                            const titleEl = document.createElement('div');
+                                            titleEl.className = 'doc-title';
                                             titleEl.textContent = internalTitle;
                                             container.appendChild(titleEl);
                                           }
@@ -6608,7 +6609,8 @@ export default function Home() {
                                         // Get internal document title
                                         const internalTitle = topicTitle || article.titleTag || topicId;
                                         if (internalTitle) {
-                                          const titleEl = document.createElement('h1');
+                                          const titleEl = document.createElement('div');
+                                          titleEl.className = 'doc-title';
                                           titleEl.textContent = internalTitle;
                                           container.appendChild(titleEl);
                                         }
@@ -6851,7 +6853,7 @@ export default function Home() {
                                             // Build HTML version
                                             let fullHtml = '';
                                             if (internalTitle) {
-                                              fullHtml += `<h1>${internalTitle}</h1>\n`;
+                                              fullHtml += `<div class="doc-title">${internalTitle}</div>\n`;
                                             }
                                             if (titleTagLabel && titleTagValue) {
                                               fullHtml += `<p><strong>${titleTagLabel}</strong></p>\n<p>${titleTagValue}</p>\n`;
@@ -7024,7 +7026,7 @@ export default function Home() {
                                           <span>Close</span>
                                         </button>
                                       </div>
-                                      <h1 className="article-view-title">
+                                      <div className="article-view-title" role="heading" aria-level={2}>
                                         {(() => {
                                           // For direct article mode, use titleTag first, then directArticleTopic
                                           if (mode === "direct") {
@@ -7033,7 +7035,7 @@ export default function Home() {
                                           // For discovery mode, use titleTag, then topic workingTitle
                                           return article.titleTag || topic?.workingTitle || topicId;
                                         })()}
-                                      </h1>
+                                      </div>
                                       {article.createdAt && (
                                         <div className="article-created-date" style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
                                           Created: {new Date(article.createdAt).toLocaleString()}
