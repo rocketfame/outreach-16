@@ -13,6 +13,7 @@ import { PLATFORM_PRESETS, NICHE_TO_PRESET_KEY, NICHE_PRESET_LABELS } from "@/co
 import { SUPPORTED_LANGUAGES } from "@/config/languages";
 import { copyArticleAsPlainText, downloadArticleAsTxt, extractPlainTextFromElement } from "@/lib/articlePlainText";
 import { cleanText } from "@/lib/textPostProcessing";
+import { buildPublisherSheet } from "@/lib/publisherSheet";
 
 type LoadingStep = "topics" | "outline" | "draft" | null;
 
@@ -4582,6 +4583,18 @@ export default function Home() {
       .substring(0, 50);
   };
 
+  // Publisher Instruction Sheet for manual handoff. Assembled at export time and
+  // prepended to the exported document ONLY — never part of the published body.
+  const buildSheetForArticle = (article: GeneratedArticle) =>
+    buildPublisherSheet({
+      titleTag: article.titleTag || "",
+      metaDescription: article.metaDescription || "",
+      articleBodyHtml: article.articleBodyHtml || article.fullArticleText || article.editedText || "",
+      anchorText: article.briefUsed?.anchorText,
+      anchorUrl: article.briefUsed?.anchorUrl,
+      clientSite: article.briefUsed?.clientSite,
+    });
+
   const copyDraft = async () => {
     if (!draft) {
       return;
@@ -6409,9 +6422,12 @@ export default function Home() {
                                       return;
                                     }
                                     
-                                    // Build complete text with: internal title, Title tag (label + value), Meta description (label + value), Article body
-                                    const plainParts: string[] = [];
-                                    
+                                    // Publisher Instruction Sheet — handoff only, never published with the article.
+                                    const publisherSheet = buildSheetForArticle(article);
+
+                                    // Build complete text with: publisher sheet, internal title, Title tag (label + value), Meta description (label + value), Article body
+                                    const plainParts: string[] = [publisherSheet.text];
+
                                     // Get internal document title (topicTitle)
                                     const internalTitle = topicTitle || article.titleTag || topicId;
                                     if (internalTitle) {
@@ -6444,7 +6460,7 @@ export default function Home() {
                                     const plain = plainParts.join('\n');
                                     
                                     // Build HTML version too
-                                    let fullHtml = '';
+                                    let fullHtml = publisherSheet.html;
                                     if (internalTitle) {
                                       fullHtml += `<div class="doc-title">${internalTitle}</div>\n`;
                                     }
@@ -6820,9 +6836,12 @@ export default function Home() {
                                             const bodyElement = modal.querySelector('.article-view-text') as HTMLElement;
                                             const bodyText = bodyElement ? extractPlainTextFromElement(bodyElement) : '';
                                             
+                                            // Publisher Instruction Sheet — handoff only, never published with the article.
+                                            const publisherSheet = buildSheetForArticle(article);
+
                                             // Build complete text with all sections
-                                            const plainParts: string[] = [];
-                                            
+                                            const plainParts: string[] = [publisherSheet.text];
+
                                             // Add internal document title
                                             if (internalTitle) {
                                               plainParts.push(internalTitle);
@@ -6851,7 +6870,7 @@ export default function Home() {
                                             const plain = plainParts.join('\n');
                                             
                                             // Build HTML version
-                                            let fullHtml = '';
+                                            let fullHtml = publisherSheet.html;
                                             if (internalTitle) {
                                               fullHtml += `<div class="doc-title">${internalTitle}</div>\n`;
                                             }
