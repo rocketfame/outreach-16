@@ -1,0 +1,171 @@
+{
+  "$comment": "Machine-readable scope map for the AI orchestrator. Companion to ORCHESTRATOR_BRIEF.md. Source of truth on conflict = CLAUDE.md. Generated 2026-07-29.",
+  "meta": {
+    "generated": "2026-07-29",
+    "sourceOfTruth": "CLAUDE.md",
+    "humanReadableBrief": "ORCHESTRATOR_BRIEF.md"
+  },
+  "projects": [
+    {
+      "id": "outreach-16",
+      "name": "TypeReach (Outreach Articles App)",
+      "purpose": "Brief -> topic discovery -> outline -> outreach article generation with humanization and hero images.",
+      "repo": "github.com/rocketfame/outreach-16",
+      "branch": "main",
+      "branchPolicy": "single branch; no PR gate; never force-push",
+      "localPath": "/Users/serhiosider/Documents/GitHub/outreach-16",
+      "localAliasSymlink": "/Users/serhiosider/typereach",
+      "clonedLocally": true,
+      "host": "Vercel",
+      "domain": "typereach.app",
+      "stack": ["Next.js 16 App Router", "React 19", "TypeScript strict", "OpenAI GPT-5.5", "gpt-image-2", "Undetectable.AI v2", "Tavily", "Stripe", "Vercel KV (Upstash Redis)"]
+    },
+    {
+      "id": "free-followers-cms",
+      "name": "Free Followers CMS + Blog Autopilot",
+      "purpose": "Payload CMS blog; autopilot commits automation/content-plan.json per publish.",
+      "repo": "github.com/rocketfame/free-followers-cms",
+      "branch": "main",
+      "localPath": null,
+      "clonedLocally": false,
+      "cloneWith": "git clone https://github.com/rocketfame/free-followers-cms (credentials stored)",
+      "host": "Railway",
+      "domain": "free-followers.net",
+      "codeRoot": "src/**",
+      "contentPath": "automation/content-plan.json",
+      "autopilotSkill": "/Users/serhiosider/Documents/Claude/Scheduled/free-followers-blog-autopilot/SKILL.md",
+      "deployNote": "railway.json watchPatterns [\"**\", \"!automation/**\"] so content-only commits do NOT redeploy the CMS."
+    }
+  ],
+  "deploy": {
+    "critical": true,
+    "mechanism": "commit -> .git/hooks/post-commit runs `git push` -> Vercel auto-build+deploy of main",
+    "postCommitHook": ".git/hooks/post-commit (auto-push after every commit; skips if branch has no upstream)",
+    "prGate": false,
+    "staging": false,
+    "commitEqualsProd": true,
+    "safeRiskyWork": "Work on a local branch with NO upstream (git checkout -b wip/x; do NOT push -u). post-commit skips push when no upstream. Merge to main only after verification.",
+    "envChanges": "Changing Vercel env vars requires a redeploy to take effect."
+  },
+  "commands": {
+    "dev": "npm run dev",
+    "typecheck": "npx tsc --noEmit",
+    "lint": "npm run lint",
+    "smokeTest": "npx tsx scripts/<name>.test.ts",
+    "buildNote": "next build may fail in sandbox with FUSE EPERM unlink .next/BUILD_ID; use tsc --noEmit locally; real builds on Vercel",
+    "testRunner": "none (no jest/vitest); smoke tests are standalone tsx scripts in scripts/",
+    "localAutomation": "AUTOMATION_API_KEY=localtest npm run dev, then curl /api/automation/generate with Authorization: Bearer localtest"
+  },
+  "codeMap": {
+    "accessControl": {
+      "middleware.ts": "thin wrapper over app/proxy.ts",
+      "app/proxy.ts": "main access gate: trial token -> IP allowlist -> maintenance gate -> basic auth; non-master IP on / always sees MaintenanceGate",
+      "lib/accessConfig.ts": "reads MASTER_IPS env with FALLBACK_IPS",
+      "app/components/MaintenanceGate.tsx": "client gate; validates trial tokens via /api/trial-usage",
+      "lib/rateLimit.ts": "per-IP limiter; categories generate 10/h, search 30/min, read 60/min, auth 5/5min",
+      "next.config.ts": "CSP/HSTS/X-Frame-Options/noindex headers"
+    },
+    "trial": {
+      "lib/trialLimits.ts": "source of truth for limits + usage (Vercel KV, in-memory fallback)",
+      "lib/trialConfig.ts": "reads TRIAL_TOKENS env",
+      "app/api/trial-usage/route.ts": "per-mode usage + limits for UI",
+      "app/components/TrialUsageDisplay.tsx": "usage widget (English UI)"
+    },
+    "generation": {
+      "app/api/articles/route.ts": "main generation endpoint (maxDuration 300s); detects mode; rate-limited generate",
+      "lib/articlePrompt.ts": "buildArticlePrompt (discovery) + buildDirectArticlePrompt (direct)",
+      "lib/articleStructure.ts": "block structure, tables, trust sources, blocksToHtml; enforces single H1",
+      "lib/textPostProcessing.ts": "cleanText, fixHtmlTagSpacing, removeExcessiveBold",
+      "lib/humanizerClient.ts": "Undetectable.AI v2 submit + poll",
+      "lib/sectionHumanize.ts": "section-level humanization during writing",
+      "lib/trustSourceFilter.ts": "Tavily-validated source handling",
+      "lib/sourceClassifier.ts": "LLM classification of sources",
+      "lib/sourcePolicy.ts": "source tiers/policy"
+    },
+    "automation": {
+      "lib/automation/runner.ts": "job runner",
+      "lib/automation/pipeline.ts": "generates + sanitizeAutomationHtml (strips all <h1>)",
+      "lib/automation/jobStore.ts": "FIFO queue",
+      "lib/automation/auth.ts": "AUTOMATION_API_KEY auth",
+      "lib/automation/internal.ts": "isInternalAutomationCall (per-process unforgeable token) — SANCTIONED rate-limit bypass",
+      "lib/automation/linkGuard.ts": "link guards",
+      "lib/automation/validate.ts": "validation",
+      "lib/automation/types.ts": "types"
+    },
+    "publisherSheet": {
+      "lib/publisherSheet.ts": "buildPublisherSheet() + PUBLISHER_REQUIREMENTS; manual handoff only; NEVER in published body/automation",
+      "wiredIn": "app/page.tsx 'Copy text' handoff exports"
+    },
+    "state": {
+      "app/hooks/usePersistentAppState.ts": "Brief/Topic/GeneratedArticle types + localStorage state",
+      "app/page.tsx": "~7000-line main UI shell; modes, generation calls, exports"
+    },
+    "design": {
+      "app/globals.css": "~5500 lines, 32 sections (search ════ dividers), CSS custom properties",
+      "lib/designTokens.ts": "design token exports"
+    }
+  },
+  "apiRoutes": [
+    { "path": "app/api/articles/route.ts", "purpose": "article generation", "rateLimitCategory": "generate" },
+    { "path": "app/api/generate/route.ts", "purpose": "generation", "rateLimitCategory": "generate" },
+    { "path": "app/api/generate-topics/route.ts", "purpose": "topic discovery", "rateLimitCategory": "search" },
+    { "path": "app/api/search-images/route.ts", "purpose": "image search", "rateLimitCategory": "search" },
+    { "path": "app/api/article-image/route.ts", "purpose": "hero image generation", "rateLimitCategory": "generate" },
+    { "path": "app/api/analyze-image-style/route.ts", "purpose": "style analysis from reference image", "rateLimitCategory": "search" },
+    { "path": "app/api/edit-article/route.ts", "purpose": "AI edit of existing article", "rateLimitCategory": "generate" },
+    { "path": "app/api/humanize/route.ts", "purpose": "humanization", "rateLimitCategory": "generate" },
+    { "path": "app/api/find-links/route.ts", "purpose": "link discovery", "rateLimitCategory": "search" },
+    { "path": "app/api/automation/generate/route.ts", "purpose": "automation enqueue", "auth": "AUTOMATION_API_KEY" },
+    { "path": "app/api/automation/generate/[jobId]/route.ts", "purpose": "automation job status", "auth": "AUTOMATION_API_KEY" },
+    { "path": "app/api/automation/cover/route.ts", "purpose": "cover-only generation", "auth": "AUTOMATION_API_KEY" },
+    { "path": "app/api/trial-usage/route.ts", "purpose": "trial usage + limits" },
+    { "path": "app/api/check-access/route.ts", "purpose": "access check" },
+    { "path": "app/api/check-auth/route.ts", "purpose": "auth check" },
+    { "path": "app/api/cost-tracker/route.ts", "purpose": "cost tracking" },
+    { "path": "app/api/stripe/create-checkout/route.ts", "purpose": "Stripe checkout" },
+    { "path": "app/api/stripe/webhook/route.ts", "purpose": "Stripe webhook" },
+    { "path": "app/api/test-tavily/route.ts", "purpose": "Tavily connectivity test" }
+  ],
+  "envVars": {
+    "required": ["OPENAI_API_KEY", "TAVILY_API_KEY", "UNDETECTABLE_HUMANIZER_API_KEY", "MASTER_IPS", "TRIAL_TOKENS", "KV_REST_API_URL", "KV_REST_API_TOKEN", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
+    "automation": ["AUTOMATION_API_KEY", "AUTOMATION_CONCURRENCY"],
+    "optional": ["MASTER_TOKEN", "BASIC_AUTH_USER", "BASIC_AUTH_PASS", "HERO_IMAGE_QUALITY", "MAINTENANCE_ENABLED", "NEXT_PUBLIC_MAINTENANCE_ENABLED", "DEBUG_ANCHORS", "UNDETECTABLE_HUMANIZER_BASE_URL", "UNDETECTABLE_HUMANIZER_MODEL", "UNDETECTABLE_HUMANIZER_READABILITY", "UNDETECTABLE_HUMANIZER_PURPOSE", "UNDETECTABLE_HUMANIZER_STRENGTH"],
+    "note": "Names only. Values live in Vercel + .env.local. Never log secrets."
+  },
+  "rules": {
+    "security": [
+      "Trial tokens ONLY from TRIAL_TOKENS env; never hardcode on client",
+      "MASTER_IPS from env + FALLBACK_IPS; never log the full list",
+      "Cookies only via COOKIE_OPTIONS (httpOnly, secure in prod, sameSite strict)",
+      "Every generation/search route MUST call checkRateLimit(getClientIP(req), category)",
+      "ONLY sanctioned rate-limit bypass: isInternalAutomationCall() — do NOT revert it",
+      "Non-master IP on / must see MaintenanceGate, never raw 403",
+      "No console.log of tokens, keys, IPs, or PII"
+    ],
+    "style": [
+      "All UI text in English (chat replies in Ukrainian)",
+      "TypeScript strict; avoid any",
+      "Next 16 App Router: server components by default, 'use client' only when needed",
+      "Exactly one <h1> per article (enforced in articleStructure.ts)"
+    ],
+    "removedDoNotReintroduce": ["Light Human Edit", "hardcoded trial token list in MaintenanceGate.tsx", "lightHumanEditEnabled state field"],
+    "userPreferences": [
+      "Always use the most powerful Claude model for dev; latest OpenAI models in prod; proactively suggest migration",
+      "Never suggest /exit or session restart"
+    ]
+  },
+  "docs": {
+    "sourceOfTruth": "CLAUDE.md",
+    "knowledge": ["knowledge/ARCHITECTURE.md", "knowledge/API.md", "knowledge/FLOWS.md", "knowledge/ERRORS.md"],
+    "handoff": ["docs/AGENT_HANDOFF.md", "ORCHESTRATOR_BRIEF.md"],
+    "topic": ["TECHNICAL_SPECIFICATION.md", "PRODUCTION_DEPLOY.md", "CONFIGURATION.md", "TRIAL_SETUP.md", "MAINTENANCE_GATE.md", "HUMANIZATION.md", "HUMANIZATION_ANALYSIS.md", "GPT_5.2_MIGRATION.md", "VERCEL_KV_SETUP.md", "VERCEL_LOGS_GUIDE.md", "STRIPE_SETUP.md", "IMAGE_GENERATION_FEATURE.md"]
+  },
+  "preCommitChecklist": [
+    "npx tsc --noEmit = 0 errors",
+    "relevant scripts/*.test.ts green (if generation/automation touched)",
+    "no security rule broken (rate-limit, gate, tokens, logs)",
+    "UI text English; no any; single H1 per article",
+    "change is safe to deploy to prod immediately (commit -> push -> Vercel)",
+    "new env vars added on Vercel + redeploy done"
+  ]
+}
