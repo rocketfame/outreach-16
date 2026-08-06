@@ -103,6 +103,8 @@ export interface AutomationGenerateSuccess {
     humanized: boolean;
     /** Resolved article language, echoed so callers can assert on it. */
     language: string;
+    /** Actual rewrite provider used for human mode. */
+    humanizationProvider?: "undetectable" | "betterwords" | "mixed";
     /** Word count of the final body — callers can assert against minWords. */
     wordCount: number;
     /** Image box preset id used for the cover — assert on it, don't eyeball. */

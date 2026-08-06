@@ -10,7 +10,7 @@ import {
   restoreFromHumanization,
   type ProtectedChunk
 } from "@/lib/humanizeProtection";
-import { getHumanizerService } from "@/lib/humanizerClient";
+import { createHumanizerService } from "@/lib/humanizerClient";
 import { chunkTextForHumanization } from "@/lib/sectionHumanize";
 import { formatHumanizedHtml } from "@/lib/humanizeFormatter";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
     // Step 2: Check if chunking is needed
     let humanizedText: string;
     let totalWordsUsed = 0;
+    const humanizer = createHumanizerService();
 
     if (textForHumanize.length > 10000) {
       // Need to chunk
@@ -116,7 +117,6 @@ export async function POST(req: NextRequest) {
             humanizedChunks.push(chunk);
             continue;
           }
-          const humanizer = getHumanizerService();
           const result = await humanizer.humanize(chunk, { model });
 
           humanizedChunks.push(result.text);
@@ -136,7 +136,6 @@ export async function POST(req: NextRequest) {
     } else {
       // Single request
       console.log("[humanize-api] Humanizing text in single request...");
-      const humanizer = getHumanizerService();
       const result = await humanizer.humanize(textForHumanize, { model });
 
       humanizedText = result.text;
@@ -216,4 +215,3 @@ export async function GET() {
       : "UNDETECTABLE_HUMANIZER_API_KEY not configured.",
   });
 }
-

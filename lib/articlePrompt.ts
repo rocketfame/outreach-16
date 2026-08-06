@@ -1,6 +1,7 @@
 // lib/articlePrompt.ts
 
 import { TrustSourceSpec } from "@/lib/articleStructure";
+import { withBetterWordsGuidance } from "@/lib/betterwordsPrompt";
 import path from "path";
 import fs from "fs";
 
@@ -1416,7 +1417,7 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   
   prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
 
-  return prompt;
+  return withBetterWordsGuidance(prompt);
 }
 
 /**
@@ -2581,5 +2582,5 @@ omitting the anchor. The anchor was supplied — it MUST appear.
   
   prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
 
-  return prompt;
+  return withBetterWordsGuidance(prompt);
 }

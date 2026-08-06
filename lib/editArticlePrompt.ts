@@ -1,5 +1,7 @@
 // lib/editArticlePrompt.ts
 
+import { withBetterWordsGuidance } from "@/lib/betterwordsPrompt";
+
 export interface EditHistoryEntry {
   timestamp: string;
   editRequest: string;
@@ -155,5 +157,5 @@ export function buildEditArticlePrompt(params: BuildEditArticlePromptParams): st
   }
   prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesText);
 
-  return prompt;
+  return withBetterWordsGuidance(prompt);
 }

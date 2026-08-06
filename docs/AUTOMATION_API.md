@@ -27,6 +27,15 @@ never an English translation, and matches `^[a-z0-9]+(-[a-z0-9]+)*$`.
 The completed job echoes the resolved value in `meta.language`. Unsupported
 values fail synchronously with HTTP 400 and include `field` and `allowed`.
 
+All generated article and SEO text uses the shared BetterWords 2.1.2
+production-writing rules, including both `seo` and `human` modes. For
+`mode: "human"`, Undetectable.AI is additionally the primary rewrite provider. An
+exact `Insufficient credits` response switches the remaining work in that job to the
+OpenAI-backed BetterWords 2.1.2 quality rewrite. `meta.humanizationProvider`
+reports `undetectable`, `betterwords`, or `mixed`. If neither provider rewrites
+any block, the job fails with `humanization_failed`; unhumanized copy is never
+reported as a successful human-mode article.
+
 ### Ukrainian example
 
 ```bash

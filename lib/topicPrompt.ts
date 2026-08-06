@@ -1,5 +1,7 @@
 // lib/topicPrompt.ts
 
+import { withBetterWordsGuidance } from "@/lib/betterwordsPrompt";
+
 export type TopicBrief = {
   niche: string;
   platform?: string;
@@ -428,6 +430,5 @@ Use this browsing data to:
     prompt += browsingSection;
   }
 
-  return prompt;
+  return withBetterWordsGuidance(prompt);
 }
-

@@ -63,6 +63,7 @@ interface RawModelBlock {
 }
 import { filterAndSelectTrustSources, TrustSourceInput } from "@/lib/trustSourceFilter";
 import { humanizeSectionText } from "@/lib/sectionHumanize";
+import { createHumanizerService } from "@/lib/humanizerClient";
 import { 
   getTrustedSourcesFromTavily, 
   type RawSearchResult,
@@ -185,6 +186,11 @@ export interface HumanizationReport {
   totalWordsUsed: number;
   totalWordsInArticle: number;
   humanizationRatio: number; // 0-1, share of article that was humanized
+  providerUsage?: {
+    undetectableWords: number;
+    betterWordsWords: number;
+    betterWordsFallbackUsed: boolean;
+  };
   skippedReasons?: { shortParagraphs: number; shortListItems: number; shortTableCells: number };
 }
 
@@ -254,6 +260,9 @@ export async function POST(req: Request) {
     // CRITICAL: For Human Mode, force humanization ON
     // In Human Mode, humanization is always enabled (integrated into the mode)
     const effectiveHumanizeOnWrite = writingMode === "human" ? true : (body.humanizeOnWrite || false);
+    // One circuit per POST job: after the exact Undetectable "Insufficient credits"
+    // error, all remaining blocks/topics in this job use BetterWords.
+    const jobHumanizer = effectiveHumanizeOnWrite ? createHumanizerService() : undefined;
 
     // Validate that trust sources are provided (mandatory for article generation)
     const hasSharedSources = trustSourcesList && trustSourcesList.length > 0;
@@ -543,97 +552,17 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           max_completion_tokens: dynamicMaxTokens
         };
 
-        // Call OpenAI API with system + user messages
-        
-
-        let completion;
-        try {
-          // Try with response_format first
-          try {
-            completion = await openai.chat.completions.create({
-              model: "gpt-5.5",
-              messages: [
-                {
-                  role: "system",
-                  content: systemMessage,
-                },
-                {
-                  role: "user",
-                  content: prompt,
-                },
-              ],
-              ...apiParams,
-              response_format: { type: "json_object" },
-            });
-          } catch (formatError) {
-            void formatError;
-            // If response_format is not supported, try without it
-              completion = await openai.chat.completions.create({
-              model: "gpt-5.5",
-                messages: [
-                  {
-                    role: "system",
-                    content: systemMessage,
-                  },
-                  {
-                    role: "user",
-                    content: prompt,
-                  },
-                ],
-                ...apiParams,
-              });
-          }
-        } catch (apiError) {
-          throw apiError;
-        }
-
-        const content = completion.choices[0]?.message?.content ?? "";
-
-        // Track cost
-        const costTracker = getCostTracker();
-        const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } | undefined;
-        const inputTokens = usage?.prompt_tokens || 0;
-        const outputTokens = usage?.completion_tokens || 0;
-        const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens || 0;
-        console.log("[articles-api] Token usage:", { inputTokens, outputTokens, reasoningTokens, usage });
-        if (inputTokens > 0 || outputTokens > 0) {
-          costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
-          const totals = costTracker.getTotalCosts();
-          console.log("[articles-api] Cost tracked. Current totals:", {
-            tavily: totals.tavily,
-            openai: totals.openai,
-            aihumanize: totals.aihumanize, // CRITICAL: Include aihumanize in totals
-            total: totals.total,
-            breakdown: totals.breakdown,
-          });
-        } else {
-          console.warn("[articles-api] No tokens to track - usage:", usage);
-        }
-
-        // Check if content is empty but we have reasoning tokens - this indicates a problem
-        if (!content || content.trim().length === 0) {
-          console.error("[articles-api] Empty content received from API", {
-            hasReasoningTokens: reasoningTokens > 0,
-            reasoningTokens,
-            outputTokens,
-            choicesLength: completion.choices?.length || 0,
-            message: completion.choices[0]?.message,
-          });
-          throw new Error("Received empty content from OpenAI API. The model returned no content, only reasoning tokens.");
-        }
-        
-        // Parse JSON response
-        let parsedResponse: {
+        type ParsedArticleModelResponse = {
           titleTag?: string;
           metaDescription?: string;
           articleBodyText?: string;
           articleBodyHtml?: string;
           articleBlocks?: unknown;
         };
-        let jsonContent = "";
-        try {
+
+        const parseArticleModelResponse = (content: string): ParsedArticleModelResponse => {
           // Try to extract JSON from response (remove markdown code fences if present)
-          jsonContent = content.trim();
+          let jsonContent = content.trim();
           jsonContent = jsonContent.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
           
           // Robust extraction: if content has text before/after JSON, find the JSON object
@@ -657,7 +586,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
             }
           }
           
-          parsedResponse = JSON.parse(jsonContent);
+          const parsedResponse = JSON.parse(jsonContent) as ParsedArticleModelResponse;
           
           // Validate required fields - support old (articleBodyHtml), plain text (articleBodyText), and block format (articleBlocks)
           if (!parsedResponse.titleTag || !parsedResponse.metaDescription) {
@@ -672,33 +601,102 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           const hasBodyText = !!parsedResponse.articleBodyText?.trim();
           const hasBodyHtml = !!parsedResponse.articleBodyHtml?.trim();
           if (!hasBlocks && !hasBodyText && !hasBodyHtml) {
-            console.error("[articles-api] articleBlocks missing or empty after parsing. Raw OpenAI response:", {
+            console.error("[articles-api] articleBlocks missing or empty after parsing:", {
               contentLength: content.length,
-              contentPreview: content.substring(0, 800),
               parsedKeys: Object.keys(parsedResponse),
               articleBlocksType: typeof parsedResponse.articleBlocks,
               articleBlocksLength: Array.isArray(parsedResponse.articleBlocks) ? parsedResponse.articleBlocks.length : 'N/A',
             });
             throw new Error(
               "Model returned JSON without articleBlocks (or with empty articleBlocks). " +
-              "The response may have been truncated. Raw response logged above."
+              "The response may have been truncated."
             );
           }
-        } catch (parseError) {
-          console.error("[articles-api] JSON parse/validation error:", parseError);
-          console.error("[articles-api] Raw OpenAI response content (first 800 chars):", content.substring(0, 800));
-          // Do NOT use raw content as articleBodyText when it looks like JSON - that would display raw JSON in article body
-          const isValidationError = (parseError as Error).message?.includes("articleBlocks") ||
-            (parseError as Error).message?.includes("Missing required");
-          const contentLooksLikeJson = content.trim().startsWith("{") || content.trim().startsWith("```");
-          if (isValidationError || contentLooksLikeJson) {
+          return parsedResponse;
+        };
+
+        const callArticleModel = async (isJsonRetry: boolean) => {
+          const retryInstruction = isJsonRetry
+            ? "\n\nCRITICAL RETRY: The previous response was malformed or incomplete JSON. Return one complete, valid JSON object with every required field and a closed articleBlocks array. Do not shorten the article and do not add markdown fences."
+            : "";
+          const messages = [
+            { role: "system" as const, content: systemMessage },
+            { role: "user" as const, content: `${prompt}${retryInstruction}` },
+          ];
+          try {
+            return await openai.chat.completions.create({
+              model: "gpt-5.5",
+              messages,
+              ...apiParams,
+              response_format: { type: "json_object" },
+            });
+          } catch (formatError) {
+            void formatError;
+            return openai.chat.completions.create({
+              model: "gpt-5.5",
+              messages,
+              ...apiParams,
+            });
+          }
+        };
+
+        let parsedResponse: ParsedArticleModelResponse | undefined;
+        let content = "";
+        for (let jsonAttempt = 0; jsonAttempt < 2; jsonAttempt += 1) {
+          const completion = await callArticleModel(jsonAttempt === 1);
+          content = completion.choices[0]?.message?.content ?? "";
+
+          const costTracker = getCostTracker();
+          const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } | undefined;
+          const inputTokens = usage?.prompt_tokens || 0;
+          const outputTokens = usage?.completion_tokens || 0;
+          const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens || 0;
+          console.log("[articles-api] Token usage:", { inputTokens, outputTokens, reasoningTokens });
+          if (inputTokens > 0 || outputTokens > 0) {
+            costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
+          }
+
+          if (!content.trim()) {
+            console.error("[articles-api] Empty content received from API", {
+              hasReasoningTokens: reasoningTokens > 0,
+              reasoningTokens,
+              outputTokens,
+              choicesLength: completion.choices?.length || 0,
+            });
+            throw new Error("Received empty content from OpenAI API. The model returned no content, only reasoning tokens.");
+          }
+
+          try {
+            parsedResponse = parseArticleModelResponse(content);
+            break;
+          } catch (parseError) {
+            const message = parseError instanceof Error ? parseError.message : "Unknown JSON parse error";
+            const isValidationError = message.includes("articleBlocks") || message.includes("Missing required");
+            const contentLooksLikeJson = content.trim().startsWith("{") || content.trim().startsWith("```");
+            if (!isValidationError && !contentLooksLikeJson) {
+              parsedResponse = {
+                titleTag: topic.title,
+                metaDescription: "",
+                articleBodyText: content,
+              };
+              break;
+            }
+            console.error("[articles-api] JSON parse/validation error:", {
+              attempt: jsonAttempt + 1,
+              errorName: parseError instanceof Error ? parseError.name : "UnknownError",
+              message,
+              contentLength: content.length,
+            });
+            if (jsonAttempt === 0) {
+              console.warn("[articles-api] Retrying malformed JSON response once.");
+              continue;
+            }
             throw parseError;
           }
-          parsedResponse = {
-            titleTag: topic.title,
-            metaDescription: "",
-            articleBodyText: content,
-          };
+        }
+
+        if (!parsedResponse) {
+          throw new Error("Article generation did not produce a parseable response.");
         }
 
         // Post-process the article text: clean invisible chars and normalize
@@ -1112,6 +1110,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           // effectiveHumanizeOnWrite is already set to true for Human Mode earlier in the function
           const enableHumanizeOnWrite = effectiveHumanizeOnWrite;
           let totalHumanizeWordsUsed = 0;
+          let totalUndetectableWordsUsed = 0;
 
           if (enableHumanizeOnWrite) {
             const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY || "";
@@ -1162,7 +1161,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                 type BlockType = ArticleStructure['blocks'][0];
                 type HumanizeTask = {
                   idx: number;
-                  process: () => Promise<{ block: BlockType; wordsUsed: number; processed: boolean; humanized: boolean; skippedShortP?: boolean; skippedShortLi?: boolean; skippedShortTc?: boolean }>;
+                  process: () => Promise<{ block: BlockType; wordsUsed: number; undetectableWordsUsed?: number; processed: boolean; humanized: boolean; skippedShortP?: boolean; skippedShortLi?: boolean; skippedShortTc?: boolean }>;
                 };
                 const tasks: HumanizeTask[] = [];
 
@@ -1178,21 +1177,23 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                     const listBlock = block as ListBlock;
                     tasks.push({ idx: i, process: async () => {
                       let listWordsUsed = 0;
+                      let listUndetectableWordsUsed = 0;
                       const humanizedItems = await Promise.all(
                         (listBlock.items || []).map(async (item: ArticleBlockBase) => {
                           if (!item?.text || item.text.length < 100) return item;
                           try {
                             const originalText = cleanText(item.text);
-                            const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
-                            listWordsUsed += result.wordsUsed;
+                            const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
                             const humanizedText = cleanText(result.humanizedText);
                             if (hasGluedWords(humanizedText) || humanizedText.length < originalText.length * 0.6) return item;
                             const repair = repairHumanizedText(originalText, humanizedText);
+                            listWordsUsed += result.wordsUsed;
+                            listUndetectableWordsUsed += result.undetectableWordsUsed;
                             return { ...item, text: repair.text };
                           } catch { return item; }
                         })
                       );
-                      return { block: { ...listBlock, items: humanizedItems }, wordsUsed: listWordsUsed, processed: true, humanized: listWordsUsed > 0 };
+                      return { block: { ...listBlock, items: humanizedItems }, wordsUsed: listWordsUsed, undetectableWordsUsed: listUndetectableWordsUsed, processed: true, humanized: listWordsUsed > 0 };
                     }});
                     continue;
                   }
@@ -1201,12 +1202,14 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                     const t = block as TableBlock;
                     tasks.push({ idx: i, process: async () => {
                       let tableWordsUsed = 0;
+                      let tableUndetectableWordsUsed = 0;
                       let caption = t.caption;
                       if (caption && caption.length >= 100) {
                         try {
-                          const result = await humanizeSectionText(cleanText(caption), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                          const result = await humanizeSectionText(cleanText(caption), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
                           caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
+                          tableUndetectableWordsUsed += result.undetectableWordsUsed;
                         } catch { /* keep original */ }
                       }
                       const humanizedRows = await Promise.all(
@@ -1214,14 +1217,15 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                           Promise.all((Array.isArray(row) ? row : []).map(async (cell) => {
                             if (!cell || cell.length < 100) return cell;
                             try {
-                              const result = await humanizeSectionText(cleanText(cell), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                              const result = await humanizeSectionText(cleanText(cell), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
                               tableWordsUsed += result.wordsUsed;
+                              tableUndetectableWordsUsed += result.undetectableWordsUsed;
                               return cleanText(result.humanizedText);
                             } catch { return cell; }
                           }))
                         )
                       );
-                      return { block: { ...t, caption, rows: humanizedRows } as TableBlock, wordsUsed: tableWordsUsed, processed: true, humanized: tableWordsUsed > 0 };
+                      return { block: { ...t, caption, rows: humanizedRows } as TableBlock, wordsUsed: tableWordsUsed, undetectableWordsUsed: tableUndetectableWordsUsed, processed: true, humanized: tableWordsUsed > 0 };
                     }});
                     continue;
                   }
@@ -1233,8 +1237,8 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                     }
                     tasks.push({ idx: i, process: async () => {
                       try {
-                        const result = await humanizeSectionText(cleanText(block.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
-                        return { block: { ...block, text: cleanText(result.humanizedText) }, wordsUsed: result.wordsUsed, processed: true, humanized: result.wordsUsed > 0 };
+                        const result = await humanizeSectionText(cleanText(block.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
+                        return { block: { ...block, text: cleanText(result.humanizedText) }, wordsUsed: result.wordsUsed, undetectableWordsUsed: result.undetectableWordsUsed, processed: true, humanized: result.wordsUsed > 0 };
                       } catch { return { block, wordsUsed: 0, processed: true, humanized: false }; }
                     }});
                     continue;
@@ -1249,12 +1253,12 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                   tasks.push({ idx: i, process: async () => {
                     try {
                       const originalText = cleanText(block.text);
-                      const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode);
+                      const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
                       const humanizedText = cleanText(result.humanizedText);
                       // Full-block reject: glued words, spaced letters, or extreme shrinkage
                       if (hasGluedWords(humanizedText) || hasSpacedLetterArtifact(humanizedText) || humanizedText.length < originalText.length * 0.5) {
                         console.warn("[humanizer] Paragraph rejected (full block):", originalText.substring(0, 60));
-                        return { block, wordsUsed: result.wordsUsed, processed: true, humanized: false };
+                        return { block, wordsUsed: 0, undetectableWordsUsed: 0, processed: true, humanized: false };
                       }
                       // Sentence-level repair: revert only corrupted sentences to original GPT text.
                       // Keeps 90%+ humanized while fixing token corruption, semantic collapse,
@@ -1263,7 +1267,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                       if (repair.revertedCount > 0) {
                         console.warn(`[humanizer] Paragraph repaired: ${repair.revertedCount} sentence(s) reverted to original. Block: "${originalText.substring(0, 60)}"`);
                       }
-                      return { block: { ...block, text: repair.text }, wordsUsed: result.wordsUsed, processed: true, humanized: result.wordsUsed > 0 };
+                      return { block: { ...block, text: repair.text }, wordsUsed: result.wordsUsed, undetectableWordsUsed: result.undetectableWordsUsed, processed: true, humanized: result.wordsUsed > 0 };
                     } catch { return { block, wordsUsed: 0, processed: true, humanized: false }; }
                   }});
                 }
@@ -1285,6 +1289,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                   const r = results[i];
                   humanizedBlocks.push(r.block);
                   totalHumanizeWordsUsed += r.wordsUsed;
+                  totalUndetectableWordsUsed += r.undetectableWordsUsed || 0;
                   if (r.processed) humanizationReport.blocksProcessed++;
                   if (r.humanized) humanizationReport.blocksActuallyHumanized++;
                   if (r.skippedShortP) humanizationReport.skippedReasons!.shortParagraphs++;
@@ -1339,13 +1344,18 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                 humanizationReport.totalWordsInArticle = totalWordsInArticle;
                 humanizationReport.humanizationRatio =
                   totalWordsInArticle > 0 ? totalHumanizeWordsUsed / totalWordsInArticle : 0;
+                humanizationReport.providerUsage = {
+                  undetectableWords: totalUndetectableWordsUsed,
+                  betterWordsWords: Math.max(0, totalHumanizeWordsUsed - totalUndetectableWordsUsed),
+                  betterWordsFallbackUsed: totalHumanizeWordsUsed > totalUndetectableWordsUsed,
+                };
                 humanizationReportForResponse = humanizationReport;
 
                 // Track humanization costs (FIXED: removed duplicate tracking)
-                if (totalHumanizeWordsUsed > 0) {
+                if (totalUndetectableWordsUsed > 0) {
                   const costTracker = getCostTracker();
-                  const humanizeCost = totalHumanizeWordsUsed * 0.0005;
-                  costTracker.trackHumanize(totalHumanizeWordsUsed, humanizeCost);
+                  const humanizeCost = totalUndetectableWordsUsed * 0.0005;
+                  costTracker.trackHumanize(totalUndetectableWordsUsed, humanizeCost);
                   
                   // Log humanization costs
                   const totals = costTracker.getTotalCosts();
@@ -1356,7 +1366,8 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                     total: totals.total,
                     breakdown: totals.breakdown,
                   });
-                } else if (enableHumanizeOnWrite) {
+                }
+                if (totalHumanizeWordsUsed === 0 && enableHumanizeOnWrite) {
                   // Log warning if humanization was enabled but no words were used
                   console.warn('[articles-api] Humanization was enabled but no words were processed. This may indicate API errors (e.g., insufficient balance) or all blocks were too short.');
                 }

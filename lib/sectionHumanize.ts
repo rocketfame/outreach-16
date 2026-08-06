@@ -1,7 +1,7 @@
 // lib/sectionHumanize.ts
 // Section-level humanization using Undetectable.AI Humanization API v2
 
-import { getHumanizerService } from "@/lib/humanizerClient";
+import { getHumanizerService, type HumanizerService } from "@/lib/humanizerClient";
 
 /**
  * Chunks text for humanization if it exceeds 10000 characters
@@ -207,14 +207,15 @@ export async function humanizeSectionText(
   frozenPhrases: string[] = [],
   style?: string,
   mode?: "Basic" | "Autopilot",
-  _previousBlockText?: string
-): Promise<{ humanizedText: string; wordsUsed: number }> {
+  _previousBlockText?: string,
+  humanizerService?: HumanizerService,
+): Promise<{ humanizedText: string; wordsUsed: number; undetectableWordsUsed: number }> {
   if (!text || text.trim().length === 0) {
-    return { humanizedText: text, wordsUsed: 0 };
+    return { humanizedText: text, wordsUsed: 0, undetectableWordsUsed: 0 };
   }
 
   if (text.length < 100) {
-    return { humanizedText: text, wordsUsed: 0 };
+    return { humanizedText: text, wordsUsed: 0, undetectableWordsUsed: 0 };
   }
 
   // API key is validated by getHumanizerConfig() inside the client.
@@ -226,11 +227,12 @@ export async function humanizeSectionText(
 
   try {
     const { protectPlaceholders, restorePlaceholders } = createPlaceholderProtection(frozenPhrases);
-    const humanizer = getHumanizerService();
+    const humanizer = humanizerService || getHumanizerService();
 
     if (text.length > 10000) {
       const chunks = chunkTextForHumanization(text);
       let totalWordsUsed = 0;
+      let undetectableWordsUsed = 0;
       const humanizedChunks: string[] = [];
 
       for (let i = 0; i < chunks.length; i++) {
@@ -240,11 +242,13 @@ export async function humanizeSectionText(
         rewrittenPart = cleanHumanizedText(rewrittenPart);
         humanizedChunks.push(rewrittenPart);
         totalWordsUsed += result.wordsUsed;
+        if (result.provider === "undetectable") undetectableWordsUsed += result.wordsUsed;
       }
 
       return {
         humanizedText: humanizedChunks.join("\n\n"),
         wordsUsed: totalWordsUsed,
+        undetectableWordsUsed,
       };
     }
 
@@ -256,12 +260,13 @@ export async function humanizeSectionText(
     return {
       humanizedText,
       wordsUsed: result.wordsUsed,
+      undetectableWordsUsed: result.provider === "undetectable" ? result.wordsUsed : 0,
     };
   } catch (error) {
     console.error(
       "[humanizeSectionText] Humanization failed, falling back to original text:",
       error
     );
-    return { humanizedText: text, wordsUsed: 0 };
+    return { humanizedText: text, wordsUsed: 0, undetectableWordsUsed: 0 };
   }
 }

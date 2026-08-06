@@ -25,8 +25,8 @@ console.log("\n=== API Configuration Check ===\n");
 
 // 1. Env vars
 console.log("1. Environment variables:");
-console.log("   TAVILY_API_KEY:", tavilyKey ? `${tavilyKey.slice(0, 8)}...` : "MISSING");
-console.log("   UNDETECTABLE_HUMANIZER_API_KEY:", humanizeKey ? `${humanizeKey.slice(0, 8)}...` : "MISSING");
+console.log("   TAVILY_API_KEY:", tavilyKey ? "CONFIGURED" : "MISSING");
+console.log("   UNDETECTABLE_HUMANIZER_API_KEY:", humanizeKey ? "CONFIGURED" : "MISSING");
 
 if (!tavilyKey || !humanizeKey) {
   console.log("\n❌ Missing required env vars. Add them to .env.local");

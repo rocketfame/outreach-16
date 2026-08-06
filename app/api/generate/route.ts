@@ -1,5 +1,6 @@
 import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
+import { buildLegacyGeneratePrompts } from "@/lib/legacyGeneratePrompt";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: unknown[]) => {
@@ -18,11 +19,6 @@ type GenerateRequest = {
   brief: Brief;
   selectedTopic?: string;
   outline?: string;
-};
-
-type PromptPair = {
-  systemPrompt: string;
-  userPrompt: string;
 };
 
 export async function POST(req: Request) {
@@ -94,7 +90,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const prompts = buildPrompts(type, brief, selectedTopic, outline);
+  const prompts = buildLegacyGeneratePrompts(type, brief, selectedTopic, outline);
   // #region agent log
   const promptsLog = {location:'route.ts:58',message:'Prompts built',data:{type,systemPromptLength:prompts.systemPrompt.length,userPromptLength:prompts.userPrompt.length},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
   debugLog(promptsLog);
@@ -154,48 +150,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
-
-function buildPrompts(
-  type: GenerateRequest["type"],
-  brief: Brief,
-  selectedTopic: string,
-  outline: string,
-): PromptPair {
-  const sharedBrief = [
-    `Niche: ${brief.niche || "Not specified"}`,
-    `Client site: ${brief.clientSite || "Not provided"}`,
-    `Language: ${brief.language || "English"}`,
-    `Target word count: ${brief.wordCount || "Not specified"}`,
-  ].join("\n");
-
-  if (type === "topics") {
-    return {
-      systemPrompt: "You are an assistant that generates SEO-friendly outreach article topic ideas.",
-      userPrompt: `${sharedBrief}
-
-Please provide roughly 10 specific and practical outreach article topics relevant to the brief above. 
-Return one topic per line and avoid numbering.`,
-    };
-  }
-
-  if (type === "outline") {
-    return {
-      systemPrompt: "You create detailed article outlines for outreach / SEO articles.",
-      userPrompt: `Selected topic: ${selectedTopic}
-Language: ${brief.language || "English"}
-
-Create a clear H2/H3 outline as plain text for the selected topic. Include descriptive headings and bullet-friendly talking points.`,
-    };
-  }
-
-  return {
-    systemPrompt: "You write well-structured, natural, human-like outreach articles.",
-    userPrompt: `Outline:
-${outline}
-
-${sharedBrief}
-
-Write a full outreach article draft that follows the outline above. Include headings and natural paragraphs, stay within the desired tone for outreach, and hit the target word count as closely as possible.`,
-  };
 }

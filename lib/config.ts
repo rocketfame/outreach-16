@@ -20,8 +20,7 @@ export function getOpenAIApiKey(): string {
 
   // Critical validation: OpenAI key must start with "sk-" (not Tavily key "tvly-")
   if (!apiKey.startsWith("sk-")) {
-    const keyPrefix = apiKey.slice(0, 10);
-    const error = `Invalid OPENAI_API_KEY format. OpenAI keys must start with "sk-", but got prefix "${keyPrefix}". Please check your .env.local file - you might have set TAVILY_API_KEY value as OPENAI_API_KEY.`;
+    const error = 'Invalid OPENAI_API_KEY format. OpenAI keys must start with "sk-". Please check the configured environment variable.';
     console.error(error);
     throw new Error(error);
   }
@@ -45,8 +44,7 @@ export function getTavilyApiKey(): string {
 
   // Validate Tavily key format (must start with "tvly-")
   if (!apiKey.startsWith("tvly-")) {
-    const keyPrefix = apiKey.slice(0, 10);
-    const error = `Invalid TAVILY_API_KEY format. Tavily keys must start with "tvly-", but got prefix "${keyPrefix}". Please check your .env.local file.`;
+    const error = 'Invalid TAVILY_API_KEY format. Tavily keys must start with "tvly-". Please check the configured environment variable.';
     console.error(error);
     throw new Error(error);
   }
@@ -65,21 +63,10 @@ export function getOpenAIClient(): OpenAI {
 }
 
 /**
- * Safe debug log for API keys (only prefix, never full key)
- * Use this for logging API key status without exposing the full key
+ * Log configuration presence without exposing any portion of a secret.
  */
 export function logApiKeyStatus(): void {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const tavilyKey = process.env.TAVILY_API_KEY;
-
-  console.log(
-    "OPENAI_API_KEY prefix in runtime:",
-    (openaiKey || "undefined").slice(0, 10)
-  );
-  console.log(
-    "TAVILY_API_KEY prefix in runtime:",
-    (tavilyKey || "undefined").slice(0, 10)
-  );
+  console.log("[config] Required API keys validated.");
 }
 
 /**
@@ -153,7 +140,6 @@ export function getHumanizerConfig(): {
  * Now enabled by default - Human Mode is always available
  */
 export const HUMAN_MODE_EXPERIMENT = true;
-
 
 
 

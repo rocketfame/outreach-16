@@ -35,9 +35,10 @@
 - `GET /api/automation/generate/:jobId` — polling endpoint (`queued|running|done|error`). Для queued повертає `position` (1 = наступна до виконання) та `etaSeconds`. Кожен poll — drain-тригер черги (наступна джоба виконується в `after()` цієї ж інвокації). Running довше 10 хв → `job_timeout` error. Concurrency: `AUTOMATION_CONCURRENCY` env (default 1, max 8). Внутрішні automation-виклики `/api/articles` та `/api/article-image` обходять per-IP rate limiter через in-process токен (`lib/automation/internal.ts`)
 
 ## External Services
-- **OpenAI GPT-5.5** — генерація статей та topic clusters
+- **OpenAI GPT-5.5 + BetterWords 2.1.2 writing layer** — усі user-visible topics, outlines, article/SEO fields та edits, у ручному UI й API та в обох writing modes
 - **gpt-image-2** — 16:9 hero images (1536x864 PNG, ChatGPT Images 2.0)
 - **Undetectable.AI v2** — гуманізація тексту (submit + polling)
+- **BetterWords 2.1.2 rewrite fallback** — додатково до базового writing layer: якщо Undetectable.AI повертає точну помилку `Insufficient credits`, решта блоків поточного job переписується через OpenAI за тими самими BetterWords quality rules; інші помилки не маскуються fallback-ом. `humanizationReport.providerUsage` показує слова по провайдерах
 - **Tavily** — валідація trust sources
 - **Stripe** — оплата та upgrade
 - **Vercel KV** — persistent trial usage tracking

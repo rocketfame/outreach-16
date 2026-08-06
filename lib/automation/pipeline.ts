@@ -45,6 +45,13 @@ type InternalArticleResponse = {
     fullArticleText: string;
     articleBodyHtml?: string;
     humanizedOnWrite?: boolean;
+    humanizationReport?: {
+      providerUsage?: {
+        undetectableWords: number;
+        betterWordsWords: number;
+        betterWordsFallbackUsed: boolean;
+      };
+    };
   }>;
   error?: string;
 };
@@ -62,7 +69,13 @@ async function generateArticleOnce(
   trustSourcesList: string[],
   targetWords: number,
   extraInstruction: string
-): Promise<{ generatedTitleTag: string; contentHtml: string; metaDescription: string }> {
+): Promise<{
+  generatedTitleTag: string;
+  contentHtml: string;
+  metaDescription: string;
+  humanizedOnWrite: boolean;
+  humanizationProvider?: "undetectable" | "betterwords" | "mixed";
+}> {
   const articleResponse = await generateArticleRoute(new Request("https://automation.local/api/articles", {
     method: "POST",
     headers: {
@@ -108,6 +121,22 @@ async function generateArticleOnce(
   }
 
   const generated = articleJson.articles[0];
+  if (request.mode === "human" && !generated.humanizedOnWrite) {
+    throw new AutomationPipelineError(
+      "humanization_failed",
+      "Human mode produced no successfully humanized blocks. Undetectable.AI and the BetterWords fallback did not complete; the article will not ship unhumanized."
+    );
+  }
+  const providerUsage = generated.humanizationReport?.providerUsage;
+  const humanizationProvider = providerUsage
+    ? providerUsage.betterWordsWords > 0 && providerUsage.undetectableWords > 0
+      ? "mixed" as const
+      : providerUsage.betterWordsWords > 0
+        ? "betterwords" as const
+        : providerUsage.undetectableWords > 0
+          ? "undetectable" as const
+          : undefined
+    : undefined;
   const generatedTitleTag = stripTags(generated.titleTag || topic).trim();
   const rawHtml = generated.articleBodyHtml || generated.fullArticleText || "";
 
@@ -129,7 +158,13 @@ async function generateArticleOnce(
   if (request.anchor && request.anchorUrl) {
     contentHtml = repairMoneyAnchor(contentHtml, request.anchor, request.anchorUrl).html;
   }
-  return { generatedTitleTag, contentHtml, metaDescription: generated.metaDescription || "" };
+  return {
+    generatedTitleTag,
+    contentHtml,
+    metaDescription: generated.metaDescription || "",
+    humanizedOnWrite: generated.humanizedOnWrite === true,
+    humanizationProvider,
+  };
 }
 
 /** Draft defects that warrant a retry and, if persistent, an honest error. */
@@ -275,8 +310,9 @@ export async function runAutomationGeneration(
     },
     meta: {
       model: "gpt-5.5",
-      humanized: request.mode === "human",
+      humanized: article.humanizedOnWrite,
       language: request.language || "English",
+      humanizationProvider: article.humanizationProvider,
       wordCount,
       imageStyle: imageStyleUsed,
       imageFamily: familyOfBox(imageStyleUsed),

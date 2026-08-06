@@ -237,7 +237,7 @@ export async function POST(req: Request) {
       });
     } catch (parseError) {
       // #region agent log
-      const parseErrorLog = {location:'generate-topics/route.ts:92',message:'JSON parse error',data:{error:(parseError as Error).message,contentPreview:content.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+      const parseErrorLog = {location:'generate-topics/route.ts:92',message:'JSON parse error',data:{error:(parseError as Error).message,contentLength:content.length},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
       debugLog(parseErrorLog);
       // #endregion
       console.error("JSON parse error:", parseError);
