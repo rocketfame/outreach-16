@@ -1,8 +1,9 @@
 /**
  * Supported article languages. Single source of truth for both the UI
  * (brief Language select in app/page.tsx) and the automation API validator
- * (lib/automation/pipeline.ts). The UI additionally allows a free-text
- * custom language; the automation API only accepts this list (or ISO codes).
+ * (lib/automation/validate.ts). The UI additionally allows a free-text
+ * custom language. The automation API accepts this list, ISO aliases, or an
+ * explicit custom-language pair (`language: "custom"` + `languageCustom`).
  */
 export const SUPPORTED_LANGUAGES = [
   "English",
@@ -19,7 +20,7 @@ export const SUPPORTED_LANGUAGES = [
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 /** ISO 639-1 codes (and common locale variants) accepted by the automation API. */
-const LANGUAGE_ALIASES: Record<string, SupportedLanguage> = {
+export const LANGUAGE_ALIASES: Readonly<Record<string, SupportedLanguage>> = {
   en: "English",
   "en-us": "English",
   "en-gb": "English",
@@ -42,6 +43,14 @@ const LANGUAGE_ALIASES: Record<string, SupportedLanguage> = {
   ru: "Russian",
   "ru-ru": "Russian",
 };
+
+/** Machine-readable values returned in Automation API validation errors. */
+export const AUTOMATION_LANGUAGE_VALUES = [
+  ...SUPPORTED_LANGUAGES,
+  ...Object.keys(LANGUAGE_ALIASES),
+  "custom",
+  "Other (custom)",
+] as const;
 
 /**
  * Resolve a user-supplied language (full name like "Spanish" or code like

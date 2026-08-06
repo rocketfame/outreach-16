@@ -10,7 +10,9 @@
   - `niche` — required, вільний текст
   - `category` — optional, вільний текст (будь-яка платформа); якщо omitted — деривується з platform presets ніші (`config/platformPresets.ts`). Відомі платформи (Instagram/TikTok/YouTube/Facebook/SoundCloud/Spotify/Growth/Beatport/Twitch) отримують кураторські `site:` запити для trust sources, невідомі — generic-запит без site-обмежень
   - `mode` — optional, `"human"` (default) | `"standard"`
-  - `language` — optional, повна назва ("Spanish") або ISO-код ("es"); валідується проти `SUPPORTED_LANGUAGES` (`config/languages.ts`), default English. Резолвнута мова ехається в `meta.language` результату
+  - `language` — optional, case-insensitive повна назва (`English`, `German`, `Spanish`, `Portuguese`, `French`, `Italian`, `Polish`, `Ukrainian`, `Russian`) або ISO-аліас (`en`, `de`, `es`, `pt`, `fr`, `it`, `pl`, `uk`, `ru`); default `English`. `custom` / `Other (custom)` вимагає непорожнє `languageCustom`. Невідоме значення синхронно дає 400 + `field`/`allowed`. Резолвнута мова застосовується до body, SEO title/description та excerpt і ехається в `meta.language`; caller-provided `topic` лишається verbatim title
+  - `slug` — завжди ASCII lowercase kebab-case транслітерація title (для української — КМУ №55; для російської — BGN/ISO-style; латинські діакритики прибираються), ніколи не англійський переклад; порожній/невалідний результат → `slug_invalid`
+  - Повний контракт і приклади: `docs/AUTOMATION_API.md`
   - `brand` — optional, ІМʼЯ бренду plain text ("PromoSoundGroup"); URL або голий домен → 400 (домен у тексті жує гуманізатор — "net-glitch"). Йде в brief.clientSite → [[BRAND_NAME]] промпта, інструкція "mention 2-3 times as plain name", заморожується перед Undetectable
   - `brief` — optional, до 2000 символів; додається до згенерованого topic brief
   - `minWords` — це floor, не hint: draft нижче floor → один retry з підвищеним таргетом, потім error code `below_min_words` (а не `done` зі стабом). `meta.wordCount` у результаті для assert

@@ -17,6 +17,7 @@ import {
 } from "@/lib/automation/linkGuard";
 import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
+import { countAutomationWords, slugifyAutomationTitle } from "@/lib/automation/text";
 import type {
   AutomationArticle,
   AutomationCoverRequest,
@@ -131,10 +132,6 @@ async function generateArticleOnce(
   return { generatedTitleTag, contentHtml, metaDescription: generated.metaDescription || "" };
 }
 
-function countWords(html: string): number {
-  return stripTags(html).split(/\s+/).filter(Boolean).length;
-}
-
 /** Draft defects that warrant a retry and, if persistent, an honest error. */
 function collectDraftFailures(
   request: AutomationGenerateRequest,
@@ -142,7 +139,7 @@ function collectDraftFailures(
   minWords: number
 ): Array<{ code: string; message: string }> {
   const failures: Array<{ code: string; message: string }> = [];
-  const wordCount = countWords(contentHtml);
+  const wordCount = countAutomationWords(contentHtml);
   if (wordCount < minWords) {
     failures.push({
       code: "below_min_words",
@@ -201,7 +198,7 @@ export async function runAutomationGeneration(
     const first = failures[0];
     throw new AutomationPipelineError(first.code, `${first.message} (after retry)`);
   }
-  const wordCount = countWords(article.contentHtml);
+  const wordCount = countAutomationWords(article.contentHtml);
 
   const { contentHtml } = article;
   // The given topic is a deliberate keyword-loaded hook — it IS the H1,
@@ -210,6 +207,15 @@ export async function runAutomationGeneration(
   const title = request.topic ? request.topic.trim() : article.generatedTitleTag;
   const seoTitle = truncateText(article.generatedTitleTag || title, request.seoTitleMaxChars || 65);
   const seoDescription = cleanDescription(article.metaDescription || summarizeText(contentHtml, 155));
+  let slug: string;
+  try {
+    slug = slugifyAutomationTitle(title, request.language);
+  } catch (error) {
+    throw new AutomationPipelineError(
+      "slug_invalid",
+      error instanceof Error ? error.message : "Generated slug is invalid."
+    );
+  }
 
   let cover: AutomationArticle["cover"];
   let imageStyleUsed: string | undefined;
@@ -258,7 +264,7 @@ export async function runAutomationGeneration(
     generationId,
     article: {
       title,
-      slug: slugify(title),
+      slug,
       category: request.category,
       seoTitle,
       excerpt: cleanDescription(summarizeText(contentHtml, 158)),
@@ -538,15 +544,6 @@ function truncateText(text: string, maxLength: number): string {
 function estimateReadTime(html: string): number {
   const words = stripTags(html).split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 220));
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
 }
 
 function escapeRegExp(text: string): string {

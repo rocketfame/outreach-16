@@ -40,6 +40,8 @@ export interface AutomationGenerateInput {
   mode?: AutomationMode;
   /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
   language?: string;
+  /** Required when language is "custom"/"Other (custom)"; ignored nowhere. */
+  languageCustom?: string | null;
   image?: boolean;
   /** Pin a specific image box preset by id (see lib/imageBoxPrompts.ts). */
   imageStyle?: string;
@@ -63,7 +65,7 @@ export interface AutomationGenerateRequest {
   brand: string;
   brief: string;
   mode: AutomationMode;
-  /** Canonical supported language name, e.g. "Spanish". */
+  /** Canonical supported name, or the validated custom language name. */
   language: string;
   image: boolean;
   imageStyle: string;

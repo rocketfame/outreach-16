@@ -753,7 +753,7 @@ SEO requirements:
 • Write a meta description (150-160 characters) that is clear and concrete and includes at least one number (for example percent, steps, years, metrics). Use a regular hyphen "-" instead of other dash characters.
 
 Language protocol:
-• All output (meta tags and article) must be in [[LANGUAGE]].
+• All generated text fields — titleTag, metaDescription, and every article block field — must be in [[LANGUAGE]].
 • Keep any provided anchors and brand names in their original language and exact form.
 
 Technical requirements:
@@ -1091,7 +1091,7 @@ SEO & OUTPUT
 • Write a meta description (150–160 characters), clear and concrete, with at least one number where possible. Use regular hyphen "-" only
 
 Language & length:
-• All output must be in [[LANGUAGE]]
+• All generated text fields — titleTag, metaDescription, and every article block field — must be in [[LANGUAGE]]
 • WORD COUNT REQUIREMENT (STRICTLY ENFORCED — HIGHEST PRIORITY):
   Target: [[WORD_COUNT]] words. Hard limits: minimum [[WORD_COUNT_MIN]], maximum [[WORD_COUNT_MAX]].
   BEFORE outputting, count every word in all articleBlocks text. If outside [[WORD_COUNT_MIN]]–[[WORD_COUNT_MAX]], revise until it fits. Outputting outside this range is a CRITICAL ERROR.
@@ -2281,7 +2281,7 @@ If [[TOPIC_BRIEF]] explicitly contains important phrases or questions,
 integrate them naturally, but do not force awkward repetitions.
 
 Technical format:
-• All output must be in [[LANGUAGE]].
+• All generated text fields — titleTag, metaDescription, and every article block field — must be in [[LANGUAGE]].
 • Return a valid JSON object with EXACTLY this structure:
 
 {

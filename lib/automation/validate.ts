@@ -1,5 +1,8 @@
 import { NICHE_TO_PRESET_KEY, PLATFORM_PRESETS } from "@/config/platformPresets";
-import { SUPPORTED_LANGUAGES, resolveLanguage } from "@/config/languages";
+import {
+  AUTOMATION_LANGUAGE_VALUES,
+  resolveLanguage,
+} from "@/config/languages";
 import { IMAGE_BOX_PROMPTS, PALETTE_FAMILIES } from "@/lib/imageBoxPrompts";
 import type {
   AutomationCoverInput,
@@ -36,6 +39,7 @@ export class AutomationValidationError extends Error {
 }
 
 const MAX_CATEGORY_LENGTH = 60;
+const MAX_CUSTOM_LANGUAGE_LENGTH = 80;
 
 /**
  * When category is omitted, take the first platform preset for the niche —
@@ -137,22 +141,56 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     });
   }
 
+  const languageCustom = typeof body.languageCustom === "string" ? body.languageCustom.trim() : "";
+  if (
+    body.languageCustom !== undefined &&
+    body.languageCustom !== null &&
+    typeof body.languageCustom !== "string"
+  ) {
+    throw new AutomationValidationError("Invalid languageCustom. Expected a string.", {
+      field: "languageCustom",
+    });
+  }
+  if (languageCustom.length > MAX_CUSTOM_LANGUAGE_LENGTH) {
+    throw new AutomationValidationError(
+      `Invalid languageCustom. Maximum length is ${MAX_CUSTOM_LANGUAGE_LENGTH} characters.`,
+      { field: "languageCustom" }
+    );
+  }
+
   let language = "English";
   if (body.language !== undefined && body.language !== null) {
     if (typeof body.language !== "string") {
       throw new AutomationValidationError("Invalid language. Expected a string.", {
         field: "language",
-        allowed: SUPPORTED_LANGUAGES,
+        allowed: AUTOMATION_LANGUAGE_VALUES,
       });
     }
-    const resolved = resolveLanguage(body.language);
-    if (!resolved) {
-      throw new AutomationValidationError(
-        `Unsupported language "${body.language}". Expected one of: ${SUPPORTED_LANGUAGES.join(", ")} (full name or ISO code like "es", "de").`,
-        { field: "language", allowed: SUPPORTED_LANGUAGES }
-      );
+    const languageInput = body.language.trim();
+    const isCustom = ["custom", "other (custom)"].includes(languageInput.toLowerCase());
+    if (isCustom) {
+      if (!languageCustom) {
+        throw new AutomationValidationError(
+          'languageCustom is required when language is "custom" or "Other (custom)".',
+          { field: "languageCustom" }
+        );
+      }
+      language = languageCustom;
+    } else {
+      const resolved = resolveLanguage(languageInput);
+      if (!resolved) {
+        throw new AutomationValidationError(
+          `Unsupported language "${body.language}". Use a supported full name, ISO alias, or "custom" with languageCustom.`,
+          { field: "language", allowed: AUTOMATION_LANGUAGE_VALUES }
+        );
+      }
+      language = resolved;
     }
-    language = resolved;
+  } else if (languageCustom) {
+    throw new AutomationValidationError(
+      'languageCustom requires language: "custom" or language: "Other (custom)".',
+      { field: "language" }
+    );
   }
 
   const image = body.image !== false;
