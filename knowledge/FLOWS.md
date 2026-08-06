@@ -11,7 +11,7 @@
 2. AI генерує статтю без попереднього discovery
 
 ## Humanization Flow
-1. Увесь користувацький текст (topics, outlines, articles, SEO fields, edits) генерується через GPT-5.5 зі спільним BetterWords 2.1.2 production-writing layer. Це працює для UI та API, у `seo` і `human` modes
+1. Увесь користувацький текст (topics, outlines, articles, SEO fields, edits) генерується через GPT-5.5 зі спільним BetterWords 2.1.2 quality guardrail. Основний editorial prompt контролює голос і ритм; STE-подібні правила застосовуються лише до процедурних кроків, інструкцій і чеклістів. Це працює для UI та API, у `seo` і `human` modes
 2. Writing mode "human" → обов'язкова гуманізація через Undetectable.AI v2
 3. Submit → polling до завершення
 4. Якщо провайдер повертає точний текст `Insufficient credits` → BetterWords 2.1.2 quality rewrite через OpenAI; job-scoped circuit breaker веде решту блоків цього POST/job одразу у fallback. Інші помилки Undetectable не підміняються

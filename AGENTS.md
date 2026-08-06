@@ -58,8 +58,8 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 
 ### Article generation pipeline
 - **`app/api/articles/route.ts`** — main generation endpoint (maxDuration: 300s). Detects mode from first topic (Direct = no `shortAngle`/`whyNonGeneric`/`howAnchorFits`). Rate-limited `generate`. Increments trial count per mode after successful generation.
-- **`lib/articlePrompt.ts`** — `buildArticlePrompt` (Discovery) and `buildDirectArticlePrompt` (Direct). Both apply the shared BetterWords 2.1.2 production-writing layer in every writing mode.
-- **`lib/betterwordsPrompt.ts`** — single source of truth for BetterWords 2.1.2 drafting rules and the OpenAI rewrite fallback prompt. Topic discovery, article drafting, article editing, and legacy generation all consume this shared layer.
+- **`lib/articlePrompt.ts`** — `buildArticlePrompt` (Discovery) and `buildDirectArticlePrompt` (Direct). Both apply the shared BetterWords 2.1.2 editorial quality guardrail in every writing mode.
+- **`lib/betterwordsPrompt.ts`** — single source of truth for BetterWords 2.1.2 editorial guardrails and the OpenAI rewrite fallback prompt. Editorial voice remains primary; STE-inspired constraints are scoped only to procedural passages. Topic discovery, article drafting, article editing, and legacy generation all consume this shared layer.
 - **`lib/articleStructure.ts`** — structured article format (blocks, tables, trust sources).
 - **`lib/textPostProcessing.ts`** — `cleanText`, `fixHtmlTagSpacing`, `removeExcessiveBold`. (`lightHumanEdit` was removed in the cleanup pass — humanization fully owns that responsibility now.)
 - **`lib/humanizerClient.ts`** — Undetectable.AI v2 submit + polling; job-scoped BetterWords 2.1.2/OpenAI fallback only on the exact `Insufficient credits` error.

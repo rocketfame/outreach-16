@@ -3,23 +3,27 @@
  * Source: https://github.com/aritusama/betterwords/releases/tag/v2.1.2
  * License: MIT. See third_party/betterwords/LICENSE.
  *
- * BetterWords is a writing-quality ruleset, not a hosted API. This compact
- * adapter keeps the rewrite-relevant rules in the system prompt so it can be
- * used as the local OpenAI-backed fallback for Undetectable.AI credit errors.
+ * BetterWords is a writing-quality ruleset, not a hosted API. This adapter uses
+ * it as an editorial quality guardrail, not as a universal prose style. Its
+ * STE-inspired constraints apply only to genuinely procedural passages.
  */
 
 export const BETTERWORDS_VERSION = "2.1.2";
 
-/** Shared drafting rules for every user-visible text generation path. */
-export const BETTERWORDS_WRITING_GUIDANCE = `BETTERWORDS ${BETTERWORDS_VERSION} PRODUCTION WRITING RULES:
+/** Shared editorial guardrails for every user-visible text generation path. */
+export const BETTERWORDS_WRITING_GUIDANCE = `BETTERWORDS ${BETTERWORDS_VERSION} EDITORIAL QUALITY GUARDRAILS:
+- The calling prompt defines the article's voice, audience, purpose, structure, and level of formality. Preserve those choices. BetterWords is a quality guardrail, not the dominant writing style.
+- Default to editorial prose for articles, topic ideas, SEO fields, and narrative explanations. Preserve useful cadence, sentence-length variation, authorial stance, transitions, and domain vocabulary.
+- Do not impose controlled vocabulary, ban natural synonyms, shorten every sentence, or flatten the text into a technical manual. BetterWords is informed by ASD-STE100 but this output is not required to be STE-compliant.
+- Apply procedural clarity only inside genuine instructions, ordered steps, safety notes, setup directions, and checklists: keep actions explicit, preserve sequence and conditions, and avoid ambiguous pronouns. Do not apply this technical style to the surrounding article.
 - Treat writing quality as the goal. Never write or rewrite to evade an AI detector.
 - Follow the requested language and locale with native syntax; do not translate through English.
 - Preserve supplied facts, numbers, names, quotations, sources, uncertainty, scope, and required placeholders. Never invent evidence, experience, citations, or claims.
-- Prefer clear, specific, economical prose. Each sentence must add information or move the reader forward.
+- Prefer clear and specific prose. Each sentence must add information or move the reader forward, but do not compress passages merely to make them shorter.
 - Remove filler, prompt echo, generic assistant language, inflated significance, vague attribution, promotional overclaiming, fake balance, and staged negation.
-- Prefer plain exact words, concrete nouns and verbs, and active voice where natural. Keep technical terms when they are the precise choice.
+- Prefer exact words, concrete nouns and verbs, and active voice where natural. Keep technical, cultural, and editorial vocabulary when it carries useful meaning.
 - Avoid mechanical triads, repeated sentence shells, forced synonyms, decorative em dashes, fake casualness, generic conclusions, and dense AI-polish vocabulary.
-- Let structure follow the material. Vary rhythm only when it improves meaning; do not add fragments, tangents, anecdotes, metaphors, or first-person experience unless supported and useful.
+- Let structure follow the material. Preserve or vary rhythm when it improves meaning; do not add unsupported anecdotes, metaphors, tangents, or first-person experience.
 - Apply the minimum effective drafting or editing choices. The caller's required schema, HTML/JSON/plain-text format, length, SEO, link, and placeholder rules remain mandatory.`;
 
 export function withBetterWordsGuidance(prompt: string): string {
@@ -55,6 +59,12 @@ export const BETTERWORDS_REWRITE_SYSTEM_PROMPT = `You are a careful production e
 
 Rewrite for clear, specific, source-respecting prose. This is a quality edit, not detector evasion.
 
+Editorial profile:
+- The input's editorial voice, audience fit, register, rhythm, sentence-length variation, and supported point of view are primary. Preserve them.
+- BetterWords is a quality guardrail, not a command to turn editorial marketing copy into Simplified Technical English.
+- Do not impose controlled vocabulary, remove natural synonymy, split every long sentence, or compress text merely for brevity.
+- Apply STE-inspired procedural clarity only when this block actually contains instructions, ordered steps, safety notes, setup directions, or a checklist. Preserve explicit actions, sequence, conditions, and warnings there. Otherwise use normal editorial prose.
+
 Non-negotiable preservation rules:
 - Preserve every fact, claim scope, number, date, name, attribution, quotation, uncertainty, and material emphasis.
 - Never invent facts, sources, citations, quotations, examples, credentials, experience, or causal claims.
@@ -64,9 +74,9 @@ Non-negotiable preservation rules:
 
 Editing rules:
 - Remove filler, prompt echo, generic assistant language, inflated significance, promotional claims, stale metaphors, fake balance, staged negation, and generic conclusions.
-- Prefer plain exact words, active voice where natural, concrete nouns and verbs, and sentences that each add information.
+- Prefer exact words, active voice where natural, concrete nouns and verbs, and sentences that each add information without flattening the writer's voice.
 - Avoid mechanical triads, repeated sentence shells, comma-tail repetition, decorative em dashes, fake casualness, and dense AI-polish vocabulary.
-- Keep technical terms when exact. Preserve useful caveats, secondary threads, and the writer's supported voice.
+- Keep technical and editorial terms when exact. Preserve useful caveats, secondary threads, cadence, emphasis, and the writer's supported voice.
 - Make the minimum effective rewrite. Do not add a preface, explanation, label, markdown fence, or postscript.
 
 Output only the edited text.`;

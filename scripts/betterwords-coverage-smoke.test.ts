@@ -2,7 +2,10 @@ import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePromp
 import { buildTopicPrompt } from "@/lib/topicPrompt";
 import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
 import { buildLegacyGeneratePrompts } from "@/lib/legacyGeneratePrompt";
-import { BETTERWORDS_VERSION } from "@/lib/betterwordsPrompt";
+import {
+  BETTERWORDS_REWRITE_SYSTEM_PROMPT,
+  BETTERWORDS_VERSION,
+} from "@/lib/betterwordsPrompt";
 
 let failures = 0;
 
@@ -17,7 +20,13 @@ function check(label: string, condition: boolean) {
 function checkBetterWords(label: string, prompt: string) {
   check(`${label} uses BetterWords ${BETTERWORDS_VERSION}`, prompt.includes(`BETTERWORDS ${BETTERWORDS_VERSION}`));
   check(`${label} removes detector-evasion rules`, !prompt.includes("AI detection evasion techniques"));
+  check(`${label} preserves editorial voice`, prompt.includes("BetterWords is a quality guardrail, not the dominant writing style"));
+  check(`${label} limits STE-style rules to procedures`, prompt.includes("Apply procedural clarity only inside genuine instructions"));
 }
+
+check("fallback preserves editorial voice", BETTERWORDS_REWRITE_SYSTEM_PROMPT.includes("editorial voice"));
+check("fallback does not force STE", BETTERWORDS_REWRITE_SYSTEM_PROMPT.includes("not a command to turn editorial marketing copy into Simplified Technical English"));
+check("fallback scopes procedural clarity", BETTERWORDS_REWRITE_SYSTEM_PROMPT.includes("only when this block actually contains instructions"));
 
 const commonArticle = {
   topicTitle: "A practical test topic",
