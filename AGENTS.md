@@ -64,6 +64,7 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 - **`lib/textPostProcessing.ts`** — `cleanText`, `fixHtmlTagSpacing`, `removeExcessiveBold`. (`lightHumanEdit` was removed in the cleanup pass — humanization fully owns that responsibility now.)
 - **`lib/humanizerClient.ts`** — Undetectable.AI v2 submit + polling; job-scoped BetterWords 2.1.2/OpenAI fallback only on the exact `Insufficient credits` error.
 - **`lib/sectionHumanize.ts`** — section-level humanization during writing.
+- **`lib/automation/contentQuality.ts`** — final Automation guards for truncated prose, quotation balance, language orthography, and immutable brand-token restoration.
 - **`lib/trustSourceFilter.ts`** + **`lib/sourceClassifier.ts`** — Tavily-validated source handling with LLM classification.
 
 ### Topic discovery

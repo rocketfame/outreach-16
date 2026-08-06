@@ -47,6 +47,17 @@ export async function POST(req: Request) {
     return json(body, 400);
   }
 
+  // This app currently invokes the OpenAI API directly. ChatGPT workspace
+  // subscriptions cannot pay API usage, and no TypeReach quota ledger/provider
+  // exists yet. Fail before queueing so `subscription` can never spend API funds.
+  if (request.billing === "subscription") {
+    return errorResponse(
+      "subscription_billing_unavailable",
+      "Subscription billing is not configured for Automation API. No job was queued and no provider API call was made. Use billing: \"api\" or \"auto\", or configure a real TypeReach workspace quota provider.",
+      409
+    );
+  }
+
   const jobId = `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
   const now = Date.now();
   const job: AutomationJob = {

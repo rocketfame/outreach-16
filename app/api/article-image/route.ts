@@ -23,6 +23,7 @@ const HERO_IMAGE_FORMAT = {
 } as const;
 
 export type HeroImageQuality = "low" | "medium" | "high";
+export type HeroImageOutputFormat = "png" | "webp";
 
 const HERO_IMAGE_QUALITIES: HeroImageQuality[] = ["low", "medium", "high"];
 
@@ -57,13 +58,15 @@ export interface ArticleImageRequest {
   usedBoxIndices?: number[]; // Optional: array of box indices already used for this article (for random selection without repeats)
   imageBoxId?: string; // Optional: pin a specific image box preset by id (skips random selection)
   quality?: HeroImageQuality; // Optional: gpt-image-2 quality tier (default: HERO_IMAGE_QUALITY env or "high")
+  outputFormat?: HeroImageOutputFormat;
+  outputCompression?: number;
 }
 
 export interface ArticleImageResponse {
   success: boolean;
   imageBase64?: string; // raw base64 from OpenAI, no prefix
-  mimeType?: typeof HERO_IMAGE_FORMAT.mimeType;
-  extension?: typeof HERO_IMAGE_FORMAT.extension;
+  mimeType?: "image/png" | "image/webp";
+  extension?: HeroImageOutputFormat;
   width?: typeof HERO_IMAGE_FORMAT.width;
   height?: typeof HERO_IMAGE_FORMAT.height;
   aspectRatio?: typeof HERO_IMAGE_FORMAT.aspectRatio;
@@ -429,6 +432,10 @@ export async function POST(req: Request) {
     const body: ArticleImageRequest = await req.json();
     const { articleTitle, niche, mainPlatform, contentPurpose, brandName: rawBrandName, customStyle, usedBoxIndices = [], imageBoxId } = body;
     const imageQuality = resolveImageQuality(body.quality);
+    const outputFormat: HeroImageOutputFormat = body.outputFormat === "webp" ? "webp" : "png";
+    const outputCompression = outputFormat === "webp"
+      ? Math.min(100, Math.max(0, Number.isFinite(body.outputCompression) ? Number(body.outputCompression) : 80))
+      : undefined;
     // Brand is optional - use "Generic" when empty (e.g. Direct mode without clientSite)
     const brandName = rawBrandName && rawBrandName.trim() ? rawBrandName.trim() : "Generic";
 
@@ -467,7 +474,7 @@ export async function POST(req: Request) {
     debugLog({ location: 'article-image/route.ts:POST', message: 'Prompt built', data: { promptLength: prompt.length, selectedBoxIndex } });
 
     // #region agent log
-    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:HERO_IMAGE_FORMAT.model,size:HERO_IMAGE_FORMAT.size,quality:HERO_IMAGE_FORMAT.quality,outputFormat:HERO_IMAGE_FORMAT.outputFormat},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
+    const apiCallLog = {location:'article-image/route.ts:POST',message:'Calling OpenAI Images API',data:{model:HERO_IMAGE_FORMAT.model,size:HERO_IMAGE_FORMAT.size,quality:imageQuality,outputFormat,outputCompression},timestamp:Date.now(),sessionId:'debug-session',runId:'article-image',hypothesisId:'image-generation'};
     debugLog(apiCallLog);
     // #endregion
 
@@ -482,7 +489,8 @@ export async function POST(req: Request) {
       n: 1,
       size: HERO_IMAGE_FORMAT.size,
       quality: imageQuality,
-      output_format: HERO_IMAGE_FORMAT.outputFormat,
+      output_format: outputFormat,
+      ...(outputCompression !== undefined ? { output_compression: outputCompression } : {}),
     });
 
     const imageBase64 = imageResponse.data?.[0]?.b64_json;
@@ -516,8 +524,8 @@ export async function POST(req: Request) {
       JSON.stringify({
         success: true,
         imageBase64,
-        mimeType: HERO_IMAGE_FORMAT.mimeType,
-        extension: HERO_IMAGE_FORMAT.extension,
+        mimeType: outputFormat === "webp" ? "image/webp" : HERO_IMAGE_FORMAT.mimeType,
+        extension: outputFormat,
         width: HERO_IMAGE_FORMAT.width,
         height: HERO_IMAGE_FORMAT.height,
         aspectRatio: HERO_IMAGE_FORMAT.aspectRatio,

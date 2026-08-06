@@ -19,6 +19,8 @@ export const KNOWN_AUTOMATION_CATEGORIES = [
 ] as const;
 
 export type AutomationMode = "human" | "standard";
+export type AutomationBillingPreference = "auto" | "api" | "subscription";
+export type AutomationCoverFormat = "png" | "webp";
 export type AutomationJobStatus = "queued" | "running" | "done" | "error";
 
 /** Raw request body accepted by POST /api/automation/generate. */
@@ -38,6 +40,8 @@ export interface AutomationGenerateInput {
   brief?: string;
   /** Optional — defaults to "human". */
   mode?: AutomationMode;
+  /** `subscription` fails before queueing until a real workspace quota provider is configured. */
+  billing?: AutomationBillingPreference;
   /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
   language?: string;
   /** Required when language is "custom"/"Other (custom)"; ignored nowhere. */
@@ -49,6 +53,8 @@ export interface AutomationGenerateInput {
   excludeImageStyles?: string[];
   /** gpt-image-2 quality tier: ~$0.20 high / ~$0.05 medium / ~$0.013 low per cover. */
   imageQuality?: "low" | "medium" | "high";
+  /** Automation defaults to compressed WebP; set png for backward compatibility. */
+  coverFormat?: AutomationCoverFormat;
   minWords?: number;
   maxWords?: number;
   /** Max length for the generated seoTitle (Title tag). Default 65. */
@@ -65,6 +71,7 @@ export interface AutomationGenerateRequest {
   brand: string;
   brief: string;
   mode: AutomationMode;
+  billing: AutomationBillingPreference;
   /** Canonical supported name, or the validated custom language name. */
   language: string;
   image: boolean;
@@ -72,6 +79,7 @@ export interface AutomationGenerateRequest {
   excludeImageStyles: string[];
   /** Empty string = route default (HERO_IMAGE_QUALITY env or "high"). */
   imageQuality: string;
+  coverFormat: AutomationCoverFormat;
   imageRatio: "16:9";
   minWords: number;
   maxWords: number;
@@ -89,7 +97,7 @@ export interface AutomationArticle {
   contentHtml: string;
   cover?: {
     base64: string;
-    format: "png";
+    format: AutomationCoverFormat;
     alt: string;
   };
 }
@@ -112,6 +120,10 @@ export interface AutomationGenerateSuccess {
     /** Palette family of the used preset — for family-level batch de-dup. */
     imageFamily?: string;
     costUsd: number;
+    /** Actual upstream billing source. Never reports a subscription that was not used. */
+    billingSource: "api";
+    /** No workspace subscription ledger exists yet. */
+    quotaRemaining: number | null;
   };
 }
 
@@ -124,6 +136,7 @@ export interface AutomationCoverInput {
   imageStyle?: string;
   excludeImageStyles?: string[];
   imageQuality?: "low" | "medium" | "high";
+  coverFormat?: AutomationCoverFormat;
 }
 
 /** Normalized cover request after validation. */
@@ -134,6 +147,7 @@ export interface AutomationCoverRequest {
   imageStyle: string;
   excludeImageStyles: string[];
   imageQuality: string;
+  coverFormat: AutomationCoverFormat;
 }
 
 export interface AutomationCoverSuccess {
@@ -141,7 +155,7 @@ export interface AutomationCoverSuccess {
   generationId: string;
   cover: {
     base64: string;
-    format: "png";
+    format: AutomationCoverFormat;
     alt: string;
   };
   meta: {

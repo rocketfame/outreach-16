@@ -141,6 +141,14 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     });
   }
 
+  const billing = body.billing === undefined || body.billing === null ? "auto" : body.billing;
+  if (billing !== "auto" && billing !== "api" && billing !== "subscription") {
+    throw new AutomationValidationError('Invalid billing. Expected "auto", "api", or "subscription".', {
+      field: "billing",
+      allowed: ["auto", "api", "subscription"],
+    });
+  }
+
   const languageCustom = typeof body.languageCustom === "string" ? body.languageCustom.trim() : "";
   if (
     body.languageCustom !== undefined &&
@@ -275,6 +283,22 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     );
   }
 
+  const coverFormat = body.coverFormat === undefined || body.coverFormat === null
+    ? "webp"
+    : body.coverFormat;
+  if (coverFormat !== "png" && coverFormat !== "webp") {
+    throw new AutomationValidationError('Invalid coverFormat. Expected "webp" or "png".', {
+      field: "coverFormat",
+      allowed: ["webp", "png"],
+    });
+  }
+  if (body.coverFormat !== undefined && !image) {
+    throw new AutomationValidationError(
+      "coverFormat requires image generation — remove it or set image: true.",
+      { field: "coverFormat" }
+    );
+  }
+
   const minWords = Number.isFinite(body.minWords) ? Number(body.minWords) : 1200;
   const maxWords = Number.isFinite(body.maxWords) ? Number(body.maxWords) : 1800;
   if (minWords < 500 || maxWords < minWords || maxWords > 3000) {
@@ -301,11 +325,13 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     brand,
     brief: customBrief,
     mode,
+    billing,
     language,
     image,
     imageStyle,
     excludeImageStyles,
     imageQuality,
+    coverFormat,
     imageRatio: "16:9",
     minWords,
     maxWords,
@@ -389,5 +415,15 @@ export function validateCoverRequest(input: unknown): AutomationCoverRequest {
     );
   }
 
-  return { topic, niche, category, imageStyle, excludeImageStyles, imageQuality };
+  const coverFormat = body.coverFormat === undefined || body.coverFormat === null
+    ? "webp"
+    : body.coverFormat;
+  if (coverFormat !== "png" && coverFormat !== "webp") {
+    throw new AutomationValidationError('Invalid coverFormat. Expected "webp" or "png".', {
+      field: "coverFormat",
+      allowed: ["webp", "png"],
+    });
+  }
+
+  return { topic, niche, category, imageStyle, excludeImageStyles, imageQuality, coverFormat };
 }

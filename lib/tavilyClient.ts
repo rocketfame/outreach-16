@@ -115,6 +115,11 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
     });
 
     // Filter out low-quality or irrelevant sources
+    const rejectedSources: Array<{ url: string; reason: string }> = [];
+    const reject = (source: TrustedSource, reason: string): false => {
+      rejectedSources.push({ url: source.url, reason });
+      return false;
+    };
     const filteredSources = allSources.filter((source) => {
       const url = source.url.toLowerCase();
       const title = (source.title || "").toLowerCase();
@@ -123,7 +128,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       // Exclude PDF files (especially academic PDFs)
       if (url.endsWith(".pdf") || url.includes(".pdf")) {
         console.log(`[tavily-filter] Excluding PDF: ${source.url}`);
-        return false;
+        return reject(source, "pdf_file");
       }
 
       // Exclude academic publications and Indian university sources
@@ -153,7 +158,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
 
       if (isAcademic) {
         console.log(`[tavily-filter] Excluding academic source: ${source.url}`);
-        return false;
+        return reject(source, "academic_source");
       }
 
       // Exclude low-quality domains
@@ -167,19 +172,19 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       const isLowQuality = lowQualityDomains.some((domain) => url.includes(domain));
       if (isLowQuality) {
         console.log(`[tavily-filter] Excluding low-quality source: ${source.url}`);
-        return false;
+        return reject(source, "low_quality_domain");
       }
 
       // Exclude sources with very short or empty snippets (likely low quality)
       if (!source.snippet || source.snippet.trim().length < 50) {
         console.log(`[tavily-filter] Excluding source with short snippet: ${source.url}`);
-        return false;
+        return reject(source, "short_or_empty_snippet");
       }
 
       // Exclude sources without proper title
       if (!source.title || source.title.trim().length < 10) {
         console.log(`[tavily-filter] Excluding source with short/empty title: ${source.url}`);
-        return false;
+        return reject(source, "short_or_empty_title");
       }
 
       // Exclude sources that look like file downloads or non-web pages
@@ -187,7 +192,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       const hasFileExtension = fileExtensions.some(ext => url.endsWith(ext) || url.includes(ext + "?") || url.includes(ext + "#"));
       if (hasFileExtension) {
         console.log(`[tavily-filter] Excluding file download: ${source.url}`);
-        return false;
+        return reject(source, "file_download");
       }
 
       // Keep all sources that pass the filters
@@ -214,7 +219,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
         filteredCount: sortedByType.length,
         excludedCount: allSources.length - sortedByType.length,
         urls: sortedByType.map(s => s.url),
-        excludedUrls: allSources.filter(s => !filteredSources.includes(s)).map(s => s.url)
+        rejected: rejectedSources,
       },
       timestamp: Date.now(),
       sessionId: 'debug-session',

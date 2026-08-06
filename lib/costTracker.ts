@@ -104,10 +104,13 @@ class CostTracker {
     outputTokens: number
   ): void {
     const modelPricing = PRICING.openai[model as keyof typeof PRICING.openai];
-    if (!modelPricing || typeof modelPricing === 'object' && 'input' in modelPricing) {
+    if (modelPricing && typeof modelPricing === 'object' && 'input' in modelPricing) {
       const pricing = modelPricing as { input: number; output: number };
-      const inputCost = (inputTokens / 1000) * pricing.input;
-      const outputCost = (outputTokens / 1000) * pricing.output;
+      // PRICING stores per-token rates (the advertised per-1M price divided
+      // by 1,000,000), so multiply by raw token counts. Dividing by 1,000
+      // here used to under-report chat costs by exactly 1,000x.
+      const inputCost = inputTokens * pricing.input;
+      const outputCost = outputTokens * pricing.output;
       const totalCost = inputCost + outputCost;
 
       this.costs.push({

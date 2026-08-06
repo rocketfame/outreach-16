@@ -2,7 +2,7 @@ import { POST as generateArticleRoute } from "@/app/api/articles/route";
 import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
 import { searchReliableSources } from "@/lib/tavilyClient";
-import { filterSourcesByPolicy, getSourcePolicyDecision, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
+import { getSourcePolicyDecision, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
 import {
   anchorInFirstParagraphs,
   cleanQuoteDebris,
@@ -18,6 +18,11 @@ import {
 import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
 import { countAutomationWords, slugifyAutomationTitle } from "@/lib/automation/text";
+import {
+  findContentIntegrityIssues,
+  findLanguageOrthographyIssue,
+  restoreBrandToken,
+} from "@/lib/automation/contentQuality";
 import type {
   AutomationArticle,
   AutomationCoverRequest,
@@ -60,6 +65,7 @@ type InternalImageResponse = {
   success: boolean;
   imageBase64?: string;
   selectedBoxId?: string;
+  extension?: "png" | "webp";
   error?: string;
 };
 
@@ -148,6 +154,7 @@ async function generateArticleOnce(
   contentHtml = stripDisallowedLinks(contentHtml, request.anchorUrl);
   contentHtml = shortenExternalLinkTexts(contentHtml, request.anchorUrl);
   contentHtml = cleanQuoteDebris(contentHtml);
+  contentHtml = restoreBrandToken(contentHtml, request.brand);
   // Enforce the single ANCHOR mention only when the anchor text is not the
   // brand itself — brand mentions (2-3x) must survive.
   const anchorIsBrand =
@@ -174,6 +181,17 @@ function collectDraftFailures(
   minWords: number
 ): Array<{ code: string; message: string }> {
   const failures: Array<{ code: string; message: string }> = [];
+  const integrityIssues = findContentIntegrityIssues(contentHtml);
+  if (integrityIssues.length > 0) {
+    failures.push({
+      code: "truncated_output",
+      message: `Generated article contains incomplete or corrupted prose: ${integrityIssues.map((issue) => issue.message).join(" ")}`,
+    });
+  }
+  const orthographyIssue = findLanguageOrthographyIssue(contentHtml, request.language);
+  if (orthographyIssue) {
+    failures.push({ code: "orthography_invalid", message: orthographyIssue });
+  }
   const wordCount = countAutomationWords(contentHtml);
   if (wordCount < minWords) {
     failures.push({
@@ -225,6 +243,12 @@ export async function runAutomationGeneration(
     const corrective = [
       `The article MUST contain at least ${minWords} words of substantive content. Do not pad with filler — add concrete examples, steps, and specifics instead.`,
       request.anchor ? `Place the commercial anchor [A1] inside a complete sentence within the first 2-3 paragraphs.` : "",
+      failures.some((failure) => failure.code === "truncated_output")
+        ? "Return only complete paragraphs and complete sentences. Every paragraph must end with terminal punctuation; balance all quotation marks; never leave a colon, verb, number, or clause without its continuation."
+        : "",
+      failures.some((failure) => failure.code === "orthography_invalid")
+        ? buildLanguageOrthographyInstruction(request.language)
+        : "",
     ].filter(Boolean).join("\n");
     article = await generateArticleOnce(request, topic, trustSourcesList, boostedTarget, corrective);
     failures = collectDraftFailures(request, article.contentHtml, minWords);
@@ -278,6 +302,8 @@ export async function runAutomationGeneration(
         usedBoxIndices: excludedIndices,
         imageBoxId: request.imageStyle || undefined,
         quality: request.imageQuality || undefined,
+        outputFormat: request.coverFormat,
+        outputCompression: request.coverFormat === "webp" ? 80 : undefined,
       }),
     }));
     const imageJson = (await imageResponse.json()) as InternalImageResponse;
@@ -287,7 +313,7 @@ export async function runAutomationGeneration(
     imageStyleUsed = imageJson.selectedBoxId;
     cover = {
       base64: imageJson.imageBase64,
-      format: "png",
+      format: imageJson.extension || request.coverFormat,
       alt: `${title} hero image`,
     };
   }
@@ -317,6 +343,8 @@ export async function runAutomationGeneration(
       imageStyle: imageStyleUsed,
       imageFamily: familyOfBox(imageStyleUsed),
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
+      billingSource: "api",
+      quotaRemaining: null,
     },
   };
 }
@@ -357,6 +385,8 @@ export async function runCoverGeneration(
       usedBoxIndices: excludedIndices,
       imageBoxId: request.imageStyle || undefined,
       quality: request.imageQuality || undefined,
+      outputFormat: request.coverFormat,
+      outputCompression: request.coverFormat === "webp" ? 80 : undefined,
     }),
   }));
 
@@ -371,7 +401,7 @@ export async function runCoverGeneration(
     generationId,
     cover: {
       base64: imageJson.imageBase64,
-      format: "png",
+      format: imageJson.extension || request.coverFormat,
       alt: `${request.topic} hero image`,
     },
     meta: {
@@ -396,16 +426,7 @@ async function searchAutomationTrustSources(topic: string, category: string) {
     url: normalizeGoogleSupportLocale(source.url),
   }));
 
-  return filterSourcesByPolicy(merged).filter((source) => {
-    // Videos are never citations in outreach articles — host editors reject them.
-    if (isVideoUrl(source.url)) return false;
-    // Shopify content is an official source ONLY for the Growth category;
-    // in a TikTok/Spotify article it reads as a third-party commercial blog.
-    if (category.trim().toLowerCase() !== "growth" && /(^|\.)shopify\.com$/i.test(hostnameOf(source.url))) {
-      return false;
-    }
-    return true;
-  });
+  return merged;
 }
 
 /** Targeted tier-2/3 search when the general sweep yields no independent sources. */
@@ -443,16 +464,74 @@ function isPlatformDocSource(url: string): boolean {
  * - citation titles are canonical resource names (link anchors are 1-4 words).
  */
 async function buildTrustSourcesList(topic: string, category: string): Promise<string[]> {
-  const sources = await searchAutomationTrustSources(topic, category);
-  let candidates: ScoredSource[] = filterSourcesByPolicy(sources)
+  const rejected: Array<{ url: string; reason: string }> = [];
+  let searchesExecuted = 2;
+  let candidatesFound = 0;
+  let sources: ScoredSource[];
+  try {
+    sources = await searchAutomationTrustSources(topic, category);
+    candidatesFound = sources.length;
+  } catch (error) {
+    console.error("[automationSources] Source lookup failed before policy filtering:", {
+      topic,
+      category,
+      searchesExecuted,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new AutomationPipelineError(
+      "source_lookup_failed",
+      `Source search could not be completed for "${topic}" (${category}). Retry later; this is not evidence that the topic has no independent sources.`
+    );
+  }
+
+  const approve = (source: ScoredSource): boolean => {
+    const decision = getSourcePolicyDecision(source);
+    if (!decision.allowed) {
+      rejected.push({ url: source.url, reason: decision.reason });
+      return false;
+    }
+    if (isVideoUrl(source.url)) {
+      rejected.push({ url: source.url, reason: "video_source" });
+      return false;
+    }
+    if (category.trim().toLowerCase() !== "growth" && /(^|\.)shopify\.com$/i.test(hostnameOf(source.url))) {
+      rejected.push({ url: source.url, reason: "platform_domain_for_other_category" });
+      return false;
+    }
+    return true;
+  };
+
+  let candidates: ScoredSource[] = sources.filter(approve)
     .sort((a, b) => getSourcePriority(b) - getSourcePriority(a));
 
   let independents = candidates.filter((s) => isIndependentSource(s.url));
   if (independents.length === 0) {
-    const extra = await searchReliableSources(
-      `${INDEPENDENT_SOURCE_SITES.join(" OR ")} ${topic} ${category} report data`
-    );
-    const extraApproved = filterSourcesByPolicy(dedupeSources(extra)).filter((s) => isIndependentSource(s.url));
+    searchesExecuted += 1;
+    let extra: ScoredSource[];
+    try {
+      extra = await searchReliableSources(
+        `${INDEPENDENT_SOURCE_SITES.join(" OR ")} ${topic} ${category} report data`
+      );
+      candidatesFound += extra.length;
+    } catch (error) {
+      console.error("[automationSources] Targeted independent-source lookup failed:", {
+        topic,
+        category,
+        searchesExecuted,
+        candidatesFound: sources.length,
+        candidatesRejected: rejected.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new AutomationPipelineError(
+        "source_lookup_failed",
+        `Independent-source search could not be completed for "${topic}" (${category}). Retry later; the source gate was not evaluated.`
+      );
+    }
+    const extraApproved = dedupeSources(extra).filter(approve).filter((s) => {
+      if (isIndependentSource(s.url)) return true;
+      rejected.push({ url: s.url, reason: "not_independent" });
+      return false;
+    });
     independents = extraApproved;
     candidates = dedupeSources([...candidates, ...extraApproved]);
   }
@@ -463,12 +542,27 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
 
   // Dead links get dropped before they can be cited.
   const resolutions = await Promise.all(composed.map((s) => urlResolves(s.url)));
+  composed.forEach((source, index) => {
+    if (!resolutions[index]) rejected.push({ url: source.url, reason: "unavailable" });
+  });
   const alive = composed.filter((_, i) => resolutions[i]);
+
+  console.info("[automationSources] Source gate diagnostics:", {
+    topic,
+    category,
+    searchExecuted: true,
+    searchesExecuted,
+    candidatesFound,
+    candidatesApproved: candidates.length,
+    candidatesAlive: alive.length,
+    independentAlive: alive.filter((source) => isIndependentSource(source.url)).length,
+    rejected,
+  });
 
   if (!alive.some((s) => isIndependentSource(s.url))) {
     throw new AutomationPipelineError(
       "no_independent_sources",
-      `No live independent (non-platform) source found for "${topic}" (${category}). An article citing only the platform's own docs does not ship — narrow the topic or retry later.`
+      `Source lookup completed, but no live independent (non-platform) source survived policy checks for "${topic}" (${category}). An article citing only platform or competitor material does not ship — change or narrow the topic.`
     );
   }
 
@@ -519,10 +613,11 @@ function buildTopicBrief(request: AutomationGenerateRequest, topic: string): str
     topic,
     "Use the exact article title as given — do not rewrite, shorten, or 'improve' it. It is a deliberate keyword-loaded hook.",
     `Write for readers who want practical ${request.category} growth advice.`,
+    buildLanguageOrthographyInstruction(request.language),
   ];
   if (request.brand) {
     lines.push(
-      `Mention the brand "${request.brand}" naturally 2-3 times across the article, always as the plain name — never as a URL, domain, or link.`
+      `Mention the brand "${request.brand}" naturally 2-3 times across the article. Treat "${request.brand}" as an immutable token: reproduce it byte-for-byte, never insert spaces, change capitalization, translate it, decline it, or segment its CamelCase spelling.`
     );
   }
   if (request.anchor) {
@@ -539,6 +634,19 @@ function buildTopicBrief(request: AutomationGenerateRequest, topic: string): str
     lines.push(request.brief);
   }
   return lines.join("\n");
+}
+
+export function buildLanguageOrthographyInstruction(language: string): string {
+  const canonical = language.trim().toLowerCase();
+  const rules: Record<string, string> = {
+    italian: "Write standard Italian orthography with native diacritics. Use è, é, à, ì, ò, and ù where required; never substitute apostrophe spellings such as e', piu', perche', puo', gia', or probabilita'.",
+    spanish: "Write standard Spanish orthography with all required accents, diacritics, and ñ; never replace them with ASCII approximations.",
+    portuguese: "Write standard Portuguese orthography with all required accents, diacritics, and ç; never replace them with ASCII approximations.",
+    french: "Write standard French orthography with all required accents, diacritics, ligatures, and ç; never replace them with ASCII approximations.",
+    german: "Write standard German orthography with ä, ö, ü, and ß where required; never replace them with ae/oe/ue/ss unless the lexical form specifically requires it.",
+    polish: "Write standard Polish orthography with all required diacritics (ą, ć, ę, ł, ń, ó, ś, ź, ż); never replace them with ASCII approximations.",
+  };
+  return rules[canonical] || `Write in standard ${language} orthography and preserve every native letter and diacritic required by that language.`;
 }
 
 function sanitizeAutomationHtml(html: string): string {
