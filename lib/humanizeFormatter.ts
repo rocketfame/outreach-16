@@ -3,6 +3,7 @@
 // This is a "dumb formatter" that rebuilds HTML structure from humanized text
 
 import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
+import { getCostTracker } from "@/lib/costTracker";
 
 const SYSTEM_PROMPT = `Role: You are a post-processor for articles. You receive:
 	•	originalHtml – HTML before humanization;
@@ -112,6 +113,14 @@ export async function formatHumanizedHtml(
     });
 
     const formattedHtml = completion.choices[0]?.message?.content?.trim() || "";
+    if (textProvider.kind === "openai") {
+      const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+      getCostTracker().trackOpenAIChat(
+        textProvider.model,
+        usage?.prompt_tokens || 0,
+        usage?.completion_tokens || 0
+      );
+    }
 
     if (!formattedHtml) {
       throw new Error("Empty response from formatter");

@@ -11,10 +11,10 @@
 2. AI генерує статтю без попереднього discovery
 
 ## Humanization Flow
-1. Увесь користувацький текст (topics, outlines, articles, SEO fields, edits) генерується через налаштований non-OpenAI text provider зі спільним BetterWords 2.1.2 guardrail. OpenAI fallback для тексту заборонений. Це працює для UI та API, у `seo` і `human` modes
+1. Увесь користувацький текст (topics, outlines, articles, SEO fields, edits) генерується через OpenAI API за замовчуванням або optional external provider зі спільним BetterWords 2.1.2 guardrail. Це працює для UI та API, у `seo` і `human` modes
 2. Writing mode "human" → обов'язкова гуманізація через Undetectable.AI v2
 3. Submit → polling до завершення
-4. Якщо провайдер повертає точний текст `Insufficient credits` → BetterWords 2.1.2 quality rewrite через той самий non-OpenAI text provider; job-scoped circuit breaker веде решту блоків цього POST/job одразу у fallback. Інші помилки Undetectable не підміняються
+4. Якщо Undetectable повертає точний текст `Insufficient credits` → BetterWords 2.1.2 quality rewrite через активний text provider; job-scoped circuit breaker веде решту блоків цього POST/job одразу у fallback. Інші помилки Undetectable не підміняються
 
 ## Hero Image Flow
 1. Користувач запускає генерацію hero image для статті
@@ -27,7 +27,7 @@
 3. Черга дренується опортуністично: кожен POST і кожен GET-poll — drain-тригер; наступна джоба виконується в `after()` тієї інвокації, яка захопила слот (атомарний SET NX + one-shot started-guard проти подвійного виконання)
 4. Job генерує одну статтю через existing article pipeline (мовою з запиту), humanization, Tavily sources, optional 16:9 cover image. Search failure має окремий `source_lookup_failed`; успішний порожній source gate — `no_independent_sources`. Внутрішні виклики обходять per-IP rate limiter (in-process токен)
 5. Orchestrator poll-ить `GET /api/automation/generate/:jobId`; queued відповіді містять position/etaSeconds — оркестратор сам вирішує, чекати чи відкласти
-6. Перед done проходять integrity/orthography/brand guards. Done response повертає body-only `contentHtml`, `cover.base64`, `meta.language`, `meta.billingSource:"external_text_provider"`, `meta.textProvider` та `quotaRemaining:null`; публікація залишається на стороні orchestrator/CMS
+6. Перед done проходять integrity/orthography/brand guards. Done response повертає body-only `contentHtml`, `cover.base64`, `meta.language`, фактичний `meta.billingSource` (`openai_api` або `external_text_provider`), `meta.textProvider` та `quotaRemaining:null`; публікація залишається на стороні orchestrator/CMS
 7. Running-джоба без прогресу 10+ хв → GET повертає `job_timeout` error і звільняє слот (мертвий function instance)
 
 ## Trial System

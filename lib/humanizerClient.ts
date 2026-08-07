@@ -4,6 +4,7 @@
 
 import { getHumanizerConfig } from "@/lib/config";
 import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
+import { getCostTracker } from "@/lib/costTracker";
 import {
   BETTERWORDS_REWRITE_SYSTEM_PROMPT,
   buildBetterWordsRewriteInput,
@@ -147,7 +148,7 @@ export class UndetectableHumanizerClient implements HumanizerService {
   }
 }
 
-/** BetterWords 2.1.2 rewrite through the configured non-OpenAI text provider. */
+/** BetterWords 2.1.2 rewrite through the configured text provider. */
 export class BetterWordsHumanizerClient implements HumanizerService {
   async humanize(text: string): Promise<HumanizeResult> {
     const trimmed = text.trim();
@@ -167,6 +168,14 @@ export class BetterWordsHumanizerClient implements HumanizerService {
       ],
       max_tokens: maxCompletionTokens,
     });
+    if (textProvider.kind === "openai") {
+      const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+      getCostTracker().trackOpenAIChat(
+        textProvider.model,
+        usage?.prompt_tokens || 0,
+        usage?.completion_tokens || 0
+      );
+    }
 
     const output = completion.choices[0]?.message?.content?.trim() || "";
     if (!output) {

@@ -9,7 +9,7 @@ import {
 import { drainAutomationQueuePool } from "@/lib/automation/runner";
 import { AutomationValidationError, validateAutomationRequest } from "@/lib/automation/validate";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
-import { validateTextProvider } from "@/lib/textProvider";
+import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
 
 export const maxDuration = 300;
 
@@ -57,14 +57,6 @@ export async function POST(req: Request) {
       409
     );
   }
-  if (request.billing === "api") {
-    return errorResponse(
-      "openai_text_billing_disabled",
-      "OpenAI API billing is disabled for text generation. No job was queued. Use billing: \"auto\" or \"external\".",
-      409
-    );
-  }
-
   try {
     validateTextProvider();
   } catch (error) {
@@ -72,6 +64,21 @@ export async function POST(req: Request) {
       "text_provider_not_configured",
       error instanceof Error ? error.message : "Text provider is not configured.",
       503
+    );
+  }
+  const provider = getTextProviderConfig();
+  if (request.billing === "external" && provider.kind !== "external") {
+    return errorResponse(
+      "external_text_provider_unavailable",
+      "billing: \"external\" requires TEXT_API_BASE_URL and TEXT_MODEL. No job was queued.",
+      409
+    );
+  }
+  if (request.billing === "api" && provider.kind !== "openai") {
+    return errorResponse(
+      "openai_text_provider_unavailable",
+      "billing: \"api\" requires the OpenAI text provider. Remove the TEXT_* override or use billing: \"auto\".",
+      409
     );
   }
 

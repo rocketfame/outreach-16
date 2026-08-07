@@ -10,10 +10,10 @@
 
 ```
 .env.local                    ← ДОДАЙТЕ КЛЮЧІ ТУТ (тільки один раз!)
-├── TEXT_API_BASE_URL=https://provider.example/v1
-├── TEXT_API_KEY=...
-├── TEXT_MODEL=...
-├── OPENAI_API_KEY=sk-...     ← лише gpt-image-2
+├── OPENAI_API_KEY=sk-...     ← текст + gpt-image-2
+├── OPENAI_TEXT_MODEL=gpt-5.5 ← optional
+├── TEXT_API_BASE_URL=...     ← optional external override
+├── TEXT_MODEL=...            ← optional external override
 └── TAVILY_API_KEY=tvly-...
 
 lib/textProvider.ts           ← Весь текст, із забороною OpenAI endpoint
@@ -60,7 +60,7 @@ const openai = new OpenAI({ apiKey });
 
 ### Після рефакторингу (новий спосіб):
 ```typescript
-// ✅ Централізовано, без OpenAI text fallback
+// ✅ Централізовано, OpenAI text default
 import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 
 const client = getTextGenerationClient();
@@ -114,7 +114,6 @@ node check-env.js
 ```bash
 cat .env.local
 ```
-
 
 
 

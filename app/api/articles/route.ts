@@ -652,6 +652,9 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           const outputTokens = usage?.completion_tokens || 0;
           const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens || 0;
           console.log("[articles-api] Token usage:", { inputTokens, outputTokens, reasoningTokens });
+          if (textProvider.kind === "openai" && (inputTokens > 0 || outputTokens > 0)) {
+            getCostTracker().trackOpenAIChat(textProvider.model, inputTokens, outputTokens);
+          }
 
           if (!content.trim()) {
             console.error("[articles-api] Empty content received from API", {

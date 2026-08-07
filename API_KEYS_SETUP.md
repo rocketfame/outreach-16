@@ -17,13 +17,9 @@
 В кореневій папці проекту (там, де знаходиться `package.json`) створіть файл `.env.local` з наступним вмістом:
 
 ```bash
-# Text generation (обов'язково). Endpoint має бути non-OpenAI.
-TEXT_API_BASE_URL=https://your-text-provider.example/v1
-TEXT_API_KEY=YOUR_TEXT_PROVIDER_KEY
-TEXT_MODEL=YOUR_TEXT_MODEL
-
-# OpenAI потрібен лише для optional gpt-image-2 covers
+# OpenAI: text generation і optional gpt-image-2 covers
 OPENAI_API_KEY=YOUR_OPENAI_API_KEY_HERE
+# OPENAI_TEXT_MODEL=gpt-5.5
 
 # Tavily Search API Key (обов'язково для генерації тем)
 # Отримайте ключ на https://tavily.com/
@@ -38,11 +34,11 @@ TAVILY_API_KEY=YOUR_TAVILY_API_KEY_HERE
 ### 2. Де отримати API ключі?
 
 #### Text provider:
-Налаштуйте Ollama, vLLM або інший OpenAI-compatible non-OpenAI endpoint через
-`TEXT_API_BASE_URL`, `TEXT_API_KEY` та `TEXT_MODEL`. Без цих параметрів текстова
-генерація fail-closed і не переходить на OpenAI.
+OpenAI API використовується за замовчуванням. За потреби налаштуйте Ollama,
+vLLM або інший OpenAI-compatible endpoint через `TEXT_API_BASE_URL`,
+`TEXT_API_KEY` та `TEXT_MODEL`.
 
-#### OpenAI API Key (лише зображення):
+#### OpenAI API Key (текст і зображення):
 1. Перейдіть на https://platform.openai.com/api-keys
 2. Увійдіть або зареєструйтеся
 3. Натисніть "Create new secret key"
@@ -89,10 +85,8 @@ TAVILY_API_KEY=YOUR_TAVILY_API_KEY_HERE
 ## Приклад правильного `.env.local`:
 
 ```bash
-TEXT_API_BASE_URL=https://your-text-provider.example/v1
-TEXT_API_KEY=text-provider-secret
-TEXT_MODEL=your-article-model
-OPENAI_API_KEY=sk-proj-example-only-for-images
+OPENAI_API_KEY=sk-proj-example
+OPENAI_TEXT_MODEL=gpt-5.5
 TAVILY_API_KEY=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
 # UNDETECTABLE_HUMANIZER_API_KEY=...  # опційно для Human Mode
 ```

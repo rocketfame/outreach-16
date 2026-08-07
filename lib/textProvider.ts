@@ -7,19 +7,20 @@ export interface TextProviderConfig {
   smallModel: string;
   visionModel: string;
   name: string;
+  kind: "openai" | "external";
 }
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
     throw new Error(
-      `Text generation is not configured. Add ${name} to the server environment. OpenAI text fallback is disabled.`
+      `Text generation is not configured. Add ${name} to the server environment.`
     );
   }
   return value;
 }
 
-function validateNonOpenAIBaseUrl(value: string): string {
+function validateBaseUrl(value: string): string {
   let url: URL;
   try {
     url = new URL(value);
@@ -31,27 +32,42 @@ function validateNonOpenAIBaseUrl(value: string): string {
     throw new Error("TEXT_API_BASE_URL must use http or https.");
   }
 
-  const hostname = url.hostname.toLowerCase();
-  if (hostname === "openai.com" || hostname.endsWith(".openai.com")) {
-    throw new Error(
-      "OpenAI is disabled for text generation. TEXT_API_BASE_URL must point to a non-OpenAI provider."
-    );
-  }
-
   return value.replace(/\/+$/, "");
 }
 
 export function getTextProviderConfig(): TextProviderConfig {
-  const model = requiredEnv("TEXT_MODEL");
+  const externalBaseURL = process.env.TEXT_API_BASE_URL?.trim();
+  const externalModel = process.env.TEXT_MODEL?.trim();
+  if (externalBaseURL || externalModel) {
+    if (!externalBaseURL || !externalModel) {
+      throw new Error(
+        "TEXT_API_BASE_URL and TEXT_MODEL must be configured together, or both omitted to use OpenAI."
+      );
+    }
+    return {
+      baseURL: validateBaseUrl(externalBaseURL),
+      apiKey: process.env.TEXT_API_KEY?.trim() || "local-text-provider",
+      model: externalModel,
+      smallModel: process.env.TEXT_SMALL_MODEL?.trim() || externalModel,
+      visionModel: process.env.TEXT_VISION_MODEL?.trim() || externalModel,
+      name: process.env.TEXT_PROVIDER_NAME?.trim() || "external",
+      kind: "external",
+    };
+  }
+
+  const apiKey = requiredEnv("OPENAI_API_KEY");
+  if (!apiKey.startsWith("sk-")) {
+    throw new Error("OPENAI_API_KEY has an invalid format.");
+  }
+  const model = process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-5.5";
   return {
-    baseURL: validateNonOpenAIBaseUrl(requiredEnv("TEXT_API_BASE_URL")),
-    // Local Ollama-compatible servers do not require a real secret, but the
-    // OpenAI SDK requires a non-empty apiKey value.
-    apiKey: process.env.TEXT_API_KEY?.trim() || "local-text-provider",
+    baseURL: "https://api.openai.com/v1",
+    apiKey,
     model,
-    smallModel: process.env.TEXT_SMALL_MODEL?.trim() || model,
-    visionModel: process.env.TEXT_VISION_MODEL?.trim() || model,
-    name: process.env.TEXT_PROVIDER_NAME?.trim() || "external",
+    smallModel: process.env.OPENAI_SMALL_MODEL?.trim() || model,
+    visionModel: process.env.OPENAI_VISION_MODEL?.trim() || model,
+    name: "openai",
+    kind: "openai",
   };
 }
 

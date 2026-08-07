@@ -3,7 +3,7 @@
 ## Стек
 - Next.js 16.2.6 (App Router), React 19.2.1, TypeScript strict
 - Vercel hosting + Vercel KV (Upstash Redis)
-- Non-OpenAI OpenAI-compatible text provider, OpenAI gpt-image-2 (images only), Undetectable.AI, Tavily, Stripe
+- OpenAI API for text and gpt-image-2 by default, optional external text provider, Undetectable.AI, Tavily, Stripe
 
 ## Access Control Layer
 1. middleware.ts → app/proxy.ts
@@ -11,11 +11,11 @@
 3. Non-master IPs завжди бачать MaintenanceGate
 
 ## Generation Pipeline
-1. Brief → Topic Discovery (або Direct) → Outline → Article через `lib/textProvider.ts`; `api.openai.com` програмно заборонений для тексту
+1. Brief → Topic Discovery (або Direct) → Outline → Article через `lib/textProvider.ts`; OpenAI API default, external `TEXT_*` override optional
 2. Rate limiting per IP per category
 3. Trial usage tracking (per-mode + total cap)
 4. Humanization (optional, via Undetectable.AI)
-5. Єдиний дозволений OpenAI-виклик — hero image generation via gpt-image-2
+5. OpenAI обслуговує text generation і optional hero image generation
 6. Async blog autopilot uses a KV-backed FIFO queue and a configurable worker pool (`GENERATION_CONCURRENCY`, default 3, max 8); publishing is external
 
 ## Design System

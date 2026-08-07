@@ -13,7 +13,7 @@ import type {
   AutomationGenerateRequest,
   AutomationJob,
 } from "@/lib/automation/types";
-import { validateTextProvider } from "@/lib/textProvider";
+import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
 
 export const maxDuration = 300;
 
@@ -50,13 +50,23 @@ function billingError(requests: AutomationGenerateRequest[]): Response | null {
       message: "ChatGPT subscription billing cannot fund Automation API calls. No batch jobs were queued.",
     }, 409);
   }
-  const apiIndex = requests.findIndex((request) => request.billing === "api");
-  if (apiIndex >= 0) {
+  const provider = getTextProviderConfig();
+  const externalIndex = requests.findIndex((request) => request.billing === "external");
+  if (externalIndex >= 0 && provider.kind !== "external") {
     return json({
       status: "error",
-      code: "openai_text_billing_disabled",
+      code: "external_text_provider_unavailable",
+      index: externalIndex,
+      message: "billing: \"external\" requires TEXT_API_BASE_URL and TEXT_MODEL. No batch jobs were queued.",
+    }, 409);
+  }
+  const apiIndex = requests.findIndex((request) => request.billing === "api");
+  if (apiIndex >= 0 && provider.kind !== "openai") {
+    return json({
+      status: "error",
+      code: "openai_text_provider_unavailable",
       index: apiIndex,
-      message: "OpenAI API billing is disabled for text generation. No batch jobs were queued.",
+      message: "billing: \"api\" requires the OpenAI text provider. No batch jobs were queued.",
     }, 409);
   }
   return null;
@@ -89,9 +99,6 @@ export async function POST(req: Request) {
       return validationError(error, index);
     }
   }
-  const rejectedBilling = billingError(requests);
-  if (rejectedBilling) return rejectedBilling;
-
   try {
     validateTextProvider();
   } catch (error) {
@@ -101,6 +108,8 @@ export async function POST(req: Request) {
       message: error instanceof Error ? error.message : "Text provider is not configured.",
     }, 503);
   }
+  const rejectedBilling = billingError(requests);
+  if (rejectedBilling) return rejectedBilling;
 
   const now = Date.now();
   const jobs: AutomationJob[] = requests.map((request) => ({

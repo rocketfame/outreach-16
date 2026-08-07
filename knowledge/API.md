@@ -15,8 +15,8 @@
   - Повний контракт і приклади: `docs/AUTOMATION_API.md`
   - `brand` — optional, ІМʼЯ бренду plain text ("PromoSoundGroup"); URL або голий домен → 400 (домен у тексті жує гуманізатор — "net-glitch"). Йде в brief.clientSite → [[BRAND_NAME]] промпта, інструкція "mention 2-3 times as plain name", заморожується перед Undetectable
   - `brand` додатково є immutable token: видимі варіанти на кшталт `Promo Sound Group` детерміновано відновлюються до точного `PromoSoundGroup`; HTML attributes не переписуються
-  - `billing` — `auto` (default) | `external` | `api` | `subscription`. `auto`/`external` використовують лише налаштований non-OpenAI text provider. `api` синхронно → 409 `openai_text_billing_disabled`; `subscription` → 409 `subscription_billing_unavailable`, обидва до queue/provider calls
-  - `meta.billingSource` — `external_text_provider`; `meta.textProvider` містить non-secret deployment label. `meta.costUsd` рахує відомі інтеграції (Tavily, Undetectable, optional OpenAI image), але не вгадує ціну зовнішнього текстового провайдера
+  - `billing` — `auto` (default) | `external` | `api` | `subscription`. Без `TEXT_*` auto використовує OpenAI API; `api` явно вимагає OpenAI, `external` — налаштований external provider; `subscription` синхронно → 409
+  - `meta.billingSource` — фактичне `openai_api` або `external_text_provider`; OpenAI token usage входить у `meta.costUsd`
   - `brief` — optional, до 2000 символів; додається до згенерованого topic brief
   - `minWords` — це floor, не hint: draft нижче floor → один retry з підвищеним таргетом, потім error code `below_min_words` (а не `done` зі стабом). `meta.wordCount` у результаті для assert
   - `imageStyle` — optional, id image box пресета (`lib/imageBoxPrompts.ts`, 40 активних, 9 палітрових сімей `PALETTE_FAMILIES`); пінить конкретний стиль, невідомий id → 400 + `allowed[]`. `imageStyle` без `image:true` → 400
@@ -43,10 +43,10 @@
 - `GET /api/automation/generate/:jobId` — polling endpoint (`queued|running|done|error`). Для queued повертає concurrency-aware `position` та `etaSeconds`; jobs, що входять у вільні слоти поточної хвилі, мають ETA 0. Кожен submit/poll заповнює весь вільний worker pool. Running довше 10 хв → `job_timeout`. Concurrency: `GENERATION_CONCURRENCY` env (default 3, max 8; legacy alias `AUTOMATION_CONCURRENCY`), ETA average: `GENERATION_AVG_JOB_SECONDS` (default 480). Внутрішні automation-виклики `/api/articles` та `/api/article-image` обходять per-IP rate limiter через in-process токен (`lib/automation/internal.ts`)
 
 ## External Services
-- **Configured non-OpenAI text provider + BetterWords 2.1.2 quality guardrail** — усі user-visible topics, outlines, article/SEO fields та edits, у ручному UI й API та в обох writing modes. `lib/textProvider.ts` забороняє `*.openai.com` як text base URL
+- **OpenAI API (default) або optional external OpenAI-compatible provider + BetterWords 2.1.2** — усі user-visible topics, outlines, article/SEO fields та edits, у ручному UI й API та в обох writing modes
 - **gpt-image-2** — 16:9 hero images (1536x864; Automation default compressed WebP, UI legacy PNG)
 - **Undetectable.AI v2** — гуманізація тексту (submit + polling)
-- **BetterWords 2.1.2 rewrite fallback** — якщо Undetectable.AI повертає точну помилку `Insufficient credits`, решта блоків поточного job переписується через налаштований non-OpenAI text provider; інші помилки не маскуються fallback-ом. `humanizationReport.providerUsage` показує слова по провайдерах
+- **BetterWords 2.1.2 rewrite fallback** — якщо Undetectable.AI повертає точну помилку `Insufficient credits`, решта блоків поточного job переписується через активний text provider; інші помилки не маскуються fallback-ом. `humanizationReport.providerUsage` показує слова по провайдерах
 - **Tavily** — валідація trust sources
 - **Stripe** — оплата та upgrade
 - **Vercel KV** — persistent trial usage tracking

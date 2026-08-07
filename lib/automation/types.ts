@@ -40,7 +40,7 @@ export interface AutomationGenerateInput {
   brief?: string;
   /** Optional — defaults to "human". */
   mode?: AutomationMode;
-  /** `api` and `subscription` fail before queueing; text uses the configured external provider. */
+  /** `api` selects OpenAI, `external` requires TEXT_* config; subscription is unavailable. */
   billing?: AutomationBillingPreference;
   /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
   language?: string;
@@ -120,8 +120,8 @@ export interface AutomationGenerateSuccess {
     /** Palette family of the used preset — for family-level batch de-dup. */
     imageFamily?: string;
     costUsd: number;
-    /** Article text never uses OpenAI billing. */
-    billingSource: "external_text_provider";
+    /** Actual text-generation billing route. */
+    billingSource: "openai_api" | "external_text_provider";
     /** Non-secret provider label configured by the deployment. */
     textProvider: string;
     /** Provider quota is not available through the compatibility protocol. */

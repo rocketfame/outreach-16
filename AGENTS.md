@@ -24,7 +24,7 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 
 - Next.js 16.2.6 (App Router), React 19.2.1, TypeScript strict
 - Vercel hosting + Vercel KV (Upstash Redis) for persistent trial usage
-- Configurable non-OpenAI text provider for all text; OpenAI gpt-image-2 only for 16:9 hero images (1536x864)
+- OpenAI API is the default text provider and supplies gpt-image-2 hero images; external OpenAI-compatible text provider is optional
 - Undetectable.AI Humanization API v2 (submit + polling)
 - Tavily for trust-source validation
 - Stripe for upgrade checkout
@@ -85,8 +85,9 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 ## Environment variables
 
 Required on Vercel (and `.env.local` for dev):
-- `OPENAI_API_KEY` — gpt-image-2 only; never used for text
-- `TEXT_API_BASE_URL` — non-OpenAI OpenAI-compatible `/v1` endpoint for all text generation
+- `OPENAI_API_KEY` — default provider for text generation and gpt-image-2
+- `OPENAI_TEXT_MODEL` — optional text model override (default `gpt-5.5`)
+- `TEXT_API_BASE_URL` + `TEXT_MODEL` — optional OpenAI-compatible external text-provider override
 - `TEXT_API_KEY` — text provider credential (optional for an unauthenticated local endpoint)
 - `TEXT_MODEL` — primary article/topic/edit/BetterWords model
 - `TEXT_SMALL_MODEL` — optional classifier model; defaults to `TEXT_MODEL`

@@ -5,6 +5,7 @@
  */
 
 import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
+import { getCostTracker } from "@/lib/costTracker";
 import {
   filterSourcesByPolicy,
   getForcedSourceType,
@@ -111,6 +112,15 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
       });
     } catch {
       completion = await textClient.chat.completions.create(params);
+    }
+
+    if (textProvider.kind === "openai") {
+      const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+      getCostTracker().trackOpenAIChat(
+        textProvider.smallModel,
+        usage?.prompt_tokens || 0,
+        usage?.completion_tokens || 0
+      );
     }
 
     const responseText = completion.choices[0]?.message?.content?.trim();

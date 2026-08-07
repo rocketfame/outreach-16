@@ -351,7 +351,7 @@ export async function runAutomationGeneration(
       imageStyle: imageStyleUsed,
       imageFamily: familyOfBox(imageStyleUsed),
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
-      billingSource: "external_text_provider",
+      billingSource: textProvider.kind === "openai" ? "openai_api" : "external_text_provider",
       textProvider: textProvider.name,
       quotaRemaining: null,
     },

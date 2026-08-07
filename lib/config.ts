@@ -80,7 +80,7 @@ export function validateContentProviders(): boolean {
   return true;
 }
 
-/** Validate OpenAI only for the image-generation route. */
+/** Validate OpenAI for the image-generation route. */
 export function validateImageProvider(): boolean {
   getOpenAIApiKey();
   return true;
@@ -143,7 +143,6 @@ export function getHumanizerConfig(): {
  * Now enabled by default - Human Mode is always available
  */
 export const HUMAN_MODE_EXPERIMENT = true;
-
 
 
 
