@@ -4,10 +4,11 @@ import {
   ensureJobQueued,
   getAutomationJob,
   getAutomationQueueInfo,
+  removeQueuedAutomationJob,
   releaseSlotsHeldBy,
   saveAutomationJob,
 } from "@/lib/automation/jobStore";
-import { drainAutomationQueue } from "@/lib/automation/runner";
+import { drainAutomationQueuePool } from "@/lib/automation/runner";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 
 // This route can host job execution: polling a queued job drains the queue
@@ -92,7 +93,7 @@ export async function GET(
       };
       await saveAutomationJob(failed);
       await releaseSlotsHeldBy(job.id);
-      after(() => drainAutomationQueue());
+      after(() => drainAutomationQueuePool());
       return json({
         status: "error",
         jobId: job.id,
@@ -108,7 +109,7 @@ export async function GET(
     await ensureJobQueued(job.id);
     // Every poll is a drain trigger; the claimed job (this one or the queue
     // head) executes in this invocation's after() budget.
-    after(() => drainAutomationQueue());
+    after(() => drainAutomationQueuePool());
     const { position, etaSeconds } = await getAutomationQueueInfo(job.id);
     return json({
       status: "queued",
@@ -127,4 +128,54 @@ export async function GET(
     startedAt: job.startedAt,
     updatedAt: job.updatedAt,
   }, 200);
+}
+
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ jobId: string }> }
+) {
+  const authError = requireAutomationAuth(req);
+  if (authError) {
+    const status = authError.code === "unauthorized" ? 401 : 500;
+    return json(authError, status);
+  }
+
+  const { jobId } = await context.params;
+  const job = await getAutomationJob(jobId);
+  if (!job) {
+    return json({
+      status: "error",
+      code: "job_not_found",
+      message: "Automation generation job was not found.",
+    }, 404);
+  }
+  if (job.status !== "queued") {
+    return json({
+      status: "error",
+      code: "job_not_queued",
+      message: "Only jobs that are still queued can be cancelled.",
+    }, 409);
+  }
+
+  // lrem/splice is the cancellation boundary. If the runner already popped
+  // the job, provider work may be starting and cancellation must fail safely.
+  if (!(await removeQueuedAutomationJob(job.id))) {
+    return json({
+      status: "error",
+      code: "job_already_claimed",
+      message: "The job has already been claimed by a worker and can no longer be cancelled.",
+    }, 409);
+  }
+
+  await saveAutomationJob({
+    ...job,
+    status: "error",
+    completedAt: Date.now(),
+    error: {
+      code: "job_cancelled",
+      message: "The queued automation job was cancelled before generation started.",
+    },
+  });
+  after(() => drainAutomationQueuePool());
+  return json({ status: "cancelled", jobId: job.id }, 200);
 }

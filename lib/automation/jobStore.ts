@@ -16,7 +16,11 @@ const QUEUE_KEY = "automation:queue";
 const SLOT_TTL_SECONDS = 60 * 10;
 
 /** Average wall-clock per article job, used for queue ETA estimates. */
-const AVERAGE_JOB_SECONDS = 480;
+export function automationAverageJobSeconds(): number {
+  const raw = Number(process.env.GENERATION_AVG_JOB_SECONDS || "480");
+  if (!Number.isFinite(raw) || raw < 1) return 480;
+  return Math.min(Math.floor(raw), 60 * 60);
+}
 
 export type AutomationJobStoreBackend = "kv" | "memory";
 
@@ -27,11 +31,16 @@ export function requiresPersistentAutomationJobStore(): boolean {
 /**
  * How many jobs may generate at once. Each job runs inside its own function
  * invocation, so the ceiling is OpenAI/Undetectable throughput and budget,
- * not compute. Keep 1 unless AUTOMATION_CONCURRENCY says otherwise.
+ * not compute. GENERATION_CONCURRENCY is the public setting; the legacy
+ * AUTOMATION_CONCURRENCY name remains an alias for existing deployments.
  */
 export function automationConcurrency(): number {
-  const raw = Number(process.env.AUTOMATION_CONCURRENCY || "1");
-  if (!Number.isFinite(raw) || raw < 1) return 1;
+  const raw = Number(
+    process.env.GENERATION_CONCURRENCY ||
+    process.env.AUTOMATION_CONCURRENCY ||
+    "3"
+  );
+  if (!Number.isFinite(raw) || raw < 1) return 3;
   return Math.min(Math.floor(raw), 8);
 }
 
@@ -90,6 +99,26 @@ export async function enqueueAutomationJob(jobId: string): Promise<void> {
     }
   }
   memoryQueue.push(jobId);
+}
+
+/**
+ * Remove a job that is still physically waiting in the FIFO queue.
+ * Returning false means it was already claimed (and therefore must not be
+ * cancelled as "queued", because provider work may already be starting).
+ */
+export async function removeQueuedAutomationJob(jobId: string): Promise<boolean> {
+  if (isKvAvailable()) {
+    try {
+      return (await kv.lrem(QUEUE_KEY, 0, jobId)) > 0;
+    } catch (error) {
+      console.error("[automationJobStore] KV error removing queued job, falling back to in-memory:", error);
+    }
+  }
+
+  const index = memoryQueue.indexOf(jobId);
+  if (index < 0) return false;
+  memoryQueue.splice(index, 1);
+  return true;
 }
 
 export interface ClaimedAutomationJob {
@@ -292,10 +321,36 @@ export async function ensureJobQueued(jobId: string): Promise<void> {
 export async function getAutomationQueueInfo(jobId: string): Promise<AutomationQueueInfo> {
   const [queue, active] = await Promise.all([readQueue(), countActiveSlots()]);
   const index = queue.indexOf(jobId);
-  const jobsAhead = (index >= 0 ? index : 0) + active;
+  const concurrency = automationConcurrency();
+  const queueIndex = index >= 0 ? index : 0;
+  const availableSlots = Math.max(concurrency - active, 0);
+  const batchesAhead = queueIndex < availableSlots
+    ? 0
+    : Math.floor((queueIndex - availableSlots) / concurrency) + 1;
+  return {
+    position: active + queueIndex + 1,
+    etaSeconds: batchesAhead * automationAverageJobSeconds(),
+  };
+}
+
+
+export interface AutomationQueueStatus {
+  queueDepth: number;
+  activeWorkers: number;
+  concurrency: number;
+  availableWorkers: number;
+  averageJobSeconds: number;
+}
+
+/** Aggregate queue health for GET /api/automation/queue. */
+export async function getAutomationQueueStatus(): Promise<AutomationQueueStatus> {
+  const [queue, activeWorkers] = await Promise.all([readQueue(), countActiveSlots()]);
   const concurrency = automationConcurrency();
   return {
-    position: jobsAhead + 1,
-    etaSeconds: Math.ceil(jobsAhead / concurrency) * AVERAGE_JOB_SECONDS,
+    queueDepth: queue.length,
+    activeWorkers,
+    concurrency,
+    availableWorkers: Math.max(concurrency - activeWorkers, 0),
+    averageJobSeconds: automationAverageJobSeconds(),
   };
 }

@@ -1,4 +1,5 @@
 import {
+  automationConcurrency,
   claimNextQueuedJob,
   getAutomationJob,
   markJobStarted,
@@ -7,6 +8,34 @@ import {
 } from "@/lib/automation/jobStore";
 import { AutomationPipelineError, runAutomationGeneration, runCoverGeneration } from "@/lib/automation/pipeline";
 import type { AutomationJob } from "@/lib/automation/types";
+
+/**
+ * Start a fresh serverless invocation after a worker frees its slot. This
+ * avoids chaining two long generations inside one maxDuration budget.
+ * Polling remains the fallback drain trigger if the self-kick is unavailable.
+ */
+async function triggerNextQueueDrain(): Promise<void> {
+  if (process.env.VERCEL !== "1") return;
+  const host = process.env.VERCEL_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const apiKey = process.env.AUTOMATION_API_KEY;
+  if (!host || !apiKey) return;
+
+  try {
+    const response = await fetch(`https://${host}/api/automation/queue`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) {
+      console.warn(`[automationRunner] Queue self-kick returned status=${response.status}.`);
+    }
+  } catch (error) {
+    console.warn(
+      "[automationRunner] Queue self-kick failed; polling will retry the drain:",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
 
 /**
  * Run one job. The caller must already hold execution slot `slot` for it
@@ -52,6 +81,7 @@ async function executeAutomationJob(jobId: string, slot: number, job: Automation
     });
   } finally {
     await releaseAutomationSlot(slot, jobId);
+    await triggerNextQueueDrain();
   }
 }
 
@@ -87,5 +117,23 @@ export async function drainAutomationQueue(): Promise<void> {
 
     await executeAutomationJob(jobId, slot, job);
     return;
+  }
+}
+
+/**
+ * Fill all configured worker slots from one serverless drain trigger.
+ * Slot acquisition remains atomic in the store, so overlapping POST/poll
+ * invocations cannot exceed GENERATION_CONCURRENCY or run a job twice.
+ */
+export async function drainAutomationQueuePool(): Promise<void> {
+  const workers = Array.from(
+    { length: automationConcurrency() },
+    () => drainAutomationQueue()
+  );
+  const results = await Promise.allSettled(workers);
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error("[automationRunner] Queue worker failed:", result.reason);
+    }
   }
 }

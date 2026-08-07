@@ -6,7 +6,7 @@ import {
   requiresPersistentAutomationJobStore,
   saveAutomationJob,
 } from "@/lib/automation/jobStore";
-import { drainAutomationQueue } from "@/lib/automation/runner";
+import { drainAutomationQueuePool } from "@/lib/automation/runner";
 import { AutomationValidationError, validateCoverRequest } from "@/lib/automation/validate";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
   try {
     await enqueueAutomationJob(jobId);
-    after(() => drainAutomationQueue());
+    after(() => drainAutomationQueuePool());
   } catch (error) {
     console.error("[automationCover] Failed to schedule job:", error);
     return errorResponse("job_schedule_failed", "Automation job could not be scheduled.", 500);

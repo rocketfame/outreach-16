@@ -108,6 +108,43 @@ curl -X POST https://typereach.app/api/automation/generate \
 The immediate success response is `202 { "status": "queued", "jobId": ... }`.
 Poll `GET /api/automation/generate/:jobId` until `done` or `error`.
 
+## Queue and batch operations
+
+The shared article/cover worker pool runs up to `GENERATION_CONCURRENCY` jobs
+at once (default `3`, maximum `8`). `AUTOMATION_CONCURRENCY` remains a legacy
+alias. `GENERATION_AVG_JOB_SECONDS` controls ETA estimates and defaults to 480.
+Queue positions include active jobs; `etaSeconds` is zero for jobs that fit in
+currently available worker slots.
+
+`POST /api/automation/generate/batch` accepts a JSON array of 1-20 normal
+article payloads. It validates the full array before queueing and returns:
+
+```json
+{
+  "status": "queued",
+  "jobs": [
+    { "jobId": "gen_...", "position": 1, "etaSeconds": 0 },
+    { "jobId": "gen_...", "position": 2, "etaSeconds": 0 }
+  ]
+}
+```
+
+`DELETE /api/automation/generate/:jobId` cancels only a job that is still
+physically queued. It returns `409 job_already_claimed` if a worker already
+claimed the job, because provider work may have started.
+
+`GET /api/automation/queue` returns `queueDepth`, `activeWorkers`, configured
+`concurrency`, `availableWorkers`, and `averageJobSeconds`.
+When a worker finishes, it sends an authenticated self-kick to this route so a
+fresh serverless invocation fills the newly available slot. Polling is the
+fallback drain trigger if that request cannot be delivered.
+
+All queue endpoints require the same `Authorization: Bearer
+<AUTOMATION_API_KEY>` header. Tavily 429 and 5xx responses are retried with
+bounded exponential backoff. The text-provider SDK has two bounded retries for
+connection failures, 408/409/429, and 5xx responses. Authentication, policy,
+and credit errors are not retried.
+
 ### Custom-language example
 
 ```json

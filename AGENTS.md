@@ -103,6 +103,8 @@ Required on Vercel (and `.env.local` for dev):
 - `MAINTENANCE_ENABLED` — set to `false` to disable maintenance gate (defaults to enabled)
 - `NEXT_PUBLIC_MAINTENANCE_ENABLED` — client mirror of the above
 - `AUTOMATION_API_KEY` — Bearer token for async blog autopilot API (`/api/automation/generate`)
+- `GENERATION_CONCURRENCY` — shared article/cover worker slots (default 3, max 8; legacy alias `AUTOMATION_CONCURRENCY`)
+- `GENERATION_AVG_JOB_SECONDS` — ETA estimate per generation wave (default 480)
 
 ## Conventions and gotchas
 

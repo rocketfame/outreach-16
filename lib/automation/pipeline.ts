@@ -245,7 +245,13 @@ export async function runAutomationGeneration(
       `The article MUST contain at least ${minWords} words of substantive content. Do not pad with filler — add concrete examples, steps, and specifics instead.`,
       request.anchor ? `Place the commercial anchor [A1] inside a complete sentence within the first 2-3 paragraphs.` : "",
       failures.some((failure) => failure.code === "truncated_output")
-        ? "Return only complete paragraphs and complete sentences. Every paragraph must end with terminal punctuation; balance all quotation marks; never leave a colon, verb, number, or clause without its continuation."
+        ? [
+            "Return only complete paragraphs and complete sentences. Every paragraph must end with terminal punctuation; balance all quotation marks; never leave a colon, verb, number, or clause without its continuation.",
+            `The previous draft failed these exact integrity checks: ${failures
+              .filter((failure) => failure.code === "truncated_output")
+              .map((failure) => failure.message)
+              .join(" ")}`,
+          ].join("\n")
         : "",
       failures.some((failure) => failure.code === "orthography_invalid")
         ? buildLanguageOrthographyInstruction(request.language)

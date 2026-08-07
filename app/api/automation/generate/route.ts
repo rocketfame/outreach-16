@@ -6,7 +6,7 @@ import {
   requiresPersistentAutomationJobStore,
   saveAutomationJob,
 } from "@/lib/automation/jobStore";
-import { drainAutomationQueue } from "@/lib/automation/runner";
+import { drainAutomationQueuePool } from "@/lib/automation/runner";
 import { AutomationValidationError, validateAutomationRequest } from "@/lib/automation/validate";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 import { validateTextProvider } from "@/lib/textProvider";
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
   // submit and every poll (see drainAutomationQueue), never rejects post-hoc.
   try {
     await enqueueAutomationJob(jobId);
-    after(() => drainAutomationQueue());
+    after(() => drainAutomationQueuePool());
   } catch (error) {
     console.error("[automationGenerate] Failed to schedule job:", error);
     return errorResponse("job_schedule_failed", "Automation job could not be scheduled.", 500);

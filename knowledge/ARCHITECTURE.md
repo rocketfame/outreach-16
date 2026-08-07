@@ -16,7 +16,7 @@
 3. Trial usage tracking (per-mode + total cap)
 4. Humanization (optional, via Undetectable.AI)
 5. Єдиний дозволений OpenAI-виклик — hero image generation via gpt-image-2
-6. Async blog autopilot API wraps one direct article generation job at a time; publishing is external
+6. Async blog autopilot uses a KV-backed FIFO queue and a configurable worker pool (`GENERATION_CONCURRENCY`, default 3, max 8); publishing is external
 
 ## Design System
 - Plus Jakarta Sans (weight 500)

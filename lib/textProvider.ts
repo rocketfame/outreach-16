@@ -60,6 +60,9 @@ export function getTextGenerationClient(): OpenAI {
   return new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseURL,
+    // The SDK retries connection failures, 408/409/429 and 5xx responses.
+    // Keep this bounded because concurrency already multiplies throughput.
+    maxRetries: 2,
   });
 }
 

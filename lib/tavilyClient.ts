@@ -33,6 +33,42 @@ export interface ReliableSearchOptions {
   maxResults?: number;
 }
 
+const TAVILY_MAX_ATTEMPTS = 3;
+
+function retryDelayMs(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 10_000);
+  }
+  return Math.min(500 * (2 ** (attempt - 1)), 4_000);
+}
+
+async function fetchTavilyWithRetry(requestBody: object, label: string): Promise<Response> {
+  for (let attempt = 1; attempt <= TAVILY_MAX_ATTEMPTS; attempt++) {
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+    if (response.ok) return response;
+
+    const errorText = await response.text();
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === TAVILY_MAX_ATTEMPTS) {
+      throw new Error(
+        `[${label}] error=${response.status} ${response.statusText}: ${errorText}`
+      );
+    }
+    const delayMs = retryDelayMs(response, attempt);
+    console.warn(
+      `[${label}] retryable status=${response.status}; retry=${attempt}/${TAVILY_MAX_ATTEMPTS - 1} delayMs=${delayMs}`
+    );
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  throw new Error(`[${label}] request failed after retries.`);
+}
+
 /**
  * Search reliable sources using Tavily API
  * This is the ONLY external search function - no fallbacks, no DuckDuckGo
@@ -67,20 +103,7 @@ export async function searchReliableSources(
         : {}),
     };
 
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      const errorMsg = `[tavily-api] error=${response.status} ${response.statusText}: ${errorText}`;
-      console.error(errorMsg);
-      throw new Error(errorMsg);
-    }
+    const response = await fetchTavilyWithRetry(requestBody, "tavily-api");
 
     const data = await response.json();
 
@@ -293,20 +316,7 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
       max_results: 10, // Reduced from 15 to 10 to save credits - we'll get enough images
     };
 
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      const errorMsg = `[tavily-images] error=${response.status} ${response.statusText}: ${errorText}`;
-      console.error(errorMsg);
-      throw new Error(errorMsg);
-    }
+    const response = await fetchTavilyWithRetry(requestBody, "tavily-images");
 
     const data = await response.json();
     
