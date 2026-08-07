@@ -121,7 +121,7 @@ compression. Set `coverFormat: "png"` for legacy consumers. The returned
 ### Ukrainian example
 
 ```bash
-curl -X POST https://typereach.app/api/automation/generate \
+curl -X POST https://www.typereach.app/api/automation/generate \
   -H "Authorization: Bearer $AUTOMATION_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{

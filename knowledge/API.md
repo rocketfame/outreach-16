@@ -1,5 +1,9 @@
 # API — TypeReach
 
+Automation clients must call `https://www.typereach.app` directly. The apex
+domain redirects to `www`; standards-compliant clients strip `Authorization`
+on a cross-host redirect, which otherwise produces a misleading 401.
+
 ## Internal API Routes
 - `POST /api/generate-topics` — генерація topic clusters (rate limit: search 30/min)
 - `POST /api/articles` — генерація статей (rate limit: generate 10/h, maxDuration: 300s)
