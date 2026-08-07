@@ -10,6 +10,20 @@ export interface TextProviderConfig {
   kind: "openai" | "external";
 }
 
+export type TextTokenLimit =
+  | { max_completion_tokens: number; max_tokens?: never }
+  | { max_tokens: number; max_completion_tokens?: never };
+
+/** OpenAI GPT-5 uses max_completion_tokens; compatible external APIs commonly use max_tokens. */
+export function textTokenLimit(
+  provider: Pick<TextProviderConfig, "kind">,
+  tokens: number
+): TextTokenLimit {
+  return provider.kind === "openai"
+    ? { max_completion_tokens: tokens }
+    : { max_tokens: tokens };
+}
+
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {

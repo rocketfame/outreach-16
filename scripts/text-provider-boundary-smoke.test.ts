@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getTextProviderConfig } from "../lib/textProvider";
+import { getTextProviderConfig, textTokenLimit } from "../lib/textProvider";
 
 const previous = {
   baseURL: process.env.TEXT_API_BASE_URL,
@@ -18,6 +18,7 @@ try {
   assert.equal(openai.kind, "openai");
   assert.equal(openai.model, "gpt-5.5");
   assert.equal(openai.baseURL, "https://api.openai.com/v1");
+  assert.deepEqual(textTokenLimit(openai, 6000), { max_completion_tokens: 6000 });
 
   process.env.TEXT_API_BASE_URL = "http://127.0.0.1:11434/v1/";
   process.env.TEXT_MODEL = "qwen3:30b";
@@ -27,6 +28,7 @@ try {
   assert.equal(config.model, "qwen3:30b");
   assert.equal(config.name, "ollama");
   assert.equal(config.kind, "external");
+  assert.deepEqual(textTokenLimit(config, 6000), { max_tokens: 6000 });
 
   delete process.env.TEXT_MODEL;
   assert.throws(() => getTextProviderConfig(), /configured together/);

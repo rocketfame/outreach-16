@@ -550,7 +550,7 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
     try {
       extra = await searchReliableSources(
         buildIndependentResearchQuery(topic, category),
-        { includeDomains: INDEPENDENT_SOURCE_DOMAINS, maxResults: 10 }
+        { includeDomains: INDEPENDENT_SOURCE_DOMAINS, maxResults: 20 }
       );
       candidatesFound += extra.length;
     } catch (error) {
@@ -585,7 +585,61 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
   composed.forEach((source, index) => {
     if (!resolutions[index]) rejected.push({ url: source.url, reason: "unavailable" });
   });
-  const alive = composed.filter((_, i) => resolutions[i]);
+  let alive = composed.filter((_, i) => resolutions[i]);
+
+  // Tavily results vary between identical calls, and a candidate can also
+  // disappear between search and URL validation. If the first composition
+  // loses every independent source at the live-URL stage, run one broader
+  // allowlisted recovery search instead of misreporting a transient sample as
+  // "no independent sources". The gate itself remains unchanged: at least one
+  // independent URL still has to resolve successfully.
+  let recoverySearchExecuted = false;
+  if (!alive.some((source) => isIndependentSource(source.url))) {
+    recoverySearchExecuted = true;
+    searchesExecuted += 1;
+    let recovery: ScoredSource[];
+    try {
+      recovery = await searchReliableSources(
+        `${category} creator economy audience behavior engagement benchmark study independent report 2024 2025 2026`,
+        { includeDomains: INDEPENDENT_SOURCE_DOMAINS, maxResults: 20 }
+      );
+      candidatesFound += recovery.length;
+    } catch (error) {
+      console.error("[automationSources] Independent-source recovery lookup failed:", {
+        topic,
+        category,
+        searchesExecuted,
+        candidatesFound,
+        candidatesRejected: rejected.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new AutomationPipelineError(
+        "source_lookup_failed",
+        `Independent-source recovery search could not be completed for "${topic}" (${category}). Retry later; the source gate was not evaluated.`
+      );
+    }
+
+    const recoveryCandidates = dedupeSources(recovery)
+      .filter(approve)
+      .filter((source) => {
+        if (isIndependentSource(source.url)) return true;
+        rejected.push({ url: source.url, reason: "not_independent" });
+        return false;
+      })
+      .slice(0, 8);
+    const recoveryResolutions = await Promise.all(
+      recoveryCandidates.map((source) => urlResolves(source.url))
+    );
+    recoveryCandidates.forEach((source, index) => {
+      if (!recoveryResolutions[index]) {
+        rejected.push({ url: source.url, reason: "unavailable_after_recovery" });
+      }
+    });
+    alive = dedupeSources([
+      ...recoveryCandidates.filter((_, index) => recoveryResolutions[index]),
+      ...alive,
+    ]).slice(0, 6);
+  }
 
   console.info("[automationSources] Source gate diagnostics:", {
     topic,
@@ -596,6 +650,7 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
     candidatesApproved: candidates.length,
     candidatesAlive: alive.length,
     independentAlive: alive.filter((source) => isIndependentSource(source.url)).length,
+    recoverySearchExecuted,
     rejected,
   });
 

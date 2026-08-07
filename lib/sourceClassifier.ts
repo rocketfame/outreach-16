@@ -4,7 +4,7 @@
  * Classifies external sources to filter out competitors and prioritize quality sources
  */
 
-import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import {
   filterSourcesByPolicy,
@@ -102,7 +102,7 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
           content: prompt,
         },
       ],
-      max_tokens: 200,
+      ...textTokenLimit(textProvider, 200),
     };
     let completion;
     try {

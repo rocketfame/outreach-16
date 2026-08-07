@@ -1,5 +1,5 @@
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import { buildLegacyGeneratePrompts } from "@/lib/legacyGeneratePrompt";
 
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
         { role: "system", content: prompts.systemPrompt },
         { role: "user", content: prompts.userPrompt },
       ],
-      max_tokens: 1200,
+      ...textTokenLimit(textProvider, 1200),
     });
 
     const text = completion.choices[0]?.message?.content ?? "";

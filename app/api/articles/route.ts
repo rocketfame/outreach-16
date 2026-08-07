@@ -33,7 +33,7 @@ import { cleanText, fixHtmlTagSpacing, removeExcessiveBold, stripPromptLeaks } f
 import { repairHumanizedText } from "@/lib/humanizeRepair";
 import { validateArticleOutput } from "@/lib/outputValidator";
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
 import {
@@ -549,9 +549,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
         const contentBudget = Math.ceil(targetWords * tokensPerWord);
         const dynamicMaxTokens = Math.max(5000, Math.ceil(contentBudget * 3));
         console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
-        const apiParams = {
-          max_tokens: dynamicMaxTokens
-        };
+        const apiParams = textTokenLimit(textProvider, dynamicMaxTokens);
 
         type ParsedArticleModelResponse = {
           titleTag?: string;

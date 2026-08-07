@@ -55,7 +55,10 @@ Source-search provider failures return `source_lookup_failed`. This is distinct
 from `no_independent_sources`, which means search completed but no live
 independent source survived policy and availability checks. Server diagnostics
 include outbound-search execution, candidate counts, and a rejection reason for
-each discarded URL.
+each discarded URL. If an initially approved independent candidate fails the
+live-URL check, the pipeline runs one broader allowlisted recovery search (up
+to 20 candidates) before returning `no_independent_sources`; the requirement
+for at least one live independent source is not relaxed.
 
 API-supplied `brand` values are immutable visible-text tokens. For example,
 `PromoSoundGroup` is restored byte-for-byte if a model inserts spaces or changes
