@@ -19,6 +19,7 @@ import {
 import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { INTERNAL_CALL_HEADER, INTERNAL_CALL_TOKEN } from "@/lib/automation/internal";
 import { countAutomationWords, slugifyAutomationTitle } from "@/lib/automation/text";
+import { claimAutomationRetry } from "@/lib/automation/budget";
 import {
   findContentIntegrityIssues,
   findLanguageOrthographyIssue,
@@ -60,6 +61,7 @@ type InternalArticleResponse = {
     };
   }>;
   error?: string;
+  code?: string;
 };
 
 type InternalImageResponse = {
@@ -68,6 +70,7 @@ type InternalImageResponse = {
   selectedBoxId?: string;
   extension?: "png" | "webp";
   error?: string;
+  code?: string;
 };
 
 async function generateArticleOnce(
@@ -124,7 +127,10 @@ async function generateArticleOnce(
 
   const articleJson = (await articleResponse.json()) as InternalArticleResponse;
   if (!articleResponse.ok || !articleJson.articles?.[0]) {
-    throw new Error(articleJson.error || "Article generation failed.");
+    throw new AutomationPipelineError(
+      articleJson.code || "generation_failed",
+      articleJson.error || "Article generation failed."
+    );
   }
 
   const generated = articleJson.articles[0];
@@ -257,6 +263,10 @@ export async function runAutomationGeneration(
         ? buildLanguageOrthographyInstruction(request.language)
         : "",
     ].filter(Boolean).join("\n");
+    // A full quality retry is another article-model call. Reserve a realistic
+    // floor before starting it; the metered provider wrapper performs the
+    // final ceiling check with the exact prompt and token limit.
+    claimAutomationRetry("article_quality_retry", 0.2);
     article = await generateArticleOnce(request, topic, trustSourcesList, boostedTarget, corrective);
     failures = collectDraftFailures(request, article.contentHtml, minWords);
   }
@@ -315,7 +325,10 @@ export async function runAutomationGeneration(
     }));
     const imageJson = (await imageResponse.json()) as InternalImageResponse;
     if (!imageResponse.ok || !imageJson.success || !imageJson.imageBase64) {
-      throw new Error(imageJson.error || "Cover image generation failed.");
+      throw new AutomationPipelineError(
+        imageJson.code || "generation_failed",
+        imageJson.error || "Cover image generation failed."
+      );
     }
     imageStyleUsed = imageJson.selectedBoxId;
     cover = {
@@ -401,7 +414,10 @@ export async function runCoverGeneration(
 
   const imageJson = (await imageResponse.json()) as InternalImageResponse;
   if (!imageResponse.ok || !imageJson.success || !imageJson.imageBase64) {
-    throw new Error(imageJson.error || "Cover image generation failed.");
+    throw new AutomationPipelineError(
+      imageJson.code || "generation_failed",
+      imageJson.error || "Cover image generation failed."
+    );
   }
 
   const costAfter = getCostTracker().getTotalCosts().total;

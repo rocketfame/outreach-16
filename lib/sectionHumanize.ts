@@ -2,6 +2,8 @@
 // Section-level humanization using Undetectable.AI Humanization API v2
 
 import { getHumanizerService, type HumanizerService } from "@/lib/humanizerClient";
+import { rethrowAutomationBudgetError } from "@/lib/automation/budget";
+import { UpstreamNoCreditsError } from "@/lib/textProvider";
 
 /**
  * Chunks text for humanization if it exceeds 10000 characters
@@ -263,6 +265,8 @@ export async function humanizeSectionText(
       undetectableWordsUsed: result.provider === "undetectable" ? result.wordsUsed : 0,
     };
   } catch (error) {
+    rethrowAutomationBudgetError(error);
+    if (error instanceof UpstreamNoCreditsError) throw error;
     console.error(
       "[humanizeSectionText] Humanization failed, falling back to original text:",
       error

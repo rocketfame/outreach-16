@@ -9,6 +9,12 @@ import {
 import { drainAutomationQueuePool } from "@/lib/automation/runner";
 import { AutomationValidationError, validateCoverRequest } from "@/lib/automation/validate";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
+import { estimateCoverRequestCost } from "@/lib/automation/costEstimate";
+import {
+  automationApiKeyId,
+  releaseAutomationUsageReservation,
+  reserveAutomationUsage,
+} from "@/lib/automation/usageStore";
 
 // Cover jobs share the article queue and its execution model: a queued job
 // runs inside a drain trigger's after() budget. One image is fast (~1 min),
@@ -57,12 +63,22 @@ export async function POST(req: Request) {
   }
 
   const jobId = `cov_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+  const estimatedCostUsd = estimateCoverRequestCost(coverRequest);
+  const usageReservation = await reserveAutomationUsage(
+    automationApiKeyId(req),
+    jobId,
+    estimatedCostUsd
+  );
+  if (!usageReservation.ok) {
+    return errorResponse(usageReservation.code, usageReservation.message, 429);
+  }
   const now = Date.now();
   const job: AutomationJob = {
     id: jobId,
     status: "queued",
     kind: "cover",
     coverRequest,
+    estimatedCostUsd,
     createdAt: now,
     updatedAt: now,
   };
@@ -71,11 +87,13 @@ export async function POST(req: Request) {
   try {
     jobStoreBackend = await saveAutomationJob(job);
   } catch (error) {
+    await releaseAutomationUsageReservation(jobId);
     console.error("[automationCover] Failed to create job:", error);
     return errorResponse("job_store_unavailable", "Automation job store is unavailable.", 500);
   }
 
   if (jobStoreBackend === "memory" && requiresPersistentAutomationJobStore()) {
+    await releaseAutomationUsageReservation(jobId);
     return errorResponse(
       "job_store_not_persistent",
       "Automation job store is using in-memory fallback. Configure KV_REST_API_URL and KV_REST_API_TOKEN for this Vercel environment.",
@@ -87,10 +105,11 @@ export async function POST(req: Request) {
     await enqueueAutomationJob(jobId);
     after(() => drainAutomationQueuePool());
   } catch (error) {
+    await releaseAutomationUsageReservation(jobId);
     console.error("[automationCover] Failed to schedule job:", error);
     return errorResponse("job_schedule_failed", "Automation job could not be scheduled.", 500);
   }
 
   const { position, etaSeconds } = await getAutomationQueueInfo(jobId);
-  return json({ status: "queued", jobId, position, etaSeconds }, 202);
+  return json({ status: "queued", jobId, position, etaSeconds, estimatedCostUsd }, 202);
 }

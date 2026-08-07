@@ -3,8 +3,7 @@
 import { buildTopicPrompt } from "@/lib/topicPrompt";
 import { shouldUseBrowsing, browseForTopics } from "@/lib/topicBrowsing";
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig, isResponseFormatUnsupported, textReasoningEffort } from "@/lib/textProvider";
-import { getCostTracker } from "@/lib/costTracker";
+import { createTextCompletion, getTextGenerationClient, getTextProviderConfig, isResponseFormatUnsupported, textReasoningEffort } from "@/lib/textProvider";
 import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount, isMasterToken } from "@/lib/trialLimits";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
@@ -133,7 +132,7 @@ export async function POST(req: Request) {
     // Generate topics using GPT-5.5
     let completion;
     try {
-      completion = await textClient.chat.completions.create({
+      completion = await createTextCompletion(textClient, textProvider, {
         model: textProvider.model,
         messages: [
           {
@@ -147,7 +146,7 @@ export async function POST(req: Request) {
         ],
         ...apiParams,
         response_format: { type: "json_object" },
-      });
+      }, { step: "topic_generation" });
     } catch (formatError) {
       if (!isResponseFormatUnsupported(formatError)) throw formatError;
       // If response_format is not supported, try without it
@@ -156,7 +155,7 @@ export async function POST(req: Request) {
       const formatErrorLog = {location:'generate-topics/route.ts:55',message:'response_format not supported, trying without it',data:{error:(formatError as Error).message,errorCode:formatErrCode},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'format-fallback'};
       debugLog(formatErrorLog);
       // #endregion
-      completion = await textClient.chat.completions.create({
+      completion = await createTextCompletion(textClient, textProvider, {
         model: textProvider.model,
         messages: [
           {
@@ -169,7 +168,7 @@ export async function POST(req: Request) {
           },
         ],
         ...apiParams,
-      });
+      }, { step: "topic_generation" });
     }
 
     const content = completion.choices[0]?.message?.content ?? "";
@@ -177,9 +176,6 @@ export async function POST(req: Request) {
     const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
-    if (textProvider.kind === "openai" && (inputTokens > 0 || outputTokens > 0)) {
-      getCostTracker().trackOpenAIChat(textProvider.model, inputTokens, outputTokens);
-    }
 
     // #region agent log
     const successLog = {location:'generate-topics/route.ts:58',message:'Text provider success',data:{contentLength:content.length,hasContent:!!content,usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};

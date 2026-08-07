@@ -2,8 +2,7 @@
 // Post-humanization HTML formatter using the configured text provider
 // This is a "dumb formatter" that rebuilds HTML structure from humanized text
 
-import { getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
-import { getCostTracker } from "@/lib/costTracker";
+import { createTextCompletion, getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
 
 const SYSTEM_PROMPT = `Role: You are a post-processor for articles. You receive:
 	•	originalHtml – HTML before humanization;
@@ -103,7 +102,7 @@ export async function formatHumanizedHtml(
   }, null, 2);
 
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await createTextCompletion(client, textProvider, {
       model: textProvider.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -111,17 +110,9 @@ export async function formatHumanizedHtml(
       ],
       ...textTokenLimit(textProvider, 8000), // Enough for long articles
       ...textReasoningEffort(textProvider, "minimal"),
-    });
+    }, { step: "humanize_formatter" });
 
     const formattedHtml = completion.choices[0]?.message?.content?.trim() || "";
-    if (textProvider.kind === "openai") {
-      const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
-      getCostTracker().trackOpenAIChat(
-        textProvider.model,
-        usage?.prompt_tokens || 0,
-        usage?.completion_tokens || 0
-      );
-    }
 
     if (!formattedHtml) {
       throw new Error("Empty response from formatter");

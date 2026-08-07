@@ -14,6 +14,13 @@ import type {
   AutomationJob,
 } from "@/lib/automation/types";
 import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
+import { estimateAutomationRequestCost } from "@/lib/automation/costEstimate";
+import { maxJobCostUsd } from "@/lib/automation/budget";
+import {
+  automationApiKeyId,
+  releaseAutomationUsageReservation,
+  reserveAutomationUsage,
+} from "@/lib/automation/usageStore";
 
 export const maxDuration = 300;
 
@@ -116,14 +123,46 @@ export async function POST(req: Request) {
     id: `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
     status: "queued",
     request,
+    estimatedCostUsd: estimateAutomationRequestCost(request),
     createdAt: now,
     updatedAt: now,
   }));
+
+  const overCapIndex = jobs.findIndex((job) => (job.estimatedCostUsd || 0) > maxJobCostUsd());
+  if (overCapIndex >= 0) {
+    return json({
+      status: "error",
+      code: "estimated_cost_exceeds_cap",
+      index: overCapIndex,
+      message: `Estimated job cost $${jobs[overCapIndex].estimatedCostUsd!.toFixed(2)} exceeds the $${maxJobCostUsd().toFixed(2)} job cap. No batch jobs were queued.`,
+    }, 400);
+  }
+
+  const keyId = automationApiKeyId(req);
+  const reservedJobIds: string[] = [];
+  for (let index = 0; index < jobs.length; index++) {
+    const reservation = await reserveAutomationUsage(
+      keyId,
+      jobs[index].id,
+      maxJobCostUsd()
+    );
+    if (!reservation.ok) {
+      await Promise.all(reservedJobIds.map(releaseAutomationUsageReservation));
+      return json({
+        status: "error",
+        code: reservation.code,
+        index,
+        message: reservation.message.replace("No job was queued.", "No batch jobs were queued."),
+      }, 429);
+    }
+    reservedJobIds.push(jobs[index].id);
+  }
 
   try {
     for (const job of jobs) {
       const backend = await saveAutomationJob(job);
       if (backend === "memory" && requiresPersistentAutomationJobStore()) {
+        await Promise.all(reservedJobIds.map(releaseAutomationUsageReservation));
         return json({
           status: "error",
           code: "job_store_not_persistent",
@@ -133,6 +172,7 @@ export async function POST(req: Request) {
     }
     for (const job of jobs) await enqueueAutomationJob(job.id);
   } catch (error) {
+    await Promise.all(reservedJobIds.map(releaseAutomationUsageReservation));
     console.error("[automationBatch] Failed to create batch:", error);
     return json({
       status: "error",
@@ -143,6 +183,7 @@ export async function POST(req: Request) {
 
   const placements = await Promise.all(jobs.map(async (job) => ({
     jobId: job.id,
+    estimatedCostUsd: job.estimatedCostUsd,
     ...(await getAutomationQueueInfo(job.id)),
   })));
   after(() => drainAutomationQueuePool());

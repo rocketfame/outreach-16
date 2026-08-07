@@ -1,4 +1,14 @@
 import OpenAI from "openai";
+import {
+  estimateOpenAIChatCost,
+  estimateTextTokens,
+  getCostTracker,
+} from "@/lib/costTracker";
+import {
+  cancelAutomationCostReservation,
+  claimAutomationRetry,
+  reserveAutomationCost,
+} from "@/lib/automation/budget";
 
 export interface TextProviderConfig {
   baseURL: string;
@@ -39,6 +49,67 @@ export function isResponseFormatUnsupported(error: unknown): boolean {
   const status = (error as { status?: unknown })?.status;
   const message = error instanceof Error ? error.message.toLowerCase() : "";
   return status === 400 && message.includes("response_format");
+}
+
+export class UpstreamNoCreditsError extends Error {
+  readonly code = "upstream_no_credits";
+
+  constructor(message = "The text provider has no credits remaining.") {
+    super(message);
+    this.name = "UpstreamNoCreditsError";
+  }
+}
+
+export function isUpstreamNoCreditsError(error: unknown): boolean {
+  if (error instanceof UpstreamNoCreditsError) return true;
+  const status = (error as { status?: unknown })?.status;
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return status === 429 && /insufficient[_\s-]*(quota|credits)|no credits|credits remaining|billing quota/.test(message);
+}
+
+type TextCompletionParams = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
+
+/** One metered text call with job-cap reservation and normalized credit errors. */
+export async function createTextCompletion(
+  client: OpenAI,
+  provider: TextProviderConfig,
+  params: TextCompletionParams,
+  options: { step: string; isRetry?: boolean }
+): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+  const maxOutputTokens = params.max_completion_tokens ?? params.max_tokens ?? 0;
+  const model = String(params.model || provider.model);
+  const inputTokensEstimate = estimateTextTokens(params.messages);
+  const estimatedCost = estimateOpenAIChatCost(
+    model,
+    inputTokensEstimate,
+    maxOutputTokens
+  );
+  if (options.isRetry) claimAutomationRetry(options.step, estimatedCost);
+  const reservationId = reserveAutomationCost(options.step, estimatedCost);
+
+  try {
+    const completion = await client.chat.completions.create(params);
+    const usage = completion.usage as {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+    } | undefined;
+    getCostTracker().trackOpenAIChat(
+      model,
+      usage?.prompt_tokens || 0,
+      usage?.completion_tokens || 0,
+      reservationId,
+      options.step
+    );
+    return completion;
+  } catch (error) {
+    cancelAutomationCostReservation(reservationId);
+    if (isUpstreamNoCreditsError(error)) {
+      throw new UpstreamNoCreditsError(
+        error instanceof Error ? error.message : "The text provider has no credits remaining."
+      );
+    }
+    throw error;
+  }
 }
 
 function requiredEnv(name: string): string {
@@ -107,9 +178,9 @@ export function getTextGenerationClient(): OpenAI {
   return new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseURL,
-    // The SDK retries connection failures, 408/409/429 and 5xx responses.
-    // Keep this bounded because concurrency already multiplies throughput.
-    maxRetries: 2,
+    // Application retries are budget-aware. Disable hidden SDK retries so a
+    // provider call cannot run again outside MAX_RETRIES_PER_JOB accounting.
+    maxRetries: 0,
   });
 }
 

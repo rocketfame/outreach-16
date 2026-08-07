@@ -1,6 +1,5 @@
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
-import { getCostTracker } from "@/lib/costTracker";
+import { createTextCompletion, getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
 import { buildLegacyGeneratePrompts } from "@/lib/legacyGeneratePrompt";
 
 // Simple debug logger that works in both local and production (Vercel)
@@ -102,7 +101,7 @@ export async function POST(req: Request) {
     const apiCallLog = {location:'route.ts:63',message:'Calling text provider',data:{model:textProvider.model,provider:textProvider.name,type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(apiCallLog);
     // #endregion
-    const completion = await client.chat.completions.create({
+    const completion = await createTextCompletion(client, textProvider, {
       model: textProvider.model,
       messages: [
         { role: "system", content: prompts.systemPrompt },
@@ -110,16 +109,13 @@ export async function POST(req: Request) {
       ],
       ...textTokenLimit(textProvider, 1200),
       ...textReasoningEffort(textProvider, "low"),
-    });
+    }, { step: "legacy_generation" });
 
     const text = completion.choices[0]?.message?.content ?? "";
     
     const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
-    if (textProvider.kind === "openai" && (inputTokens > 0 || outputTokens > 0)) {
-      getCostTracker().trackOpenAIChat(textProvider.model, inputTokens, outputTokens);
-    }
     
     // #region agent log
     const successLog = {location:'route.ts:72',message:'Text provider success',data:{textLength:text.length,hasText:!!text,usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};

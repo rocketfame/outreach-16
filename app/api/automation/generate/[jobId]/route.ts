@@ -10,6 +10,10 @@ import {
 } from "@/lib/automation/jobStore";
 import { drainAutomationQueuePool } from "@/lib/automation/runner";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
+import {
+  finalizeAutomationUsage,
+  releaseAutomationUsageReservation,
+} from "@/lib/automation/usageStore";
 
 // This route can host job execution: polling a queued job drains the queue
 // via after(), and the drained job runs inside THIS invocation's budget.
@@ -71,11 +75,14 @@ export async function GET(
   }
 
   if (job.status === "error") {
+    const costUsd = job.costUsd || 0;
     return json({
       status: "error",
       jobId: job.id,
       code: job.error?.code || "generation_failed",
       message: job.error?.message || "Automation generation failed.",
+      costUsd,
+      meta: { costUsd },
     }, 200);
   }
 
@@ -92,6 +99,7 @@ export async function GET(
         },
       };
       await saveAutomationJob(failed);
+      await finalizeAutomationUsage(job.id, job.costUsd || 0);
       await releaseSlotsHeldBy(job.id);
       after(() => drainAutomationQueuePool());
       return json({
@@ -99,6 +107,8 @@ export async function GET(
         jobId: job.id,
         code: failed.error!.code,
         message: failed.error!.message,
+        costUsd: failed.costUsd || 0,
+        meta: { costUsd: failed.costUsd || 0 },
       }, 200);
     }
   }
@@ -176,6 +186,7 @@ export async function DELETE(
       message: "The queued automation job was cancelled before generation started.",
     },
   });
+  await releaseAutomationUsageReservation(job.id);
   after(() => drainAutomationQueuePool());
   return json({ status: "cancelled", jobId: job.id }, 200);
 }

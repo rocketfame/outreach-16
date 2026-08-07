@@ -10,6 +10,13 @@ import { drainAutomationQueuePool } from "@/lib/automation/runner";
 import { AutomationValidationError, validateAutomationRequest } from "@/lib/automation/validate";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
+import { estimateAutomationRequestCost } from "@/lib/automation/costEstimate";
+import { maxJobCostUsd } from "@/lib/automation/budget";
+import {
+  automationApiKeyId,
+  releaseAutomationUsageReservation,
+  reserveAutomationUsage,
+} from "@/lib/automation/usageStore";
 
 export const maxDuration = 300;
 
@@ -83,11 +90,28 @@ export async function POST(req: Request) {
   }
 
   const jobId = `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+  const estimatedCostUsd = estimateAutomationRequestCost(request);
+  if (estimatedCostUsd > maxJobCostUsd()) {
+    return errorResponse(
+      "estimated_cost_exceeds_cap",
+      `Estimated job cost $${estimatedCostUsd.toFixed(2)} exceeds the $${maxJobCostUsd().toFixed(2)} job cap. Reduce image quality, disable the image, or use standard mode.`,
+      400
+    );
+  }
+  const usageReservation = await reserveAutomationUsage(
+    automationApiKeyId(req),
+    jobId,
+    maxJobCostUsd()
+  );
+  if (!usageReservation.ok) {
+    return errorResponse(usageReservation.code, usageReservation.message, 429);
+  }
   const now = Date.now();
   const job: AutomationJob = {
     id: jobId,
     status: "queued",
     request,
+    estimatedCostUsd,
     createdAt: now,
     updatedAt: now,
   };
@@ -96,11 +120,13 @@ export async function POST(req: Request) {
   try {
     jobStoreBackend = await saveAutomationJob(job);
   } catch (error) {
+    await releaseAutomationUsageReservation(jobId);
     console.error("[automationGenerate] Failed to create job:", error);
     return errorResponse("job_store_unavailable", "Automation job store is unavailable.", 500);
   }
 
   if (jobStoreBackend === "memory" && requiresPersistentAutomationJobStore()) {
+    await releaseAutomationUsageReservation(jobId);
     return errorResponse(
       "job_store_not_persistent",
       "Automation job store is using in-memory fallback. Configure KV_REST_API_URL and KV_REST_API_TOKEN for this Vercel environment.",
@@ -115,10 +141,11 @@ export async function POST(req: Request) {
     await enqueueAutomationJob(jobId);
     after(() => drainAutomationQueuePool());
   } catch (error) {
+    await releaseAutomationUsageReservation(jobId);
     console.error("[automationGenerate] Failed to schedule job:", error);
     return errorResponse("job_schedule_failed", "Automation job could not be scheduled.", 500);
   }
 
   const { position, etaSeconds } = await getAutomationQueueInfo(jobId);
-  return json({ status: "queued", jobId, position, etaSeconds }, 202);
+  return json({ status: "queued", jobId, position, etaSeconds, estimatedCostUsd }, 202);
 }

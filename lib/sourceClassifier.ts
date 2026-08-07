@@ -4,8 +4,8 @@
  * Classifies external sources to filter out competitors and prioritize quality sources
  */
 
-import { getTextGenerationClient, getTextProviderConfig, isResponseFormatUnsupported, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
-import { getCostTracker } from "@/lib/costTracker";
+import { createTextCompletion, getTextGenerationClient, getTextProviderConfig, isResponseFormatUnsupported, textReasoningEffort, textTokenLimit, UpstreamNoCreditsError } from "@/lib/textProvider";
+import { rethrowAutomationBudgetError } from "@/lib/automation/budget";
 import {
   filterSourcesByPolicy,
   getForcedSourceType,
@@ -102,27 +102,20 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
           content: prompt,
         },
       ],
-      ...textTokenLimit(textProvider, 800),
+      ...textTokenLimit(textProvider, 300),
       ...textReasoningEffort(textProvider, "minimal"),
     };
     let completion;
     try {
-      completion = await textClient.chat.completions.create({
+      completion = await createTextCompletion(textClient, textProvider, {
         ...params,
         response_format: { type: "json_object" },
-      });
+      }, { step: "source_classifier" });
     } catch (error) {
       if (!isResponseFormatUnsupported(error)) throw error;
-      completion = await textClient.chat.completions.create(params);
-    }
-
-    if (textProvider.kind === "openai") {
-      const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
-      getCostTracker().trackOpenAIChat(
-        textProvider.smallModel,
-        usage?.prompt_tokens || 0,
-        usage?.completion_tokens || 0
-      );
+      completion = await createTextCompletion(textClient, textProvider, params, {
+        step: "source_classifier",
+      });
     }
 
     const responseText = completion.choices[0]?.message?.content?.trim();
@@ -179,6 +172,8 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
       return null;
     }
   } catch (error) {
+    rethrowAutomationBudgetError(error);
+    if (error instanceof UpstreamNoCreditsError) throw error;
     console.error("[sourceClassifier] Error classifying source:", error);
     return null;
   }

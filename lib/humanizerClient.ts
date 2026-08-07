@@ -3,12 +3,16 @@
 // Docs: https://help.undetectable.ai/en/article/humanization-api-v2-p28b2n/
 
 import { getHumanizerConfig } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
-import { getCostTracker } from "@/lib/costTracker";
+import { createTextCompletion, getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
 import {
   BETTERWORDS_REWRITE_SYSTEM_PROMPT,
   buildBetterWordsRewriteInput,
 } from "@/lib/betterwordsPrompt";
+import { estimateHumanizeCost, getCostTracker } from "@/lib/costTracker";
+import {
+  cancelAutomationCostReservation,
+  reserveAutomationCost,
+} from "@/lib/automation/budget";
 
 export interface HumanizeOptions {
   /** Legacy model: 0=Quality, 1=Balanced, 2=More Human */
@@ -74,7 +78,13 @@ export class UndetectableHumanizerClient implements HumanizerService {
 
     const config = getHumanizerConfig();
     const strength = modelToStrength(options?.model);
+    const inputWords = trimmed.match(/[\p{L}\p{N}]+(?:[’'ʼ-][\p{L}\p{N}]+)*/gu)?.length ?? 0;
+    const reservationId = reserveAutomationCost(
+      "undetectable_humanize",
+      estimateHumanizeCost(inputWords)
+    );
 
+    try {
     const submitRes = await fetch(`${config.baseUrl}/submit`, {
       method: "POST",
       headers: {
@@ -103,6 +113,14 @@ export class UndetectableHumanizerClient implements HumanizerService {
       }
       throw new Error(errMsg);
     }
+
+    // Undetectable bills the accepted submission, not the later polling
+    // response. Commit the cost now so a timeout/parser failure stays visible.
+    getCostTracker().trackHumanize(
+      inputWords,
+      estimateHumanizeCost(inputWords),
+      reservationId
+    );
 
     const docId = submitJson?.id;
     if (!docId) {
@@ -145,6 +163,10 @@ export class UndetectableHumanizerClient implements HumanizerService {
 
     const wordsUsed = output.split(/\s+/).filter(Boolean).length;
     return { text: output, wordsUsed, provider: "undetectable" };
+    } catch (error) {
+      cancelAutomationCostReservation(reservationId);
+      throw error;
+    }
   }
 }
 
@@ -160,7 +182,7 @@ export class BetterWordsHumanizerClient implements HumanizerService {
     const maxCompletionTokens = Math.min(4000, Math.max(1200, inputWords * 5));
     const textClient = getTextGenerationClient();
     const textProvider = getTextProviderConfig();
-    const completion = await textClient.chat.completions.create({
+    const completion = await createTextCompletion(textClient, textProvider, {
       model: textProvider.model,
       messages: [
         { role: "system", content: BETTERWORDS_REWRITE_SYSTEM_PROMPT },
@@ -168,15 +190,7 @@ export class BetterWordsHumanizerClient implements HumanizerService {
       ],
       ...textTokenLimit(textProvider, maxCompletionTokens),
       ...textReasoningEffort(textProvider, "low"),
-    });
-    if (textProvider.kind === "openai") {
-      const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
-      getCostTracker().trackOpenAIChat(
-        textProvider.model,
-        usage?.prompt_tokens || 0,
-        usage?.completion_tokens || 0
-      );
-    }
+    }, { step: "betterwords_rewrite" });
 
     const output = completion.choices[0]?.message?.content?.trim() || "";
     if (!output) {

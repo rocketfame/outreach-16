@@ -2,7 +2,14 @@
 // Tavily Search API client - Single source of truth for external search
 
 import { getTavilyApiKey } from "@/lib/config";
-import { getCostTracker } from "@/lib/costTracker";
+import {
+  estimateTavilySearchCost,
+  getCostTracker,
+} from "@/lib/costTracker";
+import {
+  cancelAutomationCostReservation,
+  reserveAutomationCost,
+} from "@/lib/automation/budget";
 
 // Simple debug logger that works in both local and production (Vercel)
 const debugLog = (...args: unknown[]) => {
@@ -103,13 +110,26 @@ export async function searchReliableSources(
         : {}),
     };
 
-    const response = await fetchTavilyWithRetry(requestBody, "tavily-api");
-
-    const data = await response.json();
+    const reservationId = reserveAutomationCost(
+      "tavily_advanced_search",
+      estimateTavilySearchCost("advanced")
+    );
+    let response: Response;
+    try {
+      response = await fetchTavilyWithRetry(requestBody, "tavily-api");
+    } catch (error) {
+      cancelAutomationCostReservation(reservationId);
+      throw error;
+    }
 
     // Track cost
     const costTracker = getCostTracker();
-    costTracker.trackTavilySearch(requestBody.search_depth as 'basic' | 'advanced', 1);
+    costTracker.trackTavilySearch(
+      requestBody.search_depth as 'basic' | 'advanced',
+      1,
+      reservationId
+    );
+    const data = await response.json();
     const totals = costTracker.getTotalCosts();
     console.log("[tavily-api] Cost tracked. Current totals:", {
       tavily: totals.tavily,
@@ -316,13 +336,22 @@ export async function searchImages(query: string): Promise<ImageSource[]> {
       max_results: 10, // Reduced from 15 to 10 to save credits - we'll get enough images
     };
 
-    const response = await fetchTavilyWithRetry(requestBody, "tavily-images");
+    const reservationId = reserveAutomationCost(
+      "tavily_image_search",
+      estimateTavilySearchCost("basic")
+    );
+    let response: Response;
+    try {
+      response = await fetchTavilyWithRetry(requestBody, "tavily-images");
+    } catch (error) {
+      cancelAutomationCostReservation(reservationId);
+      throw error;
+    }
 
-    const data = await response.json();
-    
     // Track cost
     const costTracker = getCostTracker();
-    costTracker.trackTavilyImageSearch(1);
+    costTracker.trackTavilyImageSearch(1, reservationId);
+    const data = await response.json();
     const totals = costTracker.getTotalCosts();
     console.log("[tavily-images] Cost tracked. Current totals:", {
       tavily: totals.tavily,

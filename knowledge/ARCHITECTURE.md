@@ -17,6 +17,7 @@
 4. Humanization (optional, via Undetectable.AI)
 5. OpenAI обслуговує text generation і optional hero image generation
 6. Async blog autopilot uses a KV-backed FIFO queue and a configurable worker pool (`GENERATION_CONCURRENCY`, default 3, max 8); publishing is external
+7. Automation paid calls run inside a job-scoped `$0.40` hard cap; KV admission reservations enforce per-key daily/monthly limits before queueing
 
 ## Design System
 - Plus Jakarta Sans (weight 500)

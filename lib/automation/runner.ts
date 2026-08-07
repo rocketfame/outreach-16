@@ -8,6 +8,14 @@ import {
 } from "@/lib/automation/jobStore";
 import { AutomationPipelineError, runAutomationGeneration, runCoverGeneration } from "@/lib/automation/pipeline";
 import type { AutomationJob } from "@/lib/automation/types";
+import {
+  AutomationCostCapError,
+  AutomationRetryLimitError,
+  runWithAutomationBudget,
+} from "@/lib/automation/budget";
+import { runWithIsolatedCostTracker } from "@/lib/costTracker";
+import { UpstreamNoCreditsError } from "@/lib/textProvider";
+import { finalizeAutomationUsage } from "@/lib/automation/usageStore";
 
 /**
  * Start a fresh serverless invocation after a worker frees its slot. This
@@ -42,6 +50,7 @@ async function triggerNextQueueDrain(): Promise<void> {
  * (via claimNextQueuedJob) — the slot is released here in all outcomes.
  */
 async function executeAutomationJob(jobId: string, slot: number, job: AutomationJob): Promise<void> {
+  let actualCostUsd = 0;
   try {
     const runningJob: AutomationJob = {
       ...job,
@@ -50,32 +59,65 @@ async function executeAutomationJob(jobId: string, slot: number, job: Automation
     };
     await saveAutomationJob(runningJob);
 
-    if (job.kind === "cover" && job.coverRequest) {
-      const coverResult = await runCoverGeneration(jobId, job.coverRequest);
+    const budgetRun = await runWithAutomationBudget(jobId, () =>
+      runWithIsolatedCostTracker(async () => {
+        if (job.kind === "cover" && job.coverRequest) {
+          return { kind: "cover" as const, value: await runCoverGeneration(jobId, job.coverRequest) };
+        }
+        if (job.request) {
+          return { kind: "article" as const, value: await runAutomationGeneration(jobId, job.request) };
+        }
+        throw new AutomationPipelineError("invalid_job", "Job has no request payload.");
+      })
+    );
+    actualCostUsd = budgetRun.snapshot.costUsd;
+    await finalizeAutomationUsage(jobId, actualCostUsd);
+    if (budgetRun.error) throw budgetRun.error;
+    if (!budgetRun.value) {
+      throw new AutomationPipelineError("generation_failed", "Generation returned no result.");
+    }
+
+    if (budgetRun.value.kind === "cover") {
+      const coverResult = budgetRun.value.value;
+      coverResult.meta.costUsd = actualCostUsd;
       await saveAutomationJob({
         ...runningJob,
         status: "done",
         completedAt: Date.now(),
+        costUsd: actualCostUsd,
         coverResult,
       });
-    } else if (job.request) {
-      const result = await runAutomationGeneration(jobId, job.request);
+    } else {
+      const result = budgetRun.value.value;
+      result.meta.costUsd = actualCostUsd;
       await saveAutomationJob({
         ...runningJob,
         status: "done",
         completedAt: Date.now(),
+        costUsd: actualCostUsd,
         result,
       });
-    } else {
-      throw new AutomationPipelineError("invalid_job", "Job has no request payload.");
     }
   } catch (error) {
+    try {
+      await finalizeAutomationUsage(jobId, actualCostUsd);
+    } catch (usageError) {
+      console.error("[automationRunner] Failed to finalize usage:", usageError);
+    }
+    const code = error instanceof AutomationPipelineError
+      ? error.code
+      : error instanceof AutomationCostCapError || error instanceof AutomationRetryLimitError
+        ? error.code
+        : error instanceof UpstreamNoCreditsError
+          ? error.code
+          : "generation_failed";
     await saveAutomationJob({
       ...job,
       status: "error",
       completedAt: Date.now(),
+      costUsd: actualCostUsd,
       error: {
-        code: error instanceof AutomationPipelineError ? error.code : "generation_failed",
+        code,
         message: error instanceof Error ? error.message : "Automation generation failed.",
       },
     });

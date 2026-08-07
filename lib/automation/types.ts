@@ -178,6 +178,10 @@ export interface AutomationJob {
   updatedAt: number;
   startedAt?: number;
   completedAt?: number;
+  /** Pre-queue forecast used for daily/monthly reservation. */
+  estimatedCostUsd?: number;
+  /** Actual metered cost, present for every terminal status. */
+  costUsd?: number;
   result?: AutomationGenerateSuccess;
   coverResult?: AutomationCoverSuccess;
   error?: {
@@ -194,6 +198,7 @@ export interface AutomationErrorResponse {
   allowed?: readonly string[];
   /** Name of the request field that failed validation. */
   field?: string;
+  costUsd?: number;
 }
 
 /** Queue placement info returned for queued jobs (submit + polling). */

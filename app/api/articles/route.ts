@@ -36,11 +36,17 @@ import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
 import {
   getTextGenerationClient,
   getTextProviderConfig,
+  createTextCompletion,
   isResponseFormatUnsupported,
+  UpstreamNoCreditsError,
   textReasoningEffort,
   textTokenLimit,
 } from "@/lib/textProvider";
-import { getCostTracker } from "@/lib/costTracker";
+import {
+  AutomationCostCapError,
+  AutomationRetryLimitError,
+  rethrowAutomationBudgetError,
+} from "@/lib/automation/budget";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
 import {
   parsePlainTextToStructure,
@@ -549,11 +555,12 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
         // but NOT so much that it fills the space with padding/duplicates.
         // Scale proportionally: ~1.5 tokens/word for Latin scripts, ~2.5 for Cyrillic/CJK.
         // The GPT-5 completion budget includes hidden reasoning tokens. Use low
-        // reasoning plus 4x content headroom for JSON/title/meta and complete prose.
-        // A higher ceiling does not itself cost more; only consumed tokens do.
+        // reasoning plus 3x content headroom for JSON/title/meta and complete prose.
+        // The hard job-cost guard reserves against this ceiling before calling
+        // the provider, so an oversized ceiling would reject otherwise viable jobs.
         const tokensPerWord = /^(English|Spanish|French|Italian|Portuguese)$/i.test(articleLanguage) ? 1.5 : 2.5;
         const contentBudget = Math.ceil(targetWords * tokensPerWord);
-        const dynamicMaxTokens = Math.max(8000, Math.ceil(contentBudget * 4));
+        const dynamicMaxTokens = Math.max(6000, Math.ceil(contentBudget * 3));
         console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
 
         type ParsedArticleModelResponse = {
@@ -638,19 +645,19 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
             ...textReasoningEffort(textProvider, retryReason === "empty" ? "minimal" : "low"),
           };
           try {
-            return await textClient.chat.completions.create({
+            return await createTextCompletion(textClient, textProvider, {
               model: textProvider.model,
               messages,
               ...apiParams,
               response_format: { type: "json_object" },
-            });
+            }, { step: "article_generation", isRetry: retryReason !== "none" });
           } catch (formatError) {
             if (!isResponseFormatUnsupported(formatError)) throw formatError;
-            return textClient.chat.completions.create({
+            return createTextCompletion(textClient, textProvider, {
               model: textProvider.model,
               messages,
               ...apiParams,
-            });
+            }, { step: "article_generation", isRetry: retryReason !== "none" });
           }
         };
 
@@ -666,9 +673,6 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           const outputTokens = usage?.completion_tokens || 0;
           const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens || 0;
           console.log("[articles-api] Token usage:", { inputTokens, outputTokens, reasoningTokens });
-          if (textProvider.kind === "openai" && (inputTokens > 0 || outputTokens > 0)) {
-            getCostTracker().trackOpenAIChat(textProvider.model, inputTokens, outputTokens);
-          }
 
           if (!content.trim()) {
             console.error("[articles-api] Empty content received from API", {
@@ -1210,7 +1214,10 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                             listWordsUsed += result.wordsUsed;
                             listUndetectableWordsUsed += result.undetectableWordsUsed;
                             return { ...item, text: repair.text };
-                          } catch { return item; }
+                          } catch (error) {
+                            rethrowAutomationBudgetError(error);
+                            return item;
+                          }
                         })
                       );
                       return { block: { ...listBlock, items: humanizedItems }, wordsUsed: listWordsUsed, undetectableWordsUsed: listUndetectableWordsUsed, processed: true, humanized: listWordsUsed > 0 };
@@ -1230,7 +1237,10 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                           caption = cleanText(result.humanizedText);
                           tableWordsUsed += result.wordsUsed;
                           tableUndetectableWordsUsed += result.undetectableWordsUsed;
-                        } catch { /* keep original */ }
+                        } catch (error) {
+                          rethrowAutomationBudgetError(error);
+                          /* keep original */
+                        }
                       }
                       const humanizedRows = await Promise.all(
                         (t.rows || []).map(async (row) =>
@@ -1241,7 +1251,10 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                               tableWordsUsed += result.wordsUsed;
                               tableUndetectableWordsUsed += result.undetectableWordsUsed;
                               return cleanText(result.humanizedText);
-                            } catch { return cell; }
+                            } catch (error) {
+                              rethrowAutomationBudgetError(error);
+                              return cell;
+                            }
                           }))
                         )
                       );
@@ -1259,7 +1272,10 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                       try {
                         const result = await humanizeSectionText(cleanText(block.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
                         return { block: { ...block, text: cleanText(result.humanizedText) }, wordsUsed: result.wordsUsed, undetectableWordsUsed: result.undetectableWordsUsed, processed: true, humanized: result.wordsUsed > 0 };
-                      } catch { return { block, wordsUsed: 0, processed: true, humanized: false }; }
+                      } catch (error) {
+                        rethrowAutomationBudgetError(error);
+                        return { block, wordsUsed: 0, processed: true, humanized: false };
+                      }
                     }});
                     continue;
                   }
@@ -1288,7 +1304,10 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                         console.warn(`[humanizer] Paragraph repaired: ${repair.revertedCount} sentence(s) reverted to original. Block: "${originalText.substring(0, 60)}"`);
                       }
                       return { block: { ...block, text: repair.text }, wordsUsed: result.wordsUsed, undetectableWordsUsed: result.undetectableWordsUsed, processed: true, humanized: result.wordsUsed > 0 };
-                    } catch { return { block, wordsUsed: 0, processed: true, humanized: false }; }
+                    } catch (error) {
+                      rethrowAutomationBudgetError(error);
+                      return { block, wordsUsed: 0, processed: true, humanized: false };
+                    }
                   }});
                 }
 
@@ -1371,27 +1390,12 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
                 };
                 humanizationReportForResponse = humanizationReport;
 
-                // Track humanization costs (FIXED: removed duplicate tracking)
-                if (totalUndetectableWordsUsed > 0) {
-                  const costTracker = getCostTracker();
-                  const humanizeCost = totalUndetectableWordsUsed * 0.0005;
-                  costTracker.trackHumanize(totalUndetectableWordsUsed, humanizeCost);
-                  
-                  // Log humanization costs
-                  const totals = costTracker.getTotalCosts();
-                  console.log("[articles-api] Humanization cost tracked. Current totals:", {
-                    tavily: totals.tavily,
-                    openai: totals.openai,
-                    aihumanize: totals.aihumanize, // CRITICAL: Include aihumanize in totals
-                    total: totals.total,
-                    breakdown: totals.breakdown,
-                  });
-                }
                 if (totalHumanizeWordsUsed === 0 && enableHumanizeOnWrite) {
                   // Log warning if humanization was enabled but no words were used
                   console.warn('[articles-api] Humanization was enabled but no words were processed. This may indicate API errors (e.g., insufficient balance) or all blocks were too short.');
                 }
               } catch (humanizeError) {
+                rethrowAutomationBudgetError(humanizeError);
                 console.error('[articles-api] Humanization on write failed:', humanizeError);
               }
             } else {
@@ -1751,6 +1755,19 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
         }
       } catch (error) {
         console.error(`Error generating article for topic ${topic.title}:`, error);
+        if (
+          error instanceof AutomationCostCapError ||
+          error instanceof AutomationRetryLimitError ||
+          error instanceof UpstreamNoCreditsError
+        ) {
+          return new Response(JSON.stringify({
+            error: error.message,
+            code: error.code,
+          }), {
+            status: error instanceof UpstreamNoCreditsError ? 429 : 402,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
         topicErrors.push(error instanceof Error ? error.message : String(error));
         // Continue with other topics even if one fails
       }
@@ -1788,6 +1805,16 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
     );
   } catch (err) {
     console.error("Article generation error", err);
+    if (
+      err instanceof AutomationCostCapError ||
+      err instanceof AutomationRetryLimitError ||
+      err instanceof UpstreamNoCreditsError
+    ) {
+      return new Response(JSON.stringify({ error: err.message, code: err.code }), {
+        status: err instanceof UpstreamNoCreditsError ? 429 : 402,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     return new Response(
       JSON.stringify({ error: "Failed to generate articles" }),
       { status: 500, headers: { "Content-Type": "application/json" } }

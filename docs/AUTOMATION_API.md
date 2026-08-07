@@ -88,6 +88,30 @@ silently spend API funds. A ChatGPT workspace subscription cannot fund server
 API calls. When OpenAI is active, `costUsd` includes tracked text tokens plus
 Tavily, Undetectable, and any optional cover image.
 
+### Cost controls
+
+Every article job has one shared hard budget across Tavily search, source
+classification, article generation, formatting, BetterWords, Undetectable.AI,
+and the optional cover. `MAX_JOB_COST_USD` defaults to `$0.40`. Each paid call
+reserves its worst-case estimated cost before it starts; if it cannot fit, the
+job stops with `cost_cap_exceeded`. The final polling response includes
+`costUsd` for both `done` and `error` jobs.
+
+`MAX_RETRIES_PER_JOB` defaults to `1`. A retry is allowed only when both the
+retry count and remaining job budget permit it. Hidden OpenAI SDK retries are
+disabled so all retries pass through this guard.
+
+`DAILY_COST_LIMIT_USD` defaults to `$5.00` and
+`MONTHLY_COST_LIMIT_USD` defaults to `$100.00`, per automation bearer key. An
+article reserves the full job cap before queueing. If either budget is
+exhausted, POST returns HTTP 429 (`daily_budget_exceeded` or
+`monthly_budget_exceeded`) and creates no job. The immediate 202 response
+includes `estimatedCostUsd`.
+
+`GET /api/automation/usage` returns today/month spend and reservations,
+monthly spend and reservations, remaining budgets, and the seven-day average
+cost. OpenAI credit exhaustion is surfaced as `upstream_no_credits`.
+
 ### Cover format
 
 Automation cover generation defaults to `coverFormat: "webp"` with 80% output
@@ -128,8 +152,8 @@ article payloads. It validates the full array before queueing and returns:
 {
   "status": "queued",
   "jobs": [
-    { "jobId": "gen_...", "position": 1, "etaSeconds": 0 },
-    { "jobId": "gen_...", "position": 2, "etaSeconds": 0 }
+    { "jobId": "gen_...", "position": 1, "etaSeconds": 0, "estimatedCostUsd": 0.37 },
+    { "jobId": "gen_...", "position": 2, "etaSeconds": 0, "estimatedCostUsd": 0.37 }
   ]
 }
 ```
@@ -146,9 +170,9 @@ fallback drain trigger if that request cannot be delivered.
 
 All queue endpoints require the same `Authorization: Bearer
 <AUTOMATION_API_KEY>` header. Tavily 429 and 5xx responses are retried with
-bounded exponential backoff. The text-provider SDK has two bounded retries for
-connection failures, 408/409/429, and 5xx responses. Authentication, policy,
-and credit errors are not retried.
+bounded exponential backoff. Text-provider retries are application-controlled
+by `MAX_RETRIES_PER_JOB`; authentication, policy, and credit errors are not
+retried.
 
 ### Custom-language example
 

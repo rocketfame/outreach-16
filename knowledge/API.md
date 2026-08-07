@@ -6,7 +6,7 @@
 - `GET /api/trial-usage` — поточний стан trial usage
 - `POST /api/search-images` — пошук зображень (rate limit: search)
 - `POST /api/checkout` — Stripe checkout session
-- `POST /api/automation/generate` — async blog autopilot generation job (Bearer `AUTOMATION_API_KEY`). Повертає `202 { status:"queued", jobId, position, etaSeconds }` — джоба реально стає в FIFO-чергу (KV list `automation:queue`), а не відхиляється пост-фактум.
+- `POST /api/automation/generate` — async blog autopilot generation job (Bearer `AUTOMATION_API_KEY`). Повертає `202 { status:"queued", jobId, position, etaSeconds, estimatedCostUsd }` — джоба реально стає в FIFO-чергу (KV list `automation:queue`), а не відхиляється пост-фактум.
   - `niche` — required, вільний текст
   - `category` — optional, вільний текст (будь-яка платформа); якщо omitted — деривується з platform presets ніші (`config/platformPresets.ts`). Відомі платформи (Instagram/TikTok/YouTube/Facebook/SoundCloud/Spotify/Growth/Beatport/Twitch) отримують кураторські `site:` запити для trust sources, невідомі — generic-запит без site-обмежень
   - `mode` — optional, `"human"` (default) | `"standard"`
@@ -32,14 +32,17 @@
     - Заборонений лінк у абзаці → видаляється ЦІЛЕ речення (не unwrap); в `<li>` → викидається пункт; речення з money-анкором ніколи не видаляється
     - Цитати `"..."` заморожуються перед Undetectable (QUOTEREF-токени); debris-guard (`cleanQuoteDebris`): орфанні лапки, непарні лапки
   - Retry-цикл: draft-фейли (`truncated_output`, `orthography_invalid`, `below_min_words`, `anchor_missing`, `anchor_misplaced`, `anchor_broken`) → 1 retry з корективами → чесний error code
-  - GPT-5 token budget включає reasoning+visible output: article call використовує `reasoning_effort:low` і 4× content headroom; reasoning-only empty response ретраїться один раз із `minimal` та 1.5× додатковим headroom. Classifier/formatter працюють із `minimal`
+  - GPT-5 token budget включає reasoning+visible output: article call використовує `reasoning_effort:low` і 3× content headroom (мінімум 6000); reasoning-only empty response може ретраїтись із `minimal`, лише якщо спільні retry/cost budgets це дозволяють. Classifier/formatter працюють із `minimal`
+  - Cost guard: `MAX_JOB_COST_USD` default `$0.40` охоплює Tavily, classifier, article, formatter, BetterWords, Undetectable та image. Кожен платний call резервує worst-case до старту; перебір → `cost_cap_exceeded`. `MAX_RETRIES_PER_JOB` default `1`; приховані SDK retries вимкнені. `costUsd` є і в done, і в error
+  - Queue admission: article job резервує повний job cap у KV. `DAILY_COST_LIMIT_USD` / `MONTHLY_COST_LIMIT_USD` (defaults `$5` / `$100`) при вичерпанні синхронно дають 429 до queueing
     - A6 (датовані claims) — інструкції в промпті: ranking/top-N лише з as-of датою і джерелом, інакше механізм замість цифр
   - Джерела: `/thread/`, форуми, reddit/quora, SEO-блоги (backlinko тощо) і video-цитати відфільтровуються (`lib/sourcePolicy.ts` + `lib/automation/linkGuard.ts`); `hl` на support.google.com форситься в `en`; фінальний guard розгортає заборонені лінки в тексті (анкор недоторканий)
   - Source gate: Tavily/provider/credit failure → `source_lookup_failed`; лише успішний lookup без живого independent source → `no_independent_sources`. Якщо перший набір втратив independent source на live-URL check, виконується ширший allowlisted recovery lookup до 20 кандидатів без послаблення гейта. Логи містять searchExecuted/counts та `{url,reason}`
   - Помилки валідації machine-readable: `{ code, message, field?, allowed? }`
-- `POST /api/automation/generate/batch` — масив 1-20 звичайних article payloads; весь масив валідовується до queueing, відповідь `202 {status:"queued",jobs:[{jobId,position,etaSeconds}]}`
+- `POST /api/automation/generate/batch` — масив 1-20 звичайних article payloads; весь масив і бюджет валідовуються до queueing, відповідь `202 {status:"queued",jobs:[{jobId,position,etaSeconds,estimatedCostUsd}]}`
 - `DELETE /api/automation/generate/:jobId` — скасовує лише фізично queued job до claim; після claim повертає 409 `job_already_claimed`
 - `GET /api/automation/queue` — `{queueDepth,activeWorkers,concurrency,availableWorkers,averageJobSeconds}`; та сама Bearer-авторизація
+- `GET /api/automation/usage` — per-key spend/reservations today+month, remaining limits та average cost за 7 днів
 - `POST /api/automation/cover` — cover-only генерація (Bearer `AUTOMATION_API_KEY`, ~$0.05 за medium, БЕЗ тексту статті). Async: `202 { jobId: "cov_...", position, etaSeconds }`, поллінг через той самий `GET /api/automation/generate/:jobId`. Поля: `topic` (required, до 200 символів — до нього адаптується box prompt), `niche`/`category` (optional, лише стирають промпт), `imageStyle` (пін, 400+`allowed[]`), `excludeImageStyles` (id або `family:<назва>`), `imageQuality`. Ділить FIFO-чергу з article-джобами — колізій із батчем нема. Done-відповідь: `{ status:"done", cover:{base64,format,alt}, meta:{imageStyle,costUsd} }`. `/api/article-image` лишається internal — це тонка валідована обгортка
 - `GET /api/automation/generate/:jobId` — polling endpoint (`queued|running|done|error`). Для queued повертає concurrency-aware `position` та `etaSeconds`; jobs, що входять у вільні слоти поточної хвилі, мають ETA 0. Кожен submit/poll заповнює весь вільний worker pool. Running довше 10 хв → `job_timeout`. Concurrency: `GENERATION_CONCURRENCY` env (default 3, max 8; legacy alias `AUTOMATION_CONCURRENCY`), ETA average: `GENERATION_AVG_JOB_SECONDS` (default 480). Внутрішні automation-виклики `/api/articles` та `/api/article-image` обходять per-IP rate limiter через in-process токен (`lib/automation/internal.ts`)
 

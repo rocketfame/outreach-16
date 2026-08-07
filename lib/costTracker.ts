@@ -1,6 +1,9 @@
 // lib/costTracker.ts
 // Cost tracking utility for API usage (Tavily, OpenAI)
 
+import { AsyncLocalStorage } from "node:async_hooks";
+import { settleAutomationCost } from "@/lib/automation/budget";
+
 // Pricing (as of 2025 - update as needed)
 const PRICING = {
   tavily: {
@@ -60,14 +63,14 @@ export interface CostEntry {
   timestamp: number;
 }
 
-class CostTracker {
+export class CostTracker {
   private costs: CostEntry[] = [];
   private sessionStartTime: number = Date.now();
 
   /**
    * Track Tavily API cost
    */
-  trackTavilySearch(depth: 'basic' | 'advanced' = 'basic', queries: number = 1): void {
+  trackTavilySearch(depth: 'basic' | 'advanced' = 'basic', queries: number = 1, reservationId: string | null = null): void {
     const costPerQuery = depth === 'advanced' ? PRICING.tavily.advanced : PRICING.tavily.basic;
     const totalCost = costPerQuery * queries;
 
@@ -78,12 +81,13 @@ class CostTracker {
       details: { queries },
       timestamp: Date.now(),
     });
+    settleAutomationCost(reservationId, `tavily_${depth}_search`, totalCost);
   }
 
   /**
    * Track Tavily image search cost
    */
-  trackTavilyImageSearch(queries: number = 1): void {
+  trackTavilyImageSearch(queries: number = 1, reservationId: string | null = null): void {
     const totalCost = PRICING.tavily.image * queries;
 
     this.costs.push({
@@ -93,6 +97,7 @@ class CostTracker {
       details: { queries },
       timestamp: Date.now(),
     });
+    settleAutomationCost(reservationId, "tavily_image_search", totalCost);
   }
 
   /**
@@ -101,35 +106,28 @@ class CostTracker {
   trackOpenAIChat(
     model: string,
     inputTokens: number,
-    outputTokens: number
+    outputTokens: number,
+    reservationId: string | null = null,
+    step = "openai_chat"
   ): void {
-    const modelPricing = PRICING.openai[model as keyof typeof PRICING.openai];
-    if (modelPricing && typeof modelPricing === 'object' && 'input' in modelPricing) {
-      const pricing = modelPricing as { input: number; output: number };
-      // PRICING stores per-token rates (the advertised per-1M price divided
-      // by 1,000,000), so multiply by raw token counts. Dividing by 1,000
-      // here used to under-report chat costs by exactly 1,000x.
-      const inputCost = inputTokens * pricing.input;
-      const outputCost = outputTokens * pricing.output;
-      const totalCost = inputCost + outputCost;
-
-      this.costs.push({
-        service: 'openai',
-        type: 'chat',
-        cost: totalCost,
-        details: {
-          tokens: { input: inputTokens, output: outputTokens },
-          model,
-        },
-        timestamp: Date.now(),
-      });
-    }
+    const totalCost = calculateOpenAIChatCost(model, inputTokens, outputTokens);
+    this.costs.push({
+      service: 'openai',
+      type: 'chat',
+      cost: totalCost,
+      details: {
+        tokens: { input: inputTokens, output: outputTokens },
+        model,
+      },
+      timestamp: Date.now(),
+    });
+    settleAutomationCost(reservationId, step, totalCost);
   }
 
   /**
    * Track OpenAI image generation cost
    */
-  trackOpenAIImageGeneration(model: string, size: string, count: number = 1, quality?: string): void {
+  trackOpenAIImageGeneration(model: string, size: string, count: number = 1, quality?: string, reservationId: string | null = null): void {
     const modelPricing = PRICING.openai[model as keyof typeof PRICING.openai];
     // Prefer the quality-specific rate; plain size key (= high) is the fallback.
     const qualityKey = quality ? `${size}:${quality}` : size;
@@ -145,13 +143,14 @@ class CostTracker {
         details: { images: count, model, size: qualityKey },
         timestamp: Date.now(),
       });
+      settleAutomationCost(reservationId, "openai_image", totalCost);
     }
   }
 
   /**
    * Track AIHumanize API cost
    */
-  trackHumanize(wordsUsed: number, cost?: number): void {
+  trackHumanize(wordsUsed: number, cost?: number, reservationId: string | null = null): void {
     const totalCost = cost !== undefined ? cost : wordsUsed * PRICING.aihumanize.words;
 
     this.costs.push({
@@ -163,6 +162,7 @@ class CostTracker {
       },
       timestamp: Date.now(),
     });
+    settleAutomationCost(reservationId, "undetectable_humanize", totalCost);
   }
 
   /**
@@ -276,12 +276,67 @@ class CostTracker {
 
 // Singleton instance
 let costTrackerInstance: CostTracker | null = null;
+const costTrackerStorage = new AsyncLocalStorage<CostTracker>();
 
 export function getCostTracker(): CostTracker {
+  const scoped = costTrackerStorage.getStore();
+  if (scoped) return scoped;
   if (!costTrackerInstance) {
     costTrackerInstance = new CostTracker();
   }
   return costTrackerInstance;
+}
+
+export function runWithIsolatedCostTracker<T>(operation: () => Promise<T>): Promise<T> {
+  return costTrackerStorage.run(new CostTracker(), operation);
+}
+
+function chatPricing(model: string): { input: number; output: number } {
+  const exact = PRICING.openai[model as keyof typeof PRICING.openai];
+  if (exact && typeof exact === "object" && "input" in exact) {
+    return exact as { input: number; output: number };
+  }
+  return PRICING.openai["gpt-5.5"];
+}
+
+export function estimateTextTokens(value: unknown): number {
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  // Conservative mixed-language approximation plus message overhead.
+  return Math.max(1, Math.ceil((text?.length || 0) / 3) + 24);
+}
+
+export function estimateOpenAIChatCost(
+  model: string,
+  inputTokens: number,
+  maxOutputTokens: number
+): number {
+  const pricing = chatPricing(model);
+  return inputTokens * pricing.input + maxOutputTokens * pricing.output;
+}
+
+export function calculateOpenAIChatCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const pricing = chatPricing(model);
+  return inputTokens * pricing.input + outputTokens * pricing.output;
+}
+
+export function estimateTavilySearchCost(depth: "basic" | "advanced", queries = 1): number {
+  return PRICING.tavily[depth] * queries;
+}
+
+export function estimateOpenAIImageCost(model: string, size: string, quality?: string): number {
+  const modelPricing = PRICING.openai[model as keyof typeof PRICING.openai];
+  if (!modelPricing || typeof modelPricing !== "object") return 0.2;
+  const qualityKey = quality ? `${size}:${quality}` : size;
+  const values = modelPricing as Record<string, number>;
+  return values[qualityKey] ?? values[size] ?? 0.2;
+}
+
+export function estimateHumanizeCost(words: number): number {
+  return Math.max(0, words) * PRICING.aihumanize.words;
 }
 
 // Helper function to format cost as currency

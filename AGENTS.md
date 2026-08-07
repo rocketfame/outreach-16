@@ -65,6 +65,9 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 - **`lib/humanizerClient.ts`** — Undetectable.AI v2 submit + polling; job-scoped BetterWords 2.1.2/OpenAI fallback only on the exact `Insufficient credits` error.
 - **`lib/sectionHumanize.ts`** — section-level humanization during writing.
 - **`lib/automation/contentQuality.ts`** — final Automation guards for truncated prose, quotation balance, language orthography, and immutable brand-token restoration.
+- **`lib/automation/budget.ts`** — job-scoped hard cost cap and retry budget, isolated per concurrent worker with AsyncLocalStorage.
+- **`lib/automation/usageStore.ts`** — atomic KV reservations and daily/monthly spend ledger per automation bearer key.
+- **`lib/costTracker.ts`** — metered provider costs; Automation runs use an isolated tracker so concurrent jobs never mix totals.
 - **`lib/trustSourceFilter.ts`** + **`lib/sourceClassifier.ts`** — Tavily-validated source handling with LLM classification.
 
 ### Topic discovery
@@ -106,6 +109,9 @@ Required on Vercel (and `.env.local` for dev):
 - `AUTOMATION_API_KEY` — Bearer token for async blog autopilot API (`/api/automation/generate`)
 - `GENERATION_CONCURRENCY` — shared article/cover worker slots (default 3, max 8; legacy alias `AUTOMATION_CONCURRENCY`)
 - `GENERATION_AVG_JOB_SECONDS` — ETA estimate per generation wave (default 480)
+- `MAX_JOB_COST_USD` — hard all-in cost ceiling per automation job (default 0.40)
+- `MAX_RETRIES_PER_JOB` — shared application-level retry limit per job (default 1)
+- `DAILY_COST_LIMIT_USD` / `MONTHLY_COST_LIMIT_USD` — per-automation-key queue admission budgets (defaults 5 / 100)
 
 ## Conventions and gotchas
 

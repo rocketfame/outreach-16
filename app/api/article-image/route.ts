@@ -2,11 +2,18 @@
 // Hero image generation endpoint for articles
 
 import { getOpenAIImageClient, validateImageProvider } from "@/lib/config";
-import { getCostTracker } from "@/lib/costTracker";
+import { estimateOpenAIImageCost, getCostTracker } from "@/lib/costTracker";
 import { selectImageBoxPrompt, buildImagePromptFromBox, IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken } from "@/lib/trialLimits";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 import { isInternalAutomationCall } from "@/lib/automation/internal";
+import {
+  AutomationCostCapError,
+  AutomationRetryLimitError,
+  cancelAutomationCostReservation,
+  reserveAutomationCost,
+} from "@/lib/automation/budget";
+import { isUpstreamNoCreditsError } from "@/lib/textProvider";
 
 const HERO_IMAGE_FORMAT = {
   model: "gpt-image-2",
@@ -483,21 +490,37 @@ export async function POST(req: Request) {
     // 1536x864 is an exact 16:9 hero canvas.
     // Quality: "low", "medium", "high". We use "high" for best hero image quality.
     // Response: b64_json only (URL not supported by gpt-image models).
-    const imageResponse = await openai.images.generate({
-      model: HERO_IMAGE_FORMAT.model,
-      prompt,
-      n: 1,
-      size: HERO_IMAGE_FORMAT.size,
-      quality: imageQuality,
-      output_format: outputFormat,
-      ...(outputCompression !== undefined ? { output_compression: outputCompression } : {}),
-    });
+    const imageReservationId = reserveAutomationCost(
+      "openai_image",
+      estimateOpenAIImageCost(HERO_IMAGE_FORMAT.model, HERO_IMAGE_FORMAT.size, imageQuality)
+    );
+    let imageResponse;
+    try {
+      imageResponse = await openai.images.generate({
+        model: HERO_IMAGE_FORMAT.model,
+        prompt,
+        n: 1,
+        size: HERO_IMAGE_FORMAT.size,
+        quality: imageQuality,
+        output_format: outputFormat,
+        ...(outputCompression !== undefined ? { output_compression: outputCompression } : {}),
+      });
+    } catch (error) {
+      cancelAutomationCostReservation(imageReservationId);
+      throw error;
+    }
 
     const imageBase64 = imageResponse.data?.[0]?.b64_json;
 
     // Track cost
     const costTracker = getCostTracker();
-    costTracker.trackOpenAIImageGeneration(HERO_IMAGE_FORMAT.model, HERO_IMAGE_FORMAT.size, 1, imageQuality);
+    costTracker.trackOpenAIImageGeneration(
+      HERO_IMAGE_FORMAT.model,
+      HERO_IMAGE_FORMAT.size,
+      1,
+      imageQuality,
+      imageReservationId
+    );
 
     if (!imageBase64) {
       // #region agent log
@@ -556,9 +579,14 @@ export async function POST(req: Request) {
       ? `OpenAI API error: ${errorMessage}${errObj?.code ? ` (code: ${String(errObj.code)})` : ''}`
       : errorMessage;
     
+    const budgetCode = error instanceof AutomationCostCapError || error instanceof AutomationRetryLimitError
+      ? error.code
+      : isUpstreamNoCreditsError(error)
+        ? "upstream_no_credits"
+        : undefined;
     return new Response(
-      JSON.stringify({ success: false, error: detailedError }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: detailedError, code: budgetCode }),
+      { status: budgetCode === "upstream_no_credits" ? 429 : budgetCode ? 402 : 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }
