@@ -2,7 +2,7 @@
 // Post-humanization HTML formatter using the configured text provider
 // This is a "dumb formatter" that rebuilds HTML structure from humanized text
 
-import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 
 const SYSTEM_PROMPT = `Role: You are a post-processor for articles. You receive:
@@ -110,6 +110,7 @@ export async function formatHumanizedHtml(
         { role: "user", content: userPrompt },
       ],
       ...textTokenLimit(textProvider, 8000), // Enough for long articles
+      ...textReasoningEffort(textProvider, "minimal"),
     });
 
     const formattedHtml = completion.choices[0]?.message?.content?.trim() || "";

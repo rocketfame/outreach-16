@@ -24,6 +24,23 @@ export function textTokenLimit(
     : { max_tokens: tokens };
 }
 
+export type TextReasoningEffort = "minimal" | "low" | "medium" | "high";
+
+/** Reasoning controls are OpenAI-specific; omit them for compatible providers. */
+export function textReasoningEffort(
+  provider: Pick<TextProviderConfig, "kind">,
+  effort: TextReasoningEffort
+): { reasoning_effort?: TextReasoningEffort } {
+  return provider.kind === "openai" ? { reasoning_effort: effort } : {};
+}
+
+/** Only retry without JSON mode when that exact optional feature is rejected. */
+export function isResponseFormatUnsupported(error: unknown): boolean {
+  const status = (error as { status?: unknown })?.status;
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return status === 400 && message.includes("response_format");
+}
+
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {

@@ -33,7 +33,13 @@ import { cleanText, fixHtmlTagSpacing, removeExcessiveBold, stripPromptLeaks } f
 import { repairHumanizedText } from "@/lib/humanizeRepair";
 import { validateArticleOutput } from "@/lib/outputValidator";
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
+import {
+  getTextGenerationClient,
+  getTextProviderConfig,
+  isResponseFormatUnsupported,
+  textReasoningEffort,
+  textTokenLimit,
+} from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
 import {
@@ -542,14 +548,13 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
         // Token budget must give the model enough room to generate the article
         // but NOT so much that it fills the space with padding/duplicates.
         // Scale proportionally: ~1.5 tokens/word for Latin scripts, ~2.5 for Cyrillic/CJK.
-        // Headroom: 3x content budget — enough for JSON structure, title/meta, and
-        // model to finish the last paragraph cleanly without mid-sentence truncation.
-        // Minimum 5000 to avoid cutting very short articles.
+        // The GPT-5 completion budget includes hidden reasoning tokens. Use low
+        // reasoning plus 4x content headroom for JSON/title/meta and complete prose.
+        // A higher ceiling does not itself cost more; only consumed tokens do.
         const tokensPerWord = /^(English|Spanish|French|Italian|Portuguese)$/i.test(articleLanguage) ? 1.5 : 2.5;
         const contentBudget = Math.ceil(targetWords * tokensPerWord);
-        const dynamicMaxTokens = Math.max(5000, Math.ceil(contentBudget * 3));
+        const dynamicMaxTokens = Math.max(8000, Math.ceil(contentBudget * 4));
         console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
-        const apiParams = textTokenLimit(textProvider, dynamicMaxTokens);
 
         type ParsedArticleModelResponse = {
           titleTag?: string;
@@ -614,14 +619,24 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           return parsedResponse;
         };
 
-        const callArticleModel = async (isJsonRetry: boolean) => {
-          const retryInstruction = isJsonRetry
+        type RetryReason = "none" | "json" | "empty";
+        const callArticleModel = async (retryReason: RetryReason) => {
+          const retryInstruction = retryReason === "json"
             ? "\n\nCRITICAL RETRY: The previous response was malformed or incomplete JSON. Return one complete, valid JSON object with every required field and a closed articleBlocks array. Do not shorten the article and do not add markdown fences."
-            : "";
+            : retryReason === "empty"
+              ? "\n\nCRITICAL RETRY: The previous call spent its completion budget on reasoning and returned no visible content. Use minimal reasoning and immediately produce the complete JSON article."
+              : "";
           const messages = [
             { role: "system" as const, content: systemMessage },
             { role: "user" as const, content: `${prompt}${retryInstruction}` },
           ];
+          const tokenBudget = retryReason === "empty"
+            ? Math.ceil(dynamicMaxTokens * 1.5)
+            : dynamicMaxTokens;
+          const apiParams = {
+            ...textTokenLimit(textProvider, tokenBudget),
+            ...textReasoningEffort(textProvider, retryReason === "empty" ? "minimal" : "low"),
+          };
           try {
             return await textClient.chat.completions.create({
               model: textProvider.model,
@@ -630,7 +645,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
               response_format: { type: "json_object" },
             });
           } catch (formatError) {
-            void formatError;
+            if (!isResponseFormatUnsupported(formatError)) throw formatError;
             return textClient.chat.completions.create({
               model: textProvider.model,
               messages,
@@ -641,8 +656,9 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
 
         let parsedResponse: ParsedArticleModelResponse | undefined;
         let content = "";
+        let retryReason: RetryReason = "none";
         for (let jsonAttempt = 0; jsonAttempt < 2; jsonAttempt += 1) {
-          const completion = await callArticleModel(jsonAttempt === 1);
+          const completion = await callArticleModel(retryReason);
           content = completion.choices[0]?.message?.content ?? "";
 
           const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } | undefined;
@@ -661,7 +677,12 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
               outputTokens,
               choicesLength: completion.choices?.length || 0,
             });
-            throw new Error("Received empty content from the text provider. The model returned no content, only reasoning tokens.");
+            if (jsonAttempt === 0) {
+              retryReason = "empty";
+              console.warn("[articles-api] Retrying empty reasoning-only response with minimal reasoning.");
+              continue;
+            }
+            throw new Error("Received empty content from the text provider after retry. The model returned no content, only reasoning tokens.");
           }
 
           try {
@@ -686,6 +707,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
               contentLength: content.length,
             });
             if (jsonAttempt === 0) {
+              retryReason = "json";
               console.warn("[articles-api] Retrying malformed JSON response once.");
               continue;
             }

@@ -1,5 +1,5 @@
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import { buildLegacyGeneratePrompts } from "@/lib/legacyGeneratePrompt";
 
@@ -109,6 +109,7 @@ export async function POST(req: Request) {
         { role: "user", content: prompts.userPrompt },
       ],
       ...textTokenLimit(textProvider, 1200),
+      ...textReasoningEffort(textProvider, "low"),
     });
 
     const text = completion.choices[0]?.message?.content ?? "";

@@ -31,7 +31,8 @@
     - Money-анкор: точний текст (репair `repairMoneyAnchor`), дублікати розгортаються, whole-word (`enforceSingleMention` з `\b`, не чіпає текст у `<a>`), позиція в перших 3 абзацах; glued links (`</a>\w`) → error `anchor_broken`
     - Заборонений лінк у абзаці → видаляється ЦІЛЕ речення (не unwrap); в `<li>` → викидається пункт; речення з money-анкором ніколи не видаляється
     - Цитати `"..."` заморожуються перед Undetectable (QUOTEREF-токени); debris-guard (`cleanQuoteDebris`): орфанні лапки, непарні лапки
-    - Retry-цикл: draft-фейли (`truncated_output`, `orthography_invalid`, `below_min_words`, `anchor_missing`, `anchor_misplaced`, `anchor_broken`) → 1 retry з корективами → чесний error code
+  - Retry-цикл: draft-фейли (`truncated_output`, `orthography_invalid`, `below_min_words`, `anchor_missing`, `anchor_misplaced`, `anchor_broken`) → 1 retry з корективами → чесний error code
+  - GPT-5 token budget включає reasoning+visible output: article call використовує `reasoning_effort:low` і 4× content headroom; reasoning-only empty response ретраїться один раз із `minimal` та 1.5× додатковим headroom. Classifier/formatter працюють із `minimal`
     - A6 (датовані claims) — інструкції в промпті: ranking/top-N лише з as-of датою і джерелом, інакше механізм замість цифр
   - Джерела: `/thread/`, форуми, reddit/quora, SEO-блоги (backlinko тощо) і video-цитати відфільтровуються (`lib/sourcePolicy.ts` + `lib/automation/linkGuard.ts`); `hl` на support.google.com форситься в `en`; фінальний guard розгортає заборонені лінки в тексті (анкор недоторканий)
   - Source gate: Tavily/provider/credit failure → `source_lookup_failed`; лише успішний lookup без живого independent source → `no_independent_sources`. Якщо перший набір втратив independent source на live-URL check, виконується ширший allowlisted recovery lookup до 20 кандидатів без послаблення гейта. Логи містять searchExecuted/counts та `{url,reason}`

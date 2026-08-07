@@ -3,7 +3,7 @@
 // Docs: https://help.undetectable.ai/en/article/humanization-api-v2-p28b2n/
 
 import { getHumanizerConfig } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import {
   BETTERWORDS_REWRITE_SYSTEM_PROMPT,
@@ -167,6 +167,7 @@ export class BetterWordsHumanizerClient implements HumanizerService {
         { role: "user", content: buildBetterWordsRewriteInput(trimmed) },
       ],
       ...textTokenLimit(textProvider, maxCompletionTokens),
+      ...textReasoningEffort(textProvider, "low"),
     });
     if (textProvider.kind === "openai") {
       const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;

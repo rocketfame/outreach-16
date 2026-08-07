@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { getTextProviderConfig, textTokenLimit } from "../lib/textProvider";
+import {
+  getTextProviderConfig,
+  isResponseFormatUnsupported,
+  textReasoningEffort,
+  textTokenLimit,
+} from "../lib/textProvider";
 
 const previous = {
   baseURL: process.env.TEXT_API_BASE_URL,
@@ -19,6 +24,7 @@ try {
   assert.equal(openai.model, "gpt-5.5");
   assert.equal(openai.baseURL, "https://api.openai.com/v1");
   assert.deepEqual(textTokenLimit(openai, 6000), { max_completion_tokens: 6000 });
+  assert.deepEqual(textReasoningEffort(openai, "low"), { reasoning_effort: "low" });
 
   process.env.TEXT_API_BASE_URL = "http://127.0.0.1:11434/v1/";
   process.env.TEXT_MODEL = "qwen3:30b";
@@ -29,6 +35,9 @@ try {
   assert.equal(config.name, "ollama");
   assert.equal(config.kind, "external");
   assert.deepEqual(textTokenLimit(config, 6000), { max_tokens: 6000 });
+  assert.deepEqual(textReasoningEffort(config, "low"), {});
+  assert.equal(isResponseFormatUnsupported(Object.assign(new Error("Unsupported response_format"), { status: 400 })), true);
+  assert.equal(isResponseFormatUnsupported(Object.assign(new Error("Rate limited"), { status: 429 })), false);
 
   delete process.env.TEXT_MODEL;
   assert.throws(() => getTextProviderConfig(), /configured together/);

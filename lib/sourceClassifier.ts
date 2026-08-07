@@ -4,7 +4,7 @@
  * Classifies external sources to filter out competitors and prioritize quality sources
  */
 
-import { getTextGenerationClient, getTextProviderConfig, textTokenLimit } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, isResponseFormatUnsupported, textReasoningEffort, textTokenLimit } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import {
   filterSourcesByPolicy,
@@ -102,7 +102,8 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
           content: prompt,
         },
       ],
-      ...textTokenLimit(textProvider, 200),
+      ...textTokenLimit(textProvider, 800),
+      ...textReasoningEffort(textProvider, "minimal"),
     };
     let completion;
     try {
@@ -110,7 +111,8 @@ Return JSON ONLY, no explanations, no markdown, no code blocks.`;
         ...params,
         response_format: { type: "json_object" },
       });
-    } catch {
+    } catch (error) {
+      if (!isResponseFormatUnsupported(error)) throw error;
       completion = await textClient.chat.completions.create(params);
     }
 

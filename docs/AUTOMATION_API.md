@@ -67,6 +67,12 @@ capitalization.
 Malformed model JSON is retried once with a corrective JSON instruction before
 the job can fail with `generation_failed`.
 
+GPT-5 article calls use `reasoning_effort: "low"` and a completion ceiling that
+includes explicit headroom for hidden reasoning tokens. If a call returns only
+reasoning tokens and no visible content, it is retried once with `minimal`
+reasoning and a larger ceiling. Small classification and formatting calls use
+`minimal` reasoning so their output budget cannot be consumed by hidden work.
+
 ### Billing
 
 `billing` accepts `auto` (default), `external`, `api`, or `subscription`.

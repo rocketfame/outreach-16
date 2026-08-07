@@ -3,7 +3,7 @@
 import { buildTopicPrompt } from "@/lib/topicPrompt";
 import { shouldUseBrowsing, browseForTopics } from "@/lib/topicBrowsing";
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
-import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
+import { getTextGenerationClient, getTextProviderConfig, isResponseFormatUnsupported, textReasoningEffort } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount, isMasterToken } from "@/lib/trialLimits";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
     // #endregion
 
     // API parameters for OpenAI
-    const apiParams = {};
+    const apiParams = textReasoningEffort(textProvider, "low");
 
     // Generate topics using GPT-5.5
     let completion;
@@ -149,6 +149,7 @@ export async function POST(req: Request) {
         response_format: { type: "json_object" },
       });
     } catch (formatError) {
+      if (!isResponseFormatUnsupported(formatError)) throw formatError;
       // If response_format is not supported, try without it
       // #region agent log
       const formatErrCode = (formatError as { code?: unknown })?.code;
