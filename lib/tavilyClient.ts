@@ -27,13 +27,22 @@ export interface TrustedSource {
   source: string; // e.g. "tavily"
 }
 
+export interface ReliableSearchOptions {
+  /** Tavily-native domain constraint. Do not emulate this with `site:` query operators. */
+  includeDomains?: string[];
+  maxResults?: number;
+}
+
 /**
  * Search reliable sources using Tavily API
  * This is the ONLY external search function - no fallbacks, no DuckDuckGo
  * @param query - Search query string
  * @returns Array of trusted sources with title, URL, snippet, and source
  */
-export async function searchReliableSources(query: string): Promise<TrustedSource[]> {
+export async function searchReliableSources(
+  query: string,
+  options: ReliableSearchOptions = {}
+): Promise<TrustedSource[]> {
   // Get validated Tavily API key from centralized configuration
   const apiKey = getTavilyApiKey();
 
@@ -41,7 +50,7 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
 
   try {
     // #region agent log
-    const queryLog = {location:'tavilyClient.ts:28',message:'[tavily-api] Starting search',data:{query,searchDepth:'advanced',maxResults:5},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
+    const queryLog = {location:'tavilyClient.ts:28',message:'[tavily-api] Starting search',data:{query,searchDepth:'advanced',maxResults:options.maxResults ?? 8,includeDomainsCount:options.includeDomains?.length ?? 0},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
     debugLog(queryLog);
     // #endregion
 
@@ -52,7 +61,10 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       include_answers: false,
       include_images: false,
       include_raw_content: true, // Get full content for better relevance
-      max_results: 8, // Get more sources to prioritize text over video (official platforms, stats, top publications)
+      max_results: options.maxResults ?? 8,
+      ...(options.includeDomains?.length
+        ? { include_domains: options.includeDomains.slice(0, 300) }
+        : {}),
     };
 
     const response = await fetch("https://api.tavily.com/search", {
@@ -116,6 +128,9 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
 
     // Filter out low-quality or irrelevant sources
     const rejectedSources: Array<{ url: string; reason: string }> = [];
+    const includedDomains = (options.includeDomains || [])
+      .map((domain) => domain.trim().toLowerCase().replace(/^www\./, ""))
+      .filter(Boolean);
     const reject = (source: TrustedSource, reason: string): false => {
       rejectedSources.push({ url: source.url, reason });
       return false;
@@ -124,6 +139,21 @@ export async function searchReliableSources(query: string): Promise<TrustedSourc
       const url = source.url.toLowerCase();
       const title = (source.title || "").toLowerCase();
       const snippet = (source.snippet || "").toLowerCase();
+
+      // Tavily may treat include_domains as a ranking hint and still return
+      // out-of-domain results. Enforce the caller's contract locally.
+      if (includedDomains.length > 0) {
+        let hostname = "";
+        try {
+          hostname = new URL(source.url).hostname.toLowerCase().replace(/^www\./, "");
+        } catch {
+          return reject(source, "outside_include_domains");
+        }
+        const included = includedDomains.some(
+          (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+        );
+        if (!included) return reject(source, "outside_include_domains");
+      }
 
       // Exclude PDF files (especially academic PDFs)
       if (url.endsWith(".pdf") || url.includes(".pdf")) {

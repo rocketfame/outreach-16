@@ -414,7 +414,7 @@ export async function runCoverGeneration(
 
 async function searchAutomationTrustSources(topic: string, category: string) {
   const officialQuery = buildOfficialSourceQuery(topic, category);
-  const researchQuery = `${topic} ${category} statistics report industry data`;
+  const researchQuery = buildIndependentResearchQuery(topic, category);
 
   const resultSets = await Promise.all([
     searchReliableSources(officialQuery),
@@ -430,18 +430,48 @@ async function searchAutomationTrustSources(topic: string, category: string) {
 }
 
 /** Targeted tier-2/3 search when the general sweep yields no independent sources. */
-const INDEPENDENT_SOURCE_SITES = [
-  "site:billboard.com",
-  "site:musicbusinessworldwide.com",
-  "site:pewresearch.org",
-  "site:midiaresearch.com",
-  "site:ifpi.org",
-  "site:soundcharts.com",
-  "site:chartmasters.org",
-  "site:streamscharts.com",
-  "site:twitchtracker.com",
-  "site:datareportal.com",
+export const INDEPENDENT_SOURCE_DOMAINS = [
+  "billboard.com",
+  "musicbusinessworldwide.com",
+  "pewresearch.org",
+  "midiaresearch.com",
+  "ifpi.org",
+  "soundcharts.com",
+  "chartmasters.org",
+  "chartmetric.com",
+  "streamscharts.com",
+  "twitchtracker.com",
+  "socialinsider.io",
+  "datareportal.com",
 ];
+
+/**
+ * Research intent must not inherit a transactional "buy followers/views"
+ * phrase verbatim. That wording biases search toward vendors and competitors,
+ * while the article H1 remains unchanged and still carries the money keyword.
+ */
+export function buildIndependentResearchQuery(topic: string, category: string): string {
+  const informationalTopic = topic
+    .replace(
+      /\b(?:buy|buying|purchase|purchasing|comprare|compra|acquistare|acquista|comprar|acheter|achat|kaufen|kauf|kupic|kupić|zakup)\b/giu,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .replace(/^\s*:\s*|\s*:\s*$/g, "")
+    .trim();
+
+  const categoryIntent: Record<string, string> = {
+    youtube: "creator audience growth discovery engagement video performance",
+    tiktok: "creator audience growth credibility engagement consumer trust",
+    instagram: "creator audience growth credibility engagement consumer trust",
+    spotify: "artist audience growth music discovery streaming engagement",
+    soundcloud: "artist audience growth music discovery listener engagement",
+  };
+  const intent = categoryIntent[category.trim().toLowerCase()]
+    || "creator audience growth engagement platform research";
+
+  return `${informationalTopic} ${category} ${intent} independent research statistics report`;
+}
 
 type ScoredSource = { title: string; url: string; snippet?: string };
 
@@ -510,7 +540,8 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
     let extra: ScoredSource[];
     try {
       extra = await searchReliableSources(
-        `${INDEPENDENT_SOURCE_SITES.join(" OR ")} ${topic} ${category} report data`
+        buildIndependentResearchQuery(topic, category),
+        { includeDomains: INDEPENDENT_SOURCE_DOMAINS, maxResults: 10 }
       );
       candidatesFound += extra.length;
     } catch (error) {

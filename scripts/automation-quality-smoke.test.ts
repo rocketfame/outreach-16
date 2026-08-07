@@ -4,7 +4,11 @@ import {
   restoreBrandToken,
 } from "@/lib/automation/contentQuality";
 import { validateAutomationRequest } from "@/lib/automation/validate";
-import { buildLanguageOrthographyInstruction } from "@/lib/automation/pipeline";
+import {
+  buildIndependentResearchQuery,
+  buildLanguageOrthographyInstruction,
+  INDEPENDENT_SOURCE_DOMAINS,
+} from "@/lib/automation/pipeline";
 import { getCostTracker } from "@/lib/costTracker";
 
 let failures = 0;
@@ -32,6 +36,14 @@ check("Italian apostrophe substitution rejected", !!findLanguageOrthographyIssue
 check("correct Italian diacritics accepted", !findLanguageOrthographyIssue("<p>Perché è già più chiaro.</p>", "Italian"));
 const italianPrompt = buildLanguageOrthographyInstruction("Italian");
 check("Italian prompt requires native diacritics", italianPrompt.includes("è") && italianPrompt.includes("perche'") && italianPrompt.includes("never substitute apostrophe"));
+
+const commercialResearchQuery = buildIndependentResearchQuery(
+  "Compra Follower TikTok: Come Aumentare la Credibilità del Profilo",
+  "TikTok"
+);
+check("commercial verb removed from research query", !/\bcompra\b/i.test(commercialResearchQuery), commercialResearchQuery);
+check("research query keeps platform and informational intent", commercialResearchQuery.includes("TikTok") && commercialResearchQuery.includes("consumer trust"), commercialResearchQuery);
+check("independent domain filter uses bare domains", INDEPENDENT_SOURCE_DOMAINS.every((domain) => !domain.startsWith("site:")));
 
 const brandHtml = restoreBrandToken(
   '<p>Promo Sound Group lavora con i creator. promosoundgroup resta coerente.</p><a href="https://example.com/Promo Sound Group">Link</a>',
