@@ -3,7 +3,6 @@
 // Add your API keys ONLY in .env.local file in the root directory
 
 import OpenAI from "openai";
-import { validateTextProvider } from "@/lib/textProvider";
 
 /**
  * Get and validate OpenAI API key
@@ -75,7 +74,14 @@ export function logApiKeyStatus(): void {
  * @returns true if all keys are valid, throws error otherwise
  */
 export function validateContentProviders(): boolean {
-  validateTextProvider();
+  const externalBaseUrl = process.env.TEXT_API_BASE_URL?.trim();
+  const externalModel = process.env.TEXT_MODEL?.trim();
+  if (!!externalBaseUrl !== !!externalModel) {
+    throw new Error(
+      "TEXT_API_BASE_URL and TEXT_MODEL must be configured together, or both omitted to use OpenAI."
+    );
+  }
+  if (!externalBaseUrl) getOpenAIApiKey();
   getTavilyApiKey();
   return true;
 }
@@ -143,7 +149,6 @@ export function getHumanizerConfig(): {
  * Now enabled by default - Human Mode is always available
  */
 export const HUMAN_MODE_EXPERIMENT = true;
-
 
 
 
