@@ -1,5 +1,5 @@
-import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
-import { getCostTracker } from "@/lib/costTracker";
+import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 import { buildLegacyGeneratePrompts } from "@/lib/legacyGeneratePrompt";
 
 // Simple debug logger that works in both local and production (Vercel)
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   
   // Validate API keys using centralized configuration
   try {
-    validateApiKeys();
+    validateContentProviders();
     logApiKeyStatus();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -40,8 +40,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Get OpenAI client (pre-configured with validated API key)
-  const client = getOpenAIClient();
+  const client = getTextGenerationClient();
+  const textProvider = getTextProviderConfig();
 
   let body: GenerateRequest;
   try {
@@ -98,51 +98,46 @@ export async function POST(req: Request) {
 
   try {
     // #region agent log
-    const apiCallLog = {location:'route.ts:63',message:'Calling OpenAI API',data:{model:'gpt-5.5',type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const apiCallLog = {location:'route.ts:63',message:'Calling text provider',data:{model:textProvider.model,provider:textProvider.name,type},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(apiCallLog);
     // #endregion
     const completion = await client.chat.completions.create({
-      model: "gpt-5.5",
+      model: textProvider.model,
       messages: [
         { role: "system", content: prompts.systemPrompt },
         { role: "user", content: prompts.userPrompt },
       ],
-      max_completion_tokens: 1200,
+      max_tokens: 1200,
     });
 
     const text = completion.choices[0]?.message?.content ?? "";
     
-    // Track cost
-    const costTracker = getCostTracker();
     const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
-    if (inputTokens > 0 || outputTokens > 0) {
-      costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
-    }
     
     // #region agent log
-    const successLog = {location:'route.ts:72',message:'OpenAI API success',data:{textLength:text.length,hasText:!!text,usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const successLog = {location:'route.ts:72',message:'Text provider success',data:{textLength:text.length,hasText:!!text,usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(successLog);
     // #endregion
     return Response.json({ text });
   } catch (error) {
     // #region agent log
-    const apiErrorLog = {location:'route.ts:75',message:'OpenAI API error',data:{error:(error as Error).message,errorName:(error as Error).name,errorStack:(error as Error).stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const apiErrorLog = {location:'route.ts:75',message:'Text provider error',data:{error:(error as Error).message,errorName:(error as Error).name,errorStack:(error as Error).stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(apiErrorLog);
     // #endregion
-    console.error("OpenAI API error", error);
+    console.error("Text provider error", error);
     
     // Provide more specific error messages
     const errorMessage = (error as Error).message || "";
     let userFriendlyError = "Failed to generate content. Please try again.";
     
     if (errorMessage.includes("429") || errorMessage.includes("quota")) {
-      userFriendlyError = "OpenAI API quota exceeded. Please check your billing and plan details at https://platform.openai.com/account/billing";
+      userFriendlyError = "The configured text provider quota is exhausted.";
     } else if (errorMessage.includes("401") || errorMessage.includes("Invalid API key")) {
-      userFriendlyError = "Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable.";
+      userFriendlyError = "Invalid text provider credentials. Check TEXT_API_KEY.";
     } else if (errorMessage.includes("model")) {
-      userFriendlyError = "Invalid model name. Please check your OpenAI API configuration.";
+      userFriendlyError = "Invalid text model. Check TEXT_MODEL.";
     }
     
     return Response.json(

@@ -2,8 +2,8 @@
 
 import { buildTopicPrompt } from "@/lib/topicPrompt";
 import { shouldUseBrowsing, browseForTopics } from "@/lib/topicBrowsing";
-import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
-import { getCostTracker } from "@/lib/costTracker";
+import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 import { extractTrialToken, canRunTopicDiscovery, incrementTopicDiscoveryCount, isMasterToken } from "@/lib/trialLimits";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   // Validate all API keys using centralized configuration
   try {
-    validateApiKeys();
+    validateContentProviders();
     logApiKeyStatus();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -46,8 +46,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Get OpenAI client (pre-configured with validated API key)
-  const openai = getOpenAIClient();
+  const textClient = getTextGenerationClient();
+  const textProvider = getTextProviderConfig();
 
   try {
     const { brief } = await req.json();
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     // #endregion
 
     // #region agent log
-    const apiCallLog = {location:'generate-topics/route.ts:40',message:'Calling OpenAI API',data:{model:'gpt-5.5'},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const apiCallLog = {location:'generate-topics/route.ts:40',message:'Calling text provider',data:{model:textProvider.model,provider:textProvider.name},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(apiCallLog);
     // #endregion
 
@@ -132,8 +132,8 @@ export async function POST(req: Request) {
     // Generate topics using GPT-5.5
     let completion;
     try {
-      completion = await openai.chat.completions.create({
-        model: "gpt-5.5",
+      completion = await textClient.chat.completions.create({
+        model: textProvider.model,
         messages: [
           {
             role: "system",
@@ -154,8 +154,8 @@ export async function POST(req: Request) {
       const formatErrorLog = {location:'generate-topics/route.ts:55',message:'response_format not supported, trying without it',data:{error:(formatError as Error).message,errorCode:formatErrCode},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'format-fallback'};
       debugLog(formatErrorLog);
       // #endregion
-      completion = await openai.chat.completions.create({
-        model: "gpt-5.5",
+      completion = await textClient.chat.completions.create({
+        model: textProvider.model,
         messages: [
           {
             role: "system",
@@ -172,17 +172,12 @@ export async function POST(req: Request) {
 
     const content = completion.choices[0]?.message?.content ?? "";
 
-    // Track cost
-    const costTracker = getCostTracker();
     const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
-    if (inputTokens > 0 || outputTokens > 0) {
-      costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
-    }
 
     // #region agent log
-    const successLog = {location:'generate-topics/route.ts:58',message:'OpenAI API success',data:{contentLength:content.length,hasContent:!!content,usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
+    const successLog = {location:'generate-topics/route.ts:58',message:'Text provider success',data:{contentLength:content.length,hasContent:!!content,usage:{inputTokens,outputTokens}},timestamp:Date.now(),sessionId:'debug-session',runId:'api-debug',hypothesisId:'api-route'};
     debugLog(successLog);
     // #endregion
 

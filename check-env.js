@@ -1,96 +1,54 @@
 #!/usr/bin/env node
 
-// Скрипт для перевірки налаштування .env.local
+const fs = require("fs");
+const path = require("path");
 
-const fs = require('fs');
-const path = require('path');
-
-const envPath = path.join(process.cwd(), '.env.local');
-
-console.log('=== Перевірка .env.local ===\n');
-
+const envPath = path.join(process.cwd(), ".env.local");
 if (!fs.existsSync(envPath)) {
-  console.log('❌ Файл .env.local НЕ знайдено в корені проекту!');
-  console.log('   Створіть файл .env.local з наступним вмістом:');
-  console.log('');
-  console.log('   OPENAI_API_KEY=sk-ваш-ключ');
-  console.log('   TAVILY_API_KEY=tvly-ваш-ключ');
+  console.error("Missing .env.local. Copy .env.example and add real provider credentials.");
   process.exit(1);
 }
 
-console.log('✓ Файл .env.local знайдено\n');
+const env = Object.fromEntries(
+  fs.readFileSync(envPath, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#") && line.includes("="))
+    .map((line) => {
+      const separator = line.indexOf("=");
+      return [line.slice(0, separator), line.slice(separator + 1).trim()];
+    })
+);
 
-const envContent = fs.readFileSync(envPath, 'utf-8');
-const lines = envContent.split('\n');
+const errors = [];
+for (const name of ["TEXT_API_BASE_URL", "TEXT_MODEL", "TAVILY_API_KEY"]) {
+  if (!env[name]) errors.push(`Missing ${name}`);
+}
 
-let openaiKey = null;
-let tavilyKey = null;
-
-for (const line of lines) {
-  const trimmed = line.trim();
-  if (trimmed.startsWith('OPENAI_API_KEY=')) {
-    openaiKey = trimmed.split('=')[1]?.trim();
-  }
-  if (trimmed.startsWith('TAVILY_API_KEY=')) {
-    tavilyKey = trimmed.split('=')[1]?.trim();
+if (env.TEXT_API_BASE_URL) {
+  try {
+    const url = new URL(env.TEXT_API_BASE_URL);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      errors.push("TEXT_API_BASE_URL must use http or https");
+    }
+    if (url.hostname === "openai.com" || url.hostname.endsWith(".openai.com")) {
+      errors.push("TEXT_API_BASE_URL cannot point to OpenAI");
+    }
+  } catch {
+    errors.push("TEXT_API_BASE_URL is not a valid URL");
   }
 }
 
-console.log('Перевірка ключів:\n');
-
-// Перевірка OpenAI
-if (!openaiKey) {
-  console.log('❌ OPENAI_API_KEY не знайдено');
-} else if (openaiKey === 'sk-your-openai-api-key-here' || !openaiKey.startsWith('sk-')) {
-  console.log('⚠️  OPENAI_API_KEY: потрібно вставити реальний ключ');
-  console.log('   Поточне значення:', openaiKey.substring(0, 20) + '...');
-} else {
-  console.log('✓ OPENAI_API_KEY: налаштовано');
-  console.log('   Префікс:', openaiKey.substring(0, 10) + '...');
+if (env.TAVILY_API_KEY && !env.TAVILY_API_KEY.startsWith("tvly-")) {
+  errors.push("TAVILY_API_KEY has an invalid format");
+}
+if (env.OPENAI_API_KEY && !env.OPENAI_API_KEY.startsWith("sk-")) {
+  errors.push("OPENAI_API_KEY has an invalid format (it is optional for images)");
 }
 
-console.log('');
-
-// Перевірка Tavily
-if (!tavilyKey) {
-  console.log('❌ TAVILY_API_KEY не знайдено');
-} else if (!tavilyKey.startsWith('tvly-')) {
-  console.log('⚠️  TAVILY_API_KEY: неправильний формат (має починатися з tvly-)');
-} else {
-  console.log('✓ TAVILY_API_KEY: налаштовано');
-  console.log('   Префікс:', tavilyKey.substring(0, 10) + '...');
-}
-
-console.log('\n=== Підсумок ===\n');
-
-const allOk = openaiKey && 
-              openaiKey !== 'sk-your-openai-api-key-here' && 
-              openaiKey.startsWith('sk-') &&
-              tavilyKey && 
-              tavilyKey.startsWith('tvly-');
-
-if (allOk) {
-  console.log('✅ Всі ключі налаштовано правильно!');
-  console.log('   Можна запускати: npm run dev');
-} else {
-  console.log('⚠️  Потрібно виправити налаштування:');
-  if (!openaiKey || openaiKey === 'sk-your-openai-api-key-here' || !openaiKey.startsWith('sk-')) {
-    console.log('   - Вставте реальний OPENAI_API_KEY в .env.local');
-  }
-  if (!tavilyKey || !tavilyKey.startsWith('tvly-')) {
-    console.log('   - Вставте реальний TAVILY_API_KEY в .env.local');
-  }
+if (errors.length > 0) {
+  for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-
-
-
-
-
-
-
-
-
-
-
+console.log("Text provider and Tavily are configured. OpenAI remains optional and image-only.");

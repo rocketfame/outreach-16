@@ -4,16 +4,13 @@
  * Classifies external sources to filter out competitors and prioritize quality sources
  */
 
-import { getOpenAIClient } from "@/lib/config";
-import { getCostTracker } from "@/lib/costTracker";
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 import {
   filterSourcesByPolicy,
   getForcedSourceType,
   getSourcePolicyDecision,
   getSourcePriority,
 } from "@/lib/sourcePolicy";
-
-const SOURCE_CLASSIFIER_MODEL = "gpt-5.4-mini";
 
 export type SourceType = 
   | "official_platform" 
@@ -54,7 +51,8 @@ export async function classifySourceLLM(
   topicTitle: string,
   niche: string
 ): Promise<ClassifiedSource | null> {
-  const openai = getOpenAIClient();
+  const textClient = getTextGenerationClient();
+  const textProvider = getTextProviderConfig();
 
   const prompt = `You are a strict source classifier for external references in articles.
 Niche: "${niche}"
@@ -91,29 +89,29 @@ Rules:
 Return JSON ONLY, no explanations, no markdown, no code blocks.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: SOURCE_CLASSIFIER_MODEL,
+    const params = {
+      model: textProvider.smallModel,
       messages: [
         {
-          role: "system",
+          role: "system" as const,
           content: "You are a strict source classifier. Return only valid JSON, no explanations.",
         },
         {
-          role: "user",
+          role: "user" as const,
           content: prompt,
         },
       ],
-      max_completion_tokens: 200,
-      response_format: { type: "json_object" },
-    });
-
-    const costTracker = getCostTracker();
-    const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
-    costTracker.trackOpenAIChat(
-      SOURCE_CLASSIFIER_MODEL,
-      usage?.prompt_tokens || 0,
-      usage?.completion_tokens || 0
-    );
+      max_tokens: 200,
+    };
+    let completion;
+    try {
+      completion = await textClient.chat.completions.create({
+        ...params,
+        response_format: { type: "json_object" },
+      });
+    } catch {
+      completion = await textClient.chat.completions.create(params);
+    }
 
     const responseText = completion.choices[0]?.message?.content?.trim();
     if (!responseText) {

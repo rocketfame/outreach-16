@@ -39,7 +39,7 @@ remains authoritative for voice and rhythm; STE-inspired constraints apply only
 inside genuine procedures, instructions, safety notes, and checklists. For
 `mode: "human"`, Undetectable.AI is additionally the primary rewrite provider. An
 exact `Insufficient credits` response switches the remaining work in that job to the
-OpenAI-backed BetterWords 2.1.2 quality rewrite. `meta.humanizationProvider`
+BetterWords 2.1.2 quality rewrite through the configured non-OpenAI text provider. `meta.humanizationProvider`
 reports `undetectable`, `betterwords`, or `mixed`. If neither provider rewrites
 any block, the job fails with `humanization_failed`; unhumanized copy is never
 reported as a successful human-mode article.
@@ -66,18 +66,22 @@ the job can fail with `generation_failed`.
 
 ### Billing
 
-`billing` accepts `auto` (default), `api`, or `subscription`. At present,
-TypeReach calls the OpenAI API directly and has no workspace subscription-quota
-provider. Therefore `auto` and `api` use API billing; successful result metadata
-reports `billingSource: "api"` and `quotaRemaining: null`.
+`billing` accepts `auto` (default), `external`, `api`, or `subscription`.
+`auto` and `external` route every article, SEO, classification, formatting, and
+BetterWords rewrite call through the configured non-OpenAI text provider.
+Successful result metadata reports `billingSource: "external_text_provider"`,
+the deployment label in `textProvider`, and `quotaRemaining: null`.
+
+`billing: "api"` fails synchronously with `openai_text_billing_disabled`. There
+is no hidden OpenAI text fallback. `OPENAI_API_KEY` is used only when an image is
+explicitly generated with gpt-image-2.
 
 `billing: "subscription"` fails synchronously with
 `subscription_billing_unavailable` before the job is queued, so it cannot
-silently spend API funds. A ChatGPT workspace subscription cannot fund OpenAI
-API calls; implementing subscription billing requires a separate TypeReach
-quota ledger and provider contract. `costUsd` is an upstream usage estimate, not
-a TypeReach subscription charge. Upstream providers charge work already
-performed even when a later TypeReach quality gate rejects the result.
+silently spend API funds. A ChatGPT workspace subscription cannot fund server
+API calls. `costUsd` includes integrations with known local pricing (such as
+Tavily, Undetectable, and an optional cover image); it does not guess the cost
+of the configured text provider.
 
 ### Cover format
 

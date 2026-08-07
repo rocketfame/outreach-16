@@ -2,9 +2,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildEditArticlePrompt } from "@/lib/editArticlePrompt";
-import { getOpenAIApiKey } from "@/lib/config";
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 import { cleanText, fixHtmlTagSpacing } from "@/lib/textPostProcessing";
-import { getCostTracker } from "@/lib/costTracker";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export interface EditHistoryEntry {
@@ -42,7 +41,7 @@ export interface EditArticleResponse {
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limit: edit-article calls OpenAI and is treated as a generation endpoint.
+    // Text edits are treated as generation requests for rate limiting.
     // 10 req/hour per IP (same budget as initial generation).
     const ip = getClientIP(req);
     const rl = checkRateLimit(ip, "generate");
@@ -87,13 +86,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = getOpenAIApiKey();
-    if (!apiKey) {
-      return NextResponse.json(
-        { success: false, error: "OpenAI API key is not configured" },
-        { status: 500 }
-      );
-    }
+    const textClient = getTextGenerationClient();
+    const textProvider = getTextProviderConfig();
 
     console.log("[edit-article] Building prompt with:", {
       articleHtmlLength: articleHtml.length,
@@ -118,63 +112,26 @@ export async function POST(req: NextRequest) {
 
     console.log("[edit-article] Prompt built, length:", prompt.length);
 
-    // Call OpenAI API
-    // API parameters for OpenAI
-    const apiParams = {};
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-5.5",
-        messages: [
-          {
-            role: "system",
-            content: "You are a top-tier professional content writer and researcher (digger) for the music industry with 10+ years of experience. You work like the best in the industry: conducting thorough research, verifying facts, and ensuring accuracy like a professional journalist. You approach every task with rigor and attention to detail. You are currently editing an article based on specific editorial requests while maintaining professional quality and natural writing style. CRITICAL: All images provided in the trust sources list have been found through Tavily API web browsing/search. Tavily searches the internet, including social media (Instagram, Facebook), official websites, news sites, and other sources. These are REAL images from the web. When images are provided in the trust sources list, you MUST use them - this is mandatory. CRITICAL: NEVER add notes, messages, or explanations in the article content. If an image is not available, simply skip it silently - DO NOT add text like 'Photo note:' or 'image not found'. The article must contain ONLY actual content.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        ...apiParams,
-      }),
+    const data = await textClient.chat.completions.create({
+      model: textProvider.model,
+      messages: [
+        {
+          role: "system",
+          content: "You are a top-tier professional content writer and researcher (digger) for the music industry with 10+ years of experience. You work like the best in the industry: conducting thorough research, verifying facts, and ensuring accuracy like a professional journalist. You approach every task with rigor and attention to detail. You are currently editing an article based on specific editorial requests while maintaining professional quality and natural writing style. CRITICAL: All images provided in the trust sources list have been found through Tavily API web browsing/search. Tavily searches the internet, including social media (Instagram, Facebook), official websites, news sites, and other sources. These are REAL images from the web. When images are provided in the trust sources list, you MUST use them - this is mandatory. CRITICAL: NEVER add notes, messages, or explanations in the article content. If an image is not available, simply skip it silently - DO NOT add text like 'Photo note:' or 'image not found'. The article must contain ONLY actual content.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error?.message || `OpenAI API error: ${response.status}`;
-      console.error("[edit-article] API error:", errorMessage);
-      return NextResponse.json(
-        { success: false, error: errorMessage },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    
-    // Track cost
-    const costTracker = getCostTracker();
     const usage = data.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
     const inputTokens = usage?.prompt_tokens || 0;
     const outputTokens = usage?.completion_tokens || 0;
     console.log("[edit-article] Token usage:", { inputTokens, outputTokens, usage });
-    if (inputTokens > 0 || outputTokens > 0) {
-      costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
-      const totals = costTracker.getTotalCosts();
-      console.log("[edit-article] Cost tracked. Current totals:", {
-        tavily: totals.tavily,
-        openai: totals.openai,
-        total: totals.total,
-      });
-    } else {
-      console.warn("[edit-article] No tokens to track - usage:", usage);
-    }
     
-    console.log("[edit-article] OpenAI response:", {
+    console.log("[edit-article] Text provider response:", {
       hasChoices: !!data.choices,
       choicesLength: data.choices?.length || 0,
       hasMessage: !!data.choices?.[0]?.message,
@@ -188,7 +145,7 @@ export async function POST(req: NextRequest) {
     if (!responseContent) {
       console.error("[edit-article] No content in response:", JSON.stringify(data, null, 2));
       return NextResponse.json(
-        { success: false, error: "No content returned from OpenAI" },
+        { success: false, error: "No content returned from the text provider" },
         { status: 500 }
       );
     }
@@ -291,4 +248,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

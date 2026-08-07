@@ -1,4 +1,4 @@
-# Централізована конфігурація API ключів
+# Конфігурація провайдерів
 
 ## 📍 Одне місце для всіх налаштувань
 
@@ -10,15 +10,19 @@
 
 ```
 .env.local                    ← ДОДАЙТЕ КЛЮЧІ ТУТ (тільки один раз!)
-├── OPENAI_API_KEY=sk-...
+├── TEXT_API_BASE_URL=https://provider.example/v1
+├── TEXT_API_KEY=...
+├── TEXT_MODEL=...
+├── OPENAI_API_KEY=sk-...     ← лише gpt-image-2
 └── TAVILY_API_KEY=tvly-...
 
-lib/config.ts                 ← Централізована конфігурація
+lib/textProvider.ts           ← Весь текст, із забороною OpenAI endpoint
+lib/config.ts                 ← OpenAI images, Tavily, Undetectable
 ├── getOpenAIApiKey()         ← Валідація та отримання OpenAI ключа
 ├── getTavilyApiKey()         ← Валідація та отримання Tavily ключа
-├── getOpenAIClient()         ← Готовий OpenAI клієнт
+├── getOpenAIImageClient()    ← Тільки gpt-image-2
 ├── logApiKeyStatus()         ← Безпечне логування статусу ключів
-└── validateApiKeys()         ← Перевірка всіх ключів
+└── validateContentProviders()← Перевірка text provider + Tavily
 
 app/api/*/route.ts            ← Використовують lib/config.ts
 lib/tavilyClient.ts           ← Використовує lib/config.ts
@@ -56,11 +60,11 @@ const openai = new OpenAI({ apiKey });
 
 ### Після рефакторингу (новий спосіб):
 ```typescript
-// ✅ Централізовано
-import { getOpenAIClient, validateApiKeys } from "@/lib/config";
+// ✅ Централізовано, без OpenAI text fallback
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 
-validateApiKeys(); // Перевірка всіх ключів
-const openai = getOpenAIClient(); // Готовий клієнт
+const client = getTextGenerationClient();
+const { model } = getTextProviderConfig();
 ```
 
 ## Файли, які використовують конфігурацію
@@ -110,7 +114,6 @@ node check-env.js
 ```bash
 cat .env.local
 ```
-
 
 
 

@@ -15,8 +15,8 @@
   - Повний контракт і приклади: `docs/AUTOMATION_API.md`
   - `brand` — optional, ІМʼЯ бренду plain text ("PromoSoundGroup"); URL або голий домен → 400 (домен у тексті жує гуманізатор — "net-glitch"). Йде в brief.clientSite → [[BRAND_NAME]] промпта, інструкція "mention 2-3 times as plain name", заморожується перед Undetectable
   - `brand` додатково є immutable token: видимі варіанти на кшталт `Promo Sound Group` детерміновано відновлюються до точного `PromoSoundGroup`; HTML attributes не переписуються
-  - `billing` — `auto` (default) | `api` | `subscription`. Реального subscription provider/ledger поки нема: `auto`/`api` чесно повертають `meta.billingSource:"api"`, `quotaRemaining:null`; `subscription` синхронно → 409 `subscription_billing_unavailable` до queue/API calls
-  - `meta.costUsd` — upstream cost estimate; GPT-5.5 token math uses advertised per-million rates correctly (legacy tracker under-reported chat tokens by 1000x). Це не TypeReach subscription charge
+  - `billing` — `auto` (default) | `external` | `api` | `subscription`. `auto`/`external` використовують лише налаштований non-OpenAI text provider. `api` синхронно → 409 `openai_text_billing_disabled`; `subscription` → 409 `subscription_billing_unavailable`, обидва до queue/provider calls
+  - `meta.billingSource` — `external_text_provider`; `meta.textProvider` містить non-secret deployment label. `meta.costUsd` рахує відомі інтеграції (Tavily, Undetectable, optional OpenAI image), але не вгадує ціну зовнішнього текстового провайдера
   - `brief` — optional, до 2000 символів; додається до згенерованого topic brief
   - `minWords` — це floor, не hint: draft нижче floor → один retry з підвищеним таргетом, потім error code `below_min_words` (а не `done` зі стабом). `meta.wordCount` у результаті для assert
   - `imageStyle` — optional, id image box пресета (`lib/imageBoxPrompts.ts`, 40 активних, 9 палітрових сімей `PALETTE_FAMILIES`); пінить конкретний стиль, невідомий id → 400 + `allowed[]`. `imageStyle` без `image:true` → 400
@@ -40,10 +40,10 @@
 - `GET /api/automation/generate/:jobId` — polling endpoint (`queued|running|done|error`). Для queued повертає `position` (1 = наступна до виконання) та `etaSeconds`. Кожен poll — drain-тригер черги (наступна джоба виконується в `after()` цієї ж інвокації). Running довше 10 хв → `job_timeout` error. Concurrency: `AUTOMATION_CONCURRENCY` env (default 1, max 8). Внутрішні automation-виклики `/api/articles` та `/api/article-image` обходять per-IP rate limiter через in-process токен (`lib/automation/internal.ts`)
 
 ## External Services
-- **OpenAI GPT-5.5 + BetterWords 2.1.2 quality guardrail** — усі user-visible topics, outlines, article/SEO fields та edits, у ручному UI й API та в обох writing modes. Editorial prompt має пріоритет для voice/rhythm; STE-inspired clarity вмикається тільки всередині процедур, інструкцій і чеклістів
+- **Configured non-OpenAI text provider + BetterWords 2.1.2 quality guardrail** — усі user-visible topics, outlines, article/SEO fields та edits, у ручному UI й API та в обох writing modes. `lib/textProvider.ts` забороняє `*.openai.com` як text base URL
 - **gpt-image-2** — 16:9 hero images (1536x864; Automation default compressed WebP, UI legacy PNG)
 - **Undetectable.AI v2** — гуманізація тексту (submit + polling)
-- **BetterWords 2.1.2 rewrite fallback** — додатково до базового writing layer: якщо Undetectable.AI повертає точну помилку `Insufficient credits`, решта блоків поточного job переписується через OpenAI за тими самими BetterWords quality rules; інші помилки не маскуються fallback-ом. `humanizationReport.providerUsage` показує слова по провайдерах
+- **BetterWords 2.1.2 rewrite fallback** — якщо Undetectable.AI повертає точну помилку `Insufficient credits`, решта блоків поточного job переписується через налаштований non-OpenAI text provider; інші помилки не маскуються fallback-ом. `humanizationReport.providerUsage` показує слова по провайдерах
 - **Tavily** — валідація trust sources
 - **Stripe** — оплата та upgrade
 - **Vercel KV** — persistent trial usage tracking

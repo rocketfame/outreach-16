@@ -2,8 +2,8 @@
 // Undetectable.AI Humanization API v2 client
 // Docs: https://help.undetectable.ai/en/article/humanization-api-v2-p28b2n/
 
-import { getHumanizerConfig, getOpenAIClient } from "@/lib/config";
-import { getCostTracker } from "@/lib/costTracker";
+import { getHumanizerConfig } from "@/lib/config";
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 import {
   BETTERWORDS_REWRITE_SYSTEM_PROMPT,
   buildBetterWordsRewriteInput,
@@ -33,7 +33,6 @@ const MIN_TEXT_LENGTH = 50;
 const MAX_TEXT_LENGTH = 10000;
 const POLL_INTERVAL_MS = 6000;
 const MAX_POLL_ATTEMPTS = 40; // ~4 min max wait (must stay under Vercel 300s maxDuration)
-const BETTERWORDS_MODEL = "gpt-5.5";
 
 export class HumanizerInsufficientCreditsError extends Error {
   constructor() {
@@ -148,7 +147,7 @@ export class UndetectableHumanizerClient implements HumanizerService {
   }
 }
 
-/** OpenAI-backed BetterWords 2.1.2 quality rewrite fallback. */
+/** BetterWords 2.1.2 rewrite through the configured non-OpenAI text provider. */
 export class BetterWordsHumanizerClient implements HumanizerService {
   async humanize(text: string): Promise<HumanizeResult> {
     const trimmed = text.trim();
@@ -158,14 +157,15 @@ export class BetterWordsHumanizerClient implements HumanizerService {
 
     const inputWords = trimmed.match(/[\p{L}\p{N}]+(?:[’'ʼ-][\p{L}\p{N}]+)*/gu)?.length ?? 0;
     const maxCompletionTokens = Math.min(4000, Math.max(1200, inputWords * 5));
-    const openai = getOpenAIClient();
-    const completion = await openai.chat.completions.create({
-      model: BETTERWORDS_MODEL,
+    const textClient = getTextGenerationClient();
+    const textProvider = getTextProviderConfig();
+    const completion = await textClient.chat.completions.create({
+      model: textProvider.model,
       messages: [
         { role: "system", content: BETTERWORDS_REWRITE_SYSTEM_PROMPT },
         { role: "user", content: buildBetterWordsRewriteInput(trimmed) },
       ],
-      max_completion_tokens: maxCompletionTokens,
+      max_tokens: maxCompletionTokens,
     });
 
     const output = completion.choices[0]?.message?.content?.trim() || "";
@@ -179,16 +179,6 @@ export class BetterWordsHumanizerClient implements HumanizerService {
     const missingTokens = Array.from(requiredTokens).filter((token) => !output.includes(token));
     if (missingTokens.length > 0) {
       throw new Error("BetterWords fallback dropped protected reference tokens");
-    }
-
-    const usage = completion.usage as {
-      prompt_tokens?: number;
-      completion_tokens?: number;
-    } | undefined;
-    const inputTokens = usage?.prompt_tokens || 0;
-    const outputTokens = usage?.completion_tokens || 0;
-    if (inputTokens > 0 || outputTokens > 0) {
-      getCostTracker().trackOpenAIChat(BETTERWORDS_MODEL, inputTokens, outputTokens);
     }
 
     const wordsUsed = output.match(/[\p{L}\p{N}]+(?:[’'ʼ-][\p{L}\p{N}]+)*/gu)?.length ?? 0;

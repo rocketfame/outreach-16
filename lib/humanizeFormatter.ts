@@ -1,9 +1,8 @@
 // lib/humanizeFormatter.ts
-// Post-humanization HTML formatter using OpenAI
+// Post-humanization HTML formatter using the configured text provider
 // This is a "dumb formatter" that rebuilds HTML structure from humanized text
 
-import { getOpenAIClient } from "@/lib/config";
-import { getCostTracker } from "@/lib/costTracker";
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 
 const SYSTEM_PROMPT = `Role: You are a post-processor for articles. You receive:
 	•	originalHtml – HTML before humanization;
@@ -86,7 +85,7 @@ export interface FormatHumanizedRequest {
 }
 
 /**
- * Formats humanized text back to HTML structure using OpenAI
+ * Formats humanized text back to HTML structure using the text provider
  * This is a "dumb formatter" that only rebuilds HTML, doesn't rewrite content
  */
 export async function formatHumanizedHtml(
@@ -94,7 +93,8 @@ export async function formatHumanizedHtml(
 ): Promise<string> {
   const { originalHtml, humanizedText } = request;
 
-  const client = getOpenAIClient();
+  const client = getTextGenerationClient();
+  const textProvider = getTextProviderConfig();
 
   const userPrompt = JSON.stringify({
     ORIGINAL_HTML: originalHtml,
@@ -103,12 +103,12 @@ export async function formatHumanizedHtml(
 
   try {
     const completion = await client.chat.completions.create({
-      model: "gpt-5.5",
+      model: textProvider.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
-      max_completion_tokens: 8000, // Enough for long articles
+      max_tokens: 8000, // Enough for long articles
     });
 
     const formattedHtml = completion.choices[0]?.message?.content?.trim() || "";
@@ -116,13 +116,6 @@ export async function formatHumanizedHtml(
     if (!formattedHtml) {
       throw new Error("Empty response from formatter");
     }
-
-    // Track cost
-    const costTracker = getCostTracker();
-    const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
-    const inputTokens = usage?.prompt_tokens || 0;
-    const outputTokens = usage?.completion_tokens || 0;
-    costTracker.trackOpenAIChat("gpt-5.5", inputTokens, outputTokens);
 
     // Remove any markdown code blocks if present
     let cleaned = formattedHtml;

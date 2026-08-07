@@ -32,7 +32,8 @@ import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePromp
 import { cleanText, fixHtmlTagSpacing, removeExcessiveBold, stripPromptLeaks } from "@/lib/textPostProcessing";
 import { repairHumanizedText } from "@/lib/humanizeRepair";
 import { validateArticleOutput } from "@/lib/outputValidator";
-import { getOpenAIClient, logApiKeyStatus, validateApiKeys } from "@/lib/config";
+import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
+import { getTextGenerationClient, getTextProviderConfig } from "@/lib/textProvider";
 import { getCostTracker } from "@/lib/costTracker";
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
 import {
@@ -207,7 +208,7 @@ export interface ArticleResponse {
 
 export async function POST(req: Request) {
 
-  // Rate limit: 10 req/hour per IP (expensive OpenAI calls).
+  // Rate limit: 10 req/hour per IP (expensive generation calls).
   // Internal automation calls (verified via in-process token, see
   // lib/automation/internal.ts) skip it: they are authenticated upstream via
   // AUTOMATION_API_KEY and throttled by the automation queue — otherwise a
@@ -225,7 +226,7 @@ export async function POST(req: Request) {
 
   // Validate all API keys using centralized configuration
   try {
-    validateApiKeys();
+    validateContentProviders();
     logApiKeyStatus();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -236,8 +237,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Get OpenAI client (pre-configured with validated API key)
-  const openai = getOpenAIClient();
+  const textClient = getTextGenerationClient();
+  const textProvider = getTextProviderConfig();
 
   try {
     const body: ArticleRequest = await req.json();
@@ -537,7 +538,7 @@ QUALITY RULES (5 rules — follow all):
 
 WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tight > long. A 1200-word article with zero filler beats 1800 words with padding.`;
 
-        // API parameters for OpenAI
+        // Parameters shared by OpenAI-compatible text providers.
         // Token budget must give the model enough room to generate the article
         // but NOT so much that it fills the space with padding/duplicates.
         // Scale proportionally: ~1.5 tokens/word for Latin scripts, ~2.5 for Cyrillic/CJK.
@@ -548,8 +549,8 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
         const contentBudget = Math.ceil(targetWords * tokensPerWord);
         const dynamicMaxTokens = Math.max(5000, Math.ceil(contentBudget * 3));
         console.log(`[wordcount-tokens] target=${targetWords} contentBudget=${contentBudget} dynamicMaxTokens=${dynamicMaxTokens}`);
-        const apiParams = { 
-          max_completion_tokens: dynamicMaxTokens
+        const apiParams = {
+          max_tokens: dynamicMaxTokens
         };
 
         type ParsedArticleModelResponse = {
@@ -624,16 +625,16 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
             { role: "user" as const, content: `${prompt}${retryInstruction}` },
           ];
           try {
-            return await openai.chat.completions.create({
-              model: "gpt-5.5",
+            return await textClient.chat.completions.create({
+              model: textProvider.model,
               messages,
               ...apiParams,
               response_format: { type: "json_object" },
             });
           } catch (formatError) {
             void formatError;
-            return openai.chat.completions.create({
-              model: "gpt-5.5",
+            return textClient.chat.completions.create({
+              model: textProvider.model,
               messages,
               ...apiParams,
             });
@@ -646,15 +647,11 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           const completion = await callArticleModel(jsonAttempt === 1);
           content = completion.choices[0]?.message?.content ?? "";
 
-          const costTracker = getCostTracker();
           const usage = completion.usage as { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } | undefined;
           const inputTokens = usage?.prompt_tokens || 0;
           const outputTokens = usage?.completion_tokens || 0;
           const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens || 0;
           console.log("[articles-api] Token usage:", { inputTokens, outputTokens, reasoningTokens });
-          if (inputTokens > 0 || outputTokens > 0) {
-            costTracker.trackOpenAIChat('gpt-5.5', inputTokens, outputTokens);
-          }
 
           if (!content.trim()) {
             console.error("[articles-api] Empty content received from API", {
@@ -663,7 +660,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
               outputTokens,
               choicesLength: completion.choices?.length || 0,
             });
-            throw new Error("Received empty content from OpenAI API. The model returned no content, only reasoning tokens.");
+            throw new Error("Received empty content from the text provider. The model returned no content, only reasoning tokens.");
           }
 
           try {
@@ -1748,7 +1745,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
     // When all topics failed, return 500 so client gets proper error (not 200 with empty array)
     if (generatedArticles.length === 0) {
       console.error("[articles-api] No articles generated — all topics failed. Check logs above for parse/validation errors.");
-      // Surface the real upstream error (e.g. OpenAI insufficient_quota) —
+      // Surface the real upstream provider error (for example quota exhaustion) —
       // a generic "JSON parse errors / truncation" guess sends callers
       // debugging the wrong layer entirely.
       const underlying = topicErrors[0]

@@ -9,6 +9,7 @@ import {
 import { drainAutomationQueue } from "@/lib/automation/runner";
 import { AutomationValidationError, validateAutomationRequest } from "@/lib/automation/validate";
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
+import { validateTextProvider } from "@/lib/textProvider";
 
 export const maxDuration = 300;
 
@@ -47,14 +48,30 @@ export async function POST(req: Request) {
     return json(body, 400);
   }
 
-  // This app currently invokes the OpenAI API directly. ChatGPT workspace
-  // subscriptions cannot pay API usage, and no TypeReach quota ledger/provider
-  // exists yet. Fail before queueing so `subscription` can never spend API funds.
+  // ChatGPT subscriptions cannot pay API usage. Text generation is routed only
+  // through the configured external provider and never falls back to OpenAI.
   if (request.billing === "subscription") {
     return errorResponse(
       "subscription_billing_unavailable",
-      "Subscription billing is not configured for Automation API. No job was queued and no provider API call was made. Use billing: \"api\" or \"auto\", or configure a real TypeReach workspace quota provider.",
+      "ChatGPT subscription billing cannot fund Automation API calls. No job was queued and no provider call was made. Use billing: \"auto\" or \"external\" with a configured text provider.",
       409
+    );
+  }
+  if (request.billing === "api") {
+    return errorResponse(
+      "openai_text_billing_disabled",
+      "OpenAI API billing is disabled for text generation. No job was queued. Use billing: \"auto\" or \"external\".",
+      409
+    );
+  }
+
+  try {
+    validateTextProvider();
+  } catch (error) {
+    return errorResponse(
+      "text_provider_not_configured",
+      error instanceof Error ? error.message : "Text provider is not configured.",
+      503
     );
   }
 

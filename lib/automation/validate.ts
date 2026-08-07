@@ -142,10 +142,10 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
   }
 
   const billing = body.billing === undefined || body.billing === null ? "auto" : body.billing;
-  if (billing !== "auto" && billing !== "api" && billing !== "subscription") {
-    throw new AutomationValidationError('Invalid billing. Expected "auto", "api", or "subscription".', {
+  if (billing !== "auto" && billing !== "external" && billing !== "api" && billing !== "subscription") {
+    throw new AutomationValidationError('Invalid billing. Expected "auto", "external", "api", or "subscription".', {
       field: "billing",
-      allowed: ["auto", "api", "subscription"],
+      allowed: ["auto", "external", "api", "subscription"],
     });
   }
 

@@ -3,6 +3,7 @@
 // Add your API keys ONLY in .env.local file in the root directory
 
 import OpenAI from "openai";
+import { validateTextProvider } from "@/lib/textProvider";
 
 /**
  * Get and validate OpenAI API key
@@ -56,7 +57,7 @@ export function getTavilyApiKey(): string {
  * Get OpenAI client instance (pre-configured with validated API key)
  * @returns OpenAI client
  */
-export function getOpenAIClient(): OpenAI {
+export function getOpenAIImageClient(): OpenAI {
   return new OpenAI({
     apiKey: getOpenAIApiKey(),
   });
@@ -66,21 +67,23 @@ export function getOpenAIClient(): OpenAI {
  * Log configuration presence without exposing any portion of a secret.
  */
 export function logApiKeyStatus(): void {
-  console.log("[config] Required API keys validated.");
+  console.log("[config] Required content providers validated.");
 }
 
 /**
  * Validate all required API keys are present and correctly formatted
  * @returns true if all keys are valid, throws error otherwise
  */
-export function validateApiKeys(): boolean {
-  try {
-    getOpenAIApiKey();
-    getTavilyApiKey();
-    return true;
-  } catch (error) {
-    throw error;
-  }
+export function validateContentProviders(): boolean {
+  validateTextProvider();
+  getTavilyApiKey();
+  return true;
+}
+
+/** Validate OpenAI only for the image-generation route. */
+export function validateImageProvider(): boolean {
+  getOpenAIApiKey();
+  return true;
 }
 
 /**
@@ -140,7 +143,6 @@ export function getHumanizerConfig(): {
  * Now enabled by default - Human Mode is always available
  */
 export const HUMAN_MODE_EXPERIMENT = true;
-
 
 
 

@@ -19,7 +19,7 @@ export const KNOWN_AUTOMATION_CATEGORIES = [
 ] as const;
 
 export type AutomationMode = "human" | "standard";
-export type AutomationBillingPreference = "auto" | "api" | "subscription";
+export type AutomationBillingPreference = "auto" | "external" | "api" | "subscription";
 export type AutomationCoverFormat = "png" | "webp";
 export type AutomationJobStatus = "queued" | "running" | "done" | "error";
 
@@ -40,7 +40,7 @@ export interface AutomationGenerateInput {
   brief?: string;
   /** Optional — defaults to "human". */
   mode?: AutomationMode;
-  /** `subscription` fails before queueing until a real workspace quota provider is configured. */
+  /** `api` and `subscription` fail before queueing; text uses the configured external provider. */
   billing?: AutomationBillingPreference;
   /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
   language?: string;
@@ -120,9 +120,11 @@ export interface AutomationGenerateSuccess {
     /** Palette family of the used preset — for family-level batch de-dup. */
     imageFamily?: string;
     costUsd: number;
-    /** Actual upstream billing source. Never reports a subscription that was not used. */
-    billingSource: "api";
-    /** No workspace subscription ledger exists yet. */
+    /** Article text never uses OpenAI billing. */
+    billingSource: "external_text_provider";
+    /** Non-secret provider label configured by the deployment. */
+    textProvider: string;
+    /** Provider quota is not available through the compatibility protocol. */
     quotaRemaining: number | null;
   };
 }

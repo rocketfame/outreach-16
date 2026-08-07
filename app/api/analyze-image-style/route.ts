@@ -1,7 +1,7 @@
 // app/api/analyze-image-style/route.ts
-// Analyze reference image style using GPT-4 Vision API
+// Analyze reference image style using the configured vision-capable text provider
 
-import { getOpenAIClient, validateApiKeys } from "@/lib/config";
+import { getTextGenerationClient, getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 
 export interface AnalyzeImageStyleRequest {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
   // Validate API keys
   try {
-    validateApiKeys();
+    validateTextProvider();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("API key validation failed:", errorMessage);
@@ -48,8 +48,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Get OpenAI client
-  const openai = getOpenAIClient();
+  const textClient = getTextGenerationClient();
+  const textProvider = getTextProviderConfig();
 
   try {
     const body: AnalyzeImageStyleRequest = await req.json();
@@ -65,12 +65,11 @@ export async function POST(req: Request) {
     // Extract base64 data
     const base64Data = extractBase64(imageBase64);
 
-    // API parameters for OpenAI
+    // API parameters for OpenAI-compatible providers
     const apiParams = {};
 
-    // Analyze image style using GPT-5.5
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.5", // GPT-5.5 for style analysis
+    const response = await textClient.chat.completions.create({
+      model: textProvider.visionModel,
       messages: [
         {
           role: "system",

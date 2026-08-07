@@ -1,6 +1,7 @@
 import { POST as generateArticleRoute } from "@/app/api/articles/route";
 import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
+import { getTextProviderConfig } from "@/lib/textProvider";
 import { searchReliableSources } from "@/lib/tavilyClient";
 import { getSourcePolicyDecision, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
 import {
@@ -319,6 +320,7 @@ export async function runAutomationGeneration(
   }
 
   const costAfter = getCostTracker().getTotalCosts().total;
+  const textProvider = getTextProviderConfig();
 
   return {
     status: "ok",
@@ -335,7 +337,7 @@ export async function runAutomationGeneration(
       cover,
     },
     meta: {
-      model: "gpt-5.5",
+      model: textProvider.model,
       humanized: article.humanizedOnWrite,
       language: request.language || "English",
       humanizationProvider: article.humanizationProvider,
@@ -343,7 +345,8 @@ export async function runAutomationGeneration(
       imageStyle: imageStyleUsed,
       imageFamily: familyOfBox(imageStyleUsed),
       costUsd: Math.max(0, Number((costAfter - costBefore).toFixed(6))),
-      billingSource: "api",
+      billingSource: "external_text_provider",
+      textProvider: textProvider.name,
       quotaRemaining: null,
     },
   };

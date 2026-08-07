@@ -1,7 +1,7 @@
 // app/api/article-image/route.ts
 // Hero image generation endpoint for articles
 
-import { getOpenAIClient, validateApiKeys } from "@/lib/config";
+import { getOpenAIImageClient, validateImageProvider } from "@/lib/config";
 import { getCostTracker } from "@/lib/costTracker";
 import { selectImageBoxPrompt, buildImagePromptFromBox, IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 import { extractTrialToken, canGenerateImage, incrementImageCount, isMasterToken } from "@/lib/trialLimits";
@@ -415,7 +415,7 @@ export async function POST(req: Request) {
 
   // Validate API keys
   try {
-    validateApiKeys();
+    validateImageProvider();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("API key validation failed:", errorMessage);
@@ -426,7 +426,7 @@ export async function POST(req: Request) {
   }
 
   // Get OpenAI client
-  const openai = getOpenAIClient();
+  const openai = getOpenAIImageClient();
 
   try {
     const body: ArticleImageRequest = await req.json();

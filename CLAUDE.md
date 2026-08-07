@@ -24,7 +24,7 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 
 - Next.js 16.0.8 (App Router), React 19.2.1, TypeScript strict
 - Vercel hosting + Vercel KV (Upstash Redis) for persistent trial usage
-- OpenAI GPT-5.5 for article generation, gpt-image-2 for hero images (ChatGPT Images 2.0)
+- Configurable non-OpenAI provider for all text; OpenAI gpt-image-2 only for hero images
 - Undetectable.AI Humanization API v2 (submit + polling)
 - Tavily for trust-source validation
 - Stripe for upgrade checkout
@@ -83,7 +83,10 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 ## Environment variables
 
 Required on Vercel (and `.env.local` for dev):
-- `OPENAI_API_KEY` — GPT-5.2
+- `OPENAI_API_KEY` — gpt-image-2 only; never used for text
+- `TEXT_API_BASE_URL` + `TEXT_MODEL` — required non-OpenAI text provider
+- `TEXT_API_KEY` — provider credential (optional for local unauthenticated servers)
+- `TEXT_SMALL_MODEL` / `TEXT_VISION_MODEL` — optional specialized models
 - `UNDETECTABLE_AI_API_KEY` — humanization
 - `TAVILY_API_KEY` — trust sources
 - `MASTER_IPS` — comma-separated IP allowlist (no spaces). Falls back to `FALLBACK_IPS` in `lib/accessConfig.ts` if unset.

@@ -1,6 +1,6 @@
 # Outreach Articles App / Universal Content Creator
 
-A minimal Next.js (App Router + TypeScript) tool that helps outreach teams move from a short brief to topic ideas, outlines, and article drafts with a single page UI. All AI calls run through the OpenAI Chat Completions API using the `gpt-5.1` model.
+A Next.js (App Router + TypeScript) tool that moves outreach teams from a short brief to topic ideas, outlines, and article drafts. Text uses a configurable non-OpenAI OpenAI-compatible provider; OpenAI is reserved for optional hero-image generation.
 
 ## Features
 
@@ -11,10 +11,13 @@ A minimal Next.js (App Router + TypeScript) tool that helps outreach teams move 
 
 ## Run locally
 
-1. Create a `.env.local` file with your OpenAI credentials:
+1. Create a `.env.local` file with a text provider and optional OpenAI image credentials:
 
    ```bash
-   OPENAI_API_KEY=sk-...
+   TEXT_API_BASE_URL=https://your-text-provider.example/v1
+   TEXT_API_KEY=your-text-provider-key
+   TEXT_MODEL=your-article-model
+   OPENAI_API_KEY=sk-... # optional unless generating hero images
    ```
 
 2. Install dependencies:
