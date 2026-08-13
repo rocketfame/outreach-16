@@ -92,13 +92,18 @@ export async function createTextCompletion(
     const usage = completion.usage as {
       prompt_tokens?: number;
       completion_tokens?: number;
+      prompt_tokens_details?: { cached_tokens?: number };
     } | undefined;
+    // Cached prompt tokens are billed at ~10% of the input rate. The article
+    // prompt template dominates input, so repeat jobs settle far below the
+    // reservation once OpenAI's prefix cache is warm.
     getCostTracker().trackOpenAIChat(
       model,
       usage?.prompt_tokens || 0,
       usage?.completion_tokens || 0,
       reservationId,
-      options.step
+      options.step,
+      usage?.prompt_tokens_details?.cached_tokens || 0
     );
     return completion;
   } catch (error) {

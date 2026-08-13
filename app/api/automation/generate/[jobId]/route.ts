@@ -126,6 +126,8 @@ export async function GET(
       jobId: job.id,
       position,
       etaSeconds,
+      estimatedCostUsd: job.estimatedCost ?? job.estimatedCostUsd,
+      maxCostUsd: job.request?.maxCostUsd,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     }, 200);

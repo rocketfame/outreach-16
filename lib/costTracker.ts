@@ -14,10 +14,12 @@ const PRICING = {
   openai: {
     'gpt-5.5': {
       input: 5.00 / 1_000_000, // $5.00 per 1M input tokens
+      cachedInput: 0.50 / 1_000_000, // $0.50 per 1M cached input tokens
       output: 30.00 / 1_000_000, // $30.00 per 1M output tokens
     },
     'gpt-5.4-mini': {
       input: 0.75 / 1_000_000, // $0.75 per 1M input tokens
+      cachedInput: 0.075 / 1_000_000,
       output: 4.50 / 1_000_000, // $4.50 per 1M output tokens
     },
     'dall-e-3': {
@@ -108,9 +110,10 @@ export class CostTracker {
     inputTokens: number,
     outputTokens: number,
     reservationId: string | null = null,
-    step = "openai_chat"
+    step = "openai_chat",
+    cachedInputTokens = 0
   ): void {
-    const totalCost = calculateOpenAIChatCost(model, inputTokens, outputTokens);
+    const totalCost = calculateOpenAIChatCost(model, inputTokens, outputTokens, cachedInputTokens);
     this.costs.push({
       service: 'openai',
       type: 'chat',
@@ -291,18 +294,26 @@ export function runWithIsolatedCostTracker<T>(operation: () => Promise<T>): Prom
   return costTrackerStorage.run(new CostTracker(), operation);
 }
 
-function chatPricing(model: string): { input: number; output: number } {
+function chatPricing(model: string): { input: number; cachedInput?: number; output: number } {
   const exact = PRICING.openai[model as keyof typeof PRICING.openai];
   if (exact && typeof exact === "object" && "input" in exact) {
-    return exact as { input: number; output: number };
+    return exact as { input: number; cachedInput?: number; output: number };
   }
   return PRICING.openai["gpt-5.5"];
 }
 
+/**
+ * Script-aware token approximation plus message overhead. English/Latin prose
+ * runs ~4 chars/token on o200k; non-ASCII scripts are denser (~2 chars/token).
+ * The old flat /3 overestimated the 150KB+ article prompt by ~33%, which made
+ * the automation budget guard reject jobs the cap could actually afford.
+ */
 export function estimateTextTokens(value: unknown): number {
   const text = typeof value === "string" ? value : JSON.stringify(value);
-  // Conservative mixed-language approximation plus message overhead.
-  return Math.max(1, Math.ceil((text?.length || 0) / 3) + 24);
+  if (!text) return 25;
+  const nonAsciiChars = (text.match(/[^\x00-\x7F]/g) || []).length;
+  const asciiChars = text.length - nonAsciiChars;
+  return Math.max(1, Math.ceil(asciiChars / 4 + nonAsciiChars / 2) + 24);
 }
 
 export function estimateOpenAIChatCost(
@@ -317,10 +328,13 @@ export function estimateOpenAIChatCost(
 export function calculateOpenAIChatCost(
   model: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  cachedInputTokens = 0
 ): number {
   const pricing = chatPricing(model);
-  return inputTokens * pricing.input + outputTokens * pricing.output;
+  const cached = Math.min(Math.max(0, cachedInputTokens), inputTokens);
+  const cachedRate = pricing.cachedInput ?? pricing.input * 0.1;
+  return (inputTokens - cached) * pricing.input + cached * cachedRate + outputTokens * pricing.output;
 }
 
 export function estimateTavilySearchCost(depth: "basic" | "advanced", queries = 1): number {

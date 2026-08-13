@@ -1167,6 +1167,52 @@ Current WritingMode: [[WRITING_MODE]]
  * 
  * @throws Error if niche is missing
  */
+/**
+ * Inject a large payload ONCE at its data-slot line(s) and turn every other
+ * template mention of the placeholder into a bare symbolic reference.
+ *
+ * [[TOPIC_BRIEF]] appears ~30 times and [[TRUST_SOURCES_LIST]] ~40 times
+ * across the templates — almost all of them inside rules that merely REFER to
+ * the data ("use ONLY sources from [[TRUST_SOURCES_LIST]]"). The old blanket
+ * replaceAll inlined the full multi-KB payload at every mention, which
+ * multiplied the rendered prompt (and its input-token bill) ~2.5x while
+ * adding zero information for the model. The template text itself is frozen
+ * and unchanged; this only stops duplicating the substituted data.
+ *
+ * If no data slot matches (template drift), it falls back to the old
+ * everywhere-inline behavior so the payload can never be silently dropped.
+ */
+function injectDataOnce(
+  prompt: string,
+  placeholder: string,
+  dataSlotLines: string[],
+  payload: string,
+  referenceName: string
+): string {
+  // First matching slot wins — each template carries the payload exactly once.
+  for (const slotLine of dataSlotLines) {
+    if (prompt.includes(slotLine)) {
+      return prompt
+        .replaceAll(slotLine, slotLine.replace(placeholder, payload))
+        .replaceAll(placeholder, referenceName);
+    }
+  }
+  return prompt.replaceAll(placeholder, payload);
+}
+
+const TOPIC_BRIEF_DATA_SLOTS = [
+  "• Article brief: [[TOPIC_BRIEF]]",
+  "• Article brief (requirements, angle, key points): [[TOPIC_BRIEF]]",
+  "• Topic description / detailed brief (optional): [[TOPIC_BRIEF]]",
+];
+
+const TRUST_SOURCES_DATA_SLOTS = [
+  "• Trusted external sources (pre-validated): [[TRUST_SOURCES_LIST]]",
+  "• [[TRUST_SOURCES_LIST]]",
+  // TOPIC_DISCOVERY has no dedicated bullet slot — its intro line carries the data.
+  "You receive a pre-filtered list of trusted external sources in [[TRUST_SOURCES_LIST]].",
+];
+
 export function buildArticlePrompt(params: ArticlePromptParams): string {
   const isBlogContentPurpose = (params.contentPurpose || "").trim().toLowerCase() === "blog";
   let prompt = isBlogContentPurpose ? BLOG_ARTICLE_PROMPT_TEMPLATE : TOPIC_DISCOVERY_ARTICLE_PROMPT_TEMPLATE;
@@ -1209,7 +1255,13 @@ the title. It must create tension or curiosity through a plain fact.
 
   // Replace placeholders (do this before the example JSON to ensure all placeholders are replaced)
   prompt = prompt.replaceAll("[[TOPIC_TITLE]]", params.topicTitle);
-  prompt = prompt.replaceAll("[[TOPIC_BRIEF]]", params.topicBrief);
+  prompt = injectDataOnce(
+    prompt,
+    "[[TOPIC_BRIEF]]",
+    TOPIC_BRIEF_DATA_SLOTS,
+    params.topicBrief,
+    "the provided ARTICLE BRIEF"
+  );
   prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform || "multi-platform");
   prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
@@ -1415,7 +1467,13 @@ omitting the anchor. The anchor was supplied — it MUST appear.
       : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
   }
   
-  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
+  prompt = injectDataOnce(
+    prompt,
+    "[[TRUST_SOURCES_LIST]]",
+    TRUST_SOURCES_DATA_SLOTS,
+    `TRUST_SOURCES_LIST:\n${trustSourcesFormatted}${placeholderMappingBlock}${sourcesVerificationBlock}`,
+    "TRUST_SOURCES_LIST"
+  );
 
   return withBetterWordsGuidance(prompt);
 }
@@ -2405,7 +2463,13 @@ the title. It must create tension or curiosity through a plain fact.
   dbg('[debug-7bb5e0] buildDirectArticlePrompt anchor state:', JSON.stringify({anchorText:params.anchorText,anchorUrl:params.anchorUrl,hasAnchors:hasAnchorsD,anchorTextEmpty:!params.anchorText||!params.anchorText.trim(),anchorUrlEmpty:!params.anchorUrl||!params.anchorUrl.trim()}));
   // #endregion
   prompt = prompt.replaceAll("[[TOPIC_TITLE]]", params.topicTitle);
-  prompt = prompt.replaceAll("[[TOPIC_BRIEF]]", params.topicBrief);
+  prompt = injectDataOnce(
+    prompt,
+    "[[TOPIC_BRIEF]]",
+    TOPIC_BRIEF_DATA_SLOTS,
+    params.topicBrief,
+    "the provided ARTICLE BRIEF"
+  );
   prompt = prompt.replaceAll("[[NICHE]]", params.niche.trim());
   prompt = prompt.replaceAll("[[MAIN_PLATFORM]]", params.mainPlatform || "multi-platform");
   prompt = prompt.replaceAll("[[CONTENT_PURPOSE]]", params.contentPurpose || "Guest post / outreach");
@@ -2580,7 +2644,13 @@ omitting the anchor. The anchor was supplied — it MUST appear.
       : "\n\nVERIFICATION LIST: [[TRUST_SOURCES_LIST]] is empty. Write the article WITHOUT any external links.\n";
   }
   
-  prompt = prompt.replaceAll("[[TRUST_SOURCES_LIST]]", trustSourcesFormatted + placeholderMappingBlock + sourcesVerificationBlock);
+  prompt = injectDataOnce(
+    prompt,
+    "[[TRUST_SOURCES_LIST]]",
+    TRUST_SOURCES_DATA_SLOTS,
+    `TRUST_SOURCES_LIST:\n${trustSourcesFormatted}${placeholderMappingBlock}${sourcesVerificationBlock}`,
+    "TRUST_SOURCES_LIST"
+  );
 
   return withBetterWordsGuidance(prompt);
 }

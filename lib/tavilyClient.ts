@@ -38,6 +38,12 @@ export interface ReliableSearchOptions {
   /** Tavily-native domain constraint. Do not emulate this with `site:` query operators. */
   includeDomains?: string[];
   maxResults?: number;
+  /**
+   * Search depth. "advanced" ($0.05/query) stays the default for the
+   * interactive app; the automation pipeline passes "basic" ($0.01/query) —
+   * it only consumes title/url/snippet, which basic already provides.
+   */
+  depth?: "basic" | "advanced";
 }
 
 const TAVILY_MAX_ATTEMPTS = 3;
@@ -91,19 +97,21 @@ export async function searchReliableSources(
 
   console.log(`[tavily-api] query=${query}`);
 
+  const depth = options.depth ?? "advanced";
+
   try {
     // #region agent log
-    const queryLog = {location:'tavilyClient.ts:28',message:'[tavily-api] Starting search',data:{query,searchDepth:'advanced',maxResults:options.maxResults ?? 8,includeDomainsCount:options.includeDomains?.length ?? 0},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
+    const queryLog = {location:'tavilyClient.ts:28',message:'[tavily-api] Starting search',data:{query,searchDepth:depth,maxResults:options.maxResults ?? 8,includeDomainsCount:options.includeDomains?.length ?? 0},timestamp:Date.now(),sessionId:'debug-session',runId:'tavily-api',hypothesisId:'tavily-search'};
     debugLog(queryLog);
     // #endregion
 
     const requestBody = {
       api_key: apiKey,
       query,
-      search_depth: "advanced", // Deep search for better quality results
+      search_depth: depth,
       include_answers: false,
       include_images: false,
-      include_raw_content: true, // Get full content for better relevance
+      include_raw_content: depth === "advanced", // Full content only for deep interactive search
       max_results: options.maxResults ?? 8,
       ...(options.includeDomains?.length
         ? { include_domains: options.includeDomains.slice(0, 300) }
@@ -111,8 +119,8 @@ export async function searchReliableSources(
     };
 
     const reservationId = reserveAutomationCost(
-      "tavily_advanced_search",
-      estimateTavilySearchCost("advanced")
+      `tavily_${depth}_search`,
+      estimateTavilySearchCost(depth)
     );
     let response: Response;
     try {

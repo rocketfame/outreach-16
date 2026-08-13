@@ -34,8 +34,19 @@ function positiveEnv(name: string, fallback: number, max: number): number {
   return Math.min(parsed, max);
 }
 
+/** Absolute per-job ceiling. A request's maxCostUsd can never exceed this. */
+export const HARD_JOB_COST_CEILING_USD = 1.0;
+
 export function maxJobCostUsd(): number {
-  return positiveEnv("MAX_JOB_COST_USD", 0.4, 100);
+  return positiveEnv("MAX_JOB_COST_USD", 0.4, HARD_JOB_COST_CEILING_USD);
+}
+
+/** Per-job cap: caller's maxCostUsd, clamped to the hard ceiling. */
+export function resolveJobCostCapUsd(requestedCapUsd?: number): number {
+  if (Number.isFinite(requestedCapUsd) && (requestedCapUsd as number) > 0) {
+    return Math.min(requestedCapUsd as number, HARD_JOB_COST_CEILING_USD);
+  }
+  return maxJobCostUsd();
 }
 
 export function maxRetriesPerJob(): number {
@@ -105,11 +116,12 @@ function snapshot(context: AutomationBudgetContext): AutomationBudgetSnapshot {
 
 export async function runWithAutomationBudget<T>(
   jobId: string,
-  operation: () => Promise<T>
+  operation: () => Promise<T>,
+  options?: { capUsd?: number }
 ): Promise<AutomationBudgetRunResult<T>> {
   const context: AutomationBudgetContext = {
     jobId,
-    capUsd: maxJobCostUsd(),
+    capUsd: resolveJobCostCapUsd(options?.capUsd),
     costUsd: 0,
     retriesUsed: 0,
     maxRetries: maxRetriesPerJob(),

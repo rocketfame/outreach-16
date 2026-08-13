@@ -59,8 +59,9 @@ async function executeAutomationJob(jobId: string, slot: number, job: Automation
     };
     await saveAutomationJob(runningJob);
 
-    const budgetRun = await runWithAutomationBudget(jobId, () =>
-      runWithIsolatedCostTracker(async () => {
+    const budgetRun = await runWithAutomationBudget(
+      jobId,
+      () => runWithIsolatedCostTracker(async () => {
         if (job.kind === "cover" && job.coverRequest) {
           return { kind: "cover" as const, value: await runCoverGeneration(jobId, job.coverRequest) };
         }
@@ -68,7 +69,9 @@ async function executeAutomationJob(jobId: string, slot: number, job: Automation
           return { kind: "article" as const, value: await runAutomationGeneration(jobId, job.request) };
         }
         throw new AutomationPipelineError("invalid_job", "Job has no request payload.");
-      })
+      }),
+      // Jobs stored before maxCostUsd existed fall back to the server default.
+      { capUsd: job.request?.maxCostUsd }
     );
     actualCostUsd = budgetRun.snapshot.costUsd;
     await finalizeAutomationUsage(jobId, actualCostUsd);

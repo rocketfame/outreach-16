@@ -1,4 +1,5 @@
 import { NICHE_TO_PRESET_KEY, PLATFORM_PRESETS } from "@/config/platformPresets";
+import { HARD_JOB_COST_CEILING_USD, maxJobCostUsd } from "@/lib/automation/budget";
 import {
   AUTOMATION_LANGUAGE_VALUES,
   resolveLanguage,
@@ -316,6 +317,24 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     );
   }
 
+  let maxCostUsd = maxJobCostUsd();
+  if (body.maxCostUsd !== undefined && body.maxCostUsd !== null) {
+    const requested = Number(body.maxCostUsd);
+    if (!Number.isFinite(requested) || requested <= 0) {
+      throw new AutomationValidationError(
+        "Invalid maxCostUsd. Expected a positive number of USD (e.g. 0.40).",
+        { field: "maxCostUsd" }
+      );
+    }
+    if (requested > HARD_JOB_COST_CEILING_USD) {
+      throw new AutomationValidationError(
+        `Invalid maxCostUsd. The server-side ceiling is $${HARD_JOB_COST_CEILING_USD.toFixed(2)} per job.`,
+        { field: "maxCostUsd" }
+      );
+    }
+    maxCostUsd = requested;
+  }
+
   return {
     topic: typeof body.topic === "string" && body.topic.trim() ? body.topic.trim() : null,
     niche,
@@ -336,6 +355,7 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     minWords,
     maxWords,
     seoTitleMaxChars,
+    maxCostUsd,
   };
 }
 

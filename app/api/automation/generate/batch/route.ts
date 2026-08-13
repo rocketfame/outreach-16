@@ -15,7 +15,6 @@ import type {
 } from "@/lib/automation/types";
 import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
 import { estimateAutomationRequestCost } from "@/lib/automation/costEstimate";
-import { maxJobCostUsd } from "@/lib/automation/budget";
 import {
   automationApiKeyId,
   releaseAutomationUsageReservation,
@@ -119,23 +118,32 @@ export async function POST(req: Request) {
   if (rejectedBilling) return rejectedBilling;
 
   const now = Date.now();
-  const jobs: AutomationJob[] = requests.map((request) => ({
-    id: `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
-    status: "queued",
-    request,
-    estimatedCostUsd: estimateAutomationRequestCost(request),
-    createdAt: now,
-    updatedAt: now,
-  }));
+  const jobs: AutomationJob[] = requests.map((request) => {
+    const estimatedCost = estimateAutomationRequestCost(request);
+    return {
+      id: `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
+      status: "queued",
+      request,
+      estimatedCostUsd: estimatedCost.max,
+      estimatedCost,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
 
-  const overCapIndex = jobs.findIndex((job) => (job.estimatedCostUsd || 0) > maxJobCostUsd());
+  // Pre-flight: the whole batch is rejected before anything is reserved or
+  // queued, so a rejected batch costs $0.00.
+  const overCapIndex = jobs.findIndex(
+    (job) => (job.estimatedCost?.min || 0) > job.request!.maxCostUsd
+  );
   if (overCapIndex >= 0) {
+    const overCap = jobs[overCapIndex];
     return json({
       status: "error",
       code: "estimated_cost_exceeds_cap",
       index: overCapIndex,
-      message: `Estimated job cost $${jobs[overCapIndex].estimatedCostUsd!.toFixed(2)} exceeds the $${maxJobCostUsd().toFixed(2)} job cap. No batch jobs were queued.`,
-    }, 400);
+      message: `Estimated job cost $${overCap.estimatedCost!.min.toFixed(2)}-$${overCap.estimatedCost!.max.toFixed(2)} exceeds the $${overCap.request!.maxCostUsd.toFixed(2)} job cap. Nothing was charged. No batch jobs were queued.`,
+    }, 422);
   }
 
   const keyId = automationApiKeyId(req);
@@ -144,7 +152,7 @@ export async function POST(req: Request) {
     const reservation = await reserveAutomationUsage(
       keyId,
       jobs[index].id,
-      maxJobCostUsd()
+      jobs[index].request!.maxCostUsd
     );
     if (!reservation.ok) {
       await Promise.all(reservedJobIds.map(releaseAutomationUsageReservation));
@@ -183,7 +191,8 @@ export async function POST(req: Request) {
 
   const placements = await Promise.all(jobs.map(async (job) => ({
     jobId: job.id,
-    estimatedCostUsd: job.estimatedCostUsd,
+    estimatedCostUsd: job.estimatedCost,
+    maxCostUsd: job.request!.maxCostUsd,
     ...(await getAutomationQueueInfo(job.id)),
   })));
   after(() => drainAutomationQueuePool());

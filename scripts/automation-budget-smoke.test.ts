@@ -38,6 +38,15 @@ async function main(): Promise<void> {
   assert("call over $0.40 is blocked before execution", capped.error instanceof AutomationCostCapError);
   assert("blocked call does not increase actual cost", capped.snapshot.costUsd === 0.3);
 
+  const raisedCap = await runWithAutomationBudget("job_raised_cap", async () => {
+    const first = reserveAutomationCost("article", 0.55);
+    settleAutomationCost(first, "article", 0.55);
+  }, { capUsd: 0.75 });
+  assert("per-job maxCostUsd raises the cap", raisedCap.error === undefined && raisedCap.snapshot.capUsd === 0.75);
+
+  const ceilingClamped = await runWithAutomationBudget("job_ceiling", async () => {}, { capUsd: 5 });
+  assert("per-job cap is clamped to the $1.00 ceiling", ceilingClamped.snapshot.capUsd === 1);
+
   const retried = await runWithAutomationBudget("job_retry", async () => {
     claimAutomationRetry("json_retry", 0.1);
     claimAutomationRetry("quality_retry", 0.1);

@@ -2,7 +2,8 @@ import { POST as generateArticleRoute } from "@/app/api/articles/route";
 import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
 import { getTextProviderConfig } from "@/lib/textProvider";
-import { searchReliableSources } from "@/lib/tavilyClient";
+import { searchReliableSources, type ReliableSearchOptions, type TrustedSource } from "@/lib/tavilyClient";
+import { getCachedSources, setCachedSources, sourceCacheKey } from "@/lib/automation/sourceCache";
 import { getSourcePolicyDecision, getSourcePriority, isVideoUrl } from "@/lib/sourcePolicy";
 import {
   anchorInFirstParagraphs,
@@ -437,21 +438,51 @@ export async function runCoverGeneration(
   };
 }
 
+/**
+ * One automation source search: basic depth ($0.01 instead of $0.05 —
+ * the pipeline only consumes title/url/snippet), KV-cached for 7 days so
+ * batch reruns of the same niche/topic pay $0.00.
+ */
+async function searchAutomationSourcesCached(
+  query: string,
+  options: Omit<ReliableSearchOptions, "depth"> = {}
+): Promise<{ sources: TrustedSource[]; cacheHit: boolean }> {
+  const cacheKey = sourceCacheKey(query, "basic", options.includeDomains);
+  const cached = await getCachedSources(cacheKey);
+  if (cached) return { sources: cached, cacheHit: true };
+  const sources = await searchReliableSources(query, { ...options, depth: "basic" });
+  await setCachedSources(cacheKey, sources);
+  return { sources, cacheHit: false };
+}
+
+/**
+ * Hard budget: at most TWO Tavily searches per job (≤ $0.02 fresh, $0.00
+ * cached). The second search carries the independent-source gate, so it runs
+ * against the curated allowlist instead of hoping the open web sweep happens
+ * to surface research domains — the extra targeted/recovery searches the
+ * pipeline used to fire are gone.
+ */
 async function searchAutomationTrustSources(topic: string, category: string) {
   const officialQuery = buildOfficialSourceQuery(topic, category);
   const researchQuery = buildIndependentResearchQuery(topic, category);
 
-  const resultSets = await Promise.all([
-    searchReliableSources(officialQuery),
-    searchReliableSources(researchQuery),
+  const [official, independent] = await Promise.all([
+    searchAutomationSourcesCached(officialQuery),
+    searchAutomationSourcesCached(researchQuery, {
+      includeDomains: INDEPENDENT_SOURCE_DOMAINS,
+      maxResults: 20,
+    }),
   ]);
 
-  const merged = dedupeSources(resultSets.flat()).map((source) => ({
+  const merged = dedupeSources([...official.sources, ...independent.sources]).map((source) => ({
     ...source,
     url: normalizeGoogleSupportLocale(source.url),
   }));
 
-  return merged;
+  return {
+    sources: merged,
+    cacheHits: Number(official.cacheHit) + Number(independent.cacheHit),
+  };
 }
 
 /** Targeted tier-2/3 search when the general sweep yields no independent sources. */
@@ -520,17 +551,16 @@ function isPlatformDocSource(url: string): boolean {
  */
 async function buildTrustSourcesList(topic: string, category: string): Promise<string[]> {
   const rejected: Array<{ url: string; reason: string }> = [];
-  let searchesExecuted = 2;
-  let candidatesFound = 0;
   let sources: ScoredSource[];
+  let cacheHits = 0;
   try {
-    sources = await searchAutomationTrustSources(topic, category);
-    candidatesFound = sources.length;
+    const lookup = await searchAutomationTrustSources(topic, category);
+    sources = lookup.sources;
+    cacheHits = lookup.cacheHits;
   } catch (error) {
     console.error("[automationSources] Source lookup failed before policy filtering:", {
       topic,
       category,
-      searchesExecuted,
       error: error instanceof Error ? error.message : String(error),
     });
     throw new AutomationPipelineError(
@@ -556,42 +586,10 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
     return true;
   };
 
-  let candidates: ScoredSource[] = sources.filter(approve)
+  const candidates: ScoredSource[] = sources.filter(approve)
     .sort((a, b) => getSourcePriority(b) - getSourcePriority(a));
 
-  let independents = candidates.filter((s) => isIndependentSource(s.url));
-  if (independents.length === 0) {
-    searchesExecuted += 1;
-    let extra: ScoredSource[];
-    try {
-      extra = await searchReliableSources(
-        buildIndependentResearchQuery(topic, category),
-        { includeDomains: INDEPENDENT_SOURCE_DOMAINS, maxResults: 20 }
-      );
-      candidatesFound += extra.length;
-    } catch (error) {
-      console.error("[automationSources] Targeted independent-source lookup failed:", {
-        topic,
-        category,
-        searchesExecuted,
-        candidatesFound: sources.length,
-        candidatesRejected: rejected.length,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw new AutomationPipelineError(
-        "source_lookup_failed",
-        `Independent-source search could not be completed for "${topic}" (${category}). Retry later; the source gate was not evaluated.`
-      );
-    }
-    const extraApproved = dedupeSources(extra).filter(approve).filter((s) => {
-      if (isIndependentSource(s.url)) return true;
-      rejected.push({ url: s.url, reason: "not_independent" });
-      return false;
-    });
-    independents = extraApproved;
-    candidates = dedupeSources([...candidates, ...extraApproved]);
-  }
-
+  const independents = candidates.filter((s) => isIndependentSource(s.url));
   const platformDocs = candidates.filter((s) => isPlatformDocSource(s.url)).slice(0, 2);
   const nonPlatform = candidates.filter((s) => !isPlatformDocSource(s.url));
   const composed = dedupeSources([...independents.slice(0, 3), ...platformDocs, ...nonPlatform]).slice(0, 6);
@@ -601,72 +599,18 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
   composed.forEach((source, index) => {
     if (!resolutions[index]) rejected.push({ url: source.url, reason: "unavailable" });
   });
-  let alive = composed.filter((_, i) => resolutions[i]);
-
-  // Tavily results vary between identical calls, and a candidate can also
-  // disappear between search and URL validation. If the first composition
-  // loses every independent source at the live-URL stage, run one broader
-  // allowlisted recovery search instead of misreporting a transient sample as
-  // "no independent sources". The gate itself remains unchanged: at least one
-  // independent URL still has to resolve successfully.
-  let recoverySearchExecuted = false;
-  if (!alive.some((source) => isIndependentSource(source.url))) {
-    recoverySearchExecuted = true;
-    searchesExecuted += 1;
-    let recovery: ScoredSource[];
-    try {
-      recovery = await searchReliableSources(
-        `${category} creator economy audience behavior engagement benchmark study independent report 2024 2025 2026`,
-        { includeDomains: INDEPENDENT_SOURCE_DOMAINS, maxResults: 20 }
-      );
-      candidatesFound += recovery.length;
-    } catch (error) {
-      console.error("[automationSources] Independent-source recovery lookup failed:", {
-        topic,
-        category,
-        searchesExecuted,
-        candidatesFound,
-        candidatesRejected: rejected.length,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw new AutomationPipelineError(
-        "source_lookup_failed",
-        `Independent-source recovery search could not be completed for "${topic}" (${category}). Retry later; the source gate was not evaluated.`
-      );
-    }
-
-    const recoveryCandidates = dedupeSources(recovery)
-      .filter(approve)
-      .filter((source) => {
-        if (isIndependentSource(source.url)) return true;
-        rejected.push({ url: source.url, reason: "not_independent" });
-        return false;
-      })
-      .slice(0, 8);
-    const recoveryResolutions = await Promise.all(
-      recoveryCandidates.map((source) => urlResolves(source.url))
-    );
-    recoveryCandidates.forEach((source, index) => {
-      if (!recoveryResolutions[index]) {
-        rejected.push({ url: source.url, reason: "unavailable_after_recovery" });
-      }
-    });
-    alive = dedupeSources([
-      ...recoveryCandidates.filter((_, index) => recoveryResolutions[index]),
-      ...alive,
-    ]).slice(0, 6);
-  }
+  const alive = composed.filter((_, i) => resolutions[i]);
 
   console.info("[automationSources] Source gate diagnostics:", {
     topic,
     category,
     searchExecuted: true,
-    searchesExecuted,
-    candidatesFound,
+    searchesExecuted: 2 - cacheHits,
+    cacheHits,
+    candidatesFound: sources.length,
     candidatesApproved: candidates.length,
     candidatesAlive: alive.length,
     independentAlive: alive.filter((source) => isIndependentSource(source.url)).length,
-    recoverySearchExecuted,
     rejected,
   });
 
@@ -677,7 +621,18 @@ async function buildTrustSourcesList(topic: string, category: string): Promise<s
     );
   }
 
-  return alive.map((s) => `${displayNameForUrl(s.url)}|${s.url}|${s.snippet || ""}`);
+  // Snippets are prompt payload: cap them so six sources cannot silently
+  // inflate the generation call's input-token bill.
+  return alive.map((s) => `${displayNameForUrl(s.url)}|${s.url}|${truncateSnippet(s.snippet)}`);
+}
+
+const MAX_SOURCE_SNIPPET_CHARS = 400;
+
+function truncateSnippet(snippet?: string): string {
+  const clean = (snippet || "").replace(/\s+/g, " ").trim();
+  return clean.length <= MAX_SOURCE_SNIPPET_CHARS
+    ? clean
+    : `${clean.slice(0, MAX_SOURCE_SNIPPET_CHARS).trim()}...`;
 }
 
 function hostnameOf(url: string): string {

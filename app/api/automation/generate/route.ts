@@ -11,7 +11,6 @@ import { AutomationValidationError, validateAutomationRequest } from "@/lib/auto
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
 import { estimateAutomationRequestCost } from "@/lib/automation/costEstimate";
-import { maxJobCostUsd } from "@/lib/automation/budget";
 import {
   automationApiKeyId,
   releaseAutomationUsageReservation,
@@ -90,18 +89,23 @@ export async function POST(req: Request) {
   }
 
   const jobId = `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
-  const estimatedCostUsd = estimateAutomationRequestCost(request);
-  if (estimatedCostUsd > maxJobCostUsd()) {
+  const capUsd = request.maxCostUsd;
+  const estimatedCost = estimateAutomationRequestCost(request);
+  // Pre-flight: reject BEFORE anything is queued, reserved, or spent. A job
+  // whose cheapest plausible run already exceeds the cap would only burn the
+  // source stage and then die at the generation reservation.
+  if (estimatedCost.min > capUsd) {
     return errorResponse(
       "estimated_cost_exceeds_cap",
-      `Estimated job cost $${estimatedCostUsd.toFixed(2)} exceeds the $${maxJobCostUsd().toFixed(2)} job cap. Reduce image quality, disable the image, or use standard mode.`,
-      400
+      `Estimated job cost $${estimatedCost.min.toFixed(2)}-$${estimatedCost.max.toFixed(2)} exceeds the $${capUsd.toFixed(2)} job cap. ` +
+      `Nothing was charged. Raise maxCostUsd (ceiling $1.00), reduce image quality, disable the image, shorten the article, or use standard mode.`,
+      422
     );
   }
   const usageReservation = await reserveAutomationUsage(
     automationApiKeyId(req),
     jobId,
-    maxJobCostUsd()
+    capUsd
   );
   if (!usageReservation.ok) {
     return errorResponse(usageReservation.code, usageReservation.message, 429);
@@ -111,7 +115,8 @@ export async function POST(req: Request) {
     id: jobId,
     status: "queued",
     request,
-    estimatedCostUsd,
+    estimatedCostUsd: estimatedCost.max,
+    estimatedCost,
     createdAt: now,
     updatedAt: now,
   };
@@ -147,5 +152,12 @@ export async function POST(req: Request) {
   }
 
   const { position, etaSeconds } = await getAutomationQueueInfo(jobId);
-  return json({ status: "queued", jobId, position, etaSeconds, estimatedCostUsd }, 202);
+  return json({
+    status: "queued",
+    jobId,
+    position,
+    etaSeconds,
+    estimatedCostUsd: estimatedCost,
+    maxCostUsd: capUsd,
+  }, 202);
 }

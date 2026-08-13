@@ -59,6 +59,11 @@ export interface AutomationGenerateInput {
   maxWords?: number;
   /** Max length for the generated seoTitle (Title tag). Default 65. */
   seoTitleMaxChars?: number;
+  /**
+   * Per-job cost cap in USD. Defaults to the server's MAX_JOB_COST_USD
+   * (currently $0.40); hard server-side ceiling is $1.00.
+   */
+  maxCostUsd?: number | null;
 }
 
 /** Normalized request after validation — all defaults resolved. */
@@ -84,6 +89,14 @@ export interface AutomationGenerateRequest {
   minWords: number;
   maxWords: number;
   seoTitleMaxChars: number;
+  /** Resolved per-job cost cap (request maxCostUsd or the server default). */
+  maxCostUsd: number;
+}
+
+/** Honest pre-queue cost forecast: cheapest plausible run vs worst-case reservations. */
+export interface AutomationCostEstimate {
+  min: number;
+  max: number;
 }
 
 export interface AutomationArticle {
@@ -178,8 +191,10 @@ export interface AutomationJob {
   updatedAt: number;
   startedAt?: number;
   completedAt?: number;
-  /** Pre-queue forecast used for daily/monthly reservation. */
+  /** Pre-queue worst-case forecast used for daily/monthly reservation. */
   estimatedCostUsd?: number;
+  /** Honest {min,max} forecast — max mirrors runtime worst-case reservations. */
+  estimatedCost?: AutomationCostEstimate;
   /** Actual metered cost, present for every terminal status. */
   costUsd?: number;
   result?: AutomationGenerateSuccess;

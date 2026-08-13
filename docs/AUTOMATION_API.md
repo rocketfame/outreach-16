@@ -54,11 +54,13 @@ second failure returns `truncated_output`.
 Source-search provider failures return `source_lookup_failed`. This is distinct
 from `no_independent_sources`, which means search completed but no live
 independent source survived policy and availability checks. Server diagnostics
-include outbound-search execution, candidate counts, and a rejection reason for
-each discarded URL. If an initially approved independent candidate fails the
-live-URL check, the pipeline runs one broader allowlisted recovery search (up
-to 20 candidates) before returning `no_independent_sources`; the requirement
-for at least one live independent source is not relaxed.
+include outbound-search execution, cache hits, candidate counts, and a
+rejection reason for each discarded URL. The source stage runs exactly two
+searches: an official-platform query plus an independent-research query pinned
+to the curated research/trade-press allowlist (up to 20 candidates), so
+independent candidates arrive in the base sweep instead of via extra recovery
+searches; the requirement for at least one live independent source is not
+relaxed.
 
 API-supplied `brand` values are immutable visible-text tokens. For example,
 `PromoSoundGroup` is restored byte-for-byte if a model inserts spaces or changes
@@ -92,10 +94,33 @@ Tavily, Undetectable, and any optional cover image.
 
 Every article job has one shared hard budget across Tavily search, source
 classification, article generation, formatting, BetterWords, Undetectable.AI,
-and the optional cover. `MAX_JOB_COST_USD` defaults to `$0.40`. Each paid call
-reserves its worst-case estimated cost before it starts; if it cannot fit, the
-job stops with `cost_cap_exceeded`. The final polling response includes
-`costUsd` for both `done` and `error` jobs.
+and the optional cover. The per-job cap is the request's `maxCostUsd` when
+provided; otherwise `MAX_JOB_COST_USD` (default `$0.40`). The server-side
+ceiling is `$1.00` — a larger `maxCostUsd` is rejected as `invalid_request`.
+Each paid call reserves its worst-case estimated cost before it starts; if it
+cannot fit, the job stops with `cost_cap_exceeded`. The final polling response
+includes `costUsd` for both `done` and `error` jobs.
+
+Submission is pre-flighted: `estimatedCostUsd` is an honest `{min, max}`
+object where `max` mirrors the runtime worst-case reservations (uncached
+prompt, full completion ceiling, Undetectable.AI metered humanization) and
+`min` is a realistic cheap run (warm source cache, warm OpenAI prompt cache,
+BetterWords-class humanization). If even `min` exceeds the job cap, POST
+returns HTTP 422 `estimated_cost_exceeds_cap` before anything is queued,
+reserved, or spent — a rejected job costs `$0.00`.
+
+The trust-source stage runs at most TWO Tavily searches per job at basic
+depth (`$0.01` each, ≤ `$0.02` per job) and caches results in KV for 7 days
+keyed by query — batch reruns of the same niche/topic pay `$0.00` for
+sources. OpenAI cached prompt tokens are metered at the cached-input rate, so
+repeat generations settle far below the reservation.
+
+`GET /api/automation/config` (same bearer auth) returns the live limits and
+stage pricing: default/ceiling cost caps, daily/monthly budgets, per-stage
+prices (search, text input/output per 1M tokens, humanization per word, image
+by quality), word-count bounds, supported languages, required fields, and
+defaults. Everything it reports comes from the same functions the runtime
+enforces with.
 
 `MAX_RETRIES_PER_JOB` defaults to `1`. A retry is allowed only when both the
 retry count and remaining job budget permit it. Hidden OpenAI SDK retries are
@@ -152,8 +177,8 @@ article payloads. It validates the full array before queueing and returns:
 {
   "status": "queued",
   "jobs": [
-    { "jobId": "gen_...", "position": 1, "etaSeconds": 0, "estimatedCostUsd": 0.37 },
-    { "jobId": "gen_...", "position": 2, "etaSeconds": 0, "estimatedCostUsd": 0.37 }
+    { "jobId": "gen_...", "position": 1, "etaSeconds": 0, "estimatedCostUsd": { "min": 0.09, "max": 0.31 }, "maxCostUsd": 0.4 },
+    { "jobId": "gen_...", "position": 2, "etaSeconds": 0, "estimatedCostUsd": { "min": 0.09, "max": 0.31 }, "maxCostUsd": 0.4 }
   ]
 }
 ```
