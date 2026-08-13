@@ -24,6 +24,7 @@ import { claimAutomationRetry } from "@/lib/automation/budget";
 import {
   findContentIntegrityIssues,
   findLanguageOrthographyIssue,
+  repairSentenceCase,
   restoreBrandToken,
 } from "@/lib/automation/contentQuality";
 import type {
@@ -162,6 +163,11 @@ async function generateArticleOnce(
   contentHtml = stripDisallowedLinks(contentHtml, request.anchorUrl);
   contentHtml = shortenExternalLinkTexts(contentHtml, request.anchorUrl);
   contentHtml = cleanQuoteDebris(contentHtml);
+  // Safety net for humanizer casing artifacts that survived section-level
+  // cleanup (EN connectors stripped mid-pipeline leave lowercase sentence
+  // starts). Repair is orthographic only; anchors and camelCase brands are
+  // skipped. Without it the integrity gate failed the whole PAID job.
+  contentHtml = repairSentenceCase(contentHtml);
   contentHtml = restoreBrandToken(contentHtml, request.brand);
   // Enforce the single ANCHOR mention only when the anchor text is not the
   // brand itself — brand mentions (2-3x) must survive.

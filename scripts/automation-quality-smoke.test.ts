@@ -1,6 +1,7 @@
 import {
   findContentIntegrityIssues,
   findLanguageOrthographyIssue,
+  repairSentenceCase,
   restoreBrandToken,
 } from "@/lib/automation/contentQuality";
 import { validateAutomationRequest } from "@/lib/automation/validate";
@@ -31,6 +32,21 @@ check("dangling colon rejected", findContentIntegrityIssues("<p>La procedura ter
 check("complete editorial prose accepted", findContentIntegrityIssues("<p>Questa frase è completa. Anche questa conserva un ritmo naturale.</p>").length === 0);
 check("colon followed by list accepted", findContentIntegrityIssues("<p>Segui questi passaggi:</p><ul><li>Primo</li></ul>").length === 0);
 check("common abbreviation does not trigger fragment guard", findContentIntegrityIssues("<p>Usa fonti affidabili, ad es. documentazione ufficiale.</p>").length === 0);
+
+// EN humanize casing regression (gen_93d0e0e315df / gen_fbd8235d9760):
+// connector removal ("Ultimately, ", "In conclusion, ", "It's worth noting
+// that ") left lowercase sentence starts and the paid job died with
+// truncated_output on paragraph 16/17.
+const enCasingBroken = "<p>The strategy holds. the campaign compounds weekly. consistency wins.</p>";
+check("EN lowercase sentence start is repaired, not failed", findContentIntegrityIssues(repairSentenceCase(enCasingBroken)).length === 0);
+check("repair uppercases after sentence boundary", repairSentenceCase(enCasingBroken).includes(". The campaign"));
+check("repair fixes lowercase paragraph start", repairSentenceCase("<p>consistency matters here.</p>").startsWith("<p>Consistency"));
+check("repair works on plain humanizer output", repairSentenceCase("the fans respond. growth follows.") === "The fans respond. Growth follows.");
+check("repair never touches anchor text", repairSentenceCase('<p><a href="https://x.com">music promotion</a> is the lever. It works.</p>').includes(">music promotion<"));
+check("lowercase money anchor does not flag validator", findContentIntegrityIssues('<p><a href="https://x.com">music promotion</a> is the lever. It works.</p>').length === 0);
+check("camelCase brand start is not treated as truncation", repairSentenceCase("<p>Great tools exist. iPhone apps lead.</p>").includes(". iPhone") && findContentIntegrityIssues("<p>Great tools exist. iPhone apps lead.</p>").length === 0);
+check("mid-paragraph digit sentence start is legitimate", findContentIntegrityIssues("<p>The scene changed fast. 2026 raised the bar.</p>").length === 0);
+check("integrity error message carries the broken fragment", findContentIntegrityIssues("<p>Numbers grow. the chart proves it.</p>").some((issue) => issue.message.includes("the chart proves")));
 
 check("Italian apostrophe substitution rejected", !!findLanguageOrthographyIssue("<p>Perche&#39; e&#39; gia&#39; piu&#39; chiaro.</p>", "Italian"));
 check("correct Italian diacritics accepted", !findLanguageOrthographyIssue("<p>Perché è già più chiaro.</p>", "Italian"));

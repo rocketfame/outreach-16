@@ -3,6 +3,7 @@
 
 import { getHumanizerService, type HumanizerService } from "@/lib/humanizerClient";
 import { rethrowAutomationBudgetError } from "@/lib/automation/budget";
+import { repairSentenceCase } from "@/lib/automation/contentQuality";
 import { UpstreamNoCreditsError } from "@/lib/textProvider";
 
 /**
@@ -186,6 +187,12 @@ const cleanHumanizedText = (text: string): string => {
   }
 
   cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
+  // The connector removals above ("Ultimately, ", "In conclusion, ", "It's
+  // worth noting that ") strip a sentence's opening words and leave the next
+  // word lowercase — the automation integrity gate then failed the whole paid
+  // job with truncated_output (EN-only defect: the connectors are English).
+  // Restore sentence casing deterministically instead.
+  cleaned = repairSentenceCase(cleaned);
   return cleaned;
 };
 
