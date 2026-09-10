@@ -227,6 +227,104 @@ curl -X POST https://www.typereach.app/api/automation/generate \
 The immediate success response is `202 { "status": "queued", "jobId": ... }`.
 Poll `GET /api/automation/generate/:jobId` until `done` or `error`.
 
+## Text operations: selective humanize and AI detect
+
+Two synchronous endpoints (same bearer auth, same cost cap / usage limits /
+Undetectable.AI balance rules) for the editorial loop *draft → detect →
+humanize only the flagged paragraphs → re-detect*. Both take
+`blocks: string[]` (≤ 60 blocks, ≤ 10 000 chars each, ≤ 6 000 words per
+call) and return every block **in the same order**.
+
+### `POST /api/automation/detect`
+
+```json
+{ "blocks": ["<paragraph 1>", "<paragraph 2>", "..."], "maxCostUsd": 0.4 }
+```
+
+Response `200`:
+
+```json
+{
+  "status": "ok",
+  "blocks": [
+    { "index": 0, "words": 142, "score": 87, "label": "AI", "flagged": true,
+      "unreliable": false, "human": 12.5,
+      "details": { "scoreGptZero": 0, "scoreZeroGPT": 50, "scoreCopyLeaks": 50 } }
+  ],
+  "meta": { "blocksFlagged": 4, "threshold": 60, "reliableMinWords": 50,
+            "wordsChecked": 2689, "creditsUsed": 269, "costUsd": 0.134,
+            "undetectableCreditsAfter": 34722 }
+}
+```
+
+- Billing: **0.1 Undetectable credit per word** (~$0.00005), from the same
+  balance as the humanizer. A 2 700-word article costs ~270 credits per pass.
+- `flagged` = vendor score > 60. Blocks under 50 words return
+  `unreliable: true` — group short paragraphs by section before checking.
+- The detector is aggressive (hand-written text can score high); treat it
+  as a gate for *which* blocks to humanize, not as ground truth.
+- Errors: `detector_credits_insufficient` (422, $0.00),
+  `detector_not_configured` (503), `estimated_cost_exceeds_cap` (422).
+
+### `POST /api/automation/humanize`
+
+```json
+{
+  "blocks": ["<flagged paragraph>", "..."],
+  "humanizer": "auto",
+  "brand": "PromoSoundGroup",
+  "anchor": "buy Spotify followers",
+  "frozenPhrases": ["Spotify for Artists"],
+  "model": 2,
+  "maxCostUsd": 1
+}
+```
+
+Response `200`:
+
+```json
+{
+  "status": "ok",
+  "blocks": [
+    { "index": 0, "text": "<rewritten>", "humanized": true, "provider": "undetectable", "wordsUsed": 138 },
+    { "index": 1, "text": "<original>", "humanized": false, "provider": null, "wordsUsed": 0, "reason": "too_short" }
+  ],
+  "meta": { "humanizer": "undetectable", "blocksHumanized": 5, "undetectableWordsUsed": 812,
+            "betterWordsWordsUsed": 0, "costUsd": 0.41, "undetectableCreditsBefore": 34722 }
+}
+```
+
+- `humanizer` resolves exactly like generation (`auto` → Undetectable when
+  the balance covers `words × 1.1`, else BetterWords; `undetectable` →
+  422 `humanizer_credits_insufficient` when unfunded; `betterwords` never
+  touches Undetectable). `meta.humanizer` echoes the resolved provider.
+- `brand`, `anchor` and `frozenPhrases` are frozen before the rewrite and
+  restored verbatim afterwards — send them so the humanizer cannot mangle
+  the money anchor or the brand token. Quoted strings are protected
+  automatically.
+- Blocks under 100 characters are returned unchanged (`reason: "too_short"`);
+  a block whose rewrite failed quality checks comes back unchanged with
+  `reason: "humanizer_error"` — no credits are retried.
+- The whole call is reserved against `maxCostUsd` before the first paid
+  submit; a call that cannot afford all blocks fails with
+  `estimated_cost_exceeds_cap` at $0.00.
+- Cost: Undetectable ~$0.0005 per word (800 words ≈ $0.40); BetterWords is
+  a text-provider call (~$0.10-0.20 per 800 words).
+
+### Recommended per-article loop
+
+1. `POST /generate` with `mode: "standard"` (or `human` + `betterwords`) —
+   no Undetectable credits spent.
+2. Editorial pass (free).
+3. `POST /detect` on the paragraphs → list of `flagged` indexes.
+4. `POST /humanize` with only the flagged paragraphs (`humanizer: "auto"`,
+   `brand`/`anchor` set) → splice the returned texts back by `index`.
+5. `POST /detect` again on the replaced paragraphs; stop when nothing is
+   flagged or after one round — a second humanization pass rarely helps.
+
+Budget for a 2 700-word article with ~30 % flagged: ~270 + 810 + 270 ≈
+1 350 credits (~$0.66), versus 2 700 credits for full humanization.
+
 ## Queue and batch operations
 
 The shared article/cover worker pool runs up to `GENERATION_CONCURRENCY` jobs

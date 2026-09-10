@@ -181,3 +181,23 @@ G. Результат   done {article:{title,slug,seoTitle,seoDescription,excerp
 5. У `done` перевірити: `meta.humanized === true`, `meta.humanizationProvider`,
    `meta.wordCount ≥ minWords`, `meta.format`, анкор у `contentHtml`.
 6. Не запускати батчі в go-days Free-Followers (звіритись із content-plan.json).
+
+---
+
+## 7. Вибіркова гуманізація (з 2026-09-10)
+
+Два синхронні ендпоінти для циклу «драфт → детект → гуманізувати лише
+позначене → детект» (контракт у `docs/AUTOMATION_API.md` § Text operations):
+
+- `POST /api/automation/detect` — `blocks[]` → `score`/`flagged` на блок.
+  0.1 кредита Undetectable за слово (2 700 слів ≈ 270 кредитів ≈ $0.13).
+  Блоки < 50 слів позначаються `unreliable`, групуйте короткі абзаци по секціях.
+- `POST /api/automation/humanize` — лише позначені `blocks[]` + `brand`,
+  `anchor`, `humanizer`, `maxCostUsd` → переписані блоки в тому ж порядку,
+  `meta.undetectableWordsUsed`, `costUsd`.
+
+Рекомендований цикл на статтю: generate `mode:"standard"` (нуль кредитів) →
+редактура → detect → humanize flagged (`humanizer:"auto"`, `maxCostUsd: 1`) →
+detect повторно (один раунд). Бюджет на 2 700 слів при ~30 % позначених:
+≈ 1 350 кредитів (~$0.66) замість 2 700 при повній гуманізації.
+

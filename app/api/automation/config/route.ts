@@ -58,6 +58,15 @@ export async function GET(req: Request) {
       undetectableCredits: undetectable?.credits ?? null,
       undetectableCheckedAt: undetectable ? new Date(undetectable.checkedAt).toISOString() : null,
       wordsMarginFactor: 1.1,
+      /** Undetectable.AI detector bills 0.1 credit per word from the same balance. */
+      detectCreditsPerWord: 0.1,
+      textOps: {
+        humanize: "POST /api/automation/humanize — selective humanization of supplied blocks (sync)",
+        detect: "POST /api/automation/detect — per-block AI detection score (sync)",
+        maxBlocks: 60,
+        maxTotalWords: 6000,
+        maxBlockChars: 10000,
+      },
     },
     cost: {
       defaultMaxCostUsd: maxJobCostUsd(),
