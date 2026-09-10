@@ -159,7 +159,7 @@ Every article job has one shared hard budget across Tavily search, source
 classification, article generation, formatting, BetterWords, Undetectable.AI,
 and the optional cover. The per-job cap is the request's `maxCostUsd` when
 provided; otherwise `MAX_JOB_COST_USD` (default `$0.40`). The server-side
-ceiling is `$1.00` — a larger `maxCostUsd` is rejected as `invalid_request`.
+ceiling is `$2.00` — a larger `maxCostUsd` is rejected as `invalid_request`.
 Each paid call reserves its worst-case estimated cost before it starts; if it
 cannot fit, the job stops with `cost_cap_exceeded`. The final polling response
 includes `costUsd` for both `done` and `error` jobs.

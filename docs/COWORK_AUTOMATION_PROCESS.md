@@ -158,7 +158,7 @@ G. Результат   done {article:{title,slug,seoTitle,seoDescription,excerp
 | `invalid_request` (400) | поле не пройшло валідацію; є `field`, `allowed` | виправити payload |
 | `humanizer_credits_insufficient` (422) | `humanizer:"undetectable"`, балансу нема | поповнити / `auto` / `betterwords` |
 | `humanizer_not_configured`, `humanizer_balance_unavailable` (422) | ключа нема / Undetectable не відповів | `auto` або `betterwords`, повторити пізніше |
-| `estimated_cost_exceeds_cap` (422) | навіть `min` > `maxCostUsd`, $0.00 | підняти cap (до $1), `betterwords`, коротша стаття, без картинки |
+| `estimated_cost_exceeds_cap` (422) | навіть `min` > `maxCostUsd`, $0.00 | підняти cap (до $2), `betterwords`, коротша стаття, без картинки |
 | `daily_budget_exceeded`, `monthly_budget_exceeded` (429) | ліміт ключа | чекати / підняти env |
 | `truncated_output`, `below_min_words`, `anchor_*`, `orthography_invalid` | драфт не пройшов після retry | змінити topic/brief (конкретніша ніша), знизити `minWords` |
 | `humanized_draft_rejected` | гуманізований текст зламав перевірки | повторна джоба = нові кредити; або `betterwords` для цієї теми |

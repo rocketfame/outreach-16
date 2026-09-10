@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     return json({
       status: "error",
       code: "estimated_cost_exceeds_cap",
-      message: `Estimated cost $${preflight.estimatedCostUsd.min.toFixed(2)} for ${preflight.wordsToHumanize} words exceeds the $${request.maxCostUsd.toFixed(2)} cap. Nothing was charged. Raise maxCostUsd (ceiling $1.00), send fewer blocks, or use humanizer: "betterwords".`,
+      message: `Estimated cost $${preflight.estimatedCostUsd.min.toFixed(2)} for ${preflight.wordsToHumanize} words exceeds the $${request.maxCostUsd.toFixed(2)} cap. Nothing was charged. Raise maxCostUsd (ceiling $2.00), send fewer blocks, or use humanizer: "betterwords".`,
       estimatedCostUsd: preflight.estimatedCostUsd,
     }, 422);
   }

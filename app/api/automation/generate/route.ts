@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     return errorResponse(
       "estimated_cost_exceeds_cap",
       `Estimated job cost $${estimatedCost.min.toFixed(2)}-$${estimatedCost.max.toFixed(2)} exceeds the $${capUsd.toFixed(2)} job cap. ` +
-      `Nothing was charged. Raise maxCostUsd (ceiling $1.00), reduce image quality, disable the image, shorten the article, ` +
+      `Nothing was charged. Raise maxCostUsd (ceiling $2.00), reduce image quality, disable the image, shorten the article, ` +
       (request.humanizerResolved === "undetectable"
         ? `use humanizer: "betterwords" (this job resolved to Undetectable.AI, metered per word), `
         : "") +

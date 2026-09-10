@@ -34,8 +34,13 @@ function positiveEnv(name: string, fallback: number, max: number): number {
   return Math.min(parsed, max);
 }
 
-/** Absolute per-job ceiling. A request's maxCostUsd can never exceed this. */
-export const HARD_JOB_COST_CEILING_USD = 1.0;
+/**
+ * Absolute per-job ceiling. A request's maxCostUsd can never exceed this.
+ * Raised 1.0 → 2.0 on 2026-09-10: a 2 700-word human article on
+ * Undetectable.AI is ~$1.35 humanization + ~$0.30 generation + cover, which
+ * the old ceiling rejected at pre-flight.
+ */
+export const HARD_JOB_COST_CEILING_USD = 2.0;
 
 export function maxJobCostUsd(): number {
   return positiveEnv("MAX_JOB_COST_USD", 0.4, HARD_JOB_COST_CEILING_USD);
