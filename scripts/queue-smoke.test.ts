@@ -14,7 +14,7 @@ import type { AutomationJob } from "@/lib/automation/types";
 function job(id: string): AutomationJob {
   return {
     id, status: "queued",
-    request: { topic: null, niche: "Music industry", category: "Spotify", anchor: "", anchorUrl: "", brand: "", brief: "", mode: "human", billing: "auto", language: "English", image: false, imageStyle: "", excludeImageStyles: [], imageQuality: "", coverFormat: "webp", imageRatio: "16:9", minWords: 1200, maxWords: 1800, seoTitleMaxChars: 65, maxCostUsd: 0.4 },
+    request: { topic: null, niche: "Music industry", category: "Spotify", anchor: "", anchorUrl: "", brand: "", brief: "", mode: "human", humanizer: "auto", format: "article", billing: "auto", language: "English", image: false, imageStyle: "", excludeImageStyles: [], imageQuality: "", coverFormat: "webp", imageRatio: "16:9", minWords: 1200, maxWords: 1800, seoTitleMaxChars: 65, maxCostUsd: 0.4 },
     createdAt: Date.now(), updatedAt: Date.now(),
   };
 }

@@ -61,8 +61,12 @@ Writing modes: `seo` (default) and `human` (editorial with mandatory humanizatio
 - **`lib/articlePrompt.ts`** — `buildArticlePrompt` (Discovery) and `buildDirectArticlePrompt` (Direct).
 - **`lib/articleStructure.ts`** — structured article format (blocks, tables, trust sources).
 - **`lib/textPostProcessing.ts`** — `cleanText`, `fixHtmlTagSpacing`, `removeExcessiveBold`. (`lightHumanEdit` was removed in the cleanup pass — humanization fully owns that responsibility now.)
-- **`lib/humanizerClient.ts`** — Undetectable.AI v2 submit + polling.
+- **`lib/humanizerClient.ts`** — Undetectable.AI v2 submit + polling (submit is billed; polling is free and retried on transient errors). BetterWords fallback on the exact `Insufficient credits` error.
 - **`lib/sectionHumanize.ts`** — section-level humanization during writing.
+- **`lib/articleHumanizeBlocks.ts`** — block-level humanization of an `ArticleStructure` (extracted from the route; reserves the whole humanization budget before the first paid submit). Used by the route AND by the automation pipeline.
+- **`lib/articleFinalize.ts`** — structure → cleaned body HTML (leak strip, raw-URL net, blocksToHtml, spacing). Shared by route and pipeline.
+- **`lib/undetectableCredits.ts`** — live Undetectable.AI balance (30s cache). **`lib/automation/humanizerPolicy.ts`** — resolves `auto|undetectable|betterwords` at submit time.
+- **Automation human mode humanizes ONCE, on the accepted draft** (`lib/automation/pipeline.ts` → `humanizeAcceptedDraft`). The route runs with `deferHumanization` for internal calls. Do not move humanization back inside the generation retry.
 - **`lib/trustSourceFilter.ts`** + **`lib/sourceClassifier.ts`** — Tavily-validated source handling with LLM classification.
 
 ### Topic discovery
@@ -87,7 +91,7 @@ Required on Vercel (and `.env.local` for dev):
 - `TEXT_API_BASE_URL` + `TEXT_MODEL` — required non-OpenAI text provider
 - `TEXT_API_KEY` — provider credential (optional for local unauthenticated servers)
 - `TEXT_SMALL_MODEL` / `TEXT_VISION_MODEL` — optional specialized models
-- `UNDETECTABLE_AI_API_KEY` — humanization
+- `UNDETECTABLE_HUMANIZER_API_KEY` — Undetectable.AI humanization (this exact name; `UNDETECTABLE_HUMANIZER_BASE_URL` / `_MODEL` / `_READABILITY` / `_PURPOSE` are optional overrides)
 - `TAVILY_API_KEY` — trust sources
 - `MASTER_IPS` — comma-separated IP allowlist (no spaces). Falls back to `FALLBACK_IPS` in `lib/accessConfig.ts` if unset.
 - `TRIAL_TOKENS` — comma-separated trial tokens for bypass access

@@ -5,8 +5,14 @@ import {
   resolveLanguage,
 } from "@/config/languages";
 import { IMAGE_BOX_PROMPTS, PALETTE_FAMILIES } from "@/lib/imageBoxPrompts";
+import {
+  AUTOMATION_ARTICLE_FORMATS,
+  AUTOMATION_HUMANIZER_VALUES,
+} from "@/lib/automation/types";
 import type {
+  AutomationArticleFormat,
   AutomationCoverInput,
+  AutomationHumanizerPreference,
   AutomationCoverRequest,
   AutomationGenerateInput,
   AutomationGenerateRequest,
@@ -139,6 +145,27 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     throw new AutomationValidationError('Invalid mode. Expected "human" or "standard".', {
       field: "mode",
       allowed: ["human", "standard"],
+    });
+  }
+
+  const humanizer = body.humanizer === undefined || body.humanizer === null ? "auto" : body.humanizer;
+  if (!(AUTOMATION_HUMANIZER_VALUES as readonly string[]).includes(humanizer as string)) {
+    throw new AutomationValidationError('Invalid humanizer. Expected "auto", "undetectable", or "betterwords".', {
+      field: "humanizer",
+      allowed: AUTOMATION_HUMANIZER_VALUES,
+    });
+  }
+  if (humanizer !== "auto" && mode !== "human") {
+    throw new AutomationValidationError('humanizer only applies to mode: "human". Remove it or set mode to "human".', {
+      field: "humanizer",
+    });
+  }
+
+  const format = body.format === undefined || body.format === null ? "article" : body.format;
+  if (!(AUTOMATION_ARTICLE_FORMATS as readonly string[]).includes(format as string)) {
+    throw new AutomationValidationError('Invalid format. Expected "article", "listicle", or "comparison".', {
+      field: "format",
+      allowed: AUTOMATION_ARTICLE_FORMATS,
     });
   }
 
@@ -344,6 +371,8 @@ export function validateAutomationRequest(input: unknown): AutomationGenerateReq
     brand,
     brief: customBrief,
     mode,
+    humanizer: humanizer as AutomationHumanizerPreference,
+    format: format as AutomationArticleFormat,
     billing,
     language,
     image,

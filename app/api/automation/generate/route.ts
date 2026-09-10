@@ -11,6 +11,7 @@ import { AutomationValidationError, validateAutomationRequest } from "@/lib/auto
 import type { AutomationErrorResponse, AutomationJob } from "@/lib/automation/types";
 import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
 import { estimateAutomationRequestCost } from "@/lib/automation/costEstimate";
+import { resolveHumanizerForRequest } from "@/lib/automation/humanizerPolicy";
 import {
   automationApiKeyId,
   releaseAutomationUsageReservation,
@@ -88,6 +89,15 @@ export async function POST(req: Request) {
     );
   }
 
+  // Resolve the rewrite provider from the LIVE Undetectable.AI balance before
+  // anything is queued. The decision is stored on the job so the estimate,
+  // the pre-flight and the runtime all agree on what will be billed.
+  const humanizerResolution = await resolveHumanizerForRequest(request);
+  if (humanizerResolution.error) {
+    return errorResponse(humanizerResolution.error.code, humanizerResolution.error.message, 422);
+  }
+  request.humanizerResolved = humanizerResolution.resolved;
+
   const jobId = `gen_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
   const capUsd = request.maxCostUsd;
   const estimatedCost = estimateAutomationRequestCost(request);
@@ -98,7 +108,11 @@ export async function POST(req: Request) {
     return errorResponse(
       "estimated_cost_exceeds_cap",
       `Estimated job cost $${estimatedCost.min.toFixed(2)}-$${estimatedCost.max.toFixed(2)} exceeds the $${capUsd.toFixed(2)} job cap. ` +
-      `Nothing was charged. Raise maxCostUsd (ceiling $1.00), reduce image quality, disable the image, shorten the article, or use standard mode.`,
+      `Nothing was charged. Raise maxCostUsd (ceiling $1.00), reduce image quality, disable the image, shorten the article, ` +
+      (request.humanizerResolved === "undetectable"
+        ? `use humanizer: "betterwords" (this job resolved to Undetectable.AI, metered per word), `
+        : "") +
+      `or use standard mode.`,
       422
     );
   }
@@ -159,5 +173,7 @@ export async function POST(req: Request) {
     etaSeconds,
     estimatedCostUsd: estimatedCost,
     maxCostUsd: capUsd,
+    humanizer: request.humanizerResolved,
+    format: request.format,
   }, 202);
 }

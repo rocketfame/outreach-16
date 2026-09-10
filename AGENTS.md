@@ -96,7 +96,7 @@ Required on Vercel (and `.env.local` for dev):
 - `TEXT_SMALL_MODEL` — optional classifier model; defaults to `TEXT_MODEL`
 - `TEXT_VISION_MODEL` — optional vision model for reference-style analysis; defaults to `TEXT_MODEL`
 - `TEXT_PROVIDER_NAME` — optional non-secret label returned in Automation metadata
-- `UNDETECTABLE_AI_API_KEY` — humanization
+- `UNDETECTABLE_HUMANIZER_API_KEY` — Undetectable.AI humanization (this exact name; `UNDETECTABLE_HUMANIZER_BASE_URL` / `_MODEL` / `_READABILITY` / `_PURPOSE` are optional overrides)
 - `TAVILY_API_KEY` — trust sources
 - `MASTER_IPS` — comma-separated IP allowlist (no spaces). Falls back to `FALLBACK_IPS` in `lib/accessConfig.ts` if unset.
 - `TRIAL_TOKENS` — comma-separated trial tokens for bypass access

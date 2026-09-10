@@ -29,8 +29,9 @@
 export const maxDuration = 300;
 
 import { buildArticlePrompt, buildDirectArticlePrompt } from "@/lib/articlePrompt";
-import { cleanText, fixHtmlTagSpacing, removeExcessiveBold, stripPromptLeaks } from "@/lib/textPostProcessing";
-import { repairHumanizedText } from "@/lib/humanizeRepair";
+import { cleanText, fixHtmlTagSpacing, removeExcessiveBold } from "@/lib/textPostProcessing";
+import { humanizeArticleStructure, emptyHumanizationReport, type HumanizationReport } from "@/lib/articleHumanizeBlocks";
+import { finalizeArticleHtml } from "@/lib/articleFinalize";
 import { validateArticleOutput } from "@/lib/outputValidator";
 import { logApiKeyStatus, validateContentProviders } from "@/lib/config";
 import {
@@ -50,7 +51,6 @@ import {
 import { extractTrialToken, canGenerateArticle, incrementArticleCount, isMasterToken } from "@/lib/trialLimits";
 import {
   parsePlainTextToStructure,
-  blocksToHtml,
   modelBlocksToArticleStructure,
   ArticleStructure,
   type ArticleBlock,
@@ -75,41 +75,17 @@ interface RawModelBlock {
   [key: string]: unknown;
 }
 import { filterAndSelectTrustSources, TrustSourceInput } from "@/lib/trustSourceFilter";
-import { humanizeSectionText } from "@/lib/sectionHumanize";
-import { createHumanizerService } from "@/lib/humanizerClient";
+import { BetterWordsHumanizerClient, createHumanizerService } from "@/lib/humanizerClient";
 import { 
   getTrustedSourcesFromTavily, 
   type RawSearchResult,
   type TrustedSource 
 } from "@/lib/sourceClassifier";
-import path from "path";
-import fs from "fs";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 import { isInternalAutomationCall } from "@/lib/automation/internal";
 
 // Simple debug logger that works in both local and production (Vercel)
-const debugLog = (...args: unknown[]) => {
-  console.log("[articles-api-debug]", ...args);
-};
 
-const writeDebugLine = (payload: Record<string, unknown>) => {
-  try {
-    const p = path.join(process.cwd(), ".cursor", "debug.log");
-    fs.appendFileSync(p, JSON.stringify(payload) + "\n");
-  } catch (_) {}
-};
-
-function hasGluedWords(text: string): boolean {
-  return (
-    /[a-z]{8,}[A-Z][a-z]/.test(text) ||
-    /\b(saves|shares|likes|views|clicks|comments|follows)([a-z])/.test(text)
-  );
-}
-
-function hasSpacedLetterArtifact(text: string): boolean {
-  // Detect "I T H O U G H Y O U K N E W" type artifacts (single letters with spaces)
-  return /\b([A-Z] ){4,}[A-Z]\b/.test(text);
-}
 
 function normalizeBrandNames(text: string): string {
   const brandNormalizations: [RegExp, string][] = [
@@ -187,25 +163,17 @@ export interface ArticleRequest {
     mode: "Basic" | "Autopilot"; // Basic or Autopilot
   };
   writingMode?: "seo" | "human"; // Writing mode: "seo" (default), "human" (editorial with humanization)
+  /**
+   * Internal automation only: skip humanization and return the parsed
+   * articleStructure so the pipeline can humanize an ACCEPTED draft itself.
+   * Ignored for external callers.
+   */
+  deferHumanization?: boolean;
+  /** Rewrite provider for humanizeOnWrite. Default: Undetectable.AI with BetterWords fallback. */
+  humanizerProvider?: "undetectable" | "betterwords";
 }
 
-/** Internal control: humanization verification report */
-export interface HumanizationReport {
-  enabled: boolean;
-  blocksTotal: number;
-  blocksProcessed: number; // Blocks sent to humanizer
-  blocksActuallyHumanized: number; // Blocks where wordsUsed > 0
-  blocksSkipped: number;
-  totalWordsUsed: number;
-  totalWordsInArticle: number;
-  humanizationRatio: number; // 0-1, share of article that was humanized
-  providerUsage?: {
-    undetectableWords: number;
-    betterWordsWords: number;
-    betterWordsFallbackUsed: boolean;
-  };
-  skippedReasons?: { shortParagraphs: number; shortListItems: number; shortTableCells: number };
-}
+export type { HumanizationReport } from "@/lib/articleHumanizeBlocks";
 
 export interface ArticleResponse {
   topicTitle: string;
@@ -216,6 +184,8 @@ export interface ArticleResponse {
   humanizedOnWrite?: boolean; // Flag indicating if article was humanized during generation
   humanizationReport?: HumanizationReport; // Internal control: verify humanizer ran
   anchorWarning?: string; // Set when anchor was provided in brief but model omitted [A1] (fallback injection used or skipped)
+  /** Only for internal deferHumanization calls: the parsed, un-humanized structure. */
+  articleStructure?: ArticleStructure;
 }
 
 export async function POST(req: Request) {
@@ -275,7 +245,15 @@ export async function POST(req: Request) {
     const effectiveHumanizeOnWrite = writingMode === "human" ? true : (body.humanizeOnWrite || false);
     // One circuit per POST job: after the exact Undetectable "Insufficient credits"
     // error, all remaining blocks/topics in this job use BetterWords.
-    const jobHumanizer = effectiveHumanizeOnWrite ? createHumanizerService() : undefined;
+    const internalCall = isInternalAutomationCall(req);
+    const deferHumanization = internalCall && body.deferHumanization === true;
+    const humanizerProvider: "undetectable" | "betterwords" =
+      body.humanizerProvider === "betterwords" ? "betterwords" : "undetectable";
+    const jobHumanizer = effectiveHumanizeOnWrite && !deferHumanization
+      ? humanizerProvider === "betterwords"
+        ? new BetterWordsHumanizerClient()
+        : createHumanizerService()
+      : undefined;
 
     // Validate that trust sources are provided (mandatory for article generation)
     const hasSharedSources = trustSourcesList && trustSourcesList.length > 0;
@@ -1129,15 +1107,17 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
             };
           });
 
-          // Apply humanization on write if enabled
-          // CRITICAL: For Human Mode, humanization is ALWAYS enabled (force ON)
-          // effectiveHumanizeOnWrite is already set to true for Human Mode earlier in the function
-          const enableHumanizeOnWrite = effectiveHumanizeOnWrite;
-          let totalHumanizeWordsUsed = 0;
-          let totalUndetectableWordsUsed = 0;
+          // Apply humanization on write if enabled. Human Mode forces it ON.
+          // Internal automation calls may defer it (deferHumanization) so the
+          // pipeline humanizes only an ACCEPTED draft and never pays
+          // Undetectable.AI credits for a draft that a retry throws away.
+          const enableHumanizeOnWrite = effectiveHumanizeOnWrite && !deferHumanization;
 
-          if (enableHumanizeOnWrite) {
-            const apiKey = process.env.UNDETECTABLE_HUMANIZER_API_KEY || "";
+          if (enableHumanizeOnWrite && jobHumanizer) {
+            if (humanizerProvider !== "betterwords" && !process.env.UNDETECTABLE_HUMANIZER_API_KEY) {
+              console.error("[articles-api] UNDETECTABLE_HUMANIZER_API_KEY is not set in environment variables");
+              throw new Error("Humanizer API key is not configured. Please set UNDETECTABLE_HUMANIZER_API_KEY in .env.local");
+            }
             // Freeze brand name and anchor text so the humanizer can never
             // rewrite them. Dotted brands ("PromoSoundGroup.net") otherwise
             // get split at the domain dot, leaving an orphaned "net".
@@ -1149,542 +1129,31 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
               frozenPlaceholders.push(brief.anchorText.trim());
             }
 
-            // Get humanize settings from request (default: More Human for best AI detection bypass)
-            const humanizeModel = body.humanizeSettings?.model ?? 2; // Default: More Human (2)
-            const humanizeStyle = body.humanizeSettings?.style; // Optional: Writing style
-            const humanizeMode = body.humanizeSettings?.mode; // Optional: Basic or Autopilot
-
-            // Internal control: humanization verification
-            const humanizationReport: HumanizationReport = {
-              enabled: true,
-              blocksTotal: articleStructure.blocks.length,
-              blocksProcessed: 0,
-              blocksActuallyHumanized: 0,
-              blocksSkipped: 0,
-              totalWordsUsed: 0,
-              totalWordsInArticle: 0,
-              humanizationRatio: 0,
-              skippedReasons: { shortParagraphs: 0, shortListItems: 0, shortTableCells: 0 },
-            };
-
-            // Validate API key before proceeding (Undetectable.AI does not require email)
-            if (!apiKey) {
-              console.error("[articles-api] UNDETECTABLE_HUMANIZER_API_KEY is not set in environment variables");
-              throw new Error("Humanizer API key is not configured. Please set UNDETECTABLE_HUMANIZER_API_KEY in .env.local");
-            }
-
-            if (apiKey) {
-              try {
-                // PARALLEL BATCH HUMANIZATION — process blocks concurrently to avoid Vercel timeout.
-                // Sequential processing of 20+ blocks at 10-15s each = 200-300s (exceeds Vercel limits).
-                // Parallel batches of 5: 4 batches * 15s = 60s total — safe for all Vercel plans.
-                const BATCH_SIZE = 5;
-                const startHumanize = Date.now();
-
-                // Step 1: Build task list — each task knows its original index and how to humanize
-                type BlockType = ArticleStructure['blocks'][0];
-                type HumanizeTask = {
-                  idx: number;
-                  process: () => Promise<{ block: BlockType; wordsUsed: number; undetectableWordsUsed?: number; processed: boolean; humanized: boolean; skippedShortP?: boolean; skippedShortLi?: boolean; skippedShortTc?: boolean }>;
-                };
-                const tasks: HumanizeTask[] = [];
-
-                for (let i = 0; i < articleStructure.blocks.length; i++) {
-                  const block = articleStructure.blocks[i];
-
-                  if (block.type === 'h1') {
-                    tasks.push({ idx: i, process: async () => ({ block, wordsUsed: 0, processed: false, humanized: false }) });
-                    continue;
-                  }
-
-                  if (block.type === 'ul' || block.type === 'ol') {
-                    const listBlock = block as ListBlock;
-                    tasks.push({ idx: i, process: async () => {
-                      let listWordsUsed = 0;
-                      let listUndetectableWordsUsed = 0;
-                      const humanizedItems = await Promise.all(
-                        (listBlock.items || []).map(async (item: ArticleBlockBase) => {
-                          if (!item?.text || item.text.length < 100) return item;
-                          try {
-                            const originalText = cleanText(item.text);
-                            const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
-                            const humanizedText = cleanText(result.humanizedText);
-                            if (hasGluedWords(humanizedText) || humanizedText.length < originalText.length * 0.6) return item;
-                            const repair = repairHumanizedText(originalText, humanizedText);
-                            listWordsUsed += result.wordsUsed;
-                            listUndetectableWordsUsed += result.undetectableWordsUsed;
-                            return { ...item, text: repair.text };
-                          } catch (error) {
-                            rethrowAutomationBudgetError(error);
-                            return item;
-                          }
-                        })
-                      );
-                      return { block: { ...listBlock, items: humanizedItems }, wordsUsed: listWordsUsed, undetectableWordsUsed: listUndetectableWordsUsed, processed: true, humanized: listWordsUsed > 0 };
-                    }});
-                    continue;
-                  }
-
-                  if (block.type === 'table') {
-                    const t = block as TableBlock;
-                    tasks.push({ idx: i, process: async () => {
-                      let tableWordsUsed = 0;
-                      let tableUndetectableWordsUsed = 0;
-                      let caption = t.caption;
-                      if (caption && caption.length >= 100) {
-                        try {
-                          const result = await humanizeSectionText(cleanText(caption), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
-                          caption = cleanText(result.humanizedText);
-                          tableWordsUsed += result.wordsUsed;
-                          tableUndetectableWordsUsed += result.undetectableWordsUsed;
-                        } catch (error) {
-                          rethrowAutomationBudgetError(error);
-                          /* keep original */
-                        }
-                      }
-                      const humanizedRows = await Promise.all(
-                        (t.rows || []).map(async (row) =>
-                          Promise.all((Array.isArray(row) ? row : []).map(async (cell) => {
-                            if (!cell || cell.length < 100) return cell;
-                            try {
-                              const result = await humanizeSectionText(cleanText(cell), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
-                              tableWordsUsed += result.wordsUsed;
-                              tableUndetectableWordsUsed += result.undetectableWordsUsed;
-                              return cleanText(result.humanizedText);
-                            } catch (error) {
-                              rethrowAutomationBudgetError(error);
-                              return cell;
-                            }
-                          }))
-                        )
-                      );
-                      return { block: { ...t, caption, rows: humanizedRows } as TableBlock, wordsUsed: tableWordsUsed, undetectableWordsUsed: tableUndetectableWordsUsed, processed: true, humanized: tableWordsUsed > 0 };
-                    }});
-                    continue;
-                  }
-
-                  if (block.type === 'h2' || block.type === 'h3' || block.type === 'h4') {
-                    if (!block.text || block.text.length === 0) {
-                      tasks.push({ idx: i, process: async () => ({ block, wordsUsed: 0, processed: false, humanized: false }) });
-                      continue;
-                    }
-                    tasks.push({ idx: i, process: async () => {
-                      try {
-                        const result = await humanizeSectionText(cleanText(block.text), humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
-                        return { block: { ...block, text: cleanText(result.humanizedText) }, wordsUsed: result.wordsUsed, undetectableWordsUsed: result.undetectableWordsUsed, processed: true, humanized: result.wordsUsed > 0 };
-                      } catch (error) {
-                        rethrowAutomationBudgetError(error);
-                        return { block, wordsUsed: 0, processed: true, humanized: false };
-                      }
-                    }});
-                    continue;
-                  }
-
-                  // Paragraphs
-                  if (!block.text || block.text.length < 100) {
-                    const isShort = !!(block.text && block.text.length >= 60);
-                    tasks.push({ idx: i, process: async () => ({ block, wordsUsed: 0, processed: false, humanized: false, skippedShortP: isShort }) });
-                    continue;
-                  }
-                  tasks.push({ idx: i, process: async () => {
-                    try {
-                      const originalText = cleanText(block.text);
-                      const result = await humanizeSectionText(originalText, humanizeModel, "", frozenPlaceholders, humanizeStyle, humanizeMode, undefined, jobHumanizer);
-                      const humanizedText = cleanText(result.humanizedText);
-                      // Full-block reject: glued words, spaced letters, or extreme shrinkage
-                      if (hasGluedWords(humanizedText) || hasSpacedLetterArtifact(humanizedText) || humanizedText.length < originalText.length * 0.5) {
-                        console.warn("[humanizer] Paragraph rejected (full block):", originalText.substring(0, 60));
-                        return { block, wordsUsed: 0, undetectableWordsUsed: 0, processed: true, humanized: false };
-                      }
-                      // Sentence-level repair: revert only corrupted sentences to original GPT text.
-                      // Keeps 90%+ humanized while fixing token corruption, semantic collapse,
-                      // and soothing-phrase injection from Undetectable.AI.
-                      const repair = repairHumanizedText(originalText, humanizedText);
-                      if (repair.revertedCount > 0) {
-                        console.warn(`[humanizer] Paragraph repaired: ${repair.revertedCount} sentence(s) reverted to original. Block: "${originalText.substring(0, 60)}"`);
-                      }
-                      return { block: { ...block, text: repair.text }, wordsUsed: result.wordsUsed, undetectableWordsUsed: result.undetectableWordsUsed, processed: true, humanized: result.wordsUsed > 0 };
-                    } catch (error) {
-                      rethrowAutomationBudgetError(error);
-                      return { block, wordsUsed: 0, processed: true, humanized: false };
-                    }
-                  }});
-                }
-
-                // Step 2: Execute tasks in parallel batches
-                const results: Awaited<ReturnType<HumanizeTask['process']>>[] = new Array(tasks.length);
-                for (let batchStart = 0; batchStart < tasks.length; batchStart += BATCH_SIZE) {
-                  const batch = tasks.slice(batchStart, batchStart + BATCH_SIZE);
-                  const batchResults = await Promise.all(batch.map(t => t.process()));
-                  for (let j = 0; j < batch.length; j++) {
-                    results[batch[j].idx] = batchResults[j];
-                  }
-                  console.log(`[humanizer-batch] Batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(tasks.length / BATCH_SIZE)} done (${Date.now() - startHumanize}ms elapsed)`);
-                }
-
-                // Step 3: Collect results in original order
-                const humanizedBlocks: typeof articleStructure.blocks = [];
-                for (let i = 0; i < results.length; i++) {
-                  const r = results[i];
-                  humanizedBlocks.push(r.block);
-                  totalHumanizeWordsUsed += r.wordsUsed;
-                  totalUndetectableWordsUsed += r.undetectableWordsUsed || 0;
-                  if (r.processed) humanizationReport.blocksProcessed++;
-                  if (r.humanized) humanizationReport.blocksActuallyHumanized++;
-                  if (r.skippedShortP) humanizationReport.skippedReasons!.shortParagraphs++;
-                }
-                console.log(`[humanizer-done] All ${tasks.length} blocks done in ${Date.now() - startHumanize}ms, wordsUsed=${totalHumanizeWordsUsed}`);
-
-                // Check if any blocks were actually humanized (not all failed)
-                const anyHumanized = totalHumanizeWordsUsed > 0 || humanizedBlocks.some((block, i) => {
-                  const original = articleStructure.blocks[i];
-                  if (!original) return false;
-                  // Compare text for paragraphs
-                  if (block.text !== original.text) return true;
-                  // Compare items for lists
-                  if ((block.type === 'ul' || block.type === 'ol') && (original.type === 'ul' || original.type === 'ol')) {
-                    const blockItems = (block as ListBlock).items || [];
-                    const originalItems = (original as ListBlock).items || [];
-                    return JSON.stringify(blockItems) !== JSON.stringify(originalItems);
-                  }
-                  // Compare rows for tables
-                  if (block.type === 'table' && original.type === 'table') {
-                    const blockRows = (block as TableBlock).rows || [];
-                    const originalRows = (original as TableBlock).rows || [];
-                    return JSON.stringify(blockRows) !== JSON.stringify(originalRows);
-                  }
-                  return false;
-                });
-
-                articleStructure.blocks = humanizedBlocks;
-                articleStructure.humanizedOnWrite = anyHumanized; // Only mark as humanized if at least one block was changed
-
-                // Warn if humanization was enabled but completely failed
-                if (!anyHumanized && humanizationReport.blocksProcessed > 0) {
-                  console.warn(`[humanizer] WARNING: Humanization enabled but 0/${humanizationReport.blocksProcessed} blocks were actually humanized. Check API key/credits.`);
-                }
-
-                // Finalize humanization report (internal control)
-                humanizationReport.totalWordsUsed = totalHumanizeWordsUsed;
-                humanizationReport.blocksSkipped =
-                  humanizationReport.skippedReasons!.shortParagraphs +
-                  humanizationReport.skippedReasons!.shortListItems +
-                  humanizationReport.skippedReasons!.shortTableCells;
-                const totalWordsInArticle = humanizedBlocks
-                  .flatMap((b) => {
-                    if (b.text) return b.text.split(/\s+/).filter(Boolean);
-                    const listItems = (b as ListBlock).items;
-                    if (listItems) return listItems.flatMap((i: ArticleBlockBase | string) => ((typeof i === "string" ? i : i?.text) || "").split(/\s+/).filter(Boolean));
-                    const tableRows = (b as TableBlock).rows;
-                    if (tableRows) return tableRows.flat().flatMap((c: string) => (c || "").split(/\s+/).filter(Boolean));
-                    return [];
-                  })
-                  .length;
-                humanizationReport.totalWordsInArticle = totalWordsInArticle;
-                humanizationReport.humanizationRatio =
-                  totalWordsInArticle > 0 ? totalHumanizeWordsUsed / totalWordsInArticle : 0;
-                humanizationReport.providerUsage = {
-                  undetectableWords: totalUndetectableWordsUsed,
-                  betterWordsWords: Math.max(0, totalHumanizeWordsUsed - totalUndetectableWordsUsed),
-                  betterWordsFallbackUsed: totalHumanizeWordsUsed > totalUndetectableWordsUsed,
-                };
-                humanizationReportForResponse = humanizationReport;
-
-                if (totalHumanizeWordsUsed === 0 && enableHumanizeOnWrite) {
-                  // Log warning if humanization was enabled but no words were used
-                  console.warn('[articles-api] Humanization was enabled but no words were processed. This may indicate API errors (e.g., insufficient balance) or all blocks were too short.');
-                }
-              } catch (humanizeError) {
-                rethrowAutomationBudgetError(humanizeError);
-                console.error('[articles-api] Humanization on write failed:', humanizeError);
+            try {
+              const humanized = await humanizeArticleStructure(articleStructure, {
+                model: body.humanizeSettings?.model ?? 2, // Default: More Human (2)
+                style: body.humanizeSettings?.style,
+                mode: body.humanizeSettings?.mode,
+                frozenPhrases: frozenPlaceholders,
+                humanizer: jobHumanizer,
+              });
+              articleStructure = humanized.structure;
+              humanizationReportForResponse = humanized.report;
+              if (humanized.report.totalWordsUsed === 0) {
+                console.warn('[articles-api] Humanization was enabled but no words were processed. This may indicate API errors (e.g., insufficient balance) or all blocks were too short.');
               }
-            } else {
-              humanizationReportForResponse = {
-                enabled: true,
-                blocksTotal: articleStructure.blocks.length,
-                blocksProcessed: 0,
-                blocksActuallyHumanized: 0,
-                blocksSkipped: 0,
-                totalWordsUsed: 0,
-                totalWordsInArticle: 0,
-                humanizationRatio: 0,
-                skippedReasons: { shortParagraphs: 0, shortListItems: 0, shortTableCells: 0 },
-              };
-              console.warn('[articles-api] Humanization on write requested but UNDETECTABLE_HUMANIZER_API_KEY not configured');
+            } catch (humanizeError) {
+              rethrowAutomationBudgetError(humanizeError);
+              console.error('[articles-api] Humanization on write failed:', humanizeError);
             }
           } else {
-            humanizationReportForResponse = {
-              enabled: false,
-              blocksTotal: articleStructure?.blocks?.length ?? 0,
-              blocksProcessed: 0,
-              blocksActuallyHumanized: 0,
-              blocksSkipped: 0,
-              totalWordsUsed: 0,
-              totalWordsInArticle: 0,
-              humanizationRatio: 0,
-            };
+            humanizationReportForResponse = emptyHumanizationReport(articleStructure, false);
           }
 
-          // ========================================================================
-          // PROMPT-LEAK SAFETY NET
-          // ========================================================================
-          // GPT-5.5 (and the Undetectable.AI humanizer) occasionally leak prompt
-          // scaffolding into the article body — phrases like "Hier die Eingabe des
-          // Benutzers:" (German) or "Here is the user's input:" (English). An editor
-          // will instantly reject the article if such a marker survives. This pass
-          // walks every block (paragraphs, list items, table caption/cells) and
-          // strips offending sentences. False positives are guarded against by
-          // keeping the marker list HIGHLY specific in lib/textPostProcessing.ts.
-          {
-            const leaksFound: string[] = [];
-            const stripBlock = (s: string | undefined): string | undefined => {
-              if (!s) return s;
-              const r = stripPromptLeaks(s);
-              if (r.removedSentences.length > 0) leaksFound.push(...r.removedSentences);
-              return r.cleaned;
-            };
-            articleStructure.blocks = articleStructure.blocks.map((block) => {
-              if (block.type === "ul" || block.type === "ol") {
-                const lb = block as ListBlock;
-                return {
-                  ...lb,
-                  items: (lb.items || []).map((item) => ({
-                    ...item,
-                    text: stripBlock(item.text) || "",
-                  })),
-                };
-              }
-              if (block.type === "table") {
-                const tb = block as TableBlock;
-                return {
-                  ...tb,
-                  caption: stripBlock(tb.caption),
-                  rows: (tb.rows || []).map((row) =>
-                    (row || []).map((cell) => stripBlock(cell) || "")
-                  ),
-                };
-              }
-              return { ...block, text: stripBlock(block.text) || "" };
-            });
-            // Drop any block whose text was completely emptied by leak removal
-            // (otherwise we'd render <p></p> in the final HTML).
-            articleStructure.blocks = articleStructure.blocks.filter((block) => {
-              if (block.type === "ul" || block.type === "ol") {
-                const items = (block as ListBlock).items || [];
-                return items.some((i) => (i.text || "").trim().length > 0);
-              }
-              if (block.type === "table") {
-                const tb = block as TableBlock;
-                const hasContent =
-                  (tb.caption && tb.caption.trim().length > 0) ||
-                  (tb.rows || []).some((r) => (r || []).some((c) => (c || "").trim().length > 0));
-                return !!hasContent;
-              }
-              return (block.text || "").trim().length > 0;
-            });
-            if (leaksFound.length > 0) {
-              console.warn(
-                `[articles-api] PROMPT LEAK STRIPPED: removed ${leaksFound.length} sentence(s) containing AI scaffolding markers from topic "${topic.title}". First match: "${leaksFound[0].slice(0, 120)}"`
-              );
-            }
-          }
-
-          // ========================================================================
-          // VALIDATION: Check trust source placeholder usage
-          // ========================================================================
-          if (articleStructure.trustSources.length > 0) {
-            // Count how many [T1]/[T2]/[T3] placeholders were actually used in the article text
-            const allText = articleStructure.blocks
-              .map(block => {
-                if (block.type === 'ul' || block.type === 'ol') {
-                  return (block as ListBlock).items?.map((item: ArticleBlockBase) => item.text || '').join(' ') || '';
-                }
-                if (block.type === 'table') {
-                  const t = block as TableBlock;
-                  return [
-                    t.caption || '',
-                    ...(t.headers || []),
-                    ...(t.rows || []).flat()
-                  ].join(' ');
-                }
-                return block.text || '';
-              })
-              .join(' ');
-            
-            const placeholderMatches = allText.match(/\[T[1-3]\]/g) || [];
-            const uniquePlaceholders = new Set(placeholderMatches);
-            const placeholderCount = uniquePlaceholders.size;
-            
-            // Validate: must have 1-3 placeholders if trustSources.length > 0
-            if (placeholderCount === 0 && articleStructure.trustSources.length > 0) {
-              console.warn(`[articles-api] No trust source placeholders found in article for topic: ${topic.title}. Expected 1-${articleStructure.trustSources.length} placeholders.`);
-            } else if (placeholderCount > articleStructure.trustSources.length) {
-              console.warn(`[articles-api] More placeholders (${placeholderCount}) than trust sources (${articleStructure.trustSources.length}) for topic: ${topic.title}.`);
-            }
-            
-            // Validate: every placeholder must have a corresponding entry in trustSources
-            const usedPlaceholderIds = Array.from(uniquePlaceholders).map(p => p.replace(/[\[\]]/g, ''));
-            const validPlaceholderIds = articleStructure.trustSources.map(ts => ts.id);
-            const invalidPlaceholders = usedPlaceholderIds.filter(id => !validPlaceholderIds.includes(id));
-            
-            if (invalidPlaceholders.length > 0) {
-              console.warn(`[articles-api] Invalid placeholders found: ${invalidPlaceholders.join(', ')}. These will be removed or left as plain text.`);
-              // Remove invalid placeholders from text (optional: can be done in post-processing)
-            }
-          }
-
-          // RAW URL SAFETY NET: if model dumped a raw URL instead of using a [Tn] or
-          // [Tn:phrase] placeholder, match the URL against trust sources and convert it
-          // to the contextual placeholder format. Also strip orphaned bare "Tn:text"
-          // fragments (model sometimes writes T1:2014 without brackets).
-          // This runs BEFORE blocksToHtml so the existing substitution pipeline picks
-          // up the converted placeholders normally.
-          if (articleStructure.trustSources.length > 0) {
-            const rawUrlRe = /https?:\/\/[^\s,)}\]<"']+/g;
-            const bareTnRe = /(?:^|\s)T[1-8]:\S+/g;
-            const fixText = (text: string): string => {
-              if (!text) return text;
-              // Step 1: convert raw URLs to [Tn:phrase] if they match a trust source
-              let fixed = text.replace(rawUrlRe, (rawUrl) => {
-                const clean = rawUrl.replace(/[.,;:!?]+$/, "");
-                const ts = articleStructure!.trustSources.find(
-                  (s) => clean === s.url || s.url.startsWith(clean) || clean.startsWith(s.url)
-                );
-                if (!ts) return rawUrl; // keep unmatched URLs
-                const phrase = ts.text.trim().split(/\s+/).slice(0, 3).join(" ");
-                return `[${ts.id}:${phrase}]`;
-              });
-              // Step 2: strip orphaned bare Tn:text (without brackets)
-              fixed = fixed.replace(bareTnRe, " ");
-              return fixed.replace(/\s{2,}/g, " ").trim();
-            };
-            articleStructure.blocks = articleStructure.blocks.map((block) => {
-              if (block.type === "ul" || block.type === "ol") {
-                const lb = block as ListBlock;
-                return { ...lb, items: (lb.items || []).map((i) => ({ ...i, text: fixText(i.text || "") })) };
-              }
-              if (block.type === "table") {
-                const tb = block as TableBlock;
-                return {
-                  ...tb,
-                  caption: fixText(tb.caption || ""),
-                  rows: (tb.rows || []).map((r) => (r || []).map((c) => fixText(c || ""))),
-                };
-              }
-              return { ...block, text: fixText(block.text || "") };
-            });
-          }
-
-          // CRITICAL: Check for placeholders in blocks BEFORE converting to HTML
-          const allPlaceholdersInBlocks: string[] = [];
-          articleStructure.blocks.forEach(block => {
-            if (block.type === 'ul' || block.type === 'ol') {
-              const listBlock = block as ListBlock;
-              (listBlock.items || []).forEach((item: ArticleBlockBase) => {
-                const matches = item?.text?.match(/\[([AT][1-3])\]/g);
-                if (matches) allPlaceholdersInBlocks.push(...matches);
-              });
-            } else if (block.type === 'table') {
-              const tableBlock = block as TableBlock;
-              if (tableBlock.caption) {
-                const matches = tableBlock.caption.match(/\[([AT][1-3])\]/g);
-                if (matches) allPlaceholdersInBlocks.push(...matches);
-              }
-              (tableBlock.rows || []).forEach((row: string[]) => {
-                (row || []).forEach((cell: string) => {
-                  if (typeof cell === 'string') {
-                    const matches = cell.match(/\[([AT][1-3])\]/g);
-                    if (matches) allPlaceholdersInBlocks.push(...matches);
-                  }
-                });
-              });
-            } else {
-              const matches = block.text?.match(/\[([AT][1-3])\]/g);
-              if (matches) allPlaceholdersInBlocks.push(...matches);
-            }
-          });
-
-          // Convert blocks to HTML, fix spacing around tags, remove excessive bold, then clean invisible characters
-          const htmlBeforeClean = blocksToHtml(
-                  articleStructure.blocks,
-                  articleStructure.anchors,
-                  articleStructure.trustSources
-          );
-          
-          // CRITICAL: Check if placeholders were replaced in HTML
-          const placeholdersInHtml = (htmlBeforeClean.match(/\[([AT][1-3])\]/g) || []).length;
-          const linksInHtml = (htmlBeforeClean.match(/<a\s+[^>]*href/g) || []).length;
-          
-          if (placeholdersInHtml > 0) {
-            console.error(`[articles-api] ERROR: ${placeholdersInHtml} placeholders still present after blocksToHtml!`, {
-              remainingPlaceholders: [...new Set((htmlBeforeClean.match(/\[([AT][1-3])\]/g) || []))],
-            });
-          }
-          
-          // ORDER MATTERS: cleanText must run BEFORE the final fixHtmlTagSpacing pass.
-          // Historically cleanText (cleanInvisibleChars) was stripping whitespace around
-          // inline tags like <a>, gluing anchors to surrounding words. That regex has been
-          // tightened, but to be safe we run fixHtmlTagSpacing as the LAST step so any
-          // residual missing-space-before-or-after-<a> gets fixed before the response leaves.
-          cleanedArticleBodyHtml = fixHtmlTagSpacing(
-            cleanText(
-              removeExcessiveBold(
-                fixHtmlTagSpacing(htmlBeforeClean)
-              )
-            )
-          );
-          
-          // CRITICAL: Verify that links were actually injected
-          const linkCount = (cleanedArticleBodyHtml.match(/<a\s+[^>]*href/g) || []).length;
-          const placeholdersAfterClean = (cleanedArticleBodyHtml.match(/\[([AT][1-3])\]/g) || []).length;
-          
-          // Extract actual links for verification
-          const actualLinks: Array<{text: string, url: string}> = [];
-          const linkMatches = cleanedArticleBodyHtml.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/g);
-          for (const match of linkMatches) {
-            actualLinks.push({ url: match[1], text: match[2] });
-          }
-          
-          if (placeholdersAfterClean > 0) {
-            const errorLog = {
-              location: 'articles/route.ts:1550',
-              message: 'ERROR: Placeholders still present in final HTML',
-              data: {
-                topicTitle: topic.title,
-                placeholdersRemaining: placeholdersAfterClean,
-                remainingPlaceholders: [...new Set((cleanedArticleBodyHtml.match(/\[([AT][1-3])\]/g) || []))],
-                expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
-                actualLinks: linkCount,
-              },
-              timestamp: Date.now(),
-              sessionId: 'debug-session',
-              runId: 'articles-api',
-              hypothesisId: 'placeholder-error'
-            };
-            debugLog(errorLog);
-            console.error(`[articles-api] ERROR: ${placeholdersAfterClean} placeholders still present in final HTML! Expected 0.`, errorLog.data);
-          }
-          
-          if (linkCount === 0 && (articleStructure.anchors.length > 0 || articleStructure.trustSources.length > 0)) {
-            const errorLog = {
-              location: 'articles/route.ts:1565',
-              message: 'ERROR: No links found in final HTML',
-              data: {
-                topicTitle: topic.title,
-                expectedLinks: articleStructure.anchors.length + articleStructure.trustSources.length,
-                actualLinks: linkCount,
-                anchorsProvided: articleStructure.anchors.length,
-                trustSourcesProvided: articleStructure.trustSources.length,
-                placeholdersBeforeHtml: allPlaceholdersInBlocks.length,
-              },
-              timestamp: Date.now(),
-              sessionId: 'debug-session',
-              runId: 'articles-api',
-              hypothesisId: 'no-links-error'
-            };
-            debugLog(errorLog);
-            console.error(`[articles-api] ERROR: No links found in final HTML! Expected ${articleStructure.anchors.length + articleStructure.trustSources.length} links.`, errorLog.data);
-          }
+          // Structure → cleaned body HTML (prompt-leak strip, trust placeholder
+          // checks, raw-URL safety net, blocksToHtml, spacing/bold/invisible
+          // chars). Shared with the automation pipeline: lib/articleFinalize.ts.
+          cleanedArticleBodyHtml = finalizeArticleHtml(articleStructure, topic.title).html;
         } else if (hasOldFormat) {
           // OLD FORMAT: Use existing HTML processing
           cleanedArticleBodyHtml = cleanText(
@@ -1740,6 +1209,7 @@ WORD COUNT: ${wordCountMinSys}-${wordCountMaxSys} words. ${sectionGuidance} Tigh
           humanizationWarning: (humanizationReportForResponse?.enabled && humanizationReportForResponse?.blocksActuallyHumanized === 0 && humanizationReportForResponse?.blocksProcessed > 0)
             ? "Humanization was enabled but no blocks were successfully humanized. Check API key and credit balance."
             : undefined,
+          articleStructure: deferHumanization && articleStructure ? articleStructure : undefined,
           anchorWarning: anchorFallbackUsed === "injected"
             ? "Model omitted the commercial anchor in its initial output. The anchor was injected into the first paragraph automatically — please review its placement."
             : anchorFallbackUsed === "no-paragraph"

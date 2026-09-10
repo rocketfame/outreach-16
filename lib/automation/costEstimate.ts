@@ -92,6 +92,12 @@ function generationInputTokens(request: AutomationGenerateRequest, targetWords: 
 export function estimateAutomationRequestCost(
   request: AutomationGenerateRequest
 ): AutomationCostEstimate {
+  // The humanizer is resolved at submit time (lib/automation/humanizerPolicy.ts).
+  // Legacy stored jobs without humanizerResolved are estimated at the
+  // Undetectable price — the honest worst case.
+  const humanizer = request.mode === "human"
+    ? (request.humanizerResolved && request.humanizerResolved !== "none" ? request.humanizerResolved : "undetectable")
+    : "none";
   const model = getTextProviderConfig().model;
   const targetWords = Math.round((request.minWords + (request.maxWords || 1800)) / 2);
   const inputTokens = generationInputTokens(request, targetWords);
@@ -105,14 +111,25 @@ export function estimateAutomationRequestCost(
 
   let humanizeMin = 0;
   let humanizeMax = 0;
-  if (request.mode === "human") {
-    // Undetectable.AI meters ~$0.0005/word on the full article body.
+  if (humanizer === "undetectable") {
+    // Undetectable.AI meters ~$0.0005/word on the humanizable body. Both
+    // bounds use the metered price: a job that resolved to Undetectable must
+    // be able to afford it, otherwise the cap would kill it mid-humanization
+    // AFTER credits were spent on the first blocks.
+    humanizeMin = estimateHumanizeCost(targetWords);
     humanizeMax = estimateHumanizeCost(request.maxWords || 1800);
-    // BetterWords fallback re-generates the text through the provider instead.
+  } else if (humanizer === "betterwords") {
+    // BetterWords re-generates the text through the text provider instead.
     humanizeMin = calculateOpenAIChatCost(
       model,
       Math.ceil(request.minWords * 1.6),
       Math.ceil(request.minWords * 1.5),
+      0
+    );
+    humanizeMax = calculateOpenAIChatCost(
+      model,
+      Math.ceil((request.maxWords || 1800) * 1.6),
+      Math.ceil((request.maxWords || 1800) * 1.5),
       0
     );
   }

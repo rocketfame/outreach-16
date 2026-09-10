@@ -14,7 +14,12 @@ import {
 } from "@/lib/costTracker";
 import { getTextProviderConfig } from "@/lib/textProvider";
 import { AUTOMATION_LANGUAGE_VALUES } from "@/config/languages";
-import { KNOWN_AUTOMATION_CATEGORIES } from "@/lib/automation/types";
+import {
+  AUTOMATION_ARTICLE_FORMATS,
+  AUTOMATION_HUMANIZER_VALUES,
+  KNOWN_AUTOMATION_CATEGORIES,
+} from "@/lib/automation/types";
+import { getUndetectableCredits, isUndetectableConfigured } from "@/lib/undetectableCredits";
 import { IMAGE_BOX_PROMPTS } from "@/lib/imageBoxPrompts";
 
 /**
@@ -36,8 +41,24 @@ export async function GET(req: Request) {
     // Config endpoint must still answer when the provider env is incomplete.
   }
 
+  const undetectable = await getUndetectableCredits();
+
   return Response.json({
     status: "ok",
+    /**
+     * Live humanizer state. `undetectableCredits` is words (1 credit = 1 word);
+     * a human-mode job needs ~maxWords × 1.1. With humanizer "auto" the job
+     * resolves to BetterWords when the balance is short — check this before
+     * a batch if Undetectable.AI is required.
+     */
+    humanizer: {
+      options: AUTOMATION_HUMANIZER_VALUES,
+      default: "auto",
+      undetectableConfigured: isUndetectableConfigured(),
+      undetectableCredits: undetectable?.credits ?? null,
+      undetectableCheckedAt: undetectable ? new Date(undetectable.checkedAt).toISOString() : null,
+      wordsMarginFactor: 1.1,
+    },
     cost: {
       defaultMaxCostUsd: maxJobCostUsd(),
       hardCeilingUsd: HARD_JOB_COST_CEILING_USD,
@@ -73,8 +94,12 @@ export async function GET(req: Request) {
       requiredFields: ["niche"],
       pairedFields: [["anchor", "anchorUrl"]],
       modes: ["human", "standard"],
+      humanizers: AUTOMATION_HUMANIZER_VALUES,
+      formats: AUTOMATION_ARTICLE_FORMATS,
       defaults: {
         mode: "human",
+        humanizer: "auto",
+        format: "article",
         language: "English",
         image: true,
         imageQuality: (process.env.HERO_IMAGE_QUALITY || "medium").trim().toLowerCase(),

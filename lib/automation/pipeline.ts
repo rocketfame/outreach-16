@@ -1,6 +1,11 @@
 import { POST as generateArticleRoute } from "@/app/api/articles/route";
 import { POST as generateImageRoute } from "@/app/api/article-image/route";
 import { getCostTracker } from "@/lib/costTracker";
+import { humanizeArticleStructure } from "@/lib/articleHumanizeBlocks";
+import { finalizeArticleHtml } from "@/lib/articleFinalize";
+import { validateArticleOutput } from "@/lib/outputValidator";
+import { BetterWordsHumanizerClient, createHumanizerService } from "@/lib/humanizerClient";
+import type { ArticleStructure } from "@/lib/articleStructure";
 import { getTextProviderConfig } from "@/lib/textProvider";
 import { searchReliableSources, type ReliableSearchOptions, type TrustedSource } from "@/lib/tavilyClient";
 import { getCachedSources, setCachedSources, sourceCacheKey } from "@/lib/automation/sourceCache";
@@ -29,6 +34,7 @@ import {
 } from "@/lib/automation/contentQuality";
 import type {
   AutomationArticle,
+  AutomationArticleFormat,
   AutomationCoverRequest,
   AutomationCoverSuccess,
   AutomationGenerateRequest,
@@ -61,6 +67,8 @@ type InternalArticleResponse = {
         betterWordsFallbackUsed: boolean;
       };
     };
+    /** Present for deferHumanization calls: parsed, un-humanized structure. */
+    articleStructure?: ArticleStructure;
   }>;
   error?: string;
   code?: string;
@@ -75,19 +83,88 @@ type InternalImageResponse = {
   code?: string;
 };
 
+interface DraftArticle {
+  generatedTitleTag: string;
+  contentHtml: string;
+  metaDescription: string;
+  humanizedOnWrite: boolean;
+  humanizationProvider?: "undetectable" | "betterwords" | "mixed";
+  undetectableWordsUsed: number;
+  /** Parsed structure of the (not yet humanized) draft — human mode only. */
+  structure?: ArticleStructure;
+}
+
+/**
+ * Format directive appended to the topic brief. The prompt template already
+ * says "select ONE format based on the brief"; these lines make the choice
+ * explicit and non-negotiable for listicles and comparisons.
+ */
+export function buildFormatInstruction(format: AutomationArticleFormat, topic: string): string {
+  if (format === "listicle") {
+    const n = topic.match(/\b(\d{1,2})\b/)?.[1];
+    return [
+      "FORMAT: LISTICLE (mandatory).",
+      `The body is a numbered list of ${n ? `exactly ${n}` : "7-10"} distinct items. Each item is its own H2 that starts with its number and a period ("1. ..."), followed by 2-4 paragraphs: what it is, why it matters, how to apply it.`,
+      "Open with a 1-2 paragraph intro before item 1 and close with a short wrap-up H2 after the last item. Do not nest lists inside items, do not merge items, do not add a comparison table.",
+    ].join(" ");
+  }
+  if (format === "comparison") {
+    return [
+      "FORMAT: COMPARISON (mandatory).",
+      "Compare the options named in the title/brief head-to-head. Open with one paragraph on who each option is for.",
+      "Include exactly ONE comparison table: criteria as rows, the compared options as columns, short factual cells. Then one H2 per criterion with a verdict paragraph that names which option wins that criterion and why.",
+      "Close with an H2 \"Which to choose\" giving a clear recommendation per use case. No invented numbers, prices, or rankings — if a fact is not in the provided sources, describe the mechanism instead.",
+    ].join(" ");
+  }
+  return "";
+}
+
+/**
+ * Deterministic repair chain — order matters:
+ * sanitize → drop disallowed citations (whole sentence, no orphan text)
+ * → clause-length citation anchors to resource names → quote debris
+ * → sentence casing → brand token → single plain-text anchor mention
+ * → exact money anchor.
+ */
+function postProcessArticleHtml(rawHtml: string, request: AutomationGenerateRequest): string {
+  let contentHtml = sanitizeAutomationHtml(rawHtml);
+  contentHtml = stripDisallowedLinks(contentHtml, request.anchorUrl);
+  contentHtml = shortenExternalLinkTexts(contentHtml, request.anchorUrl);
+  contentHtml = cleanQuoteDebris(contentHtml);
+  // Safety net for humanizer casing artifacts that survived section-level
+  // cleanup (EN connectors stripped mid-pipeline leave lowercase sentence
+  // starts). Repair is orthographic only; anchors and camelCase brands are
+  // skipped. Without it the integrity gate failed the whole PAID job.
+  contentHtml = repairSentenceCase(contentHtml);
+  contentHtml = restoreBrandToken(contentHtml, request.brand);
+  // Enforce the single ANCHOR mention only when the anchor text is not the
+  // brand itself — brand mentions (2-3x) must survive.
+  const anchorIsBrand =
+    request.brand && request.anchor.toLowerCase().includes(request.brand.toLowerCase());
+  if (request.anchor && !anchorIsBrand) {
+    contentHtml = enforceSingleMention(contentHtml, request.anchor);
+  }
+  if (request.anchor && request.anchorUrl) {
+    contentHtml = repairMoneyAnchor(contentHtml, request.anchor, request.anchorUrl).html;
+  }
+  return contentHtml;
+}
+
+/**
+ * One generation call. In human mode humanization is DEFERRED: the route
+ * returns the parsed structure and the pipeline humanizes it only after the
+ * draft passed the acceptance checks (see humanizeAcceptedDraft). A rejected
+ * draft therefore costs text-model tokens only, never Undetectable credits.
+ */
 async function generateArticleOnce(
   request: AutomationGenerateRequest,
   topic: string,
   trustSourcesList: string[],
   targetWords: number,
   extraInstruction: string
-): Promise<{
-  generatedTitleTag: string;
-  contentHtml: string;
-  metaDescription: string;
-  humanizedOnWrite: boolean;
-  humanizationProvider?: "undetectable" | "betterwords" | "mixed";
-}> {
+): Promise<DraftArticle> {
+  const isHuman = request.mode === "human";
+  const formatInstruction = buildFormatInstruction(request.format, topic);
   const articleResponse = await generateArticleRoute(new Request("https://automation.local/api/articles", {
     method: "POST",
     headers: {
@@ -112,18 +189,16 @@ async function generateArticleOnce(
       selectedTopics: [
         {
           title: topic,
-          brief: buildTopicBrief(request, topic) + (extraInstruction ? `\n${extraInstruction}` : ""),
+          brief: [buildTopicBrief(request, topic), formatInstruction, extraInstruction].filter(Boolean).join("\n"),
         },
       ],
       trustSourcesList,
       allowMissingTrustSources: true,
-      writingMode: request.mode === "human" ? "human" : "seo",
-      humanizeOnWrite: request.mode === "human",
-      humanizeSettings: {
-        model: 2,
-        style: "Blog",
-        mode: "Autopilot",
-      },
+      writingMode: isHuman ? "human" : "seo",
+      humanizeOnWrite: isHuman,
+      deferHumanization: isHuman,
+      humanizerProvider: request.humanizerResolved === "betterwords" ? "betterwords" : "undetectable",
+      humanizeSettings: HUMANIZE_SETTINGS,
     }),
   }));
 
@@ -136,55 +211,92 @@ async function generateArticleOnce(
   }
 
   const generated = articleJson.articles[0];
-  if (request.mode === "human" && !generated.humanizedOnWrite) {
+  if (isHuman && !generated.articleStructure) {
     throw new AutomationPipelineError(
-      "humanization_failed",
-      "Human mode produced no successfully humanized blocks. Undetectable.AI and the BetterWords fallback did not complete; the article will not ship unhumanized."
+      "generation_failed",
+      "Article route returned no parsed structure for deferred humanization."
     );
   }
-  const providerUsage = generated.humanizationReport?.providerUsage;
-  const humanizationProvider = providerUsage
-    ? providerUsage.betterWordsWords > 0 && providerUsage.undetectableWords > 0
+  const generatedTitleTag = stripTags(generated.titleTag || topic).trim();
+  const rawHtml = generated.articleBodyHtml || generated.fullArticleText || "";
+  return {
+    generatedTitleTag,
+    contentHtml: postProcessArticleHtml(rawHtml, request),
+    metaDescription: generated.metaDescription || "",
+    humanizedOnWrite: false,
+    undetectableWordsUsed: 0,
+    structure: generated.articleStructure,
+  };
+}
+
+const HUMANIZE_SETTINGS = { model: 2, style: "Blog", mode: "Autopilot" as const };
+
+/**
+ * Humanize an ACCEPTED draft — the only place in the automation pipeline
+ * that spends Undetectable.AI credits. Runs once per job, after generation
+ * retries are over, under the job budget (the whole humanization is
+ * reserved before the first paid submit).
+ */
+async function humanizeAcceptedDraft(
+  draft: DraftArticle,
+  request: AutomationGenerateRequest,
+  topic: string,
+  minWords: number
+): Promise<DraftArticle> {
+  if (!draft.structure) {
+    throw new AutomationPipelineError("generation_failed", "Accepted draft has no structure to humanize.");
+  }
+  const provider = request.humanizerResolved === "betterwords" ? "betterwords" : "undetectable";
+  const humanizer = provider === "betterwords" ? new BetterWordsHumanizerClient() : createHumanizerService();
+  const frozenPhrases = ["[A1]", "[T1]", "[T2]", "[T3]", "[T4]", "[T5]", "[T6]", "[T7]", "[T8]"];
+  if (request.brand) frozenPhrases.push(request.brand);
+  if (request.anchor) frozenPhrases.push(request.anchor);
+
+  const humanized = await humanizeArticleStructure(draft.structure, {
+    ...HUMANIZE_SETTINGS,
+    frozenPhrases,
+    humanizer,
+    probeBudget: true,
+  });
+  if (!humanized.anyHumanized) {
+    throw new AutomationPipelineError(
+      "humanization_failed",
+      `Human mode produced no successfully humanized blocks (${provider}${provider === "undetectable" ? " with BetterWords fallback" : ""}). The article will not ship unhumanized.`
+    );
+  }
+  const finalized = finalizeArticleHtml(humanized.structure, topic);
+  const validated = validateArticleOutput(finalized.html);
+  const contentHtml = postProcessArticleHtml(validated.html, request);
+
+  // The humanizer can itself break what the accepted draft had right
+  // (glued links, truncated sentences). Re-check; never ship a broken body
+  // and never re-humanize (that would double the credits).
+  const failures = collectDraftFailures(request, contentHtml, minWords);
+  if (failures.length > 0) {
+    throw new AutomationPipelineError(
+      "humanized_draft_rejected",
+      `The accepted draft passed all checks, but the humanized version failed: ${failures.map((f) => `${f.code}: ${f.message}`).join(" | ")}. Humanizer credits for this article were spent once; retry the job to regenerate.`
+    );
+  }
+
+  const usage = humanized.report.providerUsage;
+  const humanizationProvider = usage
+    ? usage.betterWordsWords > 0 && usage.undetectableWords > 0
       ? "mixed" as const
-      : providerUsage.betterWordsWords > 0
+      : usage.betterWordsWords > 0
         ? "betterwords" as const
-        : providerUsage.undetectableWords > 0
+        : usage.undetectableWords > 0
           ? "undetectable" as const
           : undefined
     : undefined;
-  const generatedTitleTag = stripTags(generated.titleTag || topic).trim();
-  const rawHtml = generated.articleBodyHtml || generated.fullArticleText || "";
 
-  // Deterministic repair chain — order matters:
-  // sanitize → drop disallowed citations (whole sentence, no orphan text)
-  // → clause-length citation anchors to resource names → quote debris
-  // → single plain-text anchor mention → exact money anchor.
-  let contentHtml = sanitizeAutomationHtml(rawHtml);
-  contentHtml = stripDisallowedLinks(contentHtml, request.anchorUrl);
-  contentHtml = shortenExternalLinkTexts(contentHtml, request.anchorUrl);
-  contentHtml = cleanQuoteDebris(contentHtml);
-  // Safety net for humanizer casing artifacts that survived section-level
-  // cleanup (EN connectors stripped mid-pipeline leave lowercase sentence
-  // starts). Repair is orthographic only; anchors and camelCase brands are
-  // skipped. Without it the integrity gate failed the whole PAID job.
-  contentHtml = repairSentenceCase(contentHtml);
-  contentHtml = restoreBrandToken(contentHtml, request.brand);
-  // Enforce the single ANCHOR mention only when the anchor text is not the
-  // brand itself — brand mentions (2-3x) must survive.
-  const anchorIsBrand =
-    request.brand && request.anchor.toLowerCase().includes(request.brand.toLowerCase());
-  if (request.anchor && !anchorIsBrand) {
-    contentHtml = enforceSingleMention(contentHtml, request.anchor);
-  }
-  if (request.anchor && request.anchorUrl) {
-    contentHtml = repairMoneyAnchor(contentHtml, request.anchor, request.anchorUrl).html;
-  }
   return {
-    generatedTitleTag,
+    ...draft,
     contentHtml,
-    metaDescription: generated.metaDescription || "",
-    humanizedOnWrite: generated.humanizedOnWrite === true,
+    humanizedOnWrite: true,
     humanizationProvider,
+    undetectableWordsUsed: usage?.undetectableWords ?? 0,
+    structure: undefined,
   };
 }
 
@@ -281,6 +393,11 @@ export async function runAutomationGeneration(
     const first = failures[0];
     throw new AutomationPipelineError(first.code, `${first.message} (after retry)`);
   }
+  // Humanization happens ONCE, on the accepted draft — never on a draft that
+  // the retry above throws away.
+  if (request.mode === "human") {
+    article = await humanizeAcceptedDraft(article, request, topic, minWords);
+  }
   const wordCount = countAutomationWords(article.contentHtml);
 
   const { contentHtml } = article;
@@ -367,6 +484,8 @@ export async function runAutomationGeneration(
       humanized: article.humanizedOnWrite,
       language: request.language || "English",
       humanizationProvider: article.humanizationProvider,
+      undetectableWordsUsed: article.undetectableWordsUsed,
+      format: request.format,
       wordCount,
       imageStyle: imageStyleUsed,
       imageFamily: familyOfBox(imageStyleUsed),

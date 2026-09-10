@@ -2,6 +2,12 @@
 
 Документ для передачі агенту: повний опис флоу створення статей, х'юманізації, промптів та логіки.
 
+> **Оновлення 2026-09-10 для Cowork / оркестратора:** end-to-end опис automation-процесу,
+> нові поля `humanizer` та `format` (article / listicle / comparison), правила кредитів
+> Undetectable.AI і коди помилок — у `docs/COWORK_AUTOMATION_PROCESS.md`. Контракт полів —
+> `docs/AUTOMATION_API.md`. Гуманізація в automation тепер виконується один раз, на прийнятому
+> драфті (не всередині retry); провайдер резолвиться при submit по живому балансу.
+
 ---
 
 # Частина 1: Direct Article Creation Mode — Flow, Humanization, Prompts

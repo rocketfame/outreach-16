@@ -127,31 +127,51 @@ export class UndetectableHumanizerClient implements HumanizerService {
       throw new Error("No document ID returned from humanizer");
     }
 
+    // The submission above is already billed. Polling is free, so a transient
+    // network error or a 5xx on /document must NOT throw the paid result away —
+    // keep polling until the attempt budget is spent.
     let output: string | undefined;
+    let transientPollErrors = 0;
     for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
       await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 
-      const docRes = await fetch(`${config.baseUrl}/document`, {
-        method: "POST",
-        headers: {
-          apikey: config.apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id: docId }),
-      });
-
-      const docJson = await docRes.json();
+      let docRes: Response;
+      let docJson: { output?: string; error?: string; message?: string } | null;
+      try {
+        docRes = await fetch(`${config.baseUrl}/document`, {
+          method: "POST",
+          headers: {
+            apikey: config.apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: docId }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        docJson = await docRes.json().catch(() => null);
+      } catch (pollError) {
+        transientPollErrors++;
+        console.warn(
+          `[humanizer] Poll attempt ${attempt + 1} failed (transient, ${transientPollErrors} so far):`,
+          pollError instanceof Error ? pollError.message : String(pollError)
+        );
+        continue;
+      }
 
       if (!docRes.ok) {
         const documentError = docJson?.error || docJson?.message || "Failed to retrieve document";
         if (hasInsufficientCreditsMessage(documentError)) {
           throw new HumanizerInsufficientCreditsError();
         }
+        if (docRes.status >= 500 || docRes.status === 429) {
+          transientPollErrors++;
+          console.warn(`[humanizer] Poll attempt ${attempt + 1} got status ${docRes.status}; retrying.`);
+          continue;
+        }
         console.error("[humanizer] Document fetch failed with status:", docRes.status);
         throw new Error(documentError);
       }
 
-      if (docJson.output != null && docJson.output !== "") {
+      if (docJson?.output != null && docJson.output !== "") {
         output = docJson.output;
         break;
       }

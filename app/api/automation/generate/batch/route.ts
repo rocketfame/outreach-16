@@ -15,6 +15,7 @@ import type {
 } from "@/lib/automation/types";
 import { getTextProviderConfig, validateTextProvider } from "@/lib/textProvider";
 import { estimateAutomationRequestCost } from "@/lib/automation/costEstimate";
+import { resolveHumanizerForRequest } from "@/lib/automation/humanizerPolicy";
 import {
   automationApiKeyId,
   releaseAutomationUsageReservation,
@@ -117,6 +118,37 @@ export async function POST(req: Request) {
   const rejectedBilling = billingError(requests);
   if (rejectedBilling) return rejectedBilling;
 
+  // Resolve the rewrite provider per job from the live Undetectable.AI
+  // balance (cached 30s, so 20 jobs cost one lookup). The balance is checked
+  // against the CUMULATIVE need of the batch: a 10-job batch must not pass
+  // because each job alone fits the balance.
+  let cumulativeUndetectableWords = 0;
+  for (let index = 0; index < requests.length; index++) {
+    const resolution = await resolveHumanizerForRequest(requests[index]);
+    if (resolution.error) {
+      return json({ status: "error", code: resolution.error.code, index, message: resolution.error.message }, 422);
+    }
+    let resolved = resolution.resolved;
+    if (resolved === "undetectable") {
+      cumulativeUndetectableWords += resolution.wordsNeeded;
+      const credits = resolution.undetectableCredits ?? 0;
+      if (credits < cumulativeUndetectableWords) {
+        if (requests[index].humanizer === "undetectable") {
+          return json({
+            status: "error",
+            code: "humanizer_credits_insufficient",
+            index,
+            message: `Undetectable.AI balance is ${credits} words; jobs 0-${index} of this batch need about ${cumulativeUndetectableWords}. Top up, shorten the batch, or use humanizer: "betterwords". No batch jobs were queued.`,
+          }, 422);
+        }
+        // auto: the balance is exhausted by earlier jobs in this batch.
+        cumulativeUndetectableWords -= resolution.wordsNeeded;
+        resolved = "betterwords";
+      }
+    }
+    requests[index].humanizerResolved = resolved;
+  }
+
   const now = Date.now();
   const jobs: AutomationJob[] = requests.map((request) => {
     const estimatedCost = estimateAutomationRequestCost(request);
@@ -193,6 +225,8 @@ export async function POST(req: Request) {
     jobId: job.id,
     estimatedCostUsd: job.estimatedCost,
     maxCostUsd: job.request!.maxCostUsd,
+    humanizer: job.request!.humanizerResolved,
+    format: job.request!.format,
     ...(await getAutomationQueueInfo(job.id)),
   })));
   after(() => drainAutomationQueuePool());

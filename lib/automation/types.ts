@@ -19,6 +19,17 @@ export const KNOWN_AUTOMATION_CATEGORIES = [
 ] as const;
 
 export type AutomationMode = "human" | "standard";
+/**
+ * Rewrite provider for human mode. `auto` picks Undetectable.AI when the
+ * account balance covers the article and BetterWords otherwise; the choice
+ * is resolved at submit time and echoed as `humanizerResolved`.
+ */
+export type AutomationHumanizerPreference = "auto" | "undetectable" | "betterwords";
+export type AutomationHumanizerResolved = "undetectable" | "betterwords" | "none";
+/** Article shape. `article` = narrative guide (default); the others enforce a structure. */
+export type AutomationArticleFormat = "article" | "listicle" | "comparison";
+export const AUTOMATION_ARTICLE_FORMATS: readonly AutomationArticleFormat[] = ["article", "listicle", "comparison"];
+export const AUTOMATION_HUMANIZER_VALUES: readonly AutomationHumanizerPreference[] = ["auto", "undetectable", "betterwords"];
 export type AutomationBillingPreference = "auto" | "external" | "api" | "subscription";
 export type AutomationCoverFormat = "png" | "webp";
 export type AutomationJobStatus = "queued" | "running" | "done" | "error";
@@ -40,6 +51,10 @@ export interface AutomationGenerateInput {
   brief?: string;
   /** Optional — defaults to "human". */
   mode?: AutomationMode;
+  /** Human mode only. Optional — defaults to "auto". */
+  humanizer?: AutomationHumanizerPreference;
+  /** Optional — defaults to "article". `listicle` / `comparison` enforce that structure. */
+  format?: AutomationArticleFormat;
   /** `api` selects OpenAI, `external` requires TEXT_* config; subscription is unavailable. */
   billing?: AutomationBillingPreference;
   /** Full name ("Spanish") or ISO code ("es"). Optional — defaults to "English". */
@@ -76,6 +91,10 @@ export interface AutomationGenerateRequest {
   brand: string;
   brief: string;
   mode: AutomationMode;
+  humanizer: AutomationHumanizerPreference;
+  /** Provider the job will actually use — resolved at submit time (absent on legacy stored jobs). */
+  humanizerResolved?: AutomationHumanizerResolved;
+  format: AutomationArticleFormat;
   billing: AutomationBillingPreference;
   /** Canonical supported name, or the validated custom language name. */
   language: string;
@@ -126,6 +145,10 @@ export interface AutomationGenerateSuccess {
     language: string;
     /** Actual rewrite provider used for human mode. */
     humanizationProvider?: "undetectable" | "betterwords" | "mixed";
+    /** Undetectable.AI words billed for this job (0 when BetterWords or standard mode). */
+    undetectableWordsUsed?: number;
+    /** Article shape that was enforced. */
+    format?: AutomationArticleFormat;
     /** Word count of the final body — callers can assert against minWords. */
     wordCount: number;
     /** Image box preset id used for the cover — assert on it, don't eyeball. */

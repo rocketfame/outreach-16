@@ -12,7 +12,8 @@
 
 ## Humanization Flow
 1. Увесь користувацький текст (topics, outlines, articles, SEO fields, edits) генерується через OpenAI API за замовчуванням або optional external provider зі спільним BetterWords 2.1.2 guardrail. Це працює для UI та API, у `seo` і `human` modes
-2. Writing mode "human" → обов'язкова гуманізація через Undetectable.AI v2
+2. Writing mode "human" → обов'язкова гуманізація через Undetectable.AI v2 (UI: у роуті, блоками по 5 паралельно)
+3. Automation (Cowork/оркестратор): гуманізація ВИНЕСЕНА з генерації. Драфт → acceptance-перевірки → retry (без кредитів) → `humanizeAcceptedDraft` один раз → фіналізація → повторна перевірка. Провайдер (`undetectable`/`betterwords`) вирішується при submit по живому балансу; повний опис у `docs/COWORK_AUTOMATION_PROCESS.md`
 3. Submit → polling до завершення
 4. Якщо Undetectable повертає точний текст `Insufficient credits` → BetterWords 2.1.2 quality rewrite через активний text provider; job-scoped circuit breaker веде решту блоків цього POST/job одразу у fallback. Інші помилки Undetectable не підміняються
 

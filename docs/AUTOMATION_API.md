@@ -44,6 +44,69 @@ reports `undetectable`, `betterwords`, or `mixed`. If neither provider rewrites
 any block, the job fails with `humanization_failed`; unhumanized copy is never
 reported as a successful human-mode article.
 
+### Humanizer selection, credits, and article formats
+
+| Field | Type | Required | Contract |
+|---|---|---:|---|
+| `mode` | `"human"` \| `"standard"` | No | Default `human`. |
+| `humanizer` | `"auto"` \| `"undetectable"` \| `"betterwords"` | No | Human mode only. Default `auto`. |
+| `format` | `"article"` \| `"listicle"` \| `"comparison"` | No | Default `article`. |
+
+**Humanization runs exactly once per job, on the accepted draft.** The draft
+is generated first, run through the acceptance checks (`truncated_output`,
+`below_min_words`, `anchor_*`, `orthography_invalid`) and the single
+corrective retry, and only the draft that passed is humanized. A rejected
+draft costs text-model tokens only — never Undetectable.AI credits. If the
+humanized body fails the same checks, the job ends with
+`humanized_draft_rejected` (credits were spent once; there is no automatic
+re-humanization).
+
+The rewrite provider is resolved **at submit time** from the live
+Undetectable.AI balance (1 credit = 1 word; a job needs about
+`maxWords × 1.1`) and echoed as `humanizer` in the 202 response:
+
+- `auto` — Undetectable.AI when the balance covers the job, otherwise
+  BetterWords 2.1.2 through the text provider. Never fails on balance.
+- `undetectable` — requires a funded balance; otherwise HTTP 422
+  `humanizer_credits_insufficient` (or `humanizer_not_configured`,
+  `humanizer_balance_unavailable`) and nothing is queued.
+- `betterwords` — never touches Undetectable.AI.
+
+Batch submissions check the balance against the **cumulative** need of the
+batch, in order: with `auto`, jobs the balance no longer covers resolve to
+`betterwords`; with `undetectable`, the whole batch is rejected.
+
+The resolved provider drives the cost estimate: a job resolved to
+Undetectable.AI has `estimatedCostUsd.min` at the metered price
+(~$0.0005/word), so a `maxCostUsd` that cannot afford the humanization is
+rejected up front with `estimated_cost_exceeds_cap` instead of dying
+mid-humanization after credits were spent. At runtime the whole
+humanization is additionally reserved against the job cap before the first
+paid submit. Practical caps: `standard` fits `$0.40`; `human` +
+`betterwords` fits `$0.40`; `human` + Undetectable.AI for 1200-1800 words
+needs about `$0.85-1.00` — send `maxCostUsd: 1` for those jobs.
+
+`GET /api/automation/config` reports `humanizer.undetectableCredits` (live,
+cached 30 s), `humanizer.undetectableConfigured`, the accepted `humanizers`
+and `formats`, and the defaults. Check it before a batch that must run on
+Undetectable.AI. The done job echoes `meta.humanizationProvider`
+(`undetectable` / `betterwords` / `mixed`), `meta.undetectableWordsUsed`,
+and `meta.format`.
+
+`format` appends a mandatory structure directive to the topic brief:
+
+- `article` — narrative guide; the model picks the structure from the brief.
+- `listicle` — numbered H2 items (`1. ...`); the item count is taken from a
+  number in the topic (e.g. "7 ways...") or defaults to 7-10; intro before,
+  short wrap-up after; no comparison table.
+- `comparison` — head-to-head of the options named in the topic/brief:
+  who each option is for, exactly one criteria-by-options table, one H2
+  verdict per criterion, a closing "Which to choose" section; no invented
+  numbers or rankings.
+
+Everything else the brief needs (angle, audience, mandatory points, which
+options to compare) goes into `brief` (≤ 2000 chars).
+
 ### Quality and source failures
 
 Before a job becomes `done`, paragraph integrity is checked for missing terminal
@@ -103,11 +166,13 @@ includes `costUsd` for both `done` and `error` jobs.
 
 Submission is pre-flighted: `estimatedCostUsd` is an honest `{min, max}`
 object where `max` mirrors the runtime worst-case reservations (uncached
-prompt, full completion ceiling, Undetectable.AI metered humanization) and
-`min` is a realistic cheap run (warm source cache, warm OpenAI prompt cache,
-BetterWords-class humanization). If even `min` exceeds the job cap, POST
-returns HTTP 422 `estimated_cost_exceeds_cap` before anything is queued,
-reserved, or spent — a rejected job costs `$0.00`.
+prompt, full completion ceiling) and `min` is a realistic cheap run (warm
+source cache, warm OpenAI prompt cache). Humanization is priced by the
+provider the job **resolved to** (see "Humanizer selection"): Undetectable.AI
+at the metered per-word price in both bounds, BetterWords as a text-provider
+call. If even `min` exceeds the job cap, POST returns HTTP 422
+`estimated_cost_exceeds_cap` before anything is queued, reserved, or spent —
+a rejected job costs `$0.00`.
 
 The trust-source stage runs at most TWO Tavily searches per job at basic
 depth (`$0.01` each, ≤ `$0.02` per job) and caches results in KV for 7 days
