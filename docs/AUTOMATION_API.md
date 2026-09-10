@@ -311,19 +311,21 @@ Response `200`:
 - Cost: Undetectable ~$0.0005 per word (800 words ≈ $0.40); BetterWords is
   a text-provider call (~$0.10-0.20 per 800 words).
 
-### Recommended per-article loop
+### Recommended per-article flow (decision 2026-09-10)
 
-1. `POST /generate` with `mode: "standard"` (or `human` + `betterwords`) —
-   no Undetectable credits spent.
-2. Editorial pass (free).
-3. `POST /detect` on the paragraphs → list of `flagged` indexes.
-4. `POST /humanize` with only the flagged paragraphs (`humanizer: "auto"`,
-   `brand`/`anchor` set) → splice the returned texts back by `index`.
-5. `POST /detect` again on the replaced paragraphs; stop when nothing is
-   flagged or after one round — a second humanization pass rarely helps.
+**Humanize the whole article inside the job**: `POST /generate` with
+`mode: "human"`, `humanizer: "undetectable"` (or `auto`), `maxCostUsd: 1`.
+Live test of an un-humanized BetterWords draft (672 words): Undetectable's
+own score said "human" (39.8), but the simulated third-party detectors
+(GPTZero, Copyleaks, ZeroGPT, Writer, Sapling) all returned 100 % AI — so
+un-humanized copy is not shippable to editors who use those tools, and the
+selective loop below only adds steps. Keep it simple: full humanization,
+once, in the job.
 
-Budget for a 2 700-word article with ~30 % flagged: ~270 + 810 + 270 ≈
-1 350 credits (~$0.66), versus 2 700 credits for full humanization.
+`POST /detect` and `POST /humanize` stay available for the editorial
+pass — re-humanizing a paragraph a human edited, or checking a final
+article before delivery (detect the WHOLE article, ~0.1 credit/word; short
+paragraphs under ~150 words always score as AI and are not a useful signal).
 
 ## Queue and batch operations
 
